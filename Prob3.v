@@ -343,8 +343,9 @@ Inductive SimpleIntegral {A : Type} (mu : (A -> Prop) -> Q -> Prop)
          , SimpleIntegral mu f a
          -> SimpleIntegral mu g b
          -> SimpleIntegral mu (SAdd f g) (a + b)
-  | SEScale : forall {c a f} {cpos : c >= 0}, SimpleIntegral mu f a
-           -> SimpleIntegral mu (SScale c cpos f) (c * a).
+  | SEScale : forall {c a ca f} {cpos : c >= 0}, SimpleIntegral mu f a
+           -> ca == c * a
+           -> SimpleIntegral mu (SScale c cpos f) ca.
 
 (* Here we consider a Simple as a pointwise function, in a sense,
    by integrating against a Dirac delta. *)
@@ -362,3 +363,47 @@ Definition Integral {A : Type} (mu : (A -> Prop) -> Q -> Prop) (f : A -> Q -> Pr
   : Prop := 
   exists (s : Simple A), funcLTE (SimpleEval s) f
                   /\ SimpleIntegral mu s q.
+
+(** We can now define a product measure using our notion
+    of integrals! *)
+Inductive ProductVal {A B : Type}
+  (ValL : (A -> Prop) -> Q -> Prop)
+  (ValR : (B -> Prop) -> Q -> Prop) (P : (A * B) -> Prop) : Q -> Prop :=
+  | Prod : forall (f : A -> Q -> Prop)
+         , (forall (a : A) (q : Q), f a q -> exists q', ValR (fun b => P (a, b)) q' /\ q' >= q)
+         -> forall {res}, Integral ValL f res
+         -> ProductVal ValL ValR P res.
+
+(* If we take the product of a dirac delta measure with another measure,
+   we have a nice identity property about the produce measure. *)
+Theorem unitProdId {A B : Type}
+  (a : A) (ValB : Valuation B)
+  (P : (A * B) -> Prop)
+  (q : Q) (qpos : q >= 0)
+  (margB : val ValB (fun b => P (a, b)) q)
+  : ProductVal (unitProb a) (val ValB) P q.
+Proof.
+pose (f := fun a' q0 => (a = a' /\ q0 <= q) \/ q0 == 0).
+eapply Prod with f.
+intros. unfold f in H. destruct H. destruct H. subst.
+exists q. split; assumption.
+destruct (zeroed ValB (fun b => P (a0, b))). 
+destruct H0.
+exists x. split.  assumption. rewrite H. rewrite H1.
+apply Qle_refl.
+unfold Integral.
+exists (SScale q qpos (SIndicator (fun a' => a = a'))).
+split. unfold funcLTE.
+intros.
+inversion H; clear H; subst.
+inversion H2; clear H2; subst.
+inversion H0; clear H0.
+eexists. split. rewrite <- H.
+unfold f. left. split. reflexivity. instantiate (1 := q).
+apply Qle_refl. rewrite H4. rewrite <- H1. 
+rewrite Qmult_1_r. apply Qle_refl.
+exists 0. split. unfold f. right. reflexivity.
+rewrite H4. rewrite <- H. rewrite Qmult_0_r. apply Qle_refl.
+econstructor.
+econstructor. econstructor. reflexivity. field.
+Qed.
