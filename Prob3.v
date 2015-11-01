@@ -369,10 +369,27 @@ Definition Integral {A : Type} (mu : (A -> Prop) -> Q -> Prop) (f : A -> Q -> Pr
 Inductive ProductVal {A B : Type}
   (ValL : (A -> Prop) -> Q -> Prop)
   (ValR : (B -> Prop) -> Q -> Prop) (P : (A * B) -> Prop) : Q -> Prop :=
-  | Prod : forall (f : A -> Q -> Prop)
-         , (forall (a : A) (q : Q), f a q -> exists q', ValR (fun b => P (a, b)) q' /\ q' >= q)
-         -> forall {res}, Integral ValL f res
+  | Prod : forall {res}
+         , Integral ValL (fun (a : A) => ValR (fun b => P (a, b))) res
          -> ProductVal ValL ValR P res.
+
+(** And why not make things more general? A dependent product
+    valuation! *)
+Inductive DepProductVal {A : Type} {B : A -> Type}
+  (ValL : (A -> Prop) -> Q -> Prop)
+  (ValR : forall (a : A), (B a -> Prop) -> Q -> Prop) (P : sigT B -> Prop) : Q -> Prop :=
+  | DepProd : forall {res}
+         , Integral ValL (fun (a : A) => ValR a (fun b => P (existT B a b))) res
+         -> DepProductVal ValL ValR P res.
+
+(** Another variation on the theme : this one should represent
+    the monadic bind *)
+Inductive BindVal {A B : Type}
+  (ValL : (A -> Prop) -> Q -> Prop)
+  (ValR : A -> (B -> Prop) -> Q -> Prop) (P : B -> Prop) : Q -> Prop :=
+  | Bind : forall {res}
+         , Integral ValL (fun (a : A) => ValR a P) res
+         -> BindVal ValL ValR P res.
 
 (* If we take the product of a dirac delta measure with another measure,
    we have a nice identity property about the produce measure. *)
@@ -383,15 +400,8 @@ Theorem unitProdId {A B : Type}
   (margB : val ValB (fun b => P (a, b)) q)
   : ProductVal (unitProb a) (val ValB) P q.
 Proof.
-pose (f := fun a' q0 => (a = a' /\ q0 <= q) \/ q0 == 0).
-eapply Prod with f.
-intros. unfold f in H. destruct H. destruct H. subst.
-exists q. split; assumption.
-destruct (zeroed ValB (fun b => P (a0, b))). 
-destruct H0.
-exists x. split.  assumption. rewrite H. rewrite H1.
-apply Qle_refl.
-unfold Integral.
+constructor.
+unfold Integral. 
 exists (SScale q qpos (SIndicator (fun a' => a = a'))).
 split. unfold funcLTE.
 intros.
@@ -399,11 +409,13 @@ inversion H; clear H; subst.
 inversion H2; clear H2; subst.
 inversion H0; clear H0.
 eexists. split. rewrite <- H.
-unfold f. left. split. reflexivity. instantiate (1 := q).
-apply Qle_refl. rewrite H4. rewrite <- H1. 
-rewrite Qmult_1_r. apply Qle_refl.
-exists 0. split. unfold f. right. reflexivity.
-rewrite H4. rewrite <- H. rewrite Qmult_0_r. apply Qle_refl.
+eassumption. rewrite H4.
+rewrite <- H1. rewrite Qmult_1_r. apply Qle_refl.
+destruct (zeroed ValB (fun b => P (x, b))).
+destruct H0. 
+exists x0. split. assumption.
+rewrite H4.  rewrite <- H. rewrite Qmult_0_r. rewrite H1.
+apply Qle_refl.
 econstructor.
 econstructor. econstructor. reflexivity. field.
 Qed.
