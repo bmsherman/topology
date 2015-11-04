@@ -19,6 +19,7 @@ Record Valuation {A : Type} :=
                          -> val (fun z => U z \/ V z) y
               -> exists a b, val U a /\ val V b
                      /\ a + b == x + y
+  ; nonneg    : forall P q, val P q -> q >= 0
   }.
 
 Arguments Valuation : clear implicits.
@@ -62,7 +63,7 @@ Inductive scaledVal (q : Q)
   {A : Type} (Val : (A -> Prop) -> Q -> Prop) (P : A -> Prop) : Q -> Prop :=
   | Scale : forall a, Val P a -> scaledVal q Val P (q * a).
 
-Definition scaled {A : Type} (q : Q) (Val : Valuation A) : Valuation A.
+Definition scaled {A : Type} (q : Q) (qnn : q >= 0) (Val : Valuation A) : Valuation A.
 Proof. refine (
   {| val := scaledVal q (val Val) |}
 ); intros.
@@ -85,6 +86,8 @@ Proof. refine (
   do 2 rewrite <- Qmult_plus_distr_r.
   rewrite eqs.
   reflexivity.
+- inversion H; clear H; subst. pose proof (nonneg Val _ _ H0).
+  apply Qmult_le_0_compat; assumption.
 Defined.
 
 (* Add two valuations together *)
@@ -129,12 +132,23 @@ Proof. refine (
   exists (LVq + RVq).
   repeat split; try eassumption.
   rewrite qredistribute. rewrite eqL. rewrite eqR. field.
+- induction H. replace 0 with (0 + 0). apply Qplus_le_compat.
+  apply (nonneg _ _ _ H).
+  apply (nonneg _ _ _ H0).
+  reflexivity.
 Defined.
 
 (* Probabilistic choice. Take [ValL] with probability [p] and
    [ValR] with probability [1 - p] *)
-Definition pchoice {A : Type} (p : Q) (ValL ValR : Valuation A) : Valuation A :=
-  add (scaled p ValL) (scaled (1 - p) ValR).
+Definition pchoice {A : Type} (p : Q) 
+  (pge : p >= 0) (ple : p <= 1)
+  (ValL ValR : Valuation A) : Valuation A.
+Proof.
+refine (
+  add (scaled p pge ValL) (scaled (1 - p) _ ValR)
+).
+apply -> Qle_minus_iff. apply ple.
+Defined.
 
 Section SillyExample.
   (** This silly example demonstrates a case where measures simply will not do.
@@ -144,8 +158,11 @@ Section SillyExample.
 
   Definition classical := forall (P : Prop), ~ ~ P -> P.
 
-  Definition halfClassical : Valuation Prop :=
-    pchoice (1 # 2) (unit True) (unit classical).
+  Definition halfClassical : Valuation Prop.
+  Proof. refine (
+    pchoice (1 # 2) _ _ (unit True) (unit classical)
+  ). unfold Qle. simpl. apply Zle_succ. unfold Qle. simpl. apply Zle_succ.
+  Defined.
 
   Lemma classicalLEM : classical -> forall (P : Prop), P \/ ~ P.
   Proof.
@@ -201,6 +218,7 @@ Proof. refine (
   intros. apply H. intros. apply H0. assumption.
 - apply (modular1 v); assumption.
 - apply (modular2 v); assumption.
+- apply (nonneg _ _ _ H).
 Defined.
 
 Require Import Streams.
@@ -316,7 +334,7 @@ Proof. refine (
     * admit.
   + admit.
   + admit.
-Admitted.
+Abort.
 
 (** * Integration *)
 
@@ -392,7 +410,7 @@ Inductive BindVal {A B : Type}
          -> BindVal ValL ValR P res.
 
 (* If we take the product of a dirac delta measure with another measure,
-   we have a nice identity property about the produce measure. *)
+   we have a nice identity property about the product measure. *)
 Theorem unitProdId {A B : Type}
   (a : A) (ValB : Valuation B)
   (P : (A * B) -> Prop)
@@ -419,3 +437,118 @@ apply Qle_refl.
 econstructor.
 econstructor. econstructor. reflexivity. field.
 Qed.
+
+Lemma funcLTERefl {A : Type} {f : A -> Q -> Prop} : funcLTE f f.
+Proof.
+unfold funcLTE.
+intros. exists q. split. assumption. apply Qle_refl.
+Qed.
+
+Lemma funcLTETrans {A : Type} {f g h : A -> Q -> Prop}
+  : funcLTE f g -> funcLTE g h -> funcLTE f h.
+Proof.
+intros fg gh.
+unfold funcLTE in *.
+intros.
+pose proof (fg x q H).
+destruct H0. destruct H0.
+pose proof (gh x x0 H0).
+destruct H2.
+destruct H2.
+exists x1. split. assumption. eapply Qle_trans. eassumption. eassumption.
+Qed.
+
+Lemma simpleIntegralStrict {A : Type}
+  : forall (m : Valuation A) (q : Q)
+  , SimpleIntegral (val m) SNil q
+  -> q = 0.
+Proof.
+intros. inversion H. reflexivity.
+Qed.
+
+Lemma simpleIntegralNonnegative {A : Type} {f : Simple A}
+  {m : Valuation A} {q : Q}
+  : SimpleIntegral (val m) f q -> q >= 0.
+Proof.
+intros int.
+induction int. 
+- apply Qle_refl.
+- apply (nonneg _ _ _ H).
+- replace 0 with (0 + 0). apply Qplus_le_compat; assumption. reflexivity.
+- rewrite H. apply Qmult_le_0_compat; assumption.
+Qed.
+
+Lemma ltesimpleIntegralMonotonic {A : Type} {f g : Simple A}
+  : funcLTE (SimpleEval f) (SimpleEval g) -> forall (m : Valuation A) (q : Q)
+  , SimpleIntegral (val m) f q
+  -> exists (q' : Q), SimpleIntegral (val m) g q' /\ q <= q'.
+Proof.
+intros lte m q intf.
+induction intf.
+(*
+- exists 0. eapply simpleIntegralNonnegative. eassumption.
+- induction intg.
+  pose proof (monotonic _ _ _ H (konst False)).
+  assert (q == 0).
+  apply (strict m).
+  apply H0.
+  intros.
+  unfold funcLTE in lte.
+  assert (SimpleEval (SIndicator P) z q).
+  admit.
+  pose proof (lte z q H2).
+  destruct H3. destruct H3.
+  unfold SimpleEval in H3.
+  apply (simpleIntegralStrict (unit z) x) in H3.
+  subst.
+  unfold SimpleEval in H2.
+  inversion H2; clear H2; subst.
+  inversion H5; clear H5; subst.
+  apply Qle_not_lt in H4.
+  unfold konst. apply H4. unfold Qlt. simpl. reflexivity.
+*)
+Abort.
+
+Lemma lteIntegralMonotonic {A : Type} {f g : A -> Q -> Prop}
+  : funcLTE f g -> forall (m : Valuation A) (q : Q)
+  , Integral (val m) f q
+  -> Integral (val m) g q.
+Proof.
+intros.
+unfold Integral in *.
+destruct H0.
+exists x. destruct H0.
+split. 2:assumption.
+eapply funcLTETrans; eassumption.
+Qed.
+
+
+
+Definition bind {A B : Type}
+  (m : Valuation A) (f : A -> Valuation B) : Valuation B.
+Proof.
+refine (
+  {| val := BindVal (val m) (fun a => val (f a)) |}
+); intros.
+- exists 0. split. constructor. econstructor. split.
+  Focus 2. apply SENil. unfold funcLTE. intros.
+  pose proof (zeroed (f x) P).
+  destruct H0.
+  exists x0. destruct H0. split. assumption. rewrite H1.
+  inversion H. apply Qle_refl.
+  reflexivity.
+- inversion H; clear H; subst.
+  inversion H0; clear H0; subst.
+  destruct H.
+  assert (Integral (val m) (SimpleEval x) q).
+  unfold Integral. exists x. split.
+  apply funcLTERefl. assumption.
+  assert (funcLTE (fun a => val (f a) (konst False)) (SimpleEval SNil)).
+  unfold funcLTE.
+  intros x' q' meas.
+  apply strict in meas.
+  exists 0. split. constructor. rewrite meas. apply Qle_refl.
+  pose proof (funcLTETrans H H2).
+  pose proof (lteIntegralMonotonic H3 m q H1).
+  destruct H4.
+Abort.
