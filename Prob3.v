@@ -1,4 +1,4 @@
-Require Import QArith.
+Require Import QArith Qcanon.
 
 (** In the comments here, I seem to use the words "measure" and
     "valuation" interchangably. Sorry! *)
@@ -6,26 +6,26 @@ Require Import QArith.
 Definition konst {A} (x : A) {B} (y : B) := x.
 
 Record Valuation {A : Type} :=
-  { val       : (A -> Prop) -> Q -> Prop 
-  ; zeroed    : forall P, exists q, val P q /\ q == 0
-  ; strict    : forall q, val (konst False) q -> q == 0%Q
+  { val       : (A -> Prop) -> Qc -> Prop 
+  ; zeroed    : forall P, val P 0
+  ; strict    : forall q, val (konst False) q -> q = 0
   ; monotonic : forall (U : A -> Prop) q, val U q -> forall (V : A -> Prop), (forall z, U z -> V z) 
               -> val V q
   ; modular1  : forall {U V x y}, val U x -> val V y
               -> exists a b, val (fun z => U z /\ V z) a
                      /\ val (fun z => U z \/ V z) b
-                     /\ a + b == x + y
+                     /\ a + b = x + y
   ; modular2  : forall {U V x y}, val (fun z => U z /\ V z) x 
                          -> val (fun z => U z \/ V z) y
               -> exists a b, val U a /\ val V b
-                     /\ a + b == x + y
+                     /\ a + b = x + y
   ; nonneg    : forall P q, val P q -> q >= 0
   }.
 
 Arguments Valuation : clear implicits.
 
 (* A Dirac delta measure *)
-Inductive unitProb {A} (a : A) (P : A -> Prop) : Q -> Prop :=
+Inductive unitProb {A} (a : A) (P : A -> Prop) : Qc -> Prop :=
   | Unit1 : P a -> unitProb a P 1
   | Unit0 : unitProb a P 0.
 
@@ -35,7 +35,7 @@ match goal with
 | [ |- unitProb _ _ 0 ] => eapply Unit0
 | [ |- unitProb _ _ 1 ] => eapply Unit1
 | [ |- _ /\ _ ] => split
-| [ H : ?U ?x |- exists a b : Q, unitProb ?x ?U a /\ _ ] => exists 1 
+| [ H : ?U ?x |- exists a b : Qc, unitProb ?x ?U a /\ _ ] => exists 1 
 | [ |- _ ] => reflexivity || firstorder
 end.
 
@@ -45,7 +45,6 @@ Definition unit {A : Type} (a : A) : Valuation A.
 Proof. refine (
   {| val := unitProb a |}
 ); intros; repeat proveUnit.
-exists 0. repeat proveUnit.
 exists 1. exists 1. repeat proveUnit.
 exists 0. exists 1. repeat proveUnit.
 exists 0. exists 1. repeat proveUnit.
@@ -58,17 +57,25 @@ exists 0. repeat proveUnit.
 exists 0. exists 0. repeat proveUnit.
 Defined.
 
+Lemma Qcmult_le_0_compat : forall {x y : Qc},
+  x >= 0 -> y >= 0 -> x * y >= 0.
+Proof.
+intros. replace 0 with (0 * y) by field.
+apply Qcmult_le_compat_r; assumption.
+Qed.
+
 (* Scale a valuation by a constant *)
-Inductive scaledVal (q : Q)
-  {A : Type} (Val : (A -> Prop) -> Q -> Prop) (P : A -> Prop) : Q -> Prop :=
+Inductive scaledVal (q : Qc)
+  {A : Type} (Val : (A -> Prop) -> Qc -> Prop) (P : A -> Prop) : Qc -> Prop :=
   | Scale : forall a, Val P a -> scaledVal q Val P (q * a).
 
-Definition scaled {A : Type} (q : Q) (qnn : q >= 0) (Val : Valuation A) : Valuation A.
+Definition scaled {A : Type} (q : Qc) (qnn : q >= 0) (Val : Valuation A) : Valuation A.
 Proof. refine (
   {| val := scaledVal q (val Val) |}
 ); intros.
-- pose proof (zeroed Val P). destruct H. destruct H.
-  exists (q * x). split. constructor. assumption. rewrite H0. field.
+- pose proof (zeroed Val P). 
+  replace 0 with (q * 0) by field.
+  constructor. assumption.
 - induction H. apply strict in H. rewrite H. field.
 - induction H. constructor. eapply monotonic; eassumption.
 - induction H; induction H0.
@@ -76,28 +83,28 @@ Proof. refine (
   destruct H1 as [andq [orq [andp [orp eqs]]]].
   exists (q * andq). exists (q * orq).
   repeat split; try assumption.
-  do 2 rewrite <- Qmult_plus_distr_r.
+  do 2 rewrite <- Qcmult_plus_distr_r.
   rewrite eqs. reflexivity.
 - induction H; induction H0.
   pose proof (modular2 Val H H0).
   destruct H1 as [Uq [Vq [Up [Vp eqs]]]].
   exists (q * Uq). exists (q * Vq).
   repeat split; try assumption.
-  do 2 rewrite <- Qmult_plus_distr_r.
+  do 2 rewrite <- Qcmult_plus_distr_r.
   rewrite eqs.
   reflexivity.
 - inversion H; clear H; subst. pose proof (nonneg Val _ _ H0).
-  apply Qmult_le_0_compat; assumption.
+  apply Qcmult_le_0_compat; assumption.
 Defined.
 
 (* Add two valuations together *)
 Inductive addVal {A : Type}
-  (ValL ValR : (A -> Prop) -> Q -> Prop) (P : A -> Prop) : Q -> Prop :=
+  (ValL ValR : (A -> Prop) -> Qc -> Prop) (P : A -> Prop) : Qc -> Prop :=
   | Add : forall a b, ValL P a -> ValR P b -> addVal ValL ValR P (a + b).
 
 Lemma qredistribute : forall andLq andRq orLq orRq,
     andLq + andRq + (orLq + orRq)
- == (andLq + orLq) + (andRq + orRq).
+ = (andLq + orLq) + (andRq + orRq).
 Proof. intros. field. Qed.
 
 
@@ -106,9 +113,8 @@ Proof. refine (
   {| val := addVal (val ValL) (val ValR) |}
 ); intros.
 - pose proof (zeroed ValL P). pose proof (zeroed ValR P).
-  destruct H; destruct H0. destruct H. destruct H0.
-  exists (x + x0). split. constructor; assumption. rewrite H1. rewrite H2.
-  field.
+  replace 0 with (0 + 0) by field.
+  constructor; assumption.
 - induction H. apply strict in H. apply strict in H0.
   rewrite H. rewrite H0. reflexivity.
 - induction H. constructor; eapply monotonic; eassumption.
@@ -132,7 +138,7 @@ Proof. refine (
   exists (LVq + RVq).
   repeat split; try eassumption.
   rewrite qredistribute. rewrite eqL. rewrite eqR. field.
-- induction H. replace 0 with (0 + 0). apply Qplus_le_compat.
+- induction H. replace 0 with (0 + 0). apply Qcplus_le_compat.
   apply (nonneg _ _ _ H).
   apply (nonneg _ _ _ H0).
   reflexivity.
@@ -140,14 +146,14 @@ Defined.
 
 (* Probabilistic choice. Take [ValL] with probability [p] and
    [ValR] with probability [1 - p] *)
-Definition pchoice {A : Type} (p : Q) 
+Definition pchoice {A : Type} (p : Qc) 
   (pge : p >= 0) (ple : p <= 1)
   (ValL ValR : Valuation A) : Valuation A.
 Proof.
 refine (
   add (scaled p pge ValL) (scaled (1 - p) _ ValR)
 ).
-apply -> Qle_minus_iff. apply ple.
+apply -> Qcle_minus_iff. apply ple.
 Defined.
 
 Section SillyExample.
@@ -158,9 +164,11 @@ Section SillyExample.
 
   Definition classical := forall (P : Prop), ~ ~ P -> P.
 
+  Let oneHalf := Qcmake (1 # 2) eq_refl.
+
   Definition halfClassical : Valuation Prop.
   Proof. refine (
-    pchoice (1 # 2) _ _ (unit True) (unit classical)
+    pchoice oneHalf _ _ (unit True) (unit classical)
   ). unfold Qle. simpl. apply Zle_succ. unfold Qle. simpl. apply Zle_succ.
   Defined.
 
@@ -176,26 +184,28 @@ Section SillyExample.
      we are inevitably stuck with the remaining 1/2 mass in the "middle"!
   *)
 
-  Definition probOmniscience : exists q, val halfClassical 
-      (fun p => p -> forall (f : nat -> bool), (forall x, f x = true) \/ (exists x, f x = false)) q
-    /\ q == 1 # 2.
+  Definition probOmniscience : val halfClassical 
+      (fun p => p -> forall (f : nat -> bool), (forall x, f x = true) \/ (exists x, f x = false)) oneHalf.
   Proof. unfold halfClassical.
   unfold pchoice.
   simpl.
-  eexists.
-  econstructor. econstructor. econstructor.
-  eapply Unit0.
-  econstructor. eapply Unit1.
-  intros.
-  pose proof (classicalLEM H (forall (x : nat), f x = true)).
-  destruct H0. left. assumption.
-  right. apply H. unfold not. intros.
-  apply H0. 
-  intros.
-  pose proof (classicalLEM H (f x = true)). destruct H2.
-  assumption. destruct (f x) eqn:fx. reflexivity.
-  apply False_rect. apply H1. exists x. assumption.
-  field.
+  replace oneHalf with (0 + oneHalf) at 3 by field.
+  econstructor. 
+  - replace 0 with (oneHalf * 0) by field.
+    repeat constructor.
+  - replace oneHalf with ((1 - oneHalf) * 1) at 2.
+    constructor. constructor.
+    intros.
+    pose proof (classicalLEM H (forall (x : nat), f x = true)).
+    destruct H0. left. assumption.
+    right. apply H. unfold not. intros.
+    apply H0. 
+    intros.
+    pose proof (classicalLEM H (f x = true)). destruct H2.
+    assumption. destruct (f x) eqn:fx. reflexivity.
+    apply False_rect. apply H1. exists x. assumption.
+    apply Qc_is_canon.
+    reflexivity.
   Qed.
 
 End SillyExample.
@@ -209,8 +219,7 @@ Definition map {A B : Type} (f : A -> B) (v : Valuation A)
 Proof. refine (
   {| val := fun prop => val v (fun x => prop (f x)) |}
 ); intros.
-- pose proof (zeroed v (fun x => P (f x))). 
-  destruct H. exists x. assumption.
+- apply (zeroed v (fun x => P (f x))). 
 - apply (strict v). assert ((fun x => konst False (f x)) = konst False).
   apply functional_extensionality. reflexivity.
   rewrite <- H0. assumption.
@@ -231,13 +240,13 @@ Definition Cantor := Stream bool.
 Definition go {B : Type} (b : bool) (dist : Cantor -> B) : Cantor -> B := 
   fun d => dist (Cons b d).
 
-Inductive ValCantor : (Cantor -> Prop) -> Q -> Prop :=
+Inductive ValCantor : (Cantor -> Prop) -> Qc -> Prop :=
   | VCNone : forall {P}, ValCantor P 0
   | VCUnit : forall {P : Cantor -> Prop}, (forall d, P d) -> ValCantor P 1
-  | VCCombine : forall {P} {a b} (c : Q),
+  | VCCombine : forall {P} {a b} (c : Qc),
        ValCantor (go true  P) a
      -> ValCantor (go false P) b
-     -> (a + b) == c * (2 # 1)
+     -> (a + b) = c / (Qcmake (2 # 1) eq_refl)
      -> ValCantor P c.
 
 Lemma goKonst {A b} {x : A} : go b (konst x) = konst x.
@@ -265,8 +274,9 @@ Definition cantor : Valuation Cantor.
 Proof. refine (
   {| val := ValCantor |}
 ).
-- intros. exists 0. split. constructor. reflexivity.
+- intros. constructor.
 - intros. generalize H. 
+(*
   assert (forall P, P = konst False -> ValCantor P q -> q == 0).
   intros. induction H1. reflexivity.
   rewrite H0 in H1. contradiction (H1 (const true)).
@@ -334,6 +344,7 @@ Proof. refine (
     * admit.
   + admit.
   + admit.
+*)
 Abort.
 
 (** * Integration *)
@@ -341,10 +352,9 @@ Abort.
 (* Simple functions, though "function" is a poor choice of words since
    we can't evaluate them. *)
 Inductive Simple {A : Type} :=
-  | SNil : Simple
   | SIndicator : (A -> Prop) -> Simple
   | SAdd : Simple -> Simple -> Simple
-  | SScale : forall (q : Q), (q >= 0) -> Simple -> Simple
+  | SScale : forall (q : Qc), (q >= 0) -> Simple -> Simple
 .
 
 Arguments Simple : clear implicits.
@@ -353,31 +363,70 @@ Arguments Simple : clear implicits.
    Again, we are lower-bounding the integral (since we use lower bounds
    for the measure).
 *)
-Inductive SimpleIntegral {A : Type} (mu : (A -> Prop) -> Q -> Prop) 
-  : Simple A -> Q -> Prop :=
-  | SENil : SimpleIntegral mu SNil 0
-  | SEIndicator : forall {P : A -> Prop} {q}, mu P q -> SimpleIntegral mu (SIndicator P) q
+Inductive SimpleIntegral {A : Type} (mu : (A -> Prop) -> Qc -> Prop) 
+  : Simple A -> Qc -> Prop :=
+  | SEIndicator1 : forall {P : A -> Prop} {q}, mu P q -> SimpleIntegral mu (SIndicator P) q
+  | SEIndicator0 : forall {P : A -> Prop}, SimpleIntegral mu (SIndicator P) 0
   | SEAdd : forall {a b f g}
          , SimpleIntegral mu f a
          -> SimpleIntegral mu g b
          -> SimpleIntegral mu (SAdd f g) (a + b)
   | SEScale : forall {c a ca f} {cpos : c >= 0}, SimpleIntegral mu f a
-           -> ca == c * a
+           -> ca = c * a
            -> SimpleIntegral mu (SScale c cpos f) ca.
 
 (* Here we consider a Simple as a pointwise function, in a sense,
    by integrating against a Dirac delta. *)
-Definition SimpleEval {A : Type} (f : Simple A) (x : A) : Q -> Prop :=
+Definition SimpleEval {A : Type} (f : Simple A) (x : A) : Qc -> Prop :=
   SimpleIntegral (unitProb x) f.
 
 (* If I can give f a certain lower bound, I can give g the same lower bound *)
-Definition funcLTE {A : Type} (f : A -> Q -> Prop) (g : A -> Q -> Prop) : Prop :=
-  forall (x : A) (q : Q), f x q -> exists q', g x q' /\ q <= q'.
+Definition funcLTE {A : Type} (f g : A -> Qc -> Prop) : Prop :=
+  forall (x : A) (q : Qc), f x q -> g x q.
+
+Definition simpleLTE {A : Type} (f g : Simple A) : Prop :=
+  forall (m : Valuation A) (q : Qc)
+    , SimpleIntegral (val m) f q 
+    -> SimpleIntegral (val m) g q.
+
+Definition simpleLTEFunc {A : Type} {f g : Simple A}
+  (lte : simpleLTE f g) : funcLTE (SimpleEval f) (SimpleEval g) :=
+  fun x => lte (unit x).
+
+Ltac inv H := inversion H; clear H; subst.
+
+Lemma indicatorMonotonic {A : Type} : forall {P Q : A -> Prop},
+  funcLTE (SimpleEval (SIndicator P)) (SimpleEval (SIndicator Q))
+  -> forall x, P x -> Q x.
+Proof.
+intros. unfold funcLTE in H.
+assert (SimpleEval (SIndicator P) x 1).
+unfold SimpleEval. constructor. constructor. assumption.
+pose proof (H x 1 H1).
+inv H2. inv H4. assumption.
+Qed.
+
+(* THIS WILL NOT BE TRUE!!!
+   We are in trouble if the function giving evidence of 
+   funcLTE is not continuous *)
+Lemma funcLTESimple {A : Type} {f g : Simple A}
+  : funcLTE (SimpleEval f) (SimpleEval g)
+  -> simpleLTE f g.
+Proof.
+generalize dependent g.
+induction f; intros g.
+- induction g; intros lte.
+  + pose proof (indicatorMonotonic lte).
+    unfold simpleLTE.
+    intros. inv H0. constructor. apply monotonic with (U := P); assumption.
+    apply SEIndicator0.
+  + 
+Abort.
 
 (* We can lower-bound the integral of a general function f against a measure
    by lower-bounding the integral of a simple function which is no larger
    than f. *)
-Definition Integral {A : Type} (mu : (A -> Prop) -> Q -> Prop) (f : A -> Q -> Prop) (q : Q)
+Definition Integral {A : Type} (mu : (A -> Prop) -> Qc -> Prop) (f : A -> Qc -> Prop) (q : Qc)
   : Prop := 
   exists (s : Simple A), funcLTE (SimpleEval s) f
                   /\ SimpleIntegral mu s q.
@@ -385,8 +434,8 @@ Definition Integral {A : Type} (mu : (A -> Prop) -> Q -> Prop) (f : A -> Q -> Pr
 (** We can now define a product measure using our notion
     of integrals! *)
 Inductive ProductVal {A B : Type}
-  (ValL : (A -> Prop) -> Q -> Prop)
-  (ValR : (B -> Prop) -> Q -> Prop) (P : (A * B) -> Prop) : Q -> Prop :=
+  (ValL : (A -> Prop) -> Qc -> Prop)
+  (ValR : (B -> Prop) -> Qc -> Prop) (P : (A * B) -> Prop) : Qc -> Prop :=
   | Prod : forall {res}
          , Integral ValL (fun (a : A) => ValR (fun b => P (a, b))) res
          -> ProductVal ValL ValR P res.
@@ -394,8 +443,8 @@ Inductive ProductVal {A B : Type}
 (** And why not make things more general? A dependent product
     valuation! *)
 Inductive DepProductVal {A : Type} {B : A -> Type}
-  (ValL : (A -> Prop) -> Q -> Prop)
-  (ValR : forall (a : A), (B a -> Prop) -> Q -> Prop) (P : sigT B -> Prop) : Q -> Prop :=
+  (ValL : (A -> Prop) -> Qc -> Prop)
+  (ValR : forall (a : A), (B a -> Prop) -> Qc -> Prop) (P : sigT B -> Prop) : Qc -> Prop :=
   | DepProd : forall {res}
          , Integral ValL (fun (a : A) => ValR a (fun b => P (existT B a b))) res
          -> DepProductVal ValL ValR P res.
@@ -403,18 +452,19 @@ Inductive DepProductVal {A : Type} {B : A -> Type}
 (** Another variation on the theme : this one should represent
     the monadic bind *)
 Inductive BindVal {A B : Type}
-  (ValL : (A -> Prop) -> Q -> Prop)
-  (ValR : A -> (B -> Prop) -> Q -> Prop) (P : B -> Prop) : Q -> Prop :=
+  (ValL : (A -> Prop) -> Qc -> Prop)
+  (ValR : A -> (B -> Prop) -> Qc -> Prop) (P : B -> Prop) : Qc -> Prop :=
   | Bind : forall {res}
          , Integral ValL (fun (a : A) => ValR a P) res
          -> BindVal ValL ValR P res.
+
 
 (* If we take the product of a dirac delta measure with another measure,
    we have a nice identity property about the product measure. *)
 Theorem unitProdId {A B : Type}
   (a : A) (ValB : Valuation B)
   (P : (A * B) -> Prop)
-  (q : Q) (qpos : q >= 0)
+  (q : Qc) (qpos : q >= 0)
   (margB : val ValB (fun b => P (a, b)) q)
   : ProductVal (unitProb a) (val ValB) P q.
 Proof.
@@ -423,94 +473,93 @@ unfold Integral.
 exists (SScale q qpos (SIndicator (fun a' => a = a'))).
 split. unfold funcLTE.
 intros.
-inversion H; clear H; subst.
-inversion H2; clear H2; subst.
-inversion H0; clear H0.
-eexists. split. rewrite <- H.
-eassumption. rewrite H4.
-rewrite <- H1. rewrite Qmult_1_r. apply Qle_refl.
-destruct (zeroed ValB (fun b => P (x, b))).
-destruct H0. 
-exists x0. split. assumption.
-rewrite H4.  rewrite <- H. rewrite Qmult_0_r. rewrite H1.
-apply Qle_refl.
-econstructor.
-econstructor. econstructor. reflexivity. field.
+inv H. inv H2. inv H0.
+replace (q * 1) with q by field.
+assumption.
+replace (q * 0) with 0 by field.
+apply zeroed.
+replace (q * 0) with 0 by field.
+apply zeroed.
+eapply SEScale.
+constructor.
+constructor.
+reflexivity.
+field.
 Qed.
 
-Lemma funcLTERefl {A : Type} {f : A -> Q -> Prop} : funcLTE f f.
+Lemma funcLTERefl {A : Type} {f : A -> Qc -> Prop} : funcLTE f f.
 Proof.
-unfold funcLTE.
-intros. exists q. split. assumption. apply Qle_refl.
+unfold funcLTE. intros. assumption.
 Qed.
 
-Lemma funcLTETrans {A : Type} {f g h : A -> Q -> Prop}
+Lemma funcLTETrans {A : Type} {f g h : A -> Qc -> Prop}
   : funcLTE f g -> funcLTE g h -> funcLTE f h.
 Proof.
 intros fg gh.
 unfold funcLTE in *.
 intros.
-pose proof (fg x q H).
-destruct H0. destruct H0.
-pose proof (gh x x0 H0).
-destruct H2.
-destruct H2.
-exists x1. split. assumption. eapply Qle_trans. eassumption. eassumption.
+apply gh. apply fg. assumption.
 Qed.
 
+(*
+Require Import ClassicalFacts.
+Axiom prop_ext : prop_extensionality.
+
+Lemma funcLTEMin {A : Type} {s : Simple A} 
+  : funcLTE (SimpleEval s) (SimpleEval (SIndicator (konst False)))
+  -> SimpleEval s = SimpleEval (SIndicator (konst False)).
+Proof.
+intros.
+apply functional_extensionality.
+intros.
+apply functional_extensionality.
+intros.
+apply prop_ext.
+split.
+unfold funcLTE in H. intros se. destruct (H x x0 se).
+appl
+*)
+
+Lemma simpleIntegralZeroed {A : Type}
+  : forall (s : Simple A) (f : (A -> Prop) -> Qc -> Prop), SimpleIntegral f s 0.
+Proof.
+intros. induction s.
+- apply SEIndicator0.
+- replace 0 with (0 + 0) by field.
+  constructor; assumption.
+- econstructor. eassumption. field.
+Qed.
+
+
 Lemma simpleIntegralStrict {A : Type}
-  : forall (m : Valuation A) (q : Q)
-  , SimpleIntegral (val m) SNil q
+  : forall (m : Valuation A) (q : Qc)
+  , SimpleIntegral (val m) (SIndicator (konst False)) q
   -> q = 0.
 Proof.
-intros. inversion H. reflexivity.
+intros. inversion H; clear H; subst. 
+  apply (strict _ _ H1). reflexivity.
 Qed.
 
 Lemma simpleIntegralNonnegative {A : Type} {f : Simple A}
-  {m : Valuation A} {q : Q}
+  {m : Valuation A} {q : Qc}
   : SimpleIntegral (val m) f q -> q >= 0.
 Proof.
 intros int.
 induction int. 
-- apply Qle_refl.
 - apply (nonneg _ _ _ H).
-- replace 0 with (0 + 0). apply Qplus_le_compat; assumption. reflexivity.
-- rewrite H. apply Qmult_le_0_compat; assumption.
+- apply Qcle_refl. 
+- replace 0 with (0 + 0). apply Qcplus_le_compat; assumption. reflexivity.
+- rewrite H. apply Qcmult_le_0_compat; assumption.
 Qed.
 
-Lemma ltesimpleIntegralMonotonic {A : Type} {f g : Simple A}
-  : funcLTE (SimpleEval f) (SimpleEval g) -> forall (m : Valuation A) (q : Q)
-  , SimpleIntegral (val m) f q
-  -> exists (q' : Q), SimpleIntegral (val m) g q' /\ q <= q'.
-Proof.
-intros lte m q intf.
-induction intf.
-(*
-- exists 0. eapply simpleIntegralNonnegative. eassumption.
-- induction intg.
-  pose proof (monotonic _ _ _ H (konst False)).
-  assert (q == 0).
-  apply (strict m).
-  apply H0.
-  intros.
-  unfold funcLTE in lte.
-  assert (SimpleEval (SIndicator P) z q).
-  admit.
-  pose proof (lte z q H2).
-  destruct H3. destruct H3.
-  unfold SimpleEval in H3.
-  apply (simpleIntegralStrict (unit z) x) in H3.
-  subst.
-  unfold SimpleEval in H2.
-  inversion H2; clear H2; subst.
-  inversion H5; clear H5; subst.
-  apply Qle_not_lt in H4.
-  unfold konst. apply H4. unfold Qlt. simpl. reflexivity.
-*)
-Abort.
+Lemma Qc1notle0 : ~ (1%Qc <= 0).
+Proof. unfold not. intros.
+apply Qcle_not_lt in H. apply H.
+unfold Qclt. simpl. unfold Qlt. simpl. constructor.
+Qed.
 
-Lemma lteIntegralMonotonic {A : Type} {f g : A -> Q -> Prop}
-  : funcLTE f g -> forall (m : Valuation A) (q : Q)
+Lemma lteIntegralMonotonic {A : Type} {f g : A -> Qc -> Prop}
+  : funcLTE f g -> forall (m : Valuation A) (q : Qc)
   , Integral (val m) f q
   -> Integral (val m) g q.
 Proof.
@@ -530,25 +579,27 @@ Proof.
 refine (
   {| val := BindVal (val m) (fun a => val (f a)) |}
 ); intros.
-- exists 0. split. constructor. econstructor. split.
-  Focus 2. apply SENil. unfold funcLTE. intros.
+- split. econstructor. split.
+  Focus 2. apply (@SEIndicator0 _ _ (konst False)). unfold funcLTE. intros.
   pose proof (zeroed (f x) P).
-  destruct H0.
-  exists x0. destruct H0. split. assumption. rewrite H1.
-  inversion H. apply Qle_refl.
-  reflexivity.
-- inversion H; clear H; subst.
-  inversion H0; clear H0; subst.
+  unfold SimpleEval in H.
+  replace (unitProb x) with (val (unit x)) in H by reflexivity.
+  apply simpleIntegralStrict in H. subst.
+  apply zeroed.
+- inv H. inv H0.
   destruct H.
   assert (Integral (val m) (SimpleEval x) q).
   unfold Integral. exists x. split.
   apply funcLTERefl. assumption.
-  assert (funcLTE (fun a => val (f a) (konst False)) (SimpleEval SNil)).
+  assert (funcLTE (fun a => val (f a) (konst False)) (SimpleEval (SIndicator (konst False)))).
   unfold funcLTE.
   intros x' q' meas.
   apply strict in meas.
-  exists 0. split. constructor. rewrite meas. apply Qle_refl.
+  subst.
+  constructor. constructor. apply Qle_refl.
   pose proof (funcLTETrans H H2).
   pose proof (lteIntegralMonotonic H3 m q H1).
+  destruct H4.
+  apply simpleIntegralStrict
   destruct H4.
 Abort.
