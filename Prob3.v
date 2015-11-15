@@ -406,13 +406,45 @@ pose proof (H x 1 H1).
 inv H2. inv H4. assumption.
 Qed.
 
-(* THIS WILL NOT BE TRUE!!!
+(* funcLTESimple MAY NOT BE TRUE!!!
    We are in trouble if the function giving evidence of 
-   funcLTE is not continuous *)
+   funcLTE is not continuous.
+
+   Consider a proof which uses LEM:
+   indicator True  <= (indicator rational) + (indicator irrational)
+
+   And consider a measure `m` which is uniform over the interval
+   [0, 1]. Then we can produce this integral continuously:
+   SimpleIntegral (U[0,1]) (indicator True) 1
+
+   meas (U[0,1]) (indicator True) 1
+   --> monotonicity
+   meas (U[0,1]) (indicator rational + indicator irrational) 1
+   --> modularity
+   exists a b,
+        meas(U[0,1]) (indicator   rational) a
+    /\  meas(U[0,1]) (indicator irrational) b
+    /\ a + b = 1
+
+   How do we combine this with our funcLTE proof to create a
+   SimpleIntegral (U[0,1]) (indicator rational + indicator irrational) 1
+   ? It seems impossible.
+*)
+
 Lemma funcLTESimple {A : Type} {f g : Simple A}
   : funcLTE (SimpleEval f) (SimpleEval g)
   -> simpleLTE f g.
 Proof.
+intros lte.
+unfold funcLTE in *.
+unfold simpleLTE.
+intros m q si.
+pose proof (monotonic m (fun z => forall q', SimpleEval f z q') q
+  ).
+assert (val m
+        (fun x : A => forall q : Qc, SimpleEval f x q -> SimpleEval g x q)
+        1).
+(*
 generalize dependent g.
 induction f; intros g.
 - induction g; intros lte.
@@ -422,6 +454,7 @@ induction f; intros g.
     apply SEIndicator0.
   + 
 Abort.
+*)
 
 (* We can lower-bound the integral of a general function f against a measure
    by lower-bounding the integral of a simple function which is no larger
@@ -501,24 +534,6 @@ intros.
 apply gh. apply fg. assumption.
 Qed.
 
-(*
-Require Import ClassicalFacts.
-Axiom prop_ext : prop_extensionality.
-
-Lemma funcLTEMin {A : Type} {s : Simple A} 
-  : funcLTE (SimpleEval s) (SimpleEval (SIndicator (konst False)))
-  -> SimpleEval s = SimpleEval (SIndicator (konst False)).
-Proof.
-intros.
-apply functional_extensionality.
-intros.
-apply functional_extensionality.
-intros.
-apply prop_ext.
-split.
-unfold funcLTE in H. intros se. destruct (H x x0 se).
-appl
-*)
 
 Lemma simpleIntegralZeroed {A : Type}
   : forall (s : Simple A) (f : (A -> Prop) -> Qc -> Prop), SimpleIntegral f s 0.
@@ -530,6 +545,29 @@ intros. induction s.
 - econstructor. eassumption. field.
 Qed.
 
+
+Require Import ClassicalFacts.
+Axiom prop_ext : prop_extensionality.
+
+Lemma funcLTEMin {A : Type} {s : Simple A} 
+  : funcLTE (SimpleEval s) (SimpleEval (SIndicator (konst False)))
+  -> SimpleEval s = SimpleEval (SIndicator (konst False)).
+Proof.
+intros lte.
+apply functional_extensionality.
+intros a.
+apply functional_extensionality.
+intros q.
+apply prop_ext.
+split; intros.
+- apply lte. assumption. 
+- inv H. inv H1. unfold konst in H. contradiction.
+  apply simpleIntegralZeroed.
+  apply simpleIntegralZeroed.
+Qed.
+
+Axiom simpleExtensionality : forall {A : Type} {f g : Simple A}
+  , SimpleEval f = SimpleEval g -> f = g.
 
 Lemma simpleIntegralStrict {A : Type}
   : forall (m : Valuation A) (q : Qc)
@@ -571,7 +609,23 @@ split. 2:assumption.
 eapply funcLTETrans; eassumption.
 Qed.
 
+Definition addFunc {A : Type} (f g : A -> Qc -> Prop) (x : A) (q : Qc) :=
+  exists a b, f x a /\ g x b /\ a + b = q.
 
+Lemma ltePlus {A : Type} {f g : Simple A}
+  {U V : A -> Qc -> Prop}
+  : funcLTE (SimpleEval f) U
+  -> funcLTE (SimpleEval g) V
+  -> funcLTE (SimpleEval (SAdd f g)) (addFunc U V).
+Proof.
+intros ltef lteg.
+unfold funcLTE in *.
+intros x q seadd.
+unfold addFunc.
+inv seadd. exists a. exists b. 
+split. apply ltef. apply H1.
+split. apply lteg. apply H3. reflexivity.
+Qed.
 
 Definition bind {A B : Type}
   (m : Valuation A) (f : A -> Valuation B) : Valuation B.
@@ -596,10 +650,25 @@ refine (
   intros x' q' meas.
   apply strict in meas.
   subst.
-  constructor. constructor. apply Qle_refl.
+  constructor. constructor.
   pose proof (funcLTETrans H H2).
-  pose proof (lteIntegralMonotonic H3 m q H1).
-  destruct H4.
-  apply simpleIntegralStrict
-  destruct H4.
+  apply funcLTEMin in H3.
+  apply simpleExtensionality in H3.
+  subst.
+  eapply simpleIntegralStrict. eassumption.
+- constructor.
+  inv H. 
+  eapply lteIntegralMonotonic. Focus 2. eassumption.
+  unfold funcLTE.
+  intros a q' meas.
+  eapply monotonic. eassumption.
+  assumption.
+- inv H. inv H0.
+  destruct H1. destruct H. destruct H0. destruct H.
+  assert (Integral (val m) (addFunc (fun a : A => val (f a) U) (fun a : A => val (f a) V)) (x + y)).
+  unfold Integral. exists (SAdd x0 x1). split.
+  apply ltePlus; assumption. constructor; assumption.
+
+do 2 eexists. split.
+  econstructor.
 Abort.
