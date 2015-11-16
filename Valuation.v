@@ -141,6 +141,18 @@ Definition LPRle_trans {r s t : LPReal}
 Definition LPReq (r s : LPReal) : Prop :=
   LPRle r s /\ LPRle s r.
 
+Lemma LPReq_refl (x : LPReal) : LPReq x x.
+Proof. split; apply LPRle_refl. Qed.
+
+Lemma LPReq_trans (x y z : LPReal) 
+  : LPReq x y -> LPReq y z -> LPReq x z.
+Proof. intros. destruct H; destruct H0; split;
+  eapply LPRle_trans; eassumption.
+Qed.
+
+Lemma LPReq_compat_backwards (x y : LPReal) : x = y -> LPReq x y.
+Proof. intros H; induction H; apply LPReq_refl. Qed.
+
 Definition LPRQnn (q : Qnn) : LPReal.
 Proof.
 refine (
@@ -472,42 +484,6 @@ split.
 - apply LPRzero_min.
 Qed.
 
-Definition unitProb {A} (a : A) (P : A -> Prop) : LPReal :=
-  LPRindicator (P a).
-
-(* Here we consider a Simple as a pointwise function, in a sense,
-   by integrating against a Dirac delta. *)
-Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
-  SimpleIntegral (unitProb x) f.
-
-Record IntegralT (A : Type) :=
-  { integral : (A -> LPReal) -> Valuation A -> LPReal
-  ; int_simple_le : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
-      pointwise LPRle (SimpleEval s) f
-    -> SimpleIntegral mu s <= integral f mu
-  ; int_simple_ge : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
-      pointwise LPRle f (SimpleEval s)
-    -> integral f mu <= SimpleIntegral mu s
-  ; int_monotonic : forall {f g : A -> LPReal}
-     , pointwise LPRle f g -> forall (mu : Valuation A)
-     , integral f mu <= integral g mu
-  ; int_adds : forall {f g : A -> LPReal} {mu : Valuation A}
-     , integral f mu + integral g mu = integral (fun x => f x + g x) mu
-  ; int_scales : forall {f : A -> LPReal} {c : LPReal} {mu : Valuation A}
-     , c * integral f mu = integral (fun x => c * f x) mu
-  }.
-
-Axiom integration : forall (A : Type), IntegralT A.
-
-Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
-  : integral _ (integration A) (SimpleEval s) mu = SimpleIntegral mu s.
-Proof.
-apply LPReq_compat.
-split.
-- apply int_simple_ge. unfold pointwise. intros a. apply LPRle_refl.
-- apply int_simple_le. unfold pointwise. intros a. apply LPRle_refl.
-Qed.
-
 Hint Resolve Qnnle_refl.
 
 Lemma LPRind_mult {U V : Prop} :
@@ -569,6 +545,40 @@ apply LPReq_compat; split; unfold LPRle; intros q H;
   | apply Qcplus_le_compat; assumption ]).
 Qed.
 
+Definition unitProb {A} (a : A) (P : A -> Prop) : LPReal :=
+  LPRindicator (P a).
+
+(* Here we consider a Simple as a pointwise function, in a sense,
+   by integrating against a Dirac delta. *)
+Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
+  SimpleIntegral (unitProb x) f.
+
+Record IntegralT (A : Type) :=
+  { integral : (A -> LPReal) -> Valuation A -> LPReal
+  ; int_simple_le : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
+      pointwise LPRle (SimpleEval s) f
+    -> SimpleIntegral mu s <= integral f mu
+  ; int_simple_ge : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
+      pointwise LPRle f (SimpleEval s)
+    -> integral f mu <= SimpleIntegral mu s
+  ; int_monotonic : forall {f g : A -> LPReal}
+     , pointwise LPRle f g -> forall (mu : Valuation A)
+     , integral f mu <= integral g mu
+  ; int_adds : forall {f g : A -> LPReal} {mu : Valuation A}
+     , integral f mu + integral g mu = integral (fun x => f x + g x) mu
+  ; int_scales : forall {f : A -> LPReal} {c : LPReal} {mu : Valuation A}
+     , c * integral f mu = integral (fun x => c * f x) mu
+  }.
+
+Axiom integration : forall (A : Type), IntegralT A.
+
+Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
+  : integral _ (integration A) (SimpleEval s) mu = SimpleIntegral mu s.
+Proof.
+apply LPReq_compat.
+split; [apply int_simple_ge | apply int_simple_le]
+  ; unfold pointwise; intros a; apply LPRle_refl.
+Qed.
 
 Definition unit {A : Type} (a : A) : Valuation A.
 Proof. refine (
@@ -591,9 +601,8 @@ Proof. refine (
   {| val := fun prop => val v (fun x => prop (f x)) |}
 ); intros.
 - apply strict.
-- apply monotonic.
-  intros. apply H. assumption.
-- apply modular; assumption.
+- apply monotonic. auto.
+- apply modular; auto.
 Defined.
 
 Lemma qredistribute : forall andLq andRq orLq orRq,
@@ -802,18 +811,6 @@ Theorem unitProdId {A B : Type}
   : product (unit a) muB P = muB (fun b => P (a, b)).
 Proof. simpl. rewrite int_dirac. reflexivity. assumption. Qed.
 
-Lemma LPReq_refl (x : LPReal) : LPReq x x.
-Proof. split; apply LPRle_refl. Qed.
-
-Lemma LPReq_trans (x y z : LPReal) 
-  : LPReq x y -> LPReq y z -> LPReq x z.
-Proof. intros. destruct H; destruct H0; split;
-  eapply LPRle_trans; eassumption.
-Qed.
-
-Lemma LPReq_compat_backwards (x y : LPReal) : x = y -> LPReq x y.
-Proof. intros H; induction H; apply LPReq_refl. Qed.
-
 Theorem product_prop {A B : Type}
   (muA : Valuation A)
   (muB : Valuation B)
@@ -835,3 +832,152 @@ unfold pointwise. intros.
 rewrite LPRind_mult.
 apply LPReq_refl.
 Qed.
+
+Require Vector.
+
+Fixpoint product_n {A : Type} (v : Valuation A)
+  (n : nat) : Valuation (Vector.t A n) := match n with
+  | 0 => unit (Vector.nil A)
+  | S n' => bind v (fun x => map (Vector.cons A x n') (product_n v n'))
+  end.
+
+Require Import Streams.
+
+Fixpoint take_n {A : Type} (s : Stream A) (n : nat)
+  : Vector.t A n := match n, s with
+  | 0, _ => Vector.nil A
+  | S n', Cons x xs => Vector.cons A x n' (take_n xs n')
+end.
+
+Definition restrictToVec {A : Type} (P : Stream A -> Prop)
+  (n : nat) (x : Vector.t A n) : Prop :=
+  forall (s : Stream A), take_n s n = x -> P s.
+
+Lemma restrictToVecBot {A : Type} {n : nat}
+  (nonempty : A)
+  : forall xs, ~ (@restrictToVec A (K False) n xs).
+Proof.
+admit. 
+Qed.
+
+Lemma restrictToVecMonotonicP {A : Type} {n : nat}
+  : forall { U V : Stream A -> Prop }
+  , (forall (s : Stream A), U s -> V s)
+  -> forall xs, restrictToVec U n xs -> restrictToVec V n xs.
+Proof.
+intros. unfold restrictToVec in *.
+intros s take. apply H. apply H0. assumption.
+Qed.
+
+Lemma LPRsup_monotonic {A : Type} (f g : A -> LPReal)
+  : (forall (a : A), f a <= g a) -> LPRsup f <= LPRsup g.
+Proof.
+intros mono.
+unfold LPRle in *.
+intros. simpl in *. destruct H. left. assumption.
+destruct H. right. exists x. apply mono. assumption.
+Qed.
+
+Lemma LPRsup_eq_pointwise {A : Type} (f g : A -> LPReal)
+  : (forall (a : A), f a = g a) -> LPRsup f = LPRsup g.
+Proof.
+intros mono.
+apply LPReq_compat. split; apply LPRsup_monotonic;
+intros; rewrite mono; apply LPRle_refl.
+Qed.
+
+Lemma LPRsup_sum {A : Type} (f g : A -> LPReal)
+  : LPRsup (fun x => f x + g x) <= LPRsup f + LPRsup g.
+Proof. unfold LPRle.
+intros. simpl in *. destruct H. subst.
+  exists 0%Qnn. exists 0%Qnn. intuition. 
+  replace (0 + 0)%Qnn with 0%Qnn by ring.
+  apply Qnnle_refl.
+  destruct H as [idx [a [b [pa [pb ab]]]]].
+  exists a. exists b. split. right. exists idx. assumption.
+  split. right. exists idx. assumption. assumption.
+Qed.
+
+Lemma LPRsup_nat_ord (f g : nat -> LPReal)
+  : (forall n m, (n <= m)%nat -> f n <= f m)
+  -> (forall n m, (n <= m)%nat -> g n <= g m)
+  -> LPRsup f + LPRsup g = LPRsup (fun x => f x + g x).
+Proof.
+intros fmono gmono.
+apply LPReq_compat. split; [| apply LPRsup_sum].
+unfold LPRle. intros. simpl in *.
+destruct H as [a [b [pa [pb ab]]]]. destruct pa; destruct pb.
+subst. left. replace (0 + 0)%Qnn with 0%Qnn in ab by ring.
+apply Qnn_zero_prop. assumption. destruct H0.
+right. exists x. do 2 eexists. split. apply zeroed. split.
+eassumption. subst. assumption. destruct H.
+right. exists x. do 2 eexists. split. eassumption. split. 
+apply zeroed. subst. assumption.
+destruct H; destruct H0. right. exists (max x x0).
+pose proof (fmono x (max x x0) (Max.le_max_l x x0)).
+do 2 eexists. split. apply H1. eassumption. split.
+pose proof (gmono x0 (max x x0) (Max.le_max_r x x0)).
+apply H2. eassumption. assumption.
+Qed.
+
+Lemma restrictToVecMonotonicN {A : Type} : 
+ forall (v : Valuation A) (U : Stream A -> Prop),
+ v (K True) = 1 ->
+ forall n m : nat,
+ (n <= m)%nat ->
+ (product_n v n) (restrictToVec U n) <=
+ (product_n v m) (restrictToVec U m).
+Proof. intros. generalize dependent U.
+induction H0; intros. apply LPRle_refl.
+simpl.
+eapply LPRle_trans. apply IHle.
+rewrite <- int_indicator in H.
+replace ((product_n v m) (restrictToVec U m))
+   with ((product_n v m) (restrictToVec U m) * 1) by ring.
+rewrite <- H.
+rewrite int_scales.
+apply int_monotonic.
+unfold pointwise. intros a. unfold K.
+rewrite LPRind_true by trivial.
+replace ((product_n v m) (restrictToVec U m) * 1)
+   with ((product_n v m) (restrictToVec U m)) by ring.
+(* should see that we can snoc instead of cons and get the
+   same measure *)
+apply monotonic. intros.
+admit.
+Qed.
+
+
+Theorem inf_product {A : Type} (v : Valuation A)
+  (nonempty : A)
+  (vIsProb : v (K True) = 1)
+  : Valuation (Stream A).
+Proof.
+refine (
+  {| val := fun P => LPRsup (fun n => (product_n v n) (restrictToVec P n))
+  |}
+); intros.
+- apply LPReq_compat. split; [| apply LPRzero_min].
+  unfold LPRle. simpl. intros. destruct H. subst.
+  apply Qnnle_refl. destruct H.
+  apply (monotonic _ _ (K False)) in H.
+  rewrite (strict (product_n v x)) in H.
+  simpl in H. assumption.
+  apply restrictToVecBot.
+  apply nonempty.
+- apply LPRsup_monotonic.
+  intros n. induction n; simpl.
+  + unfold unitProb. apply LPRind_imp.
+    unfold restrictToVec. intros H1.
+    intros. apply H. apply H1. apply H0.
+  + apply int_monotonic. unfold pointwise.
+    intros a. apply monotonic. intros.
+    eapply restrictToVecMonotonicP. eassumption.
+    assumption.
+- do 2 (rewrite LPRsup_nat_ord; 
+  try (apply restrictToVecMonotonicN);
+  try assumption).
+  apply LPRsup_eq_pointwise.
+  intros idx.
+  (* apply modular. *)
+Abort.
