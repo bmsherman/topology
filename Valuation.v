@@ -109,6 +109,10 @@ Lemma Qnnle_trans {x y z : Qnn}
   : x <= y -> y <= z -> x <= z.
 Proof. intros. eapply Qcle_trans; eassumption. Qed.
 
+Lemma Qnnle_antisym {x y : Qnn}
+  : x <= y -> y <= x -> x = y.
+Proof. intros. apply Qnneq_prop. eapply Qcle_antisym; eassumption. Qed.
+
 Lemma Qnnle_lt_trans : forall x y z : Qnn
   , x <= y -> y < z -> x < z.
 Proof. intros. eapply Qcle_lt_trans; eassumption. Qed.
@@ -131,7 +135,6 @@ Qed.
 (* Nonnegative lower reals *)
 Record LPReal :=
   { lbound :> Qnn -> Prop
-  ; zeroed : lbound 0
   ; dclosed : forall q, lbound q -> forall q', q' <= q -> lbound q'
   }.
 
@@ -166,24 +169,30 @@ Proof. intros H; induction H; apply LPReq_refl. Qed.
 Definition LPRQnn (q : Qnn) : LPReal.
 Proof.
 refine (
-  {| lbound := fun q' => (q' <= q)%Qnn |}
+  {| lbound := fun q' => (q' < q)%Qnn |}
 ).
-- apply nonneg.
-- intros. subst. eapply Qle_trans; eassumption.
+- intros. subst. eapply Qnnle_lt_trans; eassumption.
 Defined.
+
+Inductive LPRplusT {x y : LPReal} : Qnn -> Prop :=
+  | LPRplusL : forall q, x q -> LPRplusT q
+  | LPRplusR : forall q, y q -> LPRplusT q
+  | LPRplusB : forall q q' sum , x q -> y q' -> sum <= q + q' -> LPRplusT sum.
+
+Arguments LPRplusT : clear implicits.
 
 Definition LPRplus (x y : LPReal) : LPReal.
 Proof.
 refine (
-  {| lbound := fun q => exists a b,
-     lbound x a /\ lbound y b /\ (q <= a + b)%Qnn |}
+  {| lbound := LPRplusT x y |}
 ).
-- exists 0. exists 0. split. apply zeroed. split.
-  apply zeroed. replace (0 + 0) with 0 by ring.
-  apply Qnnle_refl.
 - intros.
-  destruct H as [a [b [xa [yb sum]]]].
-  exists a. exists b. intuition. eapply Qnnle_trans; eassumption.
+  inversion H; subst; 
+  [apply LPRplusL | apply LPRplusR | eapply LPRplusB].
+  eapply dclosed; eassumption.
+  eapply dclosed; eassumption.
+  eassumption. eassumption. 
+  eapply Qnnle_trans; eassumption.
 Defined.
 
 Definition LPRmult (x y : LPReal) : LPReal.
@@ -192,10 +201,6 @@ refine (
   {| lbound := fun q => exists a b,
      lbound x a /\ lbound y b /\ (q <= a * b)%Qnn |}
 ).
-- exists 0. exists 0. split. apply zeroed. split.
-  apply zeroed.
-  replace (0 * 0) with 0 by ring. 
-  apply Qnnle_refl.
 - intros.
   destruct H as [a [b [xa [yb sum]]]].
   exists a. exists b. intuition. eapply Qnnle_trans; eassumption.
@@ -220,8 +225,6 @@ intros q. apply propext. apply LPReq_prop.
 assumption.
 destruct r, s.
 simpl in *. induction H1.
-pose proof (proof_irrel _ zeroed0 zeroed1).
-induction H1.
 pose proof (proof_irrel _ dclosed0 dclosed1).
 induction H1.
 reflexivity.
@@ -229,10 +232,7 @@ Qed.
 
 Axiom LPReq_compat : forall r s, LPReq r s -> r = s.
 
-Theorem LPRsrt : semi_ring_theory (LPRQnn 0) (LPRQnn 1)
-  LPRplus LPRmult eq.
-Proof.
-constructor; intros; apply LPReq_compat; unfold LPReq, LPRle;
+Ltac LPRsrttac := 
 repeat match goal with
 | [ |- _ /\ _ ] => split
 | [ |- forall _, _] => intros
@@ -241,16 +241,48 @@ repeat match goal with
 | [ H : lbound (LPRmult _ _) _ |- _ ] => destruct H
 | [ H : exists x, _ |- _ ] => destruct H
 | [ H : _ /\ _ |- _ ] => destruct H
+| [ H : _ < 0 |- _ ] => apply Qclt_not_le in H; unfold not in H;
+  apply False_rect; apply H; apply nonneg
+| [ |- lbound (LPRplus (LPRQnn 0) _) _ ] => apply LPRplusR
+| [ |- lbound (LPRplus _ (LPRQnn 0)) _ ] => apply LPRplusL
+| [ Hm : lbound ?m _, Hn : lbound ?n _ |- lbound (LPRplus ?m ?n) _ ]
+   => eapply LPRplusB; [ eassumption | eassumption | ]
+| [ Hm : lbound ?m ?q |- lbound (LPRplus ?m _) ?q ]
+   => apply LPRplusL
+| [ Hn : lbound ?n ?q |- lbound (LPRplus _ ?n) ?q ]
+   => apply LPRplusR
+| [ |- _ ] => assumption
 end.
-- eapply dclosed; try eassumption.
-  assert (x = 0).
-  apply Qnn_zero_prop. assumption.
-  subst.
-  replace (0 + x0) with x0 in H1 by ring.
-  assumption.
-- simpl. exists 0. exists q. split. apply Qnnle_refl. split. assumption.
-  replace (0 + q) with q by ring. apply Qnnle_refl.
-- simpl. do 2 eexists. repeat split; try eassumption.
+
+Theorem LPRsrt : semi_ring_theory (LPRQnn 0) (LPRQnn 1)
+  LPRplus LPRmult eq.
+Proof.
+constructor; intros; apply LPReq_compat; unfold LPReq, LPRle;
+LPRsrttac.
+- replace (q' + q) with (q + q') by ring. assumption.
+- replace (q' + q) with (q + q') by ring. assumption.
+- apply LPRplusL. LPRsrttac. 
+- apply LPRplusL. LPRsrttac.
+- eapply LPRplusB; try eassumption. LPRsrttac.
+- apply LPRplusL. LPRsrttac.
+- eapply LPRplusB; try eassumption. LPRsrttac.
+- eapply LPRplusB with (q + q0) (q'). eapply LPRplusB with q q0.
+  eassumption. eassumption. apply Qnnle_refl. assumption.
+  eapply Qnnle_trans. eassumption. rewrite <- (SRadd_assoc Qnnsrt). 
+  apply Qcplus_le_compat. apply Qcle_refl. assumption.
+- apply LPRplusR. LPRsrttac.
+- eapply LPRplusB; try eassumption. LPRsrttac.
+- eapply LPRplusR. LPRsrttac.
+- eapply LPRplusB; try eassumption. LPRsrttac.
+- apply LPRplusR. LPRsrttac.
+- eapply LPRplusB with q (q'0 + q'). assumption. 
+  eapply LPRplusB with q'0 q'; try assumption.
+  apply Qnnle_refl. eapply Qnnle_trans. eassumption.
+  rewrite (SRadd_assoc Qnnsrt). 
+  apply Qcplus_le_compat. assumption. apply Qcle_refl. 
+- eapply dclosed. eassumption. admit. 
+- simpl.
+ eauto using (LPRplusL, LPRplusR). do 2 eexists. repeat split; try eassumption.
   replace (x0 + x) with (x + x0) by ring.
   assumption.
 - simpl. do 2 eexists. repeat split; try eassumption.
@@ -1298,5 +1330,5 @@ Qed.
 
 Definition inf_product {A : Type} (v : Valuation A)
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : Valuation (Streams.Stream A)
   := fixValuation propext (inf_productFunc v) (inf_productFunc_mono v).
-
