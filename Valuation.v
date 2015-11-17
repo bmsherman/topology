@@ -26,11 +26,11 @@ Local Open Scope Qc.
 Definition Qcle_irrel {x y : Qc} (prf1 prf2 : x <= y)
   : prf1 = prf2 := Qle_irrel prf1 prf2.
 
-Definition Qnnle (x y : Qnn) : Prop :=
-  x <= y.
+Definition Qnnle (x y : Qnn) : Prop := x <= y.
+Definition Qnnge (x y : Qnn) : Prop := x >= y.
+Definition Qnnlt (x y : Qnn) : Prop := x < y.
+Definition Qnngt (x y : Qnn) : Prop := x > y.
 
-Definition Qnnge (x y : Qnn) : Prop :=
-  x >= y.
 
 Definition Qnneq (x y : Qnn) : Prop := qnn x = qnn y.
 
@@ -70,14 +70,16 @@ unfold Qnnzero. simpl. apply Qcle_antisym.
 assumption. apply nonneg.
 Qed.
 
-Infix "<=" := Qnnle : Qnn_scope.
-Infix ">=" := Qnnge : Qnn_scope.
-Infix "+" := Qnnplus : Qnn_scope.
-Infix "*" := Qnnmult : Qnn_scope.
-Infix "==" := Qnneq : Qnn_scope.
+Infix "<=" := Qnnle   : Qnn_scope.
+Infix ">=" := Qnnge   : Qnn_scope.
+Infix "<"  := Qnnlt   : Qnn_scope.
+Infix ">"  := Qnngt   : Qnn_scope.
+Infix "+"  := Qnnplus : Qnn_scope.
+Infix "*"  := Qnnmult : Qnn_scope.
+Infix "==" := Qnneq   : Qnn_scope.
 
 Notation "'0'" := Qnnzero : Qnn_scope.
-Notation "'1'" := Qnnone : Qnn_scope.
+Notation "'1'" := Qnnone  : Qnn_scope.
 
 Require Import Ring.
 
@@ -106,6 +108,14 @@ Proof. apply Qcle_refl. Qed.
 Lemma Qnnle_trans {x y z : Qnn}
   : x <= y -> y <= z -> x <= z.
 Proof. intros. eapply Qcle_trans; eassumption. Qed.
+
+Lemma Qnnle_lt_trans : forall x y z : Qnn
+  , x <= y -> y < z -> x < z.
+Proof. intros. eapply Qcle_lt_trans; eassumption. Qed.
+
+Lemma Qnnlt_le_trans: forall x y z : Qnn
+  , x < y -> y <= z -> x < z.
+Proof. intros. eapply Qclt_le_trans; eassumption. Qed.
 
 Lemma Qnnmult_le_compat {x y x' y' : Qnn}
   : x <= x' -> y <= y' -> x * y <= x' * y'.
@@ -998,17 +1008,17 @@ Fixpoint product_n {A : Type} (v : Valuation A)
   | S n' => bind v (fun x => map (Vector.cons A x n') (product_n v n'))
   end.
 
-Require Import Streams.
+Require Streams.
 
-Fixpoint take_n {A : Type} (s : Stream A) (n : nat)
+Fixpoint take_n {A : Type} (s : Streams.Stream A) (n : nat)
   : Vector.t A n := match n, s with
   | 0, _ => Vector.nil A
-  | S n', Cons x xs => Vector.cons A x n' (take_n xs n')
+  | S n', Streams.Cons x xs => Vector.cons A x n' (take_n xs n')
 end.
 
-Definition restrictToVec {A : Type} (P : Stream A -> Prop)
+Definition restrictToVec {A : Type} (P : Streams.Stream A -> Prop)
   (n : nat) (x : Vector.t A n) : Prop :=
-  forall (s : Stream A), take_n s n = x -> P s.
+  forall (s : Streams.Stream A), take_n s n = x -> P s.
 
 Lemma restrictToVecBot {A : Type} {n : nat}
   (nonempty : A)
@@ -1018,8 +1028,8 @@ admit.
 Qed.
 
 Lemma restrictToVecMonotonicP {A : Type} {n : nat}
-  : forall { U V : Stream A -> Prop }
-  , (forall (s : Stream A), U s -> V s)
+  : forall { U V : Streams.Stream A -> Prop }
+  , (forall (s : Streams.Stream A), U s -> V s)
   -> forall xs, restrictToVec U n xs -> restrictToVec V n xs.
 Proof.
 intros. unfold restrictToVec in *.
@@ -1027,7 +1037,7 @@ intros s take. apply H. apply H0. assumption.
 Qed.
 
 Lemma restrictToVecMonotonicN {A : Type} : 
- forall (v : Valuation A) (U : Stream A -> Prop),
+ forall (v : Valuation A) (U : Streams.Stream A -> Prop),
  v (K True) = 1 ->
  forall n m : nat,
  (n <= m)%nat ->
@@ -1057,7 +1067,7 @@ Qed.
 Theorem inf_product {A : Type} (v : Valuation A)
   (nonempty : A)
   (vIsProb : v (K True) = 1)
-  : Valuation (Stream A).
+  : Valuation (Streams.Stream A).
 Proof.
 refine (
   {| val := fun P => LPRsup (fun n => (product_n v n) (restrictToVec P n))
@@ -1259,20 +1269,34 @@ Definition rejection {A : Type} (v : Valuation A)
   := fixValuation propext (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
 
-
-Definition rejection_terminates {A : Type} (v : Valuation A)
+Definition rejection_subProb {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (vProb : v (K True) = 1)
   (predPos : ~ (v (fun x => pred x = true) <= 0))
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
-  : (rejection v pred propext) (K True) = 1.
+  : (rejection v pred propext) (K True) <= 1.
 Proof.
-apply LPReq_compat. split.
-- apply fixValuation_subProb. intros. unfold rejectionFunc.
-  simpl. rewrite <- vProb. rewrite <- int_indicator.
-  apply int_monotonic. unfold pointwise. unfold K.
-  intros. destruct (pred a). simpl.
-  apply LPRind_imp. trivial.
-  rewrite LPRind_true by trivial. apply H.
--
-Abort.
+apply fixValuation_subProb. intros. unfold rejectionFunc.
+simpl. rewrite <- vProb. rewrite <- int_indicator.
+apply int_monotonic. unfold pointwise. unfold K.
+intros. destruct (pred a). simpl.
+apply LPRind_imp. trivial.
+rewrite LPRind_true by trivial. apply H.
+Qed.
+
+Definition inf_productFunc {A : Type} (v : Valuation A)
+  (f : Valuation (Streams.Stream A)) : Valuation (Streams.Stream A)
+  := bind v (fun x => map (Streams.Cons x) f).
+
+Lemma inf_productFunc_mono {A : Type} (v : Valuation A)
+  : forall mu1 mu2, Valle mu1 mu2 -> Valle (inf_productFunc v mu1) (inf_productFunc v mu2).
+Proof. 
+intros. unfold Valle in *. intros P. simpl.
+apply int_monotonic. unfold pointwise. intros a.
+apply H.
+Qed.
+
+Definition inf_product {A : Type} (v : Valuation A)
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  := fixValuation propext (inf_productFunc v) (inf_productFunc_mono v).
+
