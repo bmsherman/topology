@@ -1298,5 +1298,122 @@ Qed.
 
 Definition inf_product {A : Type} (v : Valuation A)
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : Valuation (Streams.Stream A)
   := fixValuation propext (inf_productFunc v) (inf_productFunc_mono v).
 
+Record Sampler {R A : Type} (random : Valuation R) (mu : Valuation A)
+  : Type :=
+  { sample     :> R -> R * A
+  ; sample_ind :  map sample random = product random mu
+  }.
+
+Definition sunit {R A : Type} (random : Valuation R)
+  (a : A) : Sampler random (unit a).
+Proof. refine (
+  {| sample := fun r => (r, a) |}
+).
+apply Valeq_compat. unfold Valeq. intros. simpl.
+rewrite <- int_indicator. apply int_pointwise_eq.
+unfold pointwise. intros r. apply LPReq_compat_backwards.
+unfold unitProb. reflexivity.
+Defined.
+
+Lemma map_compose {A B C : Type} (mu : Valuation A)
+  (g : B -> C) (f : A -> B)
+  : map (fun x => g (f x)) mu = map g (map f mu).
+Proof.
+apply Valeq_compat. unfold Valeq. intros P.
+simpl. reflexivity.
+Qed.
+
+Definition join {A : Type} (mu : Valuation (Valuation A))
+  : Valuation A.
+Proof. refine (
+  {| val := fun P => integral _ (integration _) (fun vA => val vA P) mu |}
+).
+- replace 0 with (0 * mu (K True)) by ring.
+  rewrite <- int_indicator.
+  rewrite int_scales.
+  apply int_pointwise_eq. unfold pointwise. intros v.
+  rewrite strict. apply LPReq_compat_backwards. ring.
+- intros. apply int_monotonic. unfold pointwise.
+  intros. apply monotonic. assumption.
+- intros. rewrite int_adds. rewrite int_adds.
+  apply int_pointwise_eq. unfold pointwise; intros.
+  apply LPReq_compat_backwards. apply modular.
+Defined.
+
+Lemma fubini {A B : Type} (f : (A * B) -> LPReal)
+  (muA : Valuation A) (muB : Valuation B)
+ : integral A (integration A) (fun a => integral B (integration B) (fun b => f (a, b)) muB) muA
+ = integral B (integration B) (fun b => integral A (integration A) (fun a => f (a, b)) muA) muB.
+Proof.
+Admitted.
+
+Definition sbind {R A B : Type} (random : Valuation R)
+  (mu : Valuation A) (smu : Sampler random mu) 
+  (f : A -> Valuation B) (sf : forall a, Sampler random (f a))
+  : Sampler random (bind mu f).
+Proof. 
+pose (func := fun p : (R * A) => sf (snd p) (fst p)).
+refine (
+  {| sample := fun r => func (smu r) |}
+).
+rewrite map_compose.
+rewrite (sample_ind _ _ smu).
+apply Valeq_compat. unfold Valeq. intros. simpl.
+pose (func2 := fun p => (f (snd p)) (fun b => P (fst p, b))).
+assert (
+ (fun x : R =>
+      integral A (integration A)
+        (fun x0 : A => (f x0) (fun x1 : B => P (x, x1))) mu)
+ = 
+ (fun x : R =>
+      integral A (integration A)
+        (fun x0 : A => func2 (x, x0)) mu)
+).
+apply functional_extensionality. intros r.
+reflexivity. rewrite H.
+rewrite fubini.
+assert (
+(fun x : R => mu (fun x0 : A => P (func (x, x0))))
+= 
+(fun x : R => integral A (integration A) (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
+).
+apply functional_extensionality. intros.
+rewrite int_indicator. reflexivity.
+rewrite H0.
+pose (func3 := fun (p : R * A) => LPRindicator (P (func p))).
+assert (
+     (fun x : R =>
+      integral A (integration A)
+        (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
+=
+     (fun x : R =>
+      integral A (integration A)
+        (fun x0 : A => func3 (x, x0)) mu)
+).
+apply functional_extensionality. intros. reflexivity.
+rewrite H1.
+rewrite fubini.
+apply int_pointwise_eq. unfold pointwise. intros a.
+apply LPReq_compat_backwards.
+pose proof (sample_ind _ _ (sf a)).
+unfold func3, func2. simpl.
+assert (forall P, (map (sf a) random) P = (product random (f a)) P).
+intros. rewrite H2. reflexivity.
+simpl in H3.
+rewrite int_indicator. apply H3.
+Defined.
+
+Definition streamSampler {A : Type} (mu : Valuation A)
+  (propext : forall P Q : Prop, (P <-> Q) -> P = Q)
+  : Sampler (inf_product mu propext) mu.
+Proof. refine (
+  {| sample := fun r => match r with
+     | Streams.Cons a r' => (r', a)
+     end
+  |}
+). apply Valeq_compat. unfold Valeq; intros.
+simpl.
+Abort.
