@@ -350,6 +350,23 @@ Delimit Scope LPR_scope with LPR.
 
 Local Open Scope LPR.
 
+Theorem LPRplus_le_compat {x y z t : LPReal}
+  : (x <= y) -> (z <= t) -> (x + z <= y + t).
+Proof. intros. unfold LPRle in *. intros.
+simpl in *. destruct H1 as [a [b [H1 [H2 H3]]]].
+do 2 eexists. split. apply H. eassumption. split. apply H0.
+eassumption. assumption.
+Qed.
+
+Theorem LPRmult_le_compat {x x' y y' : LPReal}
+  : x <= x' -> y <= y' -> x * y <= x' * y'.
+Proof.
+intros. unfold LPRle in *. intros.
+simpl in *. destruct H1 as [a [b [H1 [H2 H3]]]].
+do 2 eexists. split. apply H. eassumption. split.
+apply H0. eassumption. assumption.
+Qed.
+
 Theorem LPRzero_min (r : LPReal) : 0 <= r.
 Proof.
 unfold LPRle. intros q Hq.
@@ -386,33 +403,113 @@ Lemma LPRsup_ge {A : Type} {f : A -> LPReal} {a : A}
 Proof. unfold LPRle. simpl. intros. right. eexists. eassumption.
 Qed.
 
-Lemma LPRsup_least {A : Type} {f : A -> LPReal}
-  (a : A) : LPRsup f <= f a -> f a = LPRsup f.
-Proof. intros.
-apply LPReq_compat. split. apply LPRsup_ge. assumption.
+Lemma LPRsup_le {A : Type} {f : A -> LPReal} {x : LPReal} 
+  : (forall (a : A), (f a <= x)) -> LPRsup f <= x.
+Proof. intros. unfold LPRle in *. simpl. intros. destruct H0.
+subst. apply zeroed. destruct H0. apply H with x0.
+assumption.
 Qed.
+
+Lemma LPRsup_ge2 {A : Type} {f : A -> LPReal} {x : LPReal} 
+  : (exists a, x <= f a) -> x <= LPRsup f.
+Proof. intros. destruct H. eapply LPRle_trans. eassumption. apply LPRsup_ge.
+Qed.
+
+Lemma LPRsup_prop {A : Type} {f : A -> LPReal} {x : LPReal}
+  : (forall (a : A), (f a <= x))
+  -> (exists (a : A), x <= f a)
+  -> LPRsup f = x.
+Proof. intros. apply LPReq_compat. split. apply LPRsup_le.
+assumption. eapply LPRsup_ge2. eassumption.
+Qed.
+
+Lemma LPRsup_monotonic {A : Type} (f g : A -> LPReal)
+  : (forall (a : A), f a <= g a) -> LPRsup f <= LPRsup g.
+Proof.
+intros mono. unfold LPRle in *.
+intros. simpl in *. destruct H. left. assumption.
+destruct H. right. exists x. apply mono. assumption.
+Qed.
+
+Lemma LPRsup_eq_pointwise {A : Type} (f g : A -> LPReal)
+  : (forall (a : A), f a = g a) -> LPRsup f = LPRsup g.
+Proof.
+intros mono.
+apply LPReq_compat. split; apply LPRsup_monotonic;
+intros; rewrite mono; apply LPRle_refl.
+Qed.
+
+Lemma LPRsup_sum {A : Type} (f g : A -> LPReal)
+  : LPRsup (fun x => f x + g x) <= LPRsup f + LPRsup g.
+Proof. apply LPRsup_le. intros a.
+apply LPRplus_le_compat; apply LPRsup_ge.
+Qed.
+
+Lemma LPRsup_sum_lattice {A : Type} (f g : A -> LPReal)
+  (le : A -> A -> Prop)
+  (max : A -> A -> A)
+  (maxL  : forall (a b : A), le a (max a b))
+  (maxR  : forall (a b : A), le b (max a b))
+  (monof : forall n m, le n m -> f n <= f m)
+  (monog : forall n m, le n m -> g n <= g m)
+  : LPRsup (fun x => f x + g x) = LPRsup f + LPRsup g.
+Proof.
+apply LPReq_compat. split; [apply LPRsup_sum | ].
+unfold LPRle. intros. simpl in *.
+destruct H as [a [b [pa [pb ab]]]]. destruct pa; destruct pb.
+subst. left. replace (0 + 0)%Qnn with 0%Qnn in ab by ring.
+apply Qnn_zero_prop. assumption. destruct H0.
+right. exists x. do 2 eexists. split. apply zeroed. split.
+eassumption. subst. assumption. destruct H.
+right. exists x. do 2 eexists. split. eassumption. split. 
+apply zeroed. subst. assumption.
+destruct H; destruct H0. right. exists (max x x0).
+pose proof (monof x (max x x0) (maxL x x0)).
+do 2 eexists. split. apply H1. eassumption. split.
+pose proof (monog x0 (max x x0) (maxR x x0)).
+apply H2. eassumption. assumption.
+Qed.
+
+Lemma LPRsup_nat_ord (f g : nat -> LPReal)
+  : (forall n m, (n <= m)%nat -> f n <= f m)
+  -> (forall n m, (n <= m)%nat -> g n <= g m)
+  -> LPRsup (fun x => f x + g x) = LPRsup f + LPRsup g.
+Proof. intros. eapply LPRsup_sum_lattice; try eassumption.
+apply Max.le_max_l.  apply Max.le_max_r.
+Qed.
+
+Definition LPRmax (x y : LPReal) : LPReal.
+Proof. refine (
+  {| lbound := fun q => x q \/ y q |}
+).
+- left. apply zeroed.
+- intros. destruct H; [left | right]; eapply dclosed; eassumption.
+Defined.
+
+Lemma LPRmax_le_and {x y z : LPReal} 
+  : x <= y -> y <= z -> LPRmax x y <= z.
+Proof. intros.
+unfold LPRle; simpl in *; intros; intuition.
+Qed.
+
+Lemma LPRmax_le_or {x y z : LPReal} 
+  : z <= x \/ z <= y -> z <= LPRmax x y.
+Proof. intros.
+unfold LPRle; simpl in *; intros; intuition.
+Qed.
+
+Definition LPRmin (x y : LPReal) : LPReal.
+Proof. refine (
+  {| lbound := fun q => x q /\ y q |}
+).
+- split; apply zeroed.
+- intros. destruct H; split; eapply dclosed; eassumption.
+Defined.
 
 Theorem LPRle_antisym {x y : LPReal}
   : x <= y -> y <= x -> x = y.
 Proof.
 intros. apply LPReq_compat. split; assumption.
-Qed.
-
-Theorem LPRplus_le_compat {x y z t : LPReal}
-  : (x <= y) -> (z <= t) -> (x + z <= y + t).
-Proof. intros. unfold LPRle in *. intros.
-simpl in *. destruct H1 as [a [b [H1 [H2 H3]]]].
-do 2 eexists. split. apply H. eassumption. split. apply H0.
-eassumption. assumption.
-Qed.
-
-Theorem LPRmult_le_compat {x x' y y' : LPReal}
-  : x <= x' -> y <= y' -> x * y <= x' * y'.
-Proof.
-intros. unfold LPRle in *. intros.
-simpl in *. destruct H1 as [a [b [H1 [H2 H3]]]].
-do 2 eexists. split. apply H. eassumption. split.
-apply H0. eassumption. assumption.
 Qed.
 
 Definition K {A} (x : A) {B} (y : B) := x.
@@ -432,17 +529,15 @@ Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
   (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
 
 Inductive Simple {A : Type} :=
-  | SIndicator : (A -> Prop) -> Simple
-  | SAdd : Simple -> Simple -> Simple
-  | SScale : LPReal -> Simple -> Simple.
+  | SStep : LPReal -> (A -> Prop) -> Simple
+  | SMax : Simple -> Simple -> Simple.
 
 Arguments Simple : clear implicits.
 
 Fixpoint SimpleIntegral {A : Type} (mu : (A -> Prop) -> LPReal) 
   (s : Simple A) : LPReal := match s with
-  | SIndicator P => mu P
-  | SAdd f g => SimpleIntegral mu f + SimpleIntegral mu g
-  | SScale c f => c * SimpleIntegral mu f
+  | SStep c P => c * mu P
+  | SMax f g => LPRmax (SimpleIntegral mu f) (SimpleIntegral mu g)
   end.
 
 Definition LPRindicator (P : Prop) : LPReal.
@@ -486,8 +581,39 @@ Qed.
 
 Hint Resolve Qnnle_refl.
 
-Lemma LPRind_mult {U V : Prop} :
-  LPRindicator (U /\ V) = LPRindicator U * LPRindicator V.
+Lemma LPRind_scale_le {P : Prop} {x y : LPReal}
+  : (P -> x <= y) -> LPRindicator P * x <= y.
+Proof.
+intros. unfold LPRle; simpl in *; intros.
+destruct H0 as [a [b [pa [pb ab]]]].
+destruct pa. subst. assert (q = 0%Qnn).
+apply Qnn_zero_prop. replace (0 * b)%Qnn with 0%Qnn in ab by ring.
+assumption. subst. apply zeroed. destruct H0.
+apply H in H0. apply H0. eapply dclosed. eassumption.
+eapply Qnnle_trans. eassumption.
+replace b with (1 * b)%Qnn at 2 by ring.
+apply Qnnmult_le_compat. assumption. apply Qnnle_refl.
+Qed.
+
+(*
+Lemma LPRind_scale_ge {P : Prop} {x y : LPReal}
+  : (P -> x <= y) -> x <= y * LPRindicator P.
+Proof.
+intros. unfold LPRle; simpl in *; intros.
+do 2 eexists.
+destruct H0 as [a [b [pa [pb ab]]]].
+destruct pa. subst. assert (q = 0%Qnn).
+apply Qnn_zero_prop. replace (0 * b)%Qnn with 0%Qnn in ab by ring.
+assumption. subst. apply zeroed. destruct H0.
+apply H in H0. apply H0. eapply dclosed. eassumption.
+eapply Qnnle_trans. eassumption.
+replace b with (1 * b)%Qnn at 2 by ring.
+apply Qnnmult_le_compat. assumption. apply Qnnle_refl.
+Qed.
+*)
+
+Lemma LPRind_mult {U V : Prop}
+  : LPRindicator (U /\ V) = LPRindicator U * LPRindicator V.
 Proof.
 apply LPReq_compat. 
 split; unfold LPRle; simpl in *; intros.
@@ -506,6 +632,20 @@ split; unfold LPRle; simpl in *; intros.
   right. intuition. replace 1%Qnn with (1 * 1)%Qnn by ring.
   eapply Qnnle_trans. eassumption.
   apply Qnnmult_le_compat; assumption.
+Qed.
+
+Lemma LPRind_max {U V : Prop}
+  : LPRindicator (U \/ V) = LPRmax (LPRindicator U) (LPRindicator V).
+Proof.
+apply LPReq_compat.
+split; unfold LPRle; simpl in *; intros; intuition.
+Qed.
+
+Lemma LPRind_min {U V : Prop}
+  : LPRindicator (U /\ V) = LPRmin (LPRindicator U) (LPRindicator V).
+Proof.
+apply LPReq_compat.
+split; unfold LPRle; simpl in *; intros; intuition.
 Qed.
 
 Lemma LPRind_modular {U V : Prop} :
@@ -555,9 +695,9 @@ Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
 
 Record IntegralT (A : Type) :=
   { integral : (A -> LPReal) -> Valuation A -> LPReal
-  ; int_simple_le : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
-      pointwise LPRle (SimpleEval s) f
-    -> SimpleIntegral mu s <= integral f mu
+  ; int_simple_sup : forall {f : A -> LPReal} {mu : Valuation A},
+      integral f mu = LPRsup (fun (pr : { s | pointwise LPRle (SimpleEval s) f}) =>
+      SimpleIntegral mu (proj1_sig pr))
   ; int_simple_ge : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
       pointwise LPRle f (SimpleEval s)
     -> integral f mu <= SimpleIntegral mu s
@@ -571,6 +711,18 @@ Record IntegralT (A : Type) :=
   }.
 
 Axiom integration : forall (A : Type), IntegralT A.
+
+Lemma int_simple_le {A : Type} :
+forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
+      pointwise LPRle (SimpleEval s) f
+    ->  SimpleIntegral mu s <= integral _ (integration A) f mu.
+Proof. intros.
+pose (exist (fun s' => pointwise LPRle (SimpleEval s') f) s H).
+eapply LPRle_trans. Focus 2.
+rewrite int_simple_sup. eapply LPRsup_ge.
+instantiate (1 := s0). simpl.
+apply LPRle_refl.
+Qed.
 
 Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
   : integral _ (integration A) (SimpleEval s) mu = SimpleIntegral mu s.
@@ -644,6 +796,15 @@ Proof. refine (
   apply modular.
 Qed.
 
+Definition zeroVal {A : Type} : Valuation A.
+Proof. refine (
+  {| val := fun P => 0 |}
+).
+- reflexivity.
+- intros. apply LPRle_refl.
+- intros. reflexivity.
+Defined.
+
 Definition Valle {A : Type} (val1 val2 : Valuation A) : Prop :=
   forall (P : A -> Prop), val1 P <= val2 P.
 
@@ -654,6 +815,15 @@ Lemma Valle_trans {A : Type} (x y z : Valuation A)
   : Valle x y -> Valle y z -> Valle x z.
 Proof. intros. unfold Valle in *. intros P.
 eapply LPRle_trans. apply H. apply H0.
+Qed.
+
+Definition Measurable {A B : Type} (f : A -> B)
+  := forall (PB : B -> Prop), exists (PA : A -> Prop), forall (a : A), PB (f a) <-> PA a.
+
+Lemma all_measurable {A B : Type} (f : A -> B)
+  : Measurable f.
+Proof. unfold Measurable. intros.
+exists (fun a => PB (f a)). intros. split; trivial.
 Qed.
 
 Definition Valeq {A : Type} (val1 val2 : Valuation A) : Prop :=
@@ -695,11 +865,12 @@ intros. apply Valeq_compat.
 unfold Valeq. intros. simpl. ring.
 Qed.
 
-Lemma integral_zero {A : Type} : forall {mu : Valuation A}
-  , integral A (integration A) (SimpleEval (SIndicator (K False))) mu = 0.
+Lemma integral_zero {A : Type} : forall {mu : Valuation A} (c : LPReal)
+  , integral A (integration A) (SimpleEval (SStep c (K False))) mu = 0.
 Proof.
 intros.
-rewrite int_simple. simpl. apply strict.
+rewrite int_simple. simpl. 
+replace (mu (K False)) with 0. ring. symmetry. apply strict.
 Qed.
 
 Lemma int_pointwise_eq {A : Type} : 
@@ -722,6 +893,7 @@ Proof. refine (
   erewrite <- integral_zero.
   apply int_monotonic.
   unfold pointwise. intros.
+  instantiate (1 := 0).
   rewrite strict. apply LPRzero_min.
   apply LPRzero_min.
 - intros. apply int_monotonic.
@@ -741,75 +913,58 @@ Definition product {A B : Type}
   bind muA (fun a => map (fun b => (a, b)) muB).
 
 Theorem int_dirac_simple {A : Type} {s : Simple A} {a : A} :
- integral A (integration A) (SimpleEval s) (unit a) = SimpleEval s a.
+ SimpleIntegral (unit a) s = SimpleEval s a.
 Proof.
-rewrite int_simple. unfold SimpleEval. 
-induction s; simpl; reflexivity.
+unfold SimpleEval. induction s; simpl; reflexivity.
 Qed.
 
 Theorem int_indicator {A : Type} {P : A -> Prop} {mu : Valuation A}
   : integral A (integration A) (fun x => LPRindicator (P x)) mu = mu P.
 Proof.
-rewrite int_pointwise_eq with (g := SimpleEval (SIndicator P)).
-rewrite int_simple. simpl. reflexivity.
+rewrite int_pointwise_eq with (g := SimpleEval (SStep 1 P)).
+rewrite int_simple. simpl. ring.
 unfold SimpleEval. simpl. unfold unitProb.
-unfold pointwise. intros. split; apply LPRle_refl.
+unfold pointwise. intros. apply LPReq_compat_backwards. ring.
 Qed.
+
+
+Theorem int_dirac_test {A : Type} {f : A -> LPReal} {a : A}
+  (s : Simple A)
+  : pointwise LPRle (SimpleEval s) f
+  -> integral A (integration A) (SimpleEval s) (unit a) <= f a.
+Proof.
+intros. rewrite int_simple. rewrite int_dirac_simple. apply H. 
+Qed.
+
+Lemma undo_proj1sig {A : Type} {B : A -> Prop} 
+  (a : A) (b : B a) : proj1_sig (exist _ a b) = a.
+Proof. reflexivity. Qed.
 
 Theorem int_dirac {A : Type} {f : A -> LPReal} {a : A}
-  (dec_eq : forall a', {a = a'} + {a <> a'}) :
-  integral A (integration A) f (unit a) = f a.
+  : integral A (integration A) f (unit a) = f a.
 Proof.
-intros. apply LPReq_compat. split.
-- pose (SAdd 
-      (SScale (LPRsup f) (SIndicator (fun a' => a <> a')))
-      (SScale (f a) (SIndicator (fun a' => a = a')))).
-  eapply LPRle_trans.
-  + apply int_simple_ge.
-   instantiate (1 := s).
-   unfold pointwise. intros. unfold SimpleEval.
-   simpl. unfold unitProb.
-   destruct (dec_eq a0).
-   * replace (f a0) with (0 + f a0 * 1) by ring.
-    subst.
-    apply LPRplus_le_compat. apply LPRzero_min.
-    apply LPRmult_le_compat. apply LPRle_refl.
-    unfold LPRle. intros. simpl in *.
-    right. split. reflexivity. assumption.
-   * replace (f a0) with (f a0 * 1 + 0) by ring.
-    apply LPRplus_le_compat. apply LPRmult_le_compat.
-    apply LPRsup_ge. unfold LPRle. intros. simpl in *.
-    right. split; assumption. apply LPRzero_min.
-  + simpl. replace (f a) with (0 + f a * 1) at 2 by ring.
-    apply LPRplus_le_compat. unfold unitProb.
-    rewrite LPRind_false.
-    replace (LPRsup f * 0) with 0 by ring. apply LPRle_refl.
-    intuition.
-    apply LPRmult_le_compat. apply LPRle_refl.
-    unfold unitProb. rewrite LPRind_true. apply LPRle_refl.
-    reflexivity.
-- pose (SScale (f a) (SIndicator (fun a' => a = a'))).
-  eapply LPRle_trans.
-  Focus 2. apply int_simple_le. instantiate (1 := s).
-  unfold pointwise. intros a'. unfold SimpleEval.
-  simpl. unfold unitProb. 
-  destruct (dec_eq a'). 
-  + replace (f a') with (f a' * 1) by ring.
-    subst. apply LPRmult_le_compat. apply LPRle_refl.
-    rewrite LPRind_true. apply LPRle_refl. reflexivity.
-  + simpl. unfold unitProb. rewrite LPRind_true.
-    replace (f a * 1) with (f a) by ring.
-    apply LPRle_refl. reflexivity.
-  + rewrite LPRind_false. replace (f a * 0) with 0 by ring.
-    apply LPRzero_min. assumption.
-Qed.
+intros.
+pose (s := SStep (f a) (fun a' => a = a')).
+ rewrite int_simple_sup. eapply LPRsup_prop.
+- intros pr. destruct pr. simpl. 
+  replace (unitProb a) with (val (unit a)) by reflexivity.
+  rewrite int_dirac_simple. apply p.
+- eexists. rewrite undo_proj1sig.
+  instantiate (1 := s).
+  rewrite int_dirac_simple. unfold SimpleEval; simpl.
+  unfold unitProb. rewrite LPRind_true by reflexivity.
+  replace (f a * 1) with (f a) by ring.
+  apply LPRle_refl.
+  Grab Existential Variables.
+  simpl. unfold pointwise. intros. unfold SimpleEval.
+  simpl. rewrite (SRmul_comm LPRsrt). apply LPRind_scale_le.
+  intros H. induction H. apply LPRle_refl.
+Qed. 
 
 Theorem unitProdId {A B : Type}
-  (a : A) (deceq : forall a', {a = a'} + {a <> a'})
-  (muB : Valuation B)
-  (P : (A * B) -> Prop)
+  (a : A) (muB : Valuation B) (P : (A * B) -> Prop)
   : product (unit a) muB P = muB (fun b => P (a, b)).
-Proof. simpl. rewrite int_dirac. reflexivity. assumption. Qed.
+Proof. simpl. rewrite int_dirac. reflexivity. Qed.
 
 Theorem product_prop {A B : Type}
   (muA : Valuation A)
@@ -832,6 +987,8 @@ unfold pointwise. intros.
 rewrite LPRind_mult.
 apply LPReq_refl.
 Qed.
+
+(** WARNING: Work in progress *)
 
 Require Vector.
 
@@ -867,57 +1024,6 @@ Lemma restrictToVecMonotonicP {A : Type} {n : nat}
 Proof.
 intros. unfold restrictToVec in *.
 intros s take. apply H. apply H0. assumption.
-Qed.
-
-Lemma LPRsup_monotonic {A : Type} (f g : A -> LPReal)
-  : (forall (a : A), f a <= g a) -> LPRsup f <= LPRsup g.
-Proof.
-intros mono.
-unfold LPRle in *.
-intros. simpl in *. destruct H. left. assumption.
-destruct H. right. exists x. apply mono. assumption.
-Qed.
-
-Lemma LPRsup_eq_pointwise {A : Type} (f g : A -> LPReal)
-  : (forall (a : A), f a = g a) -> LPRsup f = LPRsup g.
-Proof.
-intros mono.
-apply LPReq_compat. split; apply LPRsup_monotonic;
-intros; rewrite mono; apply LPRle_refl.
-Qed.
-
-Lemma LPRsup_sum {A : Type} (f g : A -> LPReal)
-  : LPRsup (fun x => f x + g x) <= LPRsup f + LPRsup g.
-Proof. unfold LPRle.
-intros. simpl in *. destruct H. subst.
-  exists 0%Qnn. exists 0%Qnn. intuition. 
-  replace (0 + 0)%Qnn with 0%Qnn by ring.
-  apply Qnnle_refl.
-  destruct H as [idx [a [b [pa [pb ab]]]]].
-  exists a. exists b. split. right. exists idx. assumption.
-  split. right. exists idx. assumption. assumption.
-Qed.
-
-Lemma LPRsup_nat_ord (f g : nat -> LPReal)
-  : (forall n m, (n <= m)%nat -> f n <= f m)
-  -> (forall n m, (n <= m)%nat -> g n <= g m)
-  -> LPRsup f + LPRsup g = LPRsup (fun x => f x + g x).
-Proof.
-intros fmono gmono.
-apply LPReq_compat. split; [| apply LPRsup_sum].
-unfold LPRle. intros. simpl in *.
-destruct H as [a [b [pa [pb ab]]]]. destruct pa; destruct pb.
-subst. left. replace (0 + 0)%Qnn with 0%Qnn in ab by ring.
-apply Qnn_zero_prop. assumption. destruct H0.
-right. exists x. do 2 eexists. split. apply zeroed. split.
-eassumption. subst. assumption. destruct H.
-right. exists x. do 2 eexists. split. eassumption. split. 
-apply zeroed. subst. assumption.
-destruct H; destruct H0. right. exists (max x x0).
-pose proof (fmono x (max x x0) (Max.le_max_l x x0)).
-do 2 eexists. split. apply H1. eassumption. split.
-pose proof (gmono x0 (max x x0) (Max.le_max_r x x0)).
-apply H2. eassumption. assumption.
 Qed.
 
 Lemma restrictToVecMonotonicN {A : Type} : 
@@ -974,10 +1080,169 @@ refine (
     intros a. apply monotonic. intros.
     eapply restrictToVecMonotonicP. eassumption.
     assumption.
-- do 2 (rewrite LPRsup_nat_ord; 
+- do 2 (rewrite <- LPRsup_nat_ord; 
   try (apply restrictToVecMonotonicN);
   try assumption).
   apply LPRsup_eq_pointwise.
   intros idx.
   (* apply modular. *)
 Abort.
+
+CoInductive Partial {A : Type} : Type :=
+ | Now : A -> Partial
+ | Later : Partial -> Partial.
+
+CoFixpoint loop {A : Type} := @Later A loop.
+
+Arguments Partial : clear implicits.
+
+Fixpoint fixn {A : Type}
+  (f : Valuation A -> Valuation A) (n : nat)
+  : Valuation A
+  := match n with
+  | 0 => zeroVal
+  | S n' => f (fixn f n')
+  end.
+
+Fixpoint runPartial {A : Type} (px : Partial A)
+  (n : nat) : option A := match px with
+  | Now x => Some x
+  | Later px' => match n with
+    | 0 => None
+    | S n' => runPartial px n'
+    end 
+  end.
+
+Definition partialize {A : Type} (P : A -> Prop)
+  (px : Partial A) : Prop := exists n, match runPartial px n with
+  | None => False
+  | Some x => P x
+  end.
+
+Lemma partial_now {A : Type} (a : A) (n : nat)
+  : runPartial (Now a) n = Some a.
+Proof. induction n; unfold runPartial; intuition. Qed. 
+
+Lemma partial_mono {A : Type} : forall (m n : nat) (px : Partial A)
+  (a : A), (m <= n)%nat -> runPartial px m = Some a -> runPartial px n = Some a.
+Proof.
+intros. induction H. assumption. simpl. rewrite IHle.
+  destruct px. simpl in *. rewrite partial_now in H0. assumption.
+  reflexivity.
+Qed.
+
+Lemma partialize_and {A : Type} {U V : A -> Prop}
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : partialize (fun z => U z /\ V z) 
+  = fun z => partialize U z /\ partialize V z.
+Proof. apply functional_extensionality.
+intros. apply propext. split; intros;
+unfold partialize in *. destruct H;
+split; exists x0; destruct (runPartial x x0); intuition.
+destruct H. destruct H. destruct H0.
+exists (max x0 x1). destruct (runPartial x x0) eqn:p0;
+  destruct (runPartial x x1) eqn:p1; try contradiction.
+  apply partial_mono with (n := max x0 x1) in p0.
+  apply partial_mono with (n := max x0 x1) in p1.
+  rewrite p0 in p1. injection p1. intros. subst.
+  rewrite p0. split; assumption.
+  apply Max.le_max_r. apply Max.le_max_l.
+Qed.
+
+Lemma partialize_or {A : Type} {U V : A -> Prop}
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : partialize (fun z => U z \/ V z) 
+  = fun z => partialize U z \/ partialize V z.
+Proof. apply functional_extensionality.
+intros. apply propext. split; intros;
+unfold partialize in *. destruct H.
+destruct (runPartial x x0) eqn:partial.
+destruct H; [left | right]; exists x0;
+rewrite partial; assumption. contradiction.
+destruct H; destruct H; exists x0;
+destruct (runPartial x x0) eqn:partial; intuition.
+Qed.
+
+Definition partialValuation {A : Type}
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  (v : Valuation (Partial A))
+  : Valuation A.
+Proof. refine (
+  {| val := fun P => v (partialize P) |}
+).
+- apply LPReq_compat. split. 
+  + erewrite <- strict.
+    apply monotonic. intros. unfold partialize, K in *.
+    destruct H. destruct (runPartial z x); assumption.
+  + apply LPRzero_min.
+- intros.
+  apply monotonic. intros z PU.
+  unfold partialize in *. destruct PU.
+  exists x. destruct (runPartial z x). apply H; assumption.
+  assumption.
+- intros. rewrite partialize_and. rewrite partialize_or.
+  apply modular.
+  apply propext. apply propext.
+Qed.
+
+Lemma fixnmono {A : Type}
+  (f : Valuation A -> Valuation A)
+  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
+  : forall (n : nat), Valle (fixn f n) (fixn f (S n)).
+Proof. intros. induction n.
+simpl. unfold Valle; intros. simpl. apply LPRzero_min.
+simpl. apply fmono. assumption.
+Qed.
+
+Lemma fixnmono2 {A : Type}
+  (f : Valuation A -> Valuation A)
+  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
+  : forall (m n : nat), (m <= n)%nat -> Valle (fixn f m) (fixn f n).
+Proof. intros. induction H. apply Valle_refl. 
+eapply Valle_trans. eassumption. apply fixnmono. assumption.
+Qed.
+
+Definition fixValuation {A : Type}
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  (f : Valuation A -> Valuation A)
+  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
+  : Valuation A.
+Proof. refine (
+  {| val := fun P => LPRsup (fun n => (fixn f n) P) |}
+).
+- apply LPReq_compat. split. 
+  + apply LPRsup_le. intros. erewrite <- strict.
+    apply monotonic. intros. assumption. 
+  + apply LPRzero_min.
+- intros. apply LPRsup_monotonic. intros n.
+  apply monotonic. assumption. 
+- intros.
+  rewrite <- LPRsup_nat_ord by (intros; apply fixnmono2; assumption).
+  rewrite <- LPRsup_nat_ord by (intros; apply fixnmono2; assumption).
+  apply LPRsup_eq_pointwise. intros.
+  apply modular.
+Qed.
+
+Definition rejectionFunc {A : Type} (v : Valuation A)
+  (pred : A -> bool) 
+  (f : Valuation A) : Valuation A :=
+  bind v (fun a => if pred a
+    then unit a
+    else f).
+
+Lemma rejectionFunc_mono {A : Type} (v : Valuation A)
+  (pred : A -> bool)
+  : let f := rejectionFunc v pred 
+    in forall mu1 mu2, Valle mu1 mu2 -> Valle (f mu1) (f mu2).
+Proof. 
+intros. unfold Valle in *. intros P. simpl.
+apply int_monotonic. unfold pointwise. intros a.
+destruct (pred a). apply LPRle_refl. apply H.
+Qed.
+
+Definition rejection {A : Type} (v : Valuation A)
+  (pred : A -> bool) 
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : Valuation A
+  := fixValuation propext (rejectionFunc v pred)
+     (rejectionFunc_mono v pred).
