@@ -1221,6 +1221,18 @@ Proof. refine (
   rewrite <- LPRsup_nat_ord by (intros; apply fixnmono2; assumption).
   apply LPRsup_eq_pointwise. intros.
   apply modular.
+Defined.
+
+
+Lemma fixValuation_subProb {A : Type}
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  (f : Valuation A -> Valuation A)
+  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
+  (fbounded : forall v, val v (K True) <= 1 -> f v (K True) <= 1)
+  : (fixValuation propext f fmono) (K True) <= 1.
+Proof. simpl. apply LPRsup_le.
+intros n. induction n. simpl. apply LPRzero_min.
+simpl. apply fbounded. assumption.
 Qed.
 
 Definition rejectionFunc {A : Type} (v : Valuation A)
@@ -1246,3 +1258,21 @@ Definition rejection {A : Type} (v : Valuation A)
   : Valuation A
   := fixValuation propext (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
+
+
+Definition rejection_terminates {A : Type} (v : Valuation A)
+  (pred : A -> bool) 
+  (vProb : v (K True) = 1)
+  (predPos : ~ (v (fun x => pred x = true) <= 0))
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : (rejection v pred propext) (K True) = 1.
+Proof.
+apply LPReq_compat. split.
+- apply fixValuation_subProb. intros. unfold rejectionFunc.
+  simpl. rewrite <- vProb. rewrite <- int_indicator.
+  apply int_monotonic. unfold pointwise. unfold K.
+  intros. destruct (pred a). simpl.
+  apply LPRind_imp. trivial.
+  rewrite LPRind_true by trivial. apply H.
+-
+Abort.
