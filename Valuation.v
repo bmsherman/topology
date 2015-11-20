@@ -750,7 +750,7 @@ Defined.
 (* Here we consider a Simple as a pointwise function, in a sense,
    by integrating against a Dirac delta. *)
 Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
-  SimpleIntegral (val (unit x)) f.
+  SimpleIntegral (unit x) f.
 
 Definition integral {A : Type} (f : A -> LPReal) (mu : Valuation A) :=
   LPRsup (fun (pr : { s | pointwise LPRle (SimpleEval s) f}) =>
