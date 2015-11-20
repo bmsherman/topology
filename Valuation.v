@@ -2,6 +2,8 @@ Require Import QArith Qcanon.
 
 Require Import FunctionalExtensionality.
 
+(** Non-negative rational numbers *)
+
 Record Qnn :=
   { qnn :> Qc
   ; nonneg : qnn >= 0
@@ -30,7 +32,6 @@ Definition Qnnle (x y : Qnn) : Prop := x <= y.
 Definition Qnnge (x y : Qnn) : Prop := x >= y.
 Definition Qnnlt (x y : Qnn) : Prop := x < y.
 Definition Qnngt (x y : Qnn) : Prop := x > y.
-
 
 Definition Qnneq (x y : Qnn) : Prop := qnn x = qnn y.
 
@@ -62,14 +63,6 @@ induction H. replace nonneg0 with nonneg1. reflexivity.
 apply Qcle_irrel.
 Qed.
 
-Theorem Qnn_zero_prop {x : Qnn} :
-  x <= 0 -> x = Qnnzero.
-Proof.
-intros. apply Qnneq_prop. unfold Qnneq.
-unfold Qnnzero. simpl. apply Qcle_antisym.
-assumption. apply nonneg.
-Qed.
-
 Infix "<=" := Qnnle   : Qnn_scope.
 Infix ">=" := Qnnge   : Qnn_scope.
 Infix "<"  := Qnnlt   : Qnn_scope.
@@ -83,7 +76,15 @@ Notation "'1'" := Qnnone  : Qnn_scope.
 
 Require Import Ring.
 
-Theorem Qnnsrt : semi_ring_theory Qnnzero Qnnone
+Local Close Scope Q.
+Local Close Scope Qc.
+
+Delimit Scope Qnn_scope with Qnn.
+
+Local Open Scope Qnn.
+
+(** Non-negative rational numbers form a semiring *)
+Theorem Qnnsrt : semi_ring_theory 0 1
   Qnnplus Qnnmult eq.
 Proof.
 constructor; intros;
@@ -95,12 +96,13 @@ Qed.
 
 Add Ring Qnn_Ring : Qnnsrt.
 
-Local Close Scope Q.
-Local Close Scope Qc.
-
-Delimit Scope Qnn_scope with Qnn.
-
-Local Open Scope Qnn.
+Theorem Qnn_zero_prop {x : Qnn} :
+  x <= 0 -> x = Qnnzero.
+Proof.
+intros. apply Qnneq_prop. unfold Qnneq.
+unfold Qnnzero. simpl. apply Qcle_antisym.
+assumption. apply nonneg.
+Qed.
 
 Lemma Qnnle_refl (x : Qnn) : x <= x.
 Proof. apply Qcle_refl. Qed.
@@ -128,7 +130,10 @@ replace (x' * y') with (y' * x') by ring.
 apply Qcmult_le_compat_r. assumption. apply nonneg.
 Qed.
 
-(* Nonnegative lower reals *)
+(** Nonnegative lower reals *)
+(* These guys are interesting because we can have proofy
+   bits in them. For example, we can create a real number
+   which is 0 if P = NP and 1 if P /= NP. *)
 Record LPReal :=
   { lbound :> Qnn -> Prop
   ; zeroed : lbound 0
@@ -522,7 +527,17 @@ Proof.
 intros. apply LPReq_compat. split; assumption.
 Qed.
 
+(* constant function *)
 Definition K {A} (x : A) {B} (y : B) := x.
+
+(* Here's the analogy:
+  Valuation : Measure :: constructive logic : classical logic
+
+A good reference:
+
+Claire Jones. Probabilistic Nondeterminism. 1990. Phd Thesis.
+https://www.era.lib.ed.ac.uk/handle/1842/413
+*)
 
 Record Valuation {A : Type} :=
   { val :> (A -> Prop) -> LPReal
@@ -538,18 +553,26 @@ Arguments Valuation : clear implicits.
 Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
   (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
 
+(** An inductive definition of simple functions. I hesitate to
+    call them functions because they aren't necessarily computable.
+    I'm using "max" instead of "plus", because I believe it's
+    equivalent, and makes formulating certain things easier. *)
 Inductive Simple {A : Type} :=
   | SStep : LPReal -> (A -> Prop) -> Simple
   | SMax : Simple -> Simple -> Simple.
 
 Arguments Simple : clear implicits.
 
+(* Definition of how to integrate simple functions *)
 Fixpoint SimpleIntegral {A : Type} (mu : (A -> Prop) -> LPReal) 
   (s : Simple A) : LPReal := match s with
   | SStep c P => c * mu P
   | SMax f g => LPRmax (SimpleIntegral mu f) (SimpleIntegral mu g)
   end.
 
+(* An real number which is an indicator for a logical proposition.
+   It is 0 if P is false and 1 if P is true. Without a proof or
+   refutation of P, you will not know which! *)
 Definition LPRindicator (P : Prop) : LPReal.
 Proof. refine 
 ( {| lbound := fun q => q = 0%Qnn \/ (P /\ (q <= 1)%Qnn) |}).
@@ -695,13 +718,27 @@ apply LPReq_compat; split; unfold LPRle; intros q H;
   | apply Qcplus_le_compat; assumption ]).
 Qed.
 
-Definition unitProb {A} (a : A) (P : A -> Prop) : LPReal :=
-  LPRindicator (P a).
+(* The equivalent of a Dirac delta for a given point.
+   Called `unit` because Valuations form a mona, and
+   this is the unit. *)
+Definition unit {A : Type} (a : A) : Valuation A.
+Proof. refine (
+ {| val := fun P => LPRindicator (P a) |}
+); intros.
+- apply LPReq_compat. unfold LPReq. split.
+  unfold LPRle. intros.
+  destruct H. subst. simpl. apply Qcle_refl.
+  destruct H. destruct H. apply LPRzero_min.
+- unfold LPRle. intros q Hq. destruct Hq.
+  left. assumption. right. destruct H0.
+  split. apply H. assumption. assumption.
+- apply LPRind_modular.
+Defined.
 
 (* Here we consider a Simple as a pointwise function, in a sense,
    by integrating against a Dirac delta. *)
 Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
-  SimpleIntegral (unitProb x) f.
+  SimpleIntegral (val (unit x)) f.
 
 Record IntegralT (A : Type) :=
   { integral : (A -> LPReal) -> Valuation A -> LPReal
@@ -742,21 +779,7 @@ split; [apply int_simple_ge | apply int_simple_le]
   ; unfold pointwise; intros a; apply LPRle_refl.
 Qed.
 
-Definition unit {A : Type} (a : A) : Valuation A.
-Proof. refine (
- {| val := unitProb a |}
-); intros.
-- apply LPReq_compat. unfold LPReq. split.
-  unfold unitProb. unfold LPRle. intros.
-  destruct H. subst. simpl. apply Qcle_refl.
-  destruct H. destruct H. apply LPRzero_min.
-- unfold LPRle. intros q Hq. destruct Hq.
-  left. assumption. right. destruct H0.
-  split. apply H. assumption. assumption.
-- unfold unitProb. apply LPRind_modular.
-Defined.
-
-(* Pushforward of a measure, i.e., map a function over a measure *)
+(** Pushforward of a measure, i.e., map a function over a measure *)
 Definition map {A B : Type} (f : A -> B) (v : Valuation A)
   : Valuation B.
 Proof. refine (
@@ -776,6 +799,7 @@ Lemma LPRplus_eq_compat : forall x y x' y',
   x = x' -> y = y' -> x + y = x' + y'.
 Proof. intros. subst. reflexivity. Qed.
 
+(** The sum of two valuations *)
 Definition add {A : Type} (ValL ValR : Valuation A) : Valuation A.
 Proof. refine (
   {| val := fun P => ValL P + ValR P |}
@@ -791,6 +815,7 @@ Lemma LPRmult_eq_compat : forall x y x' y',
   x = x' -> y = y' -> x * y = x' * y'.
 Proof. intros. subst. reflexivity. Qed.
 
+(* Scale a valuation by a constant *)
 Definition scale {A : Type} (c : LPReal) 
   (Val : Valuation A) : Valuation A.
 Proof. refine (
@@ -806,6 +831,7 @@ Proof. refine (
   apply modular.
 Qed.
 
+(* The valuation which is 0 everywhere *)
 Definition zeroVal {A : Type} : Valuation A.
 Proof. refine (
   {| val := fun P => 0 |}
@@ -825,15 +851,6 @@ Lemma Valle_trans {A : Type} (x y z : Valuation A)
   : Valle x y -> Valle y z -> Valle x z.
 Proof. intros. unfold Valle in *. intros P.
 eapply LPRle_trans. apply H. apply H0.
-Qed.
-
-Definition Measurable {A B : Type} (f : A -> B)
-  := forall (PB : B -> Prop), exists (PA : A -> Prop), forall (a : A), PB (f a) <-> PA a.
-
-Lemma all_measurable {A B : Type} (f : A -> B)
-  : Measurable f.
-Proof. unfold Measurable. intros.
-exists (fun a => PB (f a)). intros. split; trivial.
 Qed.
 
 Definition Valeq {A : Type} (val1 val2 : Valuation A) : Prop :=
@@ -883,6 +900,8 @@ rewrite int_simple. simpl.
 replace (mu (K False)) with 0. ring. symmetry. apply strict.
 Qed.
 
+(* If two functions are equal at every point, then
+   they integrate to the same thing. *)
 Lemma int_pointwise_eq {A : Type} : 
   forall (f g : A -> LPReal), pointwise LPReq f g ->
   forall (mu : Valuation A),
@@ -893,6 +912,9 @@ unfold LPReq. split; apply int_monotonic; unfold pointwise;
 apply H.
 Qed.
 
+(** The "bind" of our monad. Given a measure over the space A, and a
+    function which, given a point in A, returns a measure on B,
+    we can produce a measure on B by integrating over A. *)
 Definition bind {A B : Type}
   (v : Valuation A) (f : A -> Valuation B)
   : Valuation B.
@@ -917,6 +939,8 @@ Proof. refine (
 ). apply modular. rewrite H. split; apply LPRle_refl.
 Defined.
 
+(* Product measures. That is, the joint distribute for two
+   independent measures. *)
 Definition product {A B : Type}
   (muA : Valuation A) (muB : Valuation B)
   : Valuation (A * B) := 
@@ -933,7 +957,7 @@ Theorem int_indicator {A : Type} {P : A -> Prop} {mu : Valuation A}
 Proof.
 rewrite int_pointwise_eq with (g := SimpleEval (SStep 1 P)).
 rewrite int_simple. simpl. ring.
-unfold SimpleEval. simpl. unfold unitProb.
+unfold SimpleEval. simpl. 
 unfold pointwise. intros. apply LPReq_compat_backwards. ring.
 Qed.
 
@@ -950,6 +974,8 @@ Lemma undo_proj1sig {A : Type} {B : A -> Prop}
   (a : A) (b : B a) : proj1_sig (exist _ a b) = a.
 Proof. reflexivity. Qed.
 
+(* Integrating a function over a Dirac delta results in
+   simply the function value at that point. *)
 Theorem int_dirac {A : Type} {f : A -> LPReal} {a : A}
   : integral A (integration A) f (unit a) = f a.
 Proof.
@@ -957,12 +983,12 @@ intros.
 pose (s := SStep (f a) (fun a' => a = a')).
  rewrite int_simple_sup. eapply LPRsup_prop.
 - intros pr. destruct pr. simpl. 
-  replace (unitProb a) with (val (unit a)) by reflexivity.
+  replace (fun P => LPRindicator (P a)) with (val (unit a)) by reflexivity.
   rewrite int_dirac_simple. apply p.
 - eexists. rewrite undo_proj1sig.
   instantiate (1 := s).
   rewrite int_dirac_simple. unfold SimpleEval; simpl.
-  unfold unitProb. rewrite LPRind_true by reflexivity.
+  rewrite LPRind_true by reflexivity.
   replace (f a * 1) with (f a) by ring.
   apply LPRle_refl.
   Grab Existential Variables.
@@ -971,11 +997,14 @@ pose (s := SStep (f a) (fun a' => a = a')).
   intros H. induction H. apply LPRle_refl.
 Qed. 
 
+(* We get what we would expect if we take the product of a
+   Dirac delta with another distribution. *)
 Theorem unitProdId {A B : Type}
   (a : A) (muB : Valuation B) (P : (A * B) -> Prop)
   : product (unit a) muB P = muB (fun b => P (a, b)).
 Proof. simpl. rewrite int_dirac. reflexivity. Qed.
 
+(* Product measures factor in the expected way. *)
 Theorem product_prop {A B : Type}
   (muA : Valuation A)
   (muB : Valuation B)
@@ -998,10 +1027,11 @@ rewrite LPRind_mult.
 apply LPReq_refl.
 Qed.
 
-(** WARNING: Work in progress *)
+(** WARNING: Work in progress from here on out! *)
 
 Require Vector.
 
+(** An n-fold IID product of a given measure. *)
 Fixpoint product_n {A : Type} (v : Valuation A)
   (n : nat) : Valuation (Vector.t A n) := match n with
   | 0 => unit (Vector.nil A)
@@ -1016,6 +1046,9 @@ Fixpoint take_n {A : Type} (s : Streams.Stream A) (n : nat)
   | S n', Streams.Cons x xs => Vector.cons A x n' (take_n xs n')
 end.
 
+(* Restrict a property of streams to a property of vectors of length n.
+   The property is true for a vector of length in if the property is
+   true for ALL streams which begin with that finite prefix. *)
 Definition restrictToVec {A : Type} (P : Streams.Stream A -> Prop)
   (n : nat) (x : Vector.t A n) : Prop :=
   forall (s : Streams.Stream A), take_n s n = x -> P s.
@@ -1063,7 +1096,8 @@ apply monotonic. intros.
 admit.
 Qed.
 
-
+(* An infinite product measure, generated by considering finite
+   products and taking the limit. *)
 Theorem inf_product {A : Type} (v : Valuation A)
   (nonempty : A)
   (vIsProb : v (K True) = 1)
@@ -1083,7 +1117,7 @@ refine (
   apply nonempty.
 - apply LPRsup_monotonic.
   intros n. induction n; simpl.
-  + unfold unitProb. apply LPRind_imp.
+  + apply LPRind_imp.
     unfold restrictToVec. intros H1.
     intros. apply H. apply H1. apply H0.
   + apply int_monotonic. unfold pointwise.
@@ -1096,16 +1130,24 @@ refine (
   apply LPRsup_eq_pointwise.
   intros idx.
   (* apply modular. *)
-Abort.
+  admit.
+Defined.
 
+(** A datatype for partial computations. We will use this
+    to allow definitions of measures which might not be guaranteed
+    to terminate. For example, consider the geometric distribution,
+    where we might worry that we keep getting "heads". *)
 CoInductive Partial {A : Type} : Type :=
  | Now : A -> Partial
  | Later : Partial -> Partial.
 
+(** We can use this to loop. *)
 CoFixpoint loop {A : Type} := @Later A loop.
 
 Arguments Partial : clear implicits.
 
+(** The nth iteration of the fixpoint of a functional on
+    measures *)
 Fixpoint fixn {A : Type}
   (f : Valuation A -> Valuation A) (n : nat)
   : Valuation A
@@ -1114,6 +1156,8 @@ Fixpoint fixn {A : Type}
   | S n' => f (fixn f n')
   end.
 
+(* Run a partial computation for n steps, returning the value if
+   we got a value in that many steps or fewer. *)
 Fixpoint runPartial {A : Type} (px : Partial A)
   (n : nat) : option A := match px with
   | Now x => Some x
@@ -1123,6 +1167,9 @@ Fixpoint runPartial {A : Type} (px : Partial A)
     end 
   end.
 
+(* Transform a property of values of A to a property of partial computations
+   which may return an A, where the new property is true only if the computation
+   indeed eventually returns a value for which the original property was true. *)
 Definition partialize {A : Type} (P : A -> Prop)
   (px : Partial A) : Prop := exists n, match runPartial px n with
   | None => False
@@ -1173,6 +1220,9 @@ destruct H; destruct H; exists x0;
 destruct (runPartial x x0) eqn:partial; intuition.
 Qed.
 
+(** We can convert a measure on [Partial A]s to a measure on 
+    [A]s by essentially just setting measure 0 to any of the
+    values which never terminated. *)
 Definition partialValuation {A : Type}
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   (v : Valuation (Partial A))
@@ -1193,8 +1243,10 @@ Proof. refine (
 - intros. rewrite partialize_and. rewrite partialize_or.
   apply modular.
   apply propext. apply propext.
-Qed.
+Defined.
 
+(* If our valuation functional is monotonic, then the
+   fixpoint is nondecreasing. *)
 Lemma fixnmono {A : Type}
   (f : Valuation A -> Valuation A)
   (fmono : forall u v, Valle u v -> Valle (f u) (f v))
@@ -1212,6 +1264,8 @@ Proof. intros. induction H. apply Valle_refl.
 eapply Valle_trans. eassumption. apply fixnmono. assumption.
 Qed.
 
+(** If we have a valuation functional which is monotonic, we can take
+    its fixpoint! *)
 Definition fixValuation {A : Type}
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   (f : Valuation A -> Valuation A)
@@ -1233,7 +1287,6 @@ Proof. refine (
   apply modular.
 Defined.
 
-
 Lemma fixValuation_subProb {A : Type}
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   (f : Valuation A -> Valuation A)
@@ -1245,6 +1298,7 @@ intros n. induction n. simpl. apply LPRzero_min.
 simpl. apply fbounded. assumption.
 Qed.
 
+(** The functional which corresponds to rejection sampling. *)
 Definition rejectionFunc {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (f : Valuation A) : Valuation A :=
@@ -1252,6 +1306,7 @@ Definition rejectionFunc {A : Type} (v : Valuation A)
     then unit a
     else f).
 
+(** This functional is indeed monotonic. *)
 Lemma rejectionFunc_mono {A : Type} (v : Valuation A)
   (pred : A -> bool)
   : let f := rejectionFunc v pred 
@@ -1262,6 +1317,7 @@ apply int_monotonic. unfold pointwise. intros a.
 destruct (pred a). apply LPRle_refl. apply H.
 Qed.
 
+(** Modify a measure by rejection sampling. *)
 Definition rejection {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
@@ -1269,6 +1325,9 @@ Definition rejection {A : Type} (v : Valuation A)
   := fixValuation propext (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
 
+(** Rejection sampling gives a sub-probability distribution: the
+    total measure is no greater than 1. It might be 0, though,
+    if the predicate we use for rejection occurs with probability 0. *)
 Definition rejection_subProb {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (vProb : v (K True) = 1)
@@ -1284,6 +1343,8 @@ apply LPRind_imp. trivial.
 rewrite LPRind_true by trivial. apply H.
 Qed.
 
+(** This is clearly wrong; this is just the zero measure. I even
+    prove my wrongness a little bit further down. *)
 Definition inf_productFunc {A : Type} (v : Valuation A)
   (f : Valuation (Streams.Stream A)) : Valuation (Streams.Stream A)
   := bind v (fun x => map (Streams.Cons x) f).
@@ -1296,17 +1357,39 @@ apply int_monotonic. unfold pointwise. intros a.
 apply H.
 Qed.
 
-Definition inf_product {A : Type} (v : Valuation A)
+Definition inf_product' {A : Type} (v : Valuation A)
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   : Valuation (Streams.Stream A)
   := fixValuation propext (inf_productFunc v) (inf_productFunc_mono v).
 
+Lemma inf_product'_wrong {A : Type} (v : Valuation A)
+  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
+  : inf_product' v propext = zeroVal.
+Proof.
+apply Valeq_compat. unfold Valeq. intros P.
+simpl. apply LPReq_compat. split.
+apply LPRsup_le. intros n. generalize dependent P. induction n; intros.
+simpl. apply LPRle_refl. simpl.
+rewrite <- strict with v.
+rewrite <- int_indicator. apply int_monotonic.
+unfold pointwise. unfold K.
+rewrite LPRind_false by intuition.
+intros a. apply IHn. apply LPRzero_min.
+Qed.
+
+(** A data type for random samplers. [R] is the type of the random seed,
+    and [A] is the type for which values are sampled. Our correctness property
+    says that if we are given a seed which comes from the distribution [random]
+    and then apply the sampling function [sample], the result is distributed as
+    a new random seed distributed as [random] and a value of [A] distributed
+    according to the measure [mu], and these two results are independent. *)
 Record Sampler {R A : Type} (random : Valuation R) (mu : Valuation A)
   : Type :=
   { sample     :> R -> R * A
   ; sample_ind :  map sample random = product random mu
   }.
 
+(** Samplers, too, form a monad, and here's the (very boring) unit. *)
 Definition sunit {R A : Type} (random : Valuation R)
   (a : A) : Sampler random (unit a).
 Proof. refine (
@@ -1315,7 +1398,7 @@ Proof. refine (
 apply Valeq_compat. unfold Valeq. intros. simpl.
 rewrite <- int_indicator. apply int_pointwise_eq.
 unfold pointwise. intros r. apply LPReq_compat_backwards.
-unfold unitProb. reflexivity.
+reflexivity.
 Defined.
 
 Lemma map_compose {A B C : Type} (mu : Valuation A)
@@ -1343,6 +1426,8 @@ Proof. refine (
   apply LPReq_compat_backwards. apply modular.
 Defined.
 
+(** Fubini's theorem about iterated integrals. It's likely _wrong_ as stated
+    here, but it sure is useful! *)
 Lemma fubini {A B : Type} (f : (A * B) -> LPReal)
   (muA : Valuation A) (muB : Valuation B)
  : integral A (integration A) (fun a => integral B (integration B) (fun b => f (a, b)) muB) muA
@@ -1350,6 +1435,8 @@ Lemma fubini {A B : Type} (f : (A * B) -> LPReal)
 Proof.
 Admitted.
 
+(** If we believe the statement of Fubini's theorem above, then
+    we have a bind operation on random samplers! *)
 Definition sbind {R A B : Type} (random : Valuation R)
   (mu : Valuation A) (smu : Sampler random mu) 
   (f : A -> Valuation B) (sf : forall a, Sampler random (f a))
@@ -1406,14 +1493,122 @@ simpl in H3.
 rewrite int_indicator. apply H3.
 Defined.
 
+Lemma streamTl {A : Type} (mu : Valuation A)
+  (nonempty : A)
+  (mu1 : mu (K True) = 1)
+  : map (@Streams.tl A) (inf_product mu nonempty mu1) = 
+    inf_product mu nonempty mu1.
+Proof.
+apply Valeq_compat. unfold Valeq. intros P.
+simpl. apply LPReq_compat. 
+split; apply LPRsup_le; intros n;
+apply LPRsup_ge2. 
+- admit.
+- admit.
+Qed.
+
 Definition streamSampler {A : Type} (mu : Valuation A)
-  (propext : forall P Q : Prop, (P <-> Q) -> P = Q)
-  : Sampler (inf_product mu propext) mu.
+  (nonempty : A) (mu1 : mu (K True) = 1)
+  : Sampler (inf_product mu nonempty mu1) mu.
 Proof. refine (
   {| sample := fun r => match r with
      | Streams.Cons a r' => (r', a)
      end
   |}
-). apply Valeq_compat. unfold Valeq; intros.
+). apply Valeq_compat. unfold Valeq. intros P.
+Abort.
+
+(* Random samplers which may diverge. *)
+Record PSampler {R A : Type} (propext : forall P Q, (P <-> Q) -> P = Q)
+  (random : Valuation R) (mu : Valuation A)
+  : Type :=
+  { psample     :> R -> Partial (R * A)
+  ; psample_ind :  partialValuation propext (map psample random) = product random mu
+  }.
+
+Lemma partialValNow {A : Type} propext (mu : Valuation A)
+  : partialValuation propext (map Now mu) = mu.
+Proof.
+apply Valeq_compat. unfold Valeq; intros.
 simpl.
+replace ((fun x : A => partialize P (Now x))) with P.
+reflexivity.
+apply functional_extensionality. simpl. intros x.
+apply propext. split; intros. unfold partialize.
+exists 0%nat. simpl. assumption.
+unfold partialize in H. destruct H.
+rewrite partial_now in H. assumption.
+Qed.
+
+(* Any total sampler can be considered as a partial sampler. *)
+Definition partializeSampler {R A : Type}
+  propext {random : Valuation R} {mu : Valuation A}
+  (f : Sampler random mu)
+  : PSampler propext random mu.
+Proof.
+refine (
+  {| psample := fun r => Now (f r) |}
+).
+rewrite map_compose. rewrite (sample_ind _ _ f).
+apply partialValNow.
+Defined.
+
+Lemma partialLoop {A : Type} : forall n, runPartial loop n = (@None A).
+intros. induction n. simpl. reflexivity.
+simpl. apply IHn.
+Qed.
+
+Definition zeroPSampler {R A : Type} propext
+  {random : Valuation R}
+  : PSampler propext random (@zeroVal A).
+Proof. refine (
+  {| psample := fun r => loop |}
+).
+apply Valeq_compat. unfold Valeq. intros P.
+simpl. rewrite <- (LPRind_false False) by auto.
+rewrite int_indicator. 
+replace (partialize P loop) with False. reflexivity.
+apply propext. split; intros. contradiction.
+unfold partialize in H. destruct H. rewrite partialLoop in H.
+assumption.
+Defined.
+
+(** The notion of a measure being dominated by another will be important
+    for defining PDFs. The is also sometimes called absolute continuity. *)
+Definition DominatedBy {A : Type} (mu nu : Valuation A) :=
+  forall (P : A -> Prop), nu P = 0 -> nu P = 0.
+
+Lemma DominatedBy_refl {A : Type} (mu : Valuation A)
+  : DominatedBy mu mu.
+Proof. unfold DominatedBy. auto. Qed.
+
+Lemma DominatedBy_trans {A : Type} (u v w : Valuation A)
+  : DominatedBy u v -> DominatedBy v w -> DominatedBy u w.
+Proof. unfold DominatedBy. auto. Qed.
+
+(** The function [pdf] represents a PDF of [mu] given with respect to
+    [lambda]. In general, we might thing of [mu] as something funny, whereas
+    [lambda] might be something nice and easy to integrate over, such as
+    Lebesgue measure on the interval. *)
+Record PDF {A B : Type} (lambda : Valuation A) (mu : Valuation B) : Type :=
+  { pdf :> A -> LPReal
+  ; pdf_integrates : forall (P : B -> Prop),
+    integral _ (integration _) pdf lambda = mu P
+  }.
+
+(**  The Radon-Nikodym theorem looks something like this below... *)
+Definition Radon_Nikodym_statement :=
+  forall (A : Type) (mu lambda : Valuation A)
+  , DominatedBy mu lambda -> PDF lambda mu.
+
+(** If we have PDFs for two measures, we naturally get a PDF for their
+    product measure. *)
+Definition product_PDF {A A' B B': Type} 
+  {lambda1 : Valuation A} {lambda2 : Valuation B}
+  {mu : Valuation A'} {nu : Valuation B'}
+  (pdfmu : PDF lambda1 mu) (pdfnu : PDF lambda2 nu)
+  : PDF (product lambda1 lambda2) (product mu nu).
+Proof. refine (
+  {| pdf := fun p : A * B => let (x, y) := p in pdfmu x * pdfnu y |}
+).
 Abort.
