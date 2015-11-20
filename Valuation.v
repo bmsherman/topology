@@ -438,12 +438,18 @@ Proof. intros. apply LPReq_compat. split. apply LPRsup_le.
 assumption. eapply LPRsup_ge2. eassumption.
 Qed.
 
-Lemma LPRsup_monotonic {A : Type} (f g : A -> LPReal)
-  : (forall (a : A), f a <= g a) -> LPRsup f <= LPRsup g.
+Lemma LPRsup_monotonic_gen {A B : Type} (f : A -> LPReal) (g : B -> LPReal)
+  : (forall (a : A), exists (b : B), f a <= g b) -> LPRsup f <= LPRsup g.
 Proof.
 intros mono. unfold LPRle in *.
 intros. simpl in *. destruct H. left. assumption.
-destruct H. right. exists x. apply mono. assumption.
+destruct H. right. destruct (mono x). exists x0. apply H0. assumption.
+Qed.
+
+Lemma LPRsup_monotonic {A : Type} (f g : A -> LPReal)
+  : (forall (a : A), f a <= g a) -> LPRsup f <= LPRsup g.
+Proof. 
+intros. apply LPRsup_monotonic_gen. intros. exists a. auto.
 Qed.
 
 Lemma LPRsup_eq_pointwise {A : Type} (f g : A -> LPReal)
@@ -597,6 +603,12 @@ unfold LPRle; intros; simpl in *. destruct H.
 left. assumption. right. destruct H. split; auto.
 Qed.
 
+Lemma LPRind_iff (P Q : Prop) (equiv : P <-> Q)
+  : LPRindicator P = LPRindicator Q.
+Proof.
+apply LPReq_compat; split; apply LPRind_imp; apply equiv. 
+Qed.
+
 Lemma LPRind_true (P : Prop) : P -> LPRindicator P = 1.
 Proof. intros. apply LPReq_compat.
 split.
@@ -740,39 +752,45 @@ Defined.
 Definition SimpleEval {A : Type} (f : Simple A) (x : A) : LPReal :=
   SimpleIntegral (val (unit x)) f.
 
-Record IntegralT (A : Type) :=
-  { integral : (A -> LPReal) -> Valuation A -> LPReal
-  ; int_simple_sup : forall {f : A -> LPReal} {mu : Valuation A},
-      integral f mu = LPRsup (fun (pr : { s | pointwise LPRle (SimpleEval s) f}) =>
-      SimpleIntegral mu (proj1_sig pr))
-  ; int_simple_ge : forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
-      pointwise LPRle f (SimpleEval s)
-    -> integral f mu <= SimpleIntegral mu s
-  ; int_monotonic : forall {f g : A -> LPReal}
-     , pointwise LPRle f g -> forall (mu : Valuation A)
-     , integral f mu <= integral g mu
-  ; int_adds : forall {f g : A -> LPReal} {mu : Valuation A}
-     , integral f mu + integral g mu = integral (fun x => f x + g x) mu
-  ; int_scales : forall {f : A -> LPReal} {c : LPReal} {mu : Valuation A}
-     , c * integral f mu = integral (fun x => c * f x) mu
-  }.
+Definition integral {A : Type} (f : A -> LPReal) (mu : Valuation A) :=
+  LPRsup (fun (pr : { s | pointwise LPRle (SimpleEval s) f}) =>
+      SimpleIntegral mu (proj1_sig pr)).
 
-Axiom integration : forall (A : Type), IntegralT A.
+Axiom int_simple_ge : forall {A : Type} {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
+      pointwise LPRle f (SimpleEval s)
+    -> integral f mu <= SimpleIntegral mu s.
+
+Lemma int_monotonic : forall {A : Type} {f g : A -> LPReal}
+     , pointwise LPRle f g -> forall (mu : Valuation A)
+     , integral f mu <= integral g mu.
+Proof. intros. unfold integral. apply LPRsup_monotonic_gen.
+intros. destruct a. assert (pointwise LPRle (SimpleEval x) g).
+unfold pointwise in *. intros. eapply LPRle_trans. apply p. apply H.
+exists (exist _ x H0). simpl. apply LPRle_refl.
+Qed.
+
+Lemma int_adds {A : Type} : forall {f g : A -> LPReal} {mu : Valuation A}
+     , integral f mu + integral g mu = integral (fun x => f x + g x) mu.
+Proof. Admitted.
+
+Lemma int_scales {A : Type} : forall {c : LPReal} {f : A -> LPReal} {mu : Valuation A}
+     , c * integral f mu = integral (fun x => c * f x) mu.
+Proof. Admitted.
 
 Lemma int_simple_le {A : Type} :
 forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
       pointwise LPRle (SimpleEval s) f
-    ->  SimpleIntegral mu s <= integral _ (integration A) f mu.
+    ->  SimpleIntegral mu s <= integral f mu.
 Proof. intros.
 pose (exist (fun s' => pointwise LPRle (SimpleEval s') f) s H).
 eapply LPRle_trans. Focus 2.
-rewrite int_simple_sup. eapply LPRsup_ge.
+simpl. eapply LPRsup_ge.
 instantiate (1 := s0). simpl.
 apply LPRle_refl.
 Qed.
 
 Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
-  : integral _ (integration A) (SimpleEval s) mu = SimpleIntegral mu s.
+  : integral (SimpleEval s) mu = SimpleIntegral mu s.
 Proof.
 apply LPReq_compat.
 split; [apply int_simple_ge | apply int_simple_le]
@@ -893,22 +911,25 @@ unfold Valeq. intros. simpl. ring.
 Qed.
 
 Lemma integral_zero {A : Type} : forall {mu : Valuation A} (c : LPReal)
-  , integral A (integration A) (SimpleEval (SStep c (K False))) mu = 0.
+  , integral (SimpleEval (SStep c (K False))) mu = 0.
 Proof.
 intros.
 rewrite int_simple. simpl. 
 replace (mu (K False)) with 0. ring. symmetry. apply strict.
 Qed.
 
+Lemma func_pointwise_eq {A : Type} {f g : A -> LPReal}
+  : pointwise LPReq f g -> f = g.
+Proof. intros. apply functional_extensionality.
+intros. apply LPReq_compat. apply H. Qed.
+
 (* If two functions are equal at every point, then
    they integrate to the same thing. *)
 Lemma int_pointwise_eq {A : Type} : 
   forall (f g : A -> LPReal), pointwise LPReq f g ->
   forall (mu : Valuation A),
-  integral _ (integration A) f mu = integral _ (integration A) g mu.
-Proof.
-intros. apply LPReq_compat. unfold pointwise in H.
-unfold LPReq. split; apply int_monotonic; unfold pointwise;
+  integral f mu = integral g mu.
+Proof. intros. replace g with f. reflexivity. apply func_pointwise_eq.
 apply H.
 Qed.
 
@@ -919,7 +940,7 @@ Definition bind {A B : Type}
   (v : Valuation A) (f : A -> Valuation B)
   : Valuation B.
 Proof. refine (
-  {| val := fun P => integral A (integration A) (fun x => (f x) P) v |}
+  {| val := fun P => integral (fun x => (f x) P) v |}
 ).
 - apply LPReq_compat. unfold LPReq. split.
   erewrite <- integral_zero.
@@ -953,7 +974,7 @@ unfold SimpleEval. induction s; simpl; reflexivity.
 Qed.
 
 Theorem int_indicator {A : Type} {P : A -> Prop} {mu : Valuation A}
-  : integral A (integration A) (fun x => LPRindicator (P x)) mu = mu P.
+  : integral (fun x => LPRindicator (P x)) mu = mu P.
 Proof.
 rewrite int_pointwise_eq with (g := SimpleEval (SStep 1 P)).
 rewrite int_simple. simpl. ring.
@@ -965,7 +986,7 @@ Qed.
 Theorem int_dirac_test {A : Type} {f : A -> LPReal} {a : A}
   (s : Simple A)
   : pointwise LPRle (SimpleEval s) f
-  -> integral A (integration A) (SimpleEval s) (unit a) <= f a.
+  -> integral (SimpleEval s) (unit a) <= f a.
 Proof.
 intros. rewrite int_simple. rewrite int_dirac_simple. apply H. 
 Qed.
@@ -977,11 +998,11 @@ Proof. reflexivity. Qed.
 (* Integrating a function over a Dirac delta results in
    simply the function value at that point. *)
 Theorem int_dirac {A : Type} {f : A -> LPReal} {a : A}
-  : integral A (integration A) f (unit a) = f a.
+  : integral f (unit a) = f a.
 Proof.
 intros.
 pose (s := SStep (f a) (fun a' => a = a')).
- rewrite int_simple_sup. eapply LPRsup_prop.
+  unfold integral. eapply LPRsup_prop.
 - intros pr. destruct pr. simpl. 
   replace (fun P => LPRindicator (P a)) with (val (unit a)) by reflexivity.
   rewrite int_dirac_simple. apply p.
@@ -1412,7 +1433,7 @@ Qed.
 Definition join {A : Type} (mu : Valuation (Valuation A))
   : Valuation A.
 Proof. refine (
-  {| val := fun P => integral _ (integration _) (fun vA => val vA P) mu |}
+  {| val := fun P => integral (fun vA => val vA P) mu |}
 ).
 - replace 0 with (0 * mu (K True)) by ring.
   rewrite <- int_indicator.
@@ -1430,8 +1451,8 @@ Defined.
     here, but it sure is useful! *)
 Lemma fubini {A B : Type} (f : (A * B) -> LPReal)
   (muA : Valuation A) (muB : Valuation B)
- : integral A (integration A) (fun a => integral B (integration B) (fun b => f (a, b)) muB) muA
- = integral B (integration B) (fun b => integral A (integration A) (fun a => f (a, b)) muA) muB.
+ : integral (fun a => integral (fun b => f (a, b)) muB) muA
+ = integral (fun b => integral (fun a => f (a, b)) muA) muB.
 Proof.
 Admitted.
 
@@ -1452,12 +1473,10 @@ apply Valeq_compat. unfold Valeq. intros. simpl.
 pose (func2 := fun p => (f (snd p)) (fun b => P (fst p, b))).
 assert (
  (fun x : R =>
-      integral A (integration A)
-        (fun x0 : A => (f x0) (fun x1 : B => P (x, x1))) mu)
+      integral (fun x0 : A => (f x0) (fun x1 : B => P (x, x1))) mu)
  = 
  (fun x : R =>
-      integral A (integration A)
-        (fun x0 : A => func2 (x, x0)) mu)
+      integral (fun x0 : A => func2 (x, x0)) mu)
 ).
 apply functional_extensionality. intros r.
 reflexivity. rewrite H.
@@ -1465,7 +1484,7 @@ rewrite fubini.
 assert (
 (fun x : R => mu (fun x0 : A => P (func (x, x0))))
 = 
-(fun x : R => integral A (integration A) (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
+(fun x : R => integral (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
 ).
 apply functional_extensionality. intros.
 rewrite int_indicator. reflexivity.
@@ -1473,12 +1492,10 @@ rewrite H0.
 pose (func3 := fun (p : R * A) => LPRindicator (P (func p))).
 assert (
      (fun x : R =>
-      integral A (integration A)
-        (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
+      integral (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
 =
      (fun x : R =>
-      integral A (integration A)
-        (fun x0 : A => func3 (x, x0)) mu)
+      integral (fun x0 : A => func3 (x, x0)) mu)
 ).
 apply functional_extensionality. intros. reflexivity.
 rewrite H1.
@@ -1593,7 +1610,7 @@ Proof. unfold DominatedBy. auto. Qed.
 Record PDF {A B : Type} (lambda : Valuation A) (mu : Valuation B) : Type :=
   { pdf :> A -> LPReal
   ; pdf_integrates : forall (P : B -> Prop),
-    integral _ (integration _) pdf lambda = mu P
+    integral pdf lambda = mu P
   }.
 
 (**  The Radon-Nikodym theorem looks something like this below... *)
@@ -1612,3 +1629,4 @@ Proof. refine (
   {| pdf := fun p : A * B => let (x, y) := p in pdfmu x * pdfnu y |}
 ).
 Abort.
+
