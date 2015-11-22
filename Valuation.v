@@ -280,7 +280,6 @@ apply Qnnmult_inv_r. eapply Qnnle_lt_trans. apply (nonneg num). assumption.
 Qed. 
 
 
-
 (** Nonnegative lower reals *)
 (* These guys are interesting because we can have proofy
    bits in them. For example, we can create a real number
@@ -319,13 +318,42 @@ Qed.
 Lemma LPReq_compat_backwards (x y : LPReal) : x = y -> LPReq x y.
 Proof. intros H; induction H; apply LPReq_refl. Qed.
 
+Definition Qbetween (x z : Q) : (x < z)%Q
+  -> { y | (x < y /\ y < z)%Q }.
+Proof. intros. exists ((x + z) / (1 + 1))%Q. split. 
+- apply Qlt_shift_div_l. apply Qlt_alt. reflexivity.
+  setoid_replace (x * (1 + 1))%Q with (x + x)%Q by ring.
+  setoid_replace (x + z)%Q with (z + x)%Q by ring.
+  apply Qplus_lt_le_compat. assumption. apply Qle_refl.
+- apply Qlt_shift_div_r. apply Qlt_alt. reflexivity.
+  setoid_replace (z * (1 + 1))%Q with (z + z)%Q by ring.
+  apply Qplus_lt_le_compat. assumption. apply Qle_refl.
+Qed.
+
+Definition Qcbetween (x z : Qc) : (x < z)%Qc
+  -> { y | (x < y /\ y < z)%Qc }.
+Proof. intros. destruct (Qbetween x z). assumption.
+  destruct a. exists (Q2Qc x0). split; unfold Qclt;
+  setoid_replace (this (!! x0)%Qc) with x0 by (apply Qred_correct); assumption.
+Qed.
+
+Definition Qnnbetween (x z : Qnn) : (x < z)
+  -> { y | x < y /\ y < z }.
+Proof. intros. destruct (Qcbetween x z). assumption. destruct a.
+  assert (0 <= x0)%Qc.
+  eapply Qcle_trans. apply (nonneg x).
+  apply Qclt_le_weak. assumption. 
+  exists (Build_Qnn x0 H2). split; assumption.
+Qed.
+
 Definition LPRQnn (q : Qnn) : LPReal.
 Proof.
 refine (
   {| lbound := fun q' => (q' < q)%Qnn |}
 ).
 - intros. subst. eapply Qnnle_lt_trans; eassumption.
-- intros. exists (Qnndiv (q0 + q) (1 + 1)). admit.
+- intros. pose proof (Qnnbetween q0 q H). destruct H0.
+  exists x. assumption.
 Defined.
 
 Inductive LPRplusT {x y : LPReal} : Qnn -> Prop :=
@@ -778,8 +806,8 @@ Definition LPRindicator (P : Prop) : LPReal.
 Proof. refine 
 ( {| lbound := fun q => P /\ (q < 1)%Qnn |}).
 - intros. intuition. eapply Qnnle_lt_trans; eassumption. 
-- intros. destruct H. exists (Qnndiv (q + 1) (1 + 1))%Qnn. intuition.
-  admit. admit. 
+- intros. destruct H. pose proof (Qnnbetween q 1%Qnn H0).
+  destruct H1. exists x. intuition.
 Defined.
 
 Lemma LPRind_bounded (P : Prop) : LPRindicator P <= 1.
@@ -833,9 +861,15 @@ Lemma LPRind_mult {U V : Prop}
 Proof.
 apply LPReq_compat. 
 split; unfold LPRle; simpl in *; intros.
-- admit.
+- intuition. admit.
 - destruct H as [a [b [pa [pb ab]]]]. intuition.
-  eapply Qnnle_lt_trans. eassumption. admit. 
+  eapply Qnnle_lt_trans. eassumption.
+  apply Qnnle_lt_trans with (a * 1)%Qnn.
+  apply Qnnmult_le_compat. apply Qle_refl.
+  apply Qclt_le_weak. assumption. 
+  replace 1%Qnn with (1 * 1)%Qnn at 2 by ring. 
+  apply Qcmult_lt_compat_r. apply Qclt_alt. reflexivity.
+  assumption.
 Qed.
 
 Lemma LPRind_max {U V : Prop}
