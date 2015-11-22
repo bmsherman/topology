@@ -129,6 +129,24 @@ Lemma Qnnlt_le_trans: forall x y z : Qnn
   , x < y -> y <= z -> x < z.
 Proof. intros. eapply Qclt_le_trans; eassumption. Qed.
 
+Definition Qnncompare (x y : Qnn) := (x ?= y)%Qc.
+
+Infix "?=" := Qnncompare : Qnn_scope.
+
+Lemma Qnnlt_alt {x y : Qnn} : (x ?= y) = Lt <-> x < y.
+split; intros; apply Qclt_alt; assumption.
+Qed. 
+
+Lemma Qnngt_alt {x y : Qnn} : (x ?= y) = Gt <-> x > y.
+split; intros; apply Qcgt_alt; assumption.
+Qed. 
+
+Lemma Qnneq_alt {x y : Qnn} : (x ?= y) = Eq <-> x = y.
+split; intros. apply Qnneq_prop. apply Qceq_alt; assumption.
+apply Qceq_alt. induction H. reflexivity.
+Qed. 
+
+
 Lemma Qnnmult_le_compat {x y x' y' : Qnn}
   : x <= x' -> y <= y' -> x * y <= x' * y'.
 Proof. intros.
@@ -149,8 +167,7 @@ eapply Qclt_not_eq. eassumption.
 rewrite H. reflexivity.
 Qed.
 
-
-Definition Qnnmax (x y : Qnn) : Qnn := match (x ?= y)%Qc with 
+Definition Qnnmax (x y : Qnn) : Qnn := match x ?= y with 
    | Lt => y
    | Eq => x
    | Gt => x
@@ -159,10 +176,10 @@ Definition Qnnmax (x y : Qnn) : Qnn := match (x ?= y)%Qc with
 Lemma Qnnmax_induction {x y} (P : Qnn -> Qnn -> Qnn -> Prop) :
   (y <= x -> P x y x) -> (x <= y -> P x y y) -> P x y (Qnnmax x y).
 Proof.
-intros. unfold Qnnmax. destruct (x ?= y)%Qc eqn:ceqn. 
-  apply H. unfold Qnnle. apply Qceq_alt in ceqn. rewrite ceqn. apply Qcle_refl.
-  apply H0. unfold Qnnle. apply Qclt_le_weak. apply Qclt_alt. assumption.
-  apply H. apply Qcgt_alt in ceqn. apply Qclt_le_weak. assumption.
+intros. unfold Qnnmax. destruct (x ?= y) eqn:ceqn. 
+  apply H. apply Qnneq_alt in ceqn. rewrite ceqn. apply Qnnle_refl.
+  apply H0. apply Qclt_le_weak. apply Qnnlt_alt. assumption.
+  apply H. apply Qnngt_alt in ceqn. apply Qclt_le_weak. assumption.
 Qed.
 
 Lemma Qnnmax_mult {x y z} : x * Qnnmax y z = Qnnmax (x * y) (x * z).
@@ -179,30 +196,27 @@ pattern y, z, (Qnnmax y z). apply Qnnmax_induction; intros.
 Qed.
 
 Lemma Qnnmax_l {x y} : x <= Qnnmax x y.
-Proof. unfold Qnnmax; simpl. destruct (x ?= y)%Qc eqn:compare;
-unfold Qnnle; simpl. 
-- apply Qcle_refl.
-- apply Qclt_le_weak. apply Qclt_alt. assumption.
-- apply Qcle_refl.
+Proof. unfold Qnnmax; simpl. destruct (x ?= y) eqn:compare; simpl. 
+- apply Qnnle_refl.
+- apply Qclt_le_weak. apply Qnnlt_alt. assumption.
+- apply Qnnle_refl.
 Qed.
 
 Lemma Qnnmax_r {x y} : y <= Qnnmax x y.
-Proof. unfold Qnnmax; simpl. destruct (x ?= y)%Qc eqn:compare;
-unfold Qnnle; simpl. 
-- apply Qceq_alt in compare. induction compare. apply Qcle_refl.
-- apply Qcle_refl. 
-- apply Qclt_le_weak. apply Qcgt_alt. assumption.
+Proof. unfold Qnnmax; simpl. destruct (x ?= y) eqn:compare; simpl. 
+- apply Qnneq_alt in compare. induction compare. apply Qnnle_refl.
+- apply Qnnle_refl. 
+- apply Qclt_le_weak. apply Qnngt_alt. assumption.
 Qed.
 
 Definition Qnninv (x : Qnn) : Qnn.
 Proof. refine (
   {| qnn := (/ x)%Qc |}
 ).
-destruct (x ?= 0)%Qc eqn:comp. apply Qceq_alt in comp.
-assert (x = 0%Qnn). apply Qnneq_prop. assumption.
+destruct (x ?= 0) eqn:comp. apply Qnneq_alt in comp.
 subst. simpl. apply Qle_refl.
-apply Qclt_alt in comp. apply Qnnlt_zero_prop in comp.
-contradiction. auto. 
+apply Qnnlt_alt in comp. apply Qnnlt_zero_prop in comp.
+contradiction.
 setoid_replace (this (/ x)%Qc) with (/ x)%Q.
 apply Qinv_le_0_compat. apply nonneg.
 simpl. apply Qred_correct.
@@ -231,22 +245,6 @@ unfold not. intros contra. assert (x = 0). apply Qnneq_prop. assumption.
 contradiction. 
 Qed.
 
-Definition Qnncompare (x y : Qnn) := (x ?= y)%Qc.
-
-Infix "?=" := Qnncompare : Qnn_scope.
-
-Lemma Qnnlt_alt {x y : Qnn} : (x ?= y) = Lt <-> x < y.
-split; intros; apply Qclt_alt; assumption.
-Qed. 
-
-Lemma Qnngt_alt {x y : Qnn} : (x ?= y) = Gt <-> x > y.
-split; intros; apply Qcgt_alt; assumption.
-Qed. 
-
-Lemma Qnneq_alt {x y : Qnn} : (x ?= y) = Eq <-> x = y.
-split; intros. apply Qnneq_prop. apply Qceq_alt; assumption.
-apply Qceq_alt. induction H. reflexivity.
-Qed. 
 
 Lemma Qnninv_zero1 {x : Qnn} : Qnninv x = 0 -> x = 0.
 Proof. intros. destruct (x ?= 0) eqn:comp.
@@ -679,43 +677,35 @@ unfold LPRle; simpl in *; intros; intuition.
 Qed.
 
 
-Definition Qnnmin (x y : Qnn) : Qnn.
-Proof.
-refine (
-  {| qnn := match (x ?= y)%Qc with 
+Definition Qnnmin (x y : Qnn) : Qnn := match (x ?= y) with 
    | Lt => x
    | Eq => x
    | Gt => y
-   end |}
-).
-destruct (x ?= y)%Qc; apply nonneg.
-Defined.
+   end.
 
 Lemma Qnnmin_l {x y} : (Qnnmin x y <= x)%Qnn.
-Proof. unfold Qnnmin; simpl. destruct (x ?= y)%Qc eqn:compare;
-unfold Qnnle; simpl. 
-- apply Qcle_refl.
-- apply Qcle_refl. 
-- apply Qclt_le_weak. apply Qcgt_alt. assumption.
+Proof. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare; simpl. 
+- apply Qnnle_refl.
+- apply Qnnle_refl. 
+- apply Qclt_le_weak. apply Qnngt_alt. assumption.
 Qed.
 
 Lemma Qnnmin_r {x y} : (Qnnmin x y <= y)%Qnn.
-Proof. unfold Qnnmin; simpl. destruct (x ?= y)%Qc eqn:compare;
-unfold Qnnle; simpl. 
-- apply Qceq_alt in compare. induction compare. apply Qcle_refl.
-- apply Qclt_le_weak. apply Qclt_alt. assumption.
-- apply Qcle_refl.
+Proof. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare; simpl. 
+- apply Qnneq_alt in compare. induction compare. apply Qnnle_refl.
+- apply Qclt_le_weak. apply Qnnlt_alt. assumption.
+- apply Qnnle_refl.
 Qed.
 
 Lemma Qnnmin_le_both {z x y} : 
   (z <= x -> z <= y -> z <= Qnnmin x y)%Qnn.
-Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y)%Qc eqn:compare;
+Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare;
 unfold Qnnle; simpl; assumption.
 Qed.
 
 Lemma Qnnmin_lt_both {z x y} : 
   (z < x -> z < y -> z < Qnnmin x y)%Qnn.
-Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y)%Qc eqn:compare;
+Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare;
 unfold Qnnle; simpl; assumption.
 Qed.
 
@@ -1227,9 +1217,7 @@ Definition restrictToVec {A : Type} (P : Streams.Stream A -> Prop)
 Lemma restrictToVecBot {A : Type} {n : nat}
   (nonempty : A)
   : forall xs, ~ (@restrictToVec A (K False) n xs).
-Proof.
-admit. 
-Qed.
+Proof. Admitted.
 
 Lemma restrictToVecMonotonicP {A : Type} {n : nat}
   : forall { U V : Streams.Stream A -> Prop }
