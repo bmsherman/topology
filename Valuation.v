@@ -275,6 +275,46 @@ apply False_rect. eapply Qnnlt_zero_prop.
 eassumption.
 Qed.
 
+Lemma LPRQnn_le {x y : Qnn} : LPRQnn x <= LPRQnn y <-> (x <= y)%Qnn.
+Proof.
+split; intros.
+- unfold LPRle in H. simpl in *. destruct (Qnn_dec x y).
+  destruct s. apply Qnnlt_le_weak. assumption.
+  pose proof (H _ q). apply Qnnlt_not_le in H0.
+  apply False_rect. apply H0. apply Qnnle_refl.
+  induction e. apply Qnnle_refl.
+- unfold LPRle. simpl in *. intros.
+  eapply Qnnlt_le_trans. eassumption. assumption.
+Qed.
+
+Lemma LPRQnn_plus {x y : Qnn} 
+  : LPRQnn x + LPRQnn y = LPRQnn (x + y)%Qnn.
+Proof.
+apply LPReq_compat. unfold LPReq.
+split; unfold LPRle; intros; simpl in *.
+- destruct H; simpl in *.
+  + replace q with (0 + q)%Qnn by ring. 
+    replace (x + y)%Qnn with (y + x)%Qnn by ring.
+    apply Qnnplus_le_lt_compat. apply nonneg. assumption. 
+  + replace q with (0 + q)%Qnn by ring. 
+    apply Qnnplus_le_lt_compat. apply nonneg. assumption.
+  + eapply Qnnle_lt_trans. eassumption.
+    eapply Qnnplus_le_lt_compat. apply Qnnlt_le_weak. 
+    assumption. assumption.
+- destruct (Qnn_dec x 0%Qnn) as [[H0 | H0] | H0].
+  + apply Qnnlt_zero_prop in H0. contradiction.
+  + destruct (Qnn_dec y 0%Qnn) as [[H1 | H1] | H1].
+    * apply Qnnlt_zero_prop in H1. contradiction.
+    * admit. 
+    * apply LPRplusL. simpl.
+      eapply Qnnlt_le_trans. eassumption.
+      subst. replace (x + 0)%Qnn with x by ring.
+      apply Qnnle_refl.
+  + apply LPRplusR. simpl. eapply Qnnlt_le_trans.
+    eassumption. subst. replace (0 + y)%Qnn with y by ring.
+    apply Qnnle_refl.
+Qed.
+
 Definition LPRsup {A : Type} (f : A -> LPReal)
   : LPReal.
 Proof.
@@ -524,12 +564,18 @@ apply Qnnmult_le_compat. apply Qnnlt_le_weak. assumption.
 apply Qnnle_refl.
 Qed.
 
+Lemma qnn_sqrt {x : Qnn}
+  : (x < 1)%Qnn -> exists y, (y < 1 /\ x <= y * y)%Qnn.
+Proof.
+Admitted.
+
 Lemma LPRind_mult {U V : Prop}
   : LPRindicator (U /\ V) = LPRindicator U * LPRindicator V.
 Proof.
 apply LPReq_compat. 
 split; unfold LPRle; simpl in *; intros.
-- intuition. admit.
+- intuition. pose proof (qnn_sqrt H1). 
+  destruct H0. exists x. exists x. intuition.
 - destruct H as [a [b [pa [pb ab]]]]. intuition.
   eapply Qnnle_lt_trans. eassumption.
   apply Qnnle_lt_trans with (a * 1)%Qnn.
@@ -901,6 +947,39 @@ Fixpoint product_n {A : Type} (v : Valuation A)
   | S n' => bind v (fun x => map (Vector.cons A x n') (product_n v n'))
   end.
 
+Fixpoint product_n2 {A : Type} (v : Valuation A)
+  (n : nat) {struct n} : Valuation (Vector.t A n) := match n with
+  | 0 => unit (Vector.nil A)
+  | S n' => bind (product_n v n') (fun xs => map (fun x => Vector.shiftin x xs) v)
+  end.
+
+Lemma commute_cons_shiftin {A : Type} {n : nat}
+  : forall {xs : Vector.t A n} {a z : A},
+    Vector.cons A a _ (Vector.shiftin z xs)
+  = Vector.shiftin z (Vector.cons A a _ xs).
+Proof.
+destruct n; reflexivity.
+Qed.
+
+Theorem product_n_same {A : Type} {v : Valuation A}
+  {n : nat}
+  : product_n v n = product_n2 v n.
+Proof.
+induction n; apply Valeq_compat; unfold Valeq; intros.
+- simpl. reflexivity. 
+- simpl.
+assert (
+    (fun x : A =>
+      (product_n v n) (fun x0 : Vector.t A n => P (Vector.cons A x n x0)))
+=
+    (fun x : A =>
+      (product_n2 v n) (fun x0 : Vector.t A n => P (Vector.cons A x n x0)))
+).
+apply functional_extensionality. intros. rewrite IHn. reflexivity.
+rewrite H. clear H.
+rewrite IHn.
+Abort.
+
 Require Streams.
 
 Fixpoint take_n {A : Type} (s : Streams.Stream A) (n : nat)
@@ -1184,16 +1263,67 @@ Definition rejection {A : Type} (v : Valuation A)
   : Valuation A
   := fixValuation propext (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
-
-Definition rejection_Prob_lemma {A : Type} (v : Valuation A)
+ 
+Definition rejection_Prob_lemmaT {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (vProb : v (K True) = 1)
   (p : Qnn)
-  (predPos : (v (fun x => pred x = true)) p)
-  (n : nat)
-  : True .
-Abort. 
-(* ((fixn (rejectionFunc v pred) idx) (K True)) (1 - (1 - p))^n. *)
+  (ple1 : (p <= 1)%Qnn)
+  (predPos : v (fun x => pred x = true) p)
+  (n : nat) :
+ (fixn (rejectionFunc v pred) n) (K True) >= 
+   (LPRQnn (Qnnminus 1%Qnn (Qnnpow p n) (Qnnpow_le ple1))).
+Proof. 
+induction n. 
+- simpl. apply LPRQnn_le. apply Qnnminus_le.
+  replace (1 + 0)%Qnn with 1%Qnn by ring.
+  apply Qnnle_refl.
+-  simpl. 
+Admitted. 
+
+Require Import Qcanon. 
+Local Close Scope Qc.
+
+Lemma LPRsup_constant {A : Type} (x : LPReal) :
+  A -> LPRsup (fun _ : A => x) = x.
+Proof.
+intros. apply LPReq_compat; split; unfold LPRsup, LPRle; simpl; intros.
+destruct H. assumption. exists X. assumption. 
+Qed.
+
+Lemma smallPowers {p : Qnn} : (p < 1)%Qnn
+  -> forall (q : Qnn), (q > 0)%Qnn 
+  -> exists (n : nat), (Qnnpow p n < q)%Qnn.
+Admitted.
+
+Lemma Qnnpowsup {p : Qnn} (plt1 : (p < 1)%Qnn)
+  : LPRsup (fun n => LPRQnn (Qnnminus 1%Qnn (Qnnpow p n) (Qnnpow_le (Qnnlt_le_weak plt1)))) = 1.
+Proof. 
+apply LPReq_compat. split.
+- replace 1 with (LPRsup (fun _ : nat => 1)).
+  apply LPRsup_monotonic. intros n. induction n; simpl.
+   + unfold LPRle. simpl. intros. apply Qnnminus_lt_r in H.
+     eapply Qnnle_lt_trans; [| eassumption].
+     replace q with (0 + q)%Qnn at 1 by ring. apply Qnnplus_le_compat.
+     apply nonneg. apply Qnnle_refl. 
+   + unfold LPRle. simpl. intros. 
+     apply LPRQnn_le in IHn. apply Qnnminus_lt_r in H.
+     apply Qnnminus_le in IHn.
+     eapply Qnnle_lt_trans. Focus 2. apply H.
+     replace q with (0 + q)%Qnn at 1 by ring.
+     apply Qnnplus_le_compat. apply nonneg. apply Qnnle_refl.
+   + apply LPRsup_constant. exact 0%nat.
+- unfold LPRle; simpl; intros.
+  pose proof (smallPowers plt1 (Qnnminus 1%Qnn q (Qnnlt_le_weak H))).
+  destruct (Qnn_dec q 0%Qnn).
+  destruct s. apply Qnnlt_zero_prop in q0. contradiction.
+  assert ((Qnnminus 1 q (Qnnlt_le_weak H) > 0)%Qnn).
+  apply Qnnminus_lt_r. replace (q + 0)%Qnn with q by ring. assumption. 
+  apply H0 in H1. destruct H1. exists x. apply Qnnminus_lt_r.
+  apply Qnnminus_lt_r in H1. rewrite (SRadd_comm Qnnsrt).
+  assumption. subst. exists 1%nat. simpl. apply Qnnminus_lt_r.
+  replace (p * 1 + 0)%Qnn with p by ring. assumption.
+Qed.
 
 (** Rejection sampling gives a probability distribution if the
     predicate has a positive probability of occurence. *)
@@ -1212,7 +1342,7 @@ apply LPReq_compat. split.
   apply LPRind_imp. trivial.
   rewrite LPRind_true by trivial. apply H.
 - unfold LPRle. destruct predPos as [p [Xp Pp]].
-  intros. simpl.
+  intros. simpl in *.
   (* exists (1 - (1 - p)^n). *)
 Abort. 
 
@@ -1308,6 +1438,70 @@ Lemma fubini {A B : Type} (f : (A * B) -> LPReal)
 Proof.
 Admitted.
 
+Lemma fubini_curried {A B : Type} (f : A -> B -> LPReal)
+  (muA : Valuation A) (muB : Valuation B)
+ : integral (fun a => integral (fun b => f a b) muB) muA
+ = integral (fun b => integral (fun a => f a b) muA) muB.
+Proof.
+pose (f' := fun p => f (fst p) (snd p)).
+assert (
+(fun a : A => integral (fun b : B => f a b) muB)
+=
+(fun a : A => integral (fun b : B => f' (a, b)) muB)
+).
+apply functional_extensionality. intros a.
+apply int_pointwise_eq. unfold pointwise; intros b.
+apply LPReq_compat_backwards. reflexivity.
+rewrite H. clear H.
+
+assert (
+(fun b : B => integral (fun a : A => f a b) muA)
+=
+(fun b : B => integral (fun a : A => f' (a, b)) muA)
+).
+apply functional_extensionality. intros b.
+apply int_pointwise_eq. unfold pointwise; intros a.
+apply LPReq_compat_backwards. reflexivity.
+rewrite H. clear H.
+apply fubini.
+Qed.
+
+Lemma fubini_no_funext {A B : Type}
+  (muA : Valuation A) (muB : Valuation B)
+  {fA : A -> LPReal} {fB : B -> LPReal}
+  {fAB : A -> B -> LPReal} {fBA : B -> A -> LPReal}
+  : (forall a, integral (fAB a) muB = fA a)
+  -> (forall b, integral (fBA b) muA = fB b)
+  -> (forall a b, fAB a b = fBA b a)
+  -> integral fA muA = integral fB muB.
+Proof.
+intros.
+replace fA with (fun a => integral (fAB a) muB)
+  by (apply functional_extensionality; assumption).
+replace fB with (fun b => integral (fun a => fAB a b) muA).
+Focus 2. apply functional_extensionality. 
+intros. rewrite <- H0.
+replace (fun a => fAB a x) with (fBA x).
+Focus 2. apply functional_extensionality.
+intros. symmetry. apply H1. 
+reflexivity.
+apply fubini_curried.
+Qed.
+
+Lemma bind_map_swap {A B C : Type}
+  {muA : Valuation A} {muB : Valuation B}
+  { f : A -> B -> C }
+  : bind muA (fun a => map (f a)         muB)
+  = bind muB (fun b => map (fun a => f a b) muA).
+Proof. 
+apply Valeq_compat. unfold Valeq. intros P.
+simpl.
+eapply fubini_no_funext.
+intros a. rewrite <- int_indicator. reflexivity. 
+intros b. rewrite <- int_indicator. reflexivity. 
+simpl. reflexivity. 
+Qed.
+
 (** If we believe the statement of Fubini's theorem above, then
     we have a bind operation on random samplers! *)
 Definition sbind {R A B : Type} (random : Valuation R)
@@ -1322,6 +1516,12 @@ refine (
 rewrite map_compose.
 rewrite (sample_ind _ _ smu).
 apply Valeq_compat. unfold Valeq. intros. simpl.
+
+erewrite fubini_no_funext.
+Focus 2. intros. rewrite <- int_indicator. reflexivity.
+Focus 3. intros. simpl. reflexivity.
+Focus 2. intros. reflexivity.
+
 pose (func2 := fun p => (f (snd p)) (fun b => P (fst p, b))).
 assert (
  (fun x : R =>
@@ -1331,36 +1531,53 @@ assert (
       integral (fun x0 : A => func2 (x, x0)) mu)
 ).
 apply functional_extensionality. intros r.
-reflexivity. rewrite H.
-rewrite fubini.
-assert (
-(fun x : R => mu (fun x0 : A => P (func (x, x0))))
-= 
-(fun x : R => integral (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
-).
-apply functional_extensionality. intros.
-rewrite int_indicator. reflexivity.
-rewrite H0.
-pose (func3 := fun (p : R * A) => LPRindicator (P (func p))).
-assert (
-     (fun x : R =>
-      integral (fun x0 : A => LPRindicator (P (func (x, x0)))) mu)
-=
-     (fun x : R =>
-      integral (fun x0 : A => func3 (x, x0)) mu)
-).
-apply functional_extensionality. intros. reflexivity.
-rewrite H1.
+reflexivity. rewrite H. clear H. 
 rewrite fubini.
 apply int_pointwise_eq. unfold pointwise. intros a.
 apply LPReq_compat_backwards.
 pose proof (sample_ind _ _ (sf a)).
-unfold func3, func2. simpl.
+unfold func2. simpl.
 assert (forall P, (map (sf a) random) P = (product random (f a)) P).
-intros. rewrite H2. reflexivity.
-simpl in H3.
-rewrite int_indicator. apply H3.
+intros. rewrite H. reflexivity.
+simpl in H0.
+rewrite int_indicator. apply H0.
 Defined.
+
+Lemma int_indicator_funext {A : Type}
+  { P : A -> Prop } {mu : Valuation A}
+  { f : A -> LPReal }
+  : (forall a, LPRindicator (P a) = f a)
+  -> integral f mu = mu P.
+Proof.
+intros.
+replace f with (fun a => LPRindicator (P a)) by
+  (apply functional_extensionality; intros; apply H).
+apply int_indicator.
+Qed.
+
+Lemma union_bound2 {A : Type} {mu : Valuation A}
+  (P Q : A -> Prop)
+  : mu (fun z => P z \/ Q z) <= mu P + mu Q.
+Proof.
+rewrite modular. eapply LPRle_trans.
+Focus 2. eapply LPRplus_le_compat.
+apply LPRzero_min. apply LPRle_refl.
+rewrite (SRadd_0_l LPRsrt). 
+apply LPRle_refl.
+Qed.
+
+Lemma union_bound {A : Type} {mu : Valuation A}
+  (xs : list (A -> Prop))
+  : mu (List.fold_right (fun P Q z => P z \/ Q z) (K False) xs) <=
+    List.fold_right LPRplus 0 (List.map (val mu) xs).
+Proof.
+induction xs; simpl.
+- rewrite strict. apply LPRle_refl.
+- eapply LPRle_trans. Focus 2. 
+  eapply LPRplus_le_compat.
+  Focus 2. apply IHxs. apply LPRle_refl.
+  apply union_bound2.
+Qed.
 
 Lemma streamTl {A : Type} (mu : Valuation A)
   (nonempty : A)
@@ -1372,8 +1589,22 @@ apply Valeq_compat. unfold Valeq. intros P.
 simpl. apply LPReq_compat. 
 split; apply LPRsup_le; intros n;
 apply LPRsup_ge2. 
-- admit.
-- admit.
+- exists (S n). simpl.
+  erewrite fubini_no_funext.
+    Focus 2. intros. rewrite <- int_indicator. reflexivity. 
+    Focus 2. intros. reflexivity.
+    Focus 2. intros. simpl. reflexivity.
+  erewrite int_pointwise_eq.
+    Focus 2. unfold pointwise; intros.
+    apply LPReq_compat_backwards.
+    rewrite int_indicator. reflexivity.
+  (*
+  apply monotonic.
+  apply int_monotonic. unfold pointwise. 
+  intros xs. rewrite int_indicator.
+*)
+admit.
+- exists (S n). simpl. admit.
 Qed.
 
 Definition streamSampler {A : Type} (mu : Valuation A)

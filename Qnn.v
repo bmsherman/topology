@@ -368,3 +368,58 @@ Lemma Qnnmin_lt_both {z x y} :
 Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare;
 unfold Qnnle; simpl; assumption.
 Qed.
+
+Definition Qnnminus (x y : Qnn) (prf : y <= x) : Qnn.
+Proof. refine (
+  {| qnn := x - y |}
+). apply -> Qcle_minus_iff. assumption.
+Defined. 
+
+Fixpoint Qnnpow (b : Qnn) (e : nat) := match e with
+  | 0 => 1
+  | S e' => b * Qnnpow b e'
+  end.
+
+Lemma Qnnpow_le {x : Qnn} {n : nat} :
+  x <= 1 -> Qnnpow x n <= 1.
+Proof.
+intros. induction n; simpl. apply Qnnle_refl.
+replace 1 with (1 * 1) by ring.
+apply Qnnmult_le_compat; assumption.
+Qed.
+
+Lemma Qnnminus_le {x y z : Qnn} (ylex : (y <= x)%Qnn)
+  : (Qnnminus x y ylex <= z <-> x <= y + z)%Qnn.
+Proof.
+split; intros. 
+- unfold Qnnle. apply Qcle_minus_iff. simpl.
+  replace (y + z + - x)%Qc with (z - (x - y))%Qc by ring.
+  apply -> Qcle_minus_iff. apply H.
+- unfold Qnnle. apply Qcle_minus_iff. simpl.
+  replace (z + - (x - y))%Qc with (y + z - x)%Qc by ring.
+  apply -> Qcle_minus_iff. apply H. 
+Qed.
+
+Lemma Qnnminus_lt_l {x y z : Qnn} (ylex : (y <= x)%Qnn)
+  : (Qnnminus x y ylex < z <-> x < y + z)%Qnn.
+Proof.
+split; intros. 
+- unfold Qnnle. apply Qclt_minus_iff. simpl.
+  replace (y + z + - x)%Qc with (z - (x - y))%Qc by ring.
+  apply -> Qclt_minus_iff. apply H.
+- unfold Qnnle. apply Qclt_minus_iff. simpl.
+  replace (z + - (x - y))%Qc with (y + z - x)%Qc by ring.
+  apply -> Qclt_minus_iff. apply H. 
+Qed.
+
+Lemma Qnnminus_lt_r {x y z : Qnn} (ylex : (y <= x)%Qnn)
+  : (z < Qnnminus x y ylex <-> y + z < x)%Qnn.
+Proof.
+split; intros. 
+- unfold Qnnlt. apply Qclt_minus_iff. simpl.
+  replace (x + - (y + z))%Qc with ((x - y) - z)%Qc by ring.
+  apply -> Qclt_minus_iff. apply H.
+- unfold Qnnlt. apply Qclt_minus_iff. simpl.
+  replace (x - y + - z)%Qc with (x - (y + z))%Qc by ring.
+  apply -> Qclt_minus_iff. apply H. 
+Qed.
