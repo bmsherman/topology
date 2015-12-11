@@ -279,10 +279,9 @@ assumption.
 apply Qnnmult_inv_r. eapply Qnnle_lt_trans. apply (nonneg num). assumption.
 Qed. 
 
-
-Definition Qbetween (x z : Q) : (x < z)%Q
-  -> { y | (x < y /\ y < z)%Q }.
-Proof. intros. exists ((x + z) / (1 + 1))%Q. split. 
+Definition Qaverage (x z : Q) : (x < z)%Q
+  -> (let avg := ((x + z) / (1 + 1)) in x < avg /\ avg < z)%Q.
+Proof. split.
 - apply Qlt_shift_div_l. apply Qlt_alt. reflexivity.
   setoid_replace (x * (1 + 1))%Q with (x + x)%Q by ring.
   setoid_replace (x + z)%Q with (z + x)%Q by ring.
@@ -292,20 +291,43 @@ Proof. intros. exists ((x + z) / (1 + 1))%Q. split.
   apply Qplus_lt_le_compat. assumption. apply Qle_refl.
 Qed.
 
+Ltac reduceQ := repeat (unfold Qcplus, Qcdiv, Qcinv, Qcmult; 
+match goal with
+| [ |- context[this (!! ?x)%Qc] ] => 
+     setoid_replace (this (!! x)%Qc) with x by (apply Qred_correct)
+end).
+
+
+Definition Qcaverage (x z : Qc) : (x < z)%Qc
+  -> (let avg := ((x + z) / (1 + 1)) in x < avg /\ avg < z)%Qc.
+Proof. intros. destruct (Qaverage x z H).
+assert ((this avg == (x + z) / (1 + 1))%Q). 
+unfold avg. reduceQ. reflexivity.
+unfold Qclt. split; setoid_rewrite H2; assumption.
+Qed. 
+
+Definition Qnnaverage (x z : Qnn) : (x < z)
+  -> (let avg := ((x + z) * Qnnonehalf) in x < avg /\ avg < z).
+Proof. intros.
+pose proof (Qcaverage x z H).
+assert (qnn avg = ((x + z) / (1 + 1))%Qc).
+unfold avg. unfold Qcdiv. unfold Qnnmult. simpl. reflexivity.
+unfold Qnnlt; rewrite H1. assumption.
+Qed.
+
+Definition Qbetween (x z : Q) : (x < z)%Q
+  -> { y | (x < y /\ y < z)%Q }.
+Proof. intros. eexists. apply Qaverage. assumption.
+Qed.
+
 Definition Qcbetween (x z : Qc) : (x < z)%Qc
   -> { y | (x < y /\ y < z)%Qc }.
-Proof. intros. destruct (Qbetween x z). assumption.
-  destruct a. exists (Q2Qc x0). split; unfold Qclt;
-  setoid_replace (this (!! x0)%Qc) with x0 by (apply Qred_correct); assumption.
+Proof. intros. eexists. apply Qcaverage. assumption.
 Qed.
 
 Definition Qnnbetween (x z : Qnn) : (x < z)
   -> { y | x < y /\ y < z }.
-Proof. intros. destruct (Qcbetween x z). assumption. destruct a.
-  assert (0 <= x0)%Qc.
-  eapply Qcle_trans. apply (nonneg x).
-  apply Qclt_le_weak. assumption. 
-  exists (Build_Qnn x0 H2). split; assumption.
+Proof. intros. eexists. apply Qnnaverage. assumption.
 Qed.
 
 Definition Qnnplus_le_lt_compat {x x' y y' : Qnn}

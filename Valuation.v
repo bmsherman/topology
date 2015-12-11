@@ -295,6 +295,27 @@ split; intros.
   eapply Qnnlt_le_trans. eassumption. assumption.
 Qed.
 
+Require Import QArith Qcanon Field.
+
+Lemma Qnnonehalf_split {x : Qnn}
+  : (x = (x + x) * Qnnonehalf)%Qnn.
+Proof. 
+unfold Qnnonehalf. apply Qnneq_prop. unfold Qnnmult, Qnnplus.
+simpl. unfold Qnneq. simpl. apply Qc_is_canon. reduceQ.
+simpl. field.
+Qed.
+
+Local Close Scope Q. 
+Local Close Scope Qc.
+
+Lemma redistribute_onehalf : forall q x y,
+ (   (q + (x + y)) * Qnnonehalf
+  = (q * Qnnonehalf + x) * Qnnonehalf + (q * Qnnonehalf + y) * Qnnonehalf
+  )%Qnn.
+Proof.
+intros. rewrite (@Qnnonehalf_split q) at 1. ring. 
+Qed. 
+
 Lemma LPRQnn_plus {x y : Qnn} 
   : LPRQnn x + LPRQnn y = LPRQnn (x + y)%Qnn.
 Proof.
@@ -313,7 +334,9 @@ split; unfold LPRle; intros; simpl in *.
   + apply Qnnlt_zero_prop in H0. contradiction.
   + destruct (Qnn_dec y 0%Qnn) as [[H1 | H1] | H1].
     * apply Qnnlt_zero_prop in H1. contradiction.
-    * admit. 
+    * pose (Qnnminus _ _ (Qnnlt_le_weak H)).
+      pose ((Qnnonehalf * Qnnonehalf * q0)%Qnn) as eps.
+      admit.
     * apply LPRplusL. simpl.
       eapply Qnnlt_le_trans. eassumption.
       subst. replace (x + 0)%Qnn with x by ring.
@@ -743,7 +766,7 @@ Proof. refine (
   with (c * (Val (fun z : A => U z /\ V z) + Val (fun z : A => U z \/ V z))) by ring.
   apply LPRmult_eq_compat. reflexivity.
   apply modular.
-Qed.
+Defined.
 
 (* The valuation which is 0 everywhere *)
 Definition zeroVal {A : Type} : Valuation A.
@@ -804,6 +827,82 @@ Lemma Valplus_comm {A : Type} : forall {x y : Valuation A}
 Proof.
 intros. apply Valeq_compat.
 unfold Valeq. intros. simpl. ring.
+Qed.
+
+Definition pchoice {A : Type} (p q : LPReal)
+  (mu mu' : Valuation A) : Valuation A
+  := add (scale p mu) (scale q mu').
+
+Lemma pchoice_prob {A : Type} {p q : LPReal}
+  {mu mu' : Valuation A} :
+    (p + q = 1) -> mu (K True) = 1 -> mu' (K True) = 1
+  -> (pchoice p q mu mu') (K True) = 1.
+Proof.
+intros. unfold pchoice. simpl. rewrite H0. rewrite H1.
+replace (p * 1 + q * 1) with (p + q) by ring.
+assumption.
+Qed.
+
+Require Fin Vector.
+
+Fixpoint uniform_helper {A : Type} (p : LPReal) (xs : list A) := match xs with
+  | nil => zeroVal
+  | (x :: xs')%list => add (scale p (unit x)) (uniform_helper p xs')
+end.
+
+Fixpoint Qnnnat (n : nat) : Qnn := match n with 
+  | 0 => 0%Qnn
+  | S n' => (1 + Qnnnat n')%Qnn
+  end.
+
+Lemma LPRQnn_eq {x y : Qnn} : x = y -> LPRQnn x = LPRQnn y.
+Proof. intros; subst; reflexivity. Qed.
+
+Lemma uniform_helper_weight {A : Type} {p : LPReal} {xs : list A}
+  : uniform_helper p xs (K True) = LPRQnn (Qnnnat (length xs)) * p.
+Proof.
+induction xs. 
+- simpl. ring. 
+- simpl. rewrite LPRind_true by (unfold K; trivial).
+  rewrite IHxs.
+  rewrite <- LPRQnn_plus. ring.
+Qed.
+
+
+Definition Qnnfrac (n : nat) := Qnninv (Qnnnat n).
+
+Local Close Scope Q.
+Local Close Scope Qc.
+
+Definition uniform {A : Type} {n : nat} (xs : Vector.t A (S n)) :=
+  uniform_helper (LPRQnn (Qnnfrac (S n))) (Vector.to_list xs).
+
+Lemma Vector_length {A : Type} {n : nat} {xs : Vector.t A n}
+  : length (Vector.to_list xs) = n.
+Proof. induction xs.
+- reflexivity.
+- unfold Vector.to_list in *. simpl. rewrite IHxs. reflexivity.
+Qed.
+
+Lemma LPRQnn_mult {x y : Qnn} : LPRQnn x * LPRQnn y = LPRQnn (x * y)%Qnn.
+Proof. 
+Admitted.
+
+Lemma Qnnnatfrac {n : nat} : (Qnnnat (S n) * Qnnfrac (S n) = 1)%Qnn.
+Proof. unfold Qnnfrac. apply Qnnmult_inv_r. simpl.
+replace 0%Qnn with (0 + 0)%Qnn by ring.
+replace (1 + Qnnnat n)%Qnn with (Qnnnat n + 1)%Qnn by ring.
+apply Qnnplus_le_lt_compat. apply nonneg.
+apply Qnnlt_alt. reflexivity.
+Qed.
+
+
+Lemma uniform_prob {A : Type} : forall {n : nat} {xs : Vector.t A (S n)}
+  , (uniform xs) (K True) = 1.
+Proof.
+intros. unfold uniform.
+rewrite uniform_helper_weight. rewrite Vector_length.
+rewrite LPRQnn_mult. rewrite Qnnnatfrac. reflexivity.
 Qed.
 
 Lemma integral_zero {A : Type} : forall {mu : Valuation A} (c : LPReal)
@@ -1159,8 +1258,6 @@ refine (
 - do 2 (rewrite <- LPRsup_nat_ord; 
   try (apply restrictToVecMonotonicN);
   try assumption).
-  apply LPRsup_eq_pointwise.
-  intros idx.
   (* apply modular. *)
   admit.
 Defined.
