@@ -50,7 +50,7 @@ Fixpoint SimpleIntegral {A : Type} (mu : (A -> Prop) -> LPReal)
 
 
 (* The equivalent of a Dirac delta for a given point.
-   Called `unit` because Valuations form a mona, and
+   Called `unit` because Valuations form a monad, and
    this is the unit. *)
 Definition unit {A : Type} (a : A) : Valuation A.
 Proof. refine (
@@ -70,9 +70,30 @@ Definition integral {A : Type} (f : A -> LPReal) (mu : Valuation A) :=
   LPRsup (fun (pr : { s | pointwise LPRle (SimpleEval s) f}) =>
       SimpleIntegral mu (proj1_sig pr)).
 
-Axiom int_simple_ge : forall {A : Type} {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
-      pointwise LPRle f (SimpleEval s)
-    -> integral f mu <= SimpleIntegral mu s.
+Lemma int_simple_monotonic {A : Type} {s t : Simple A}
+  {mu : Valuation A}
+  : pointwise LPRle (SimpleEval s) (SimpleEval t)
+  -> SimpleIntegral mu s <= SimpleIntegral mu t.
+Proof.
+generalize dependent t. unfold pointwise.
+induction s; intros; simpl.
+- induction t.
+  + unfold SimpleEval in H. simpl in H. simpl.
+    
+Admitted.
+
+Lemma int_simple_ge {A : Type} {s : Simple A} {f : A -> LPReal} 
+  {mu : Valuation A}
+  : pointwise LPRle f (SimpleEval s)
+  -> integral f mu <= SimpleIntegral mu s.
+Proof.
+intros. 
+unfold integral. apply LPRsup_le.
+intros a. destruct a. simpl.
+apply int_simple_monotonic.
+unfold pointwise in *. intros. eapply LPRle_trans.
+apply p. apply H.
+Qed.
 
 Lemma int_monotonic : forall {A : Type} {f g : A -> LPReal}
      , pointwise LPRle f g -> forall (mu : Valuation A)
@@ -180,12 +201,6 @@ Qed.
 Definition Valeq {A : Type} (val1 val2 : Valuation A) : Prop :=
   forall (P : A -> Prop), val1 P = val2 P.
 
-Lemma Valle_antisym {A : Type} (x y : Valuation A)
-  : Valle x y -> Valle y x -> Valeq x y.
-Proof. intros. unfold Valle, Valeq in *. intros.
-apply LPRle_antisym. apply H. apply H0.
-Qed.
-
 Lemma Valeq_compat_OK 
   (proof_irrel : forall (P : Prop) (x y : P), x = y)
   { A : Type }
@@ -221,6 +236,12 @@ Infix "*" := scale : Val_scope.
 Notation "'0'" := zeroVal : Val_scope.
 
 Delimit Scope Val_scope with Val.
+
+Lemma Valle_antisym {A : Type} (x y : Valuation A)
+  : (x <= y -> y <= x -> x == y)%Val.
+Proof. intros. unfold Valle, Valeq in *. intros.
+apply LPRle_antisym. apply H. apply H0.
+Qed.
 
 Lemma Valplus_comm {A : Type} : forall {x y : Valuation A}
   , (x + y = y + x)%Val.
@@ -388,7 +409,10 @@ Lemma change_of_variables {A B : Type}
   = integral g (map f mu).
 Proof.
 unfold integral. apply LPReq_compat. split.
-- admit.
+- unfold LPRle. simpl. intros. destruct H. 
+  destruct x. simpl in H.
+  (* measurability of functions definitely needed here *)
+  admit.
 - apply LPRsup_le; intros simp;
   destruct simp as [s sle]; simpl.
   apply LPRsup_ge2. eexists. rewrite undo_proj1sig.
@@ -460,7 +484,6 @@ intros. unfold Measurable in *. intros.
 apply (H (fun x => g0 (g x))).
 apply H0. assumption.
 Qed.
-
 
 (* Integrating a function over a Dirac delta results in
    simply the function value at that point. *)
