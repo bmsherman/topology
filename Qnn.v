@@ -493,3 +493,10 @@ replace (1 + Qnnnat n)%Qnn with (Qnnnat n + 1)%Qnn by ring.
 apply Qnnplus_le_lt_compat. apply nonneg.
 apply Qnnlt_alt. reflexivity.
 Qed.
+
+Lemma Qnnnat_plus {x y : nat} : (Qnnnat (x + y) = Qnnnat x + Qnnnat y)%Qnn.
+Proof.
+induction x.
+- simpl; ring.
+- simpl. rewrite IHx. ring.
+Qed.
