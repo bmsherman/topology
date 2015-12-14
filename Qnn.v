@@ -121,6 +121,9 @@ Lemma Qnnle_antisym {x y : Qnn}
   : x <= y -> y <= x -> x = y.
 Proof. intros. apply Qnneq_prop. eapply Qcle_antisym; eassumption. Qed.
 
+Definition Qnnle_irrel {x y : Qnn} (prf1 prf2 : x <= y)
+  : prf1 = prf2 := Qcle_irrel prf1 prf2.
+
 Lemma Qnnle_lt_trans : forall x y z : Qnn
   , x <= y -> y < z -> x < z.
 Proof. intros. eapply Qcle_lt_trans; eassumption. Qed.
@@ -397,13 +400,21 @@ Proof. refine (
 ). apply -> Qcle_minus_iff. assumption.
 Defined. 
 
+Definition Qnnminus_irrel {x y : Qnn} {p q : y <= x}
+  : Qnnminus x y p = Qnnminus x y q.
+Proof.
+apply Qnneq_prop. unfold Qnneq. simpl. reflexivity.
+Qed.
+
 Fixpoint Qnnpow (b : Qnn) (e : nat) := match e with
   | 0 => 1
   | S e' => b * Qnnpow b e'
   end.
 
+Infix "^"  := Qnnpow : Qnn_scope.
+
 Lemma Qnnpow_le {x : Qnn} {n : nat} :
-  x <= 1 -> Qnnpow x n <= 1.
+  x <= 1 -> x ^ n <= 1.
 Proof.
 intros. induction n; simpl. apply Qnnle_refl.
 replace 1 with (1 * 1) by ring.
@@ -444,4 +455,41 @@ split; intros.
 - unfold Qnnlt. apply Qclt_minus_iff. simpl.
   replace (x - y + - z)%Qc with (x - (y + z))%Qc by ring.
   apply -> Qclt_minus_iff. apply H. 
+Qed.
+
+Lemma Qnnminus_plus {x y : Qnn} {xley : (x <= y)%Qnn} 
+  : (x + Qnnminus y x xley)%Qnn = y.
+Proof.
+apply Qnneq_prop. unfold Qnneq. simpl. ring.
+Qed.
+
+Lemma Qnnonehalf_split {x : Qnn}
+  : (x = (x + x) * Qnnonehalf)%Qnn.
+Proof. 
+unfold Qnnonehalf. apply Qnneq_prop. unfold Qnnmult, Qnnplus.
+simpl. unfold Qnneq. simpl. apply Qc_is_canon. reduceQ.
+simpl. field.
+Qed.
+
+Lemma redistribute_onehalf : forall q x y,
+ (   (q + (x + y)) * Qnnonehalf
+  = (q * Qnnonehalf + x) * Qnnonehalf + (q * Qnnonehalf + y) * Qnnonehalf
+  )%Qnn.
+Proof.
+intros. rewrite (@Qnnonehalf_split q) at 1. ring. 
+Qed.
+
+Fixpoint Qnnnat (n : nat) : Qnn := match n with 
+  | 0 => 0%Qnn
+  | S n' => (1 + Qnnnat n')%Qnn
+  end.
+
+Definition Qnnfrac (n : nat) := Qnninv (Qnnnat n).
+
+Lemma Qnnnatfrac {n : nat} : (Qnnnat (S n) * Qnnfrac (S n) = 1)%Qnn.
+Proof. unfold Qnnfrac. apply Qnnmult_inv_r. simpl.
+replace 0%Qnn with (0 + 0)%Qnn by ring.
+replace (1 + Qnnnat n)%Qnn with (Qnnnat n + 1)%Qnn by ring.
+apply Qnnplus_le_lt_compat. apply nonneg.
+apply Qnnlt_alt. reflexivity.
 Qed.

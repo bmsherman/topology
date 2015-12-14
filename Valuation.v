@@ -295,27 +295,6 @@ split; intros.
   eapply Qnnlt_le_trans. eassumption. assumption.
 Qed.
 
-Require Import QArith Qcanon Field.
-
-Lemma Qnnonehalf_split {x : Qnn}
-  : (x = (x + x) * Qnnonehalf)%Qnn.
-Proof. 
-unfold Qnnonehalf. apply Qnneq_prop. unfold Qnnmult, Qnnplus.
-simpl. unfold Qnneq. simpl. apply Qc_is_canon. reduceQ.
-simpl. field.
-Qed.
-
-Local Close Scope Q. 
-Local Close Scope Qc.
-
-Lemma redistribute_onehalf : forall q x y,
- (   (q + (x + y)) * Qnnonehalf
-  = (q * Qnnonehalf + x) * Qnnonehalf + (q * Qnnonehalf + y) * Qnnonehalf
-  )%Qnn.
-Proof.
-intros. rewrite (@Qnnonehalf_split q) at 1. ring. 
-Qed. 
-
 Lemma LPRQnn_plus {x y : Qnn} 
   : LPRQnn x + LPRQnn y = LPRQnn (x + y)%Qnn.
 Proof.
@@ -465,7 +444,7 @@ Proof. refine (
 Defined.
 
 Lemma LPRmax_le_and {x y z : LPReal} 
-  : x <= y -> y <= z -> LPRmax x y <= z.
+  : x <= z -> y <= z -> LPRmax x y <= z.
 Proof. intros.
 unfold LPRle; simpl in *; intros; intuition.
 Qed.
@@ -829,9 +808,21 @@ intros. apply Valeq_compat.
 unfold Valeq. intros. simpl. ring.
 Qed.
 
+Definition Valge {A : Type} (x y : Valuation A)
+  := Valle x y.
+
+Infix "<=" := Valle : Val_scope.
+Infix ">=" := Valge : Val_scope.
+Infix "+" := add : Val_scope.
+Infix "*" := scale : Val_scope.
+
+Notation "'0'" := zeroVal : Val_scope.
+
+Delimit Scope Val_scope with Val.
+
 Definition pchoice {A : Type} (p q : LPReal)
   (mu mu' : Valuation A) : Valuation A
-  := add (scale p mu) (scale q mu').
+  := (p * mu + q * mu')%Val.
 
 Lemma pchoice_prob {A : Type} {p q : LPReal}
   {mu mu' : Valuation A} :
@@ -846,14 +837,9 @@ Qed.
 Require Fin Vector.
 
 Fixpoint uniform_helper {A : Type} (p : LPReal) (xs : list A) := match xs with
-  | nil => zeroVal
-  | (x :: xs')%list => add (scale p (unit x)) (uniform_helper p xs')
+  | nil => 0%Val
+  | (x :: xs')%list => (p * unit x + uniform_helper p xs')%Val
 end.
-
-Fixpoint Qnnnat (n : nat) : Qnn := match n with 
-  | 0 => 0%Qnn
-  | S n' => (1 + Qnnnat n')%Qnn
-  end.
 
 Lemma LPRQnn_eq {x y : Qnn} : x = y -> LPRQnn x = LPRQnn y.
 Proof. intros; subst; reflexivity. Qed.
@@ -868,12 +854,6 @@ induction xs.
   rewrite <- LPRQnn_plus. ring.
 Qed.
 
-
-Definition Qnnfrac (n : nat) := Qnninv (Qnnnat n).
-
-Local Close Scope Q.
-Local Close Scope Qc.
-
 Definition uniform {A : Type} {n : nat} (xs : Vector.t A (S n)) :=
   uniform_helper (LPRQnn (Qnnfrac (S n))) (Vector.to_list xs).
 
@@ -887,14 +867,6 @@ Qed.
 Lemma LPRQnn_mult {x y : Qnn} : LPRQnn x * LPRQnn y = LPRQnn (x * y)%Qnn.
 Proof. 
 Admitted.
-
-Lemma Qnnnatfrac {n : nat} : (Qnnnat (S n) * Qnnfrac (S n) = 1)%Qnn.
-Proof. unfold Qnnfrac. apply Qnnmult_inv_r. simpl.
-replace 0%Qnn with (0 + 0)%Qnn by ring.
-replace (1 + Qnnnat n)%Qnn with (Qnnnat n + 1)%Qnn by ring.
-apply Qnnplus_le_lt_compat. apply nonneg.
-apply Qnnlt_alt. reflexivity.
-Qed.
 
 
 Lemma uniform_prob {A : Type} : forall {n : nat} {xs : Vector.t A (S n)}
@@ -1462,7 +1434,7 @@ Definition rejection_Prob_lemmaT {A : Type} (v : Valuation A)
   (predPos : v (fun x => pred x = true) p)
   (n : nat) :
  (fixn (rejectionFunc v pred) n) (K True) >= 
-   (LPRQnn (Qnnminus 1%Qnn (Qnnpow p n) (Qnnpow_le ple1))).
+   (LPRQnn (Qnnminus 1%Qnn (p ^ n) (Qnnpow_le ple1))).
 Proof. 
 induction n. 
 - simpl. apply LPRQnn_le. apply Qnnminus_le.
@@ -1470,9 +1442,6 @@ induction n.
   apply Qnnle_refl.
 -  simpl. 
 Admitted. 
-
-Require Import Qcanon. 
-Local Close Scope Qc.
 
 Lemma LPRsup_constant {A : Type} (x : LPReal) :
   A -> LPRsup (fun _ : A => x) = x.
@@ -1483,11 +1452,11 @@ Qed.
 
 Lemma smallPowers {p : Qnn} : (p < 1)%Qnn
   -> forall (q : Qnn), (q > 0)%Qnn 
-  -> exists (n : nat), (Qnnpow p n < q)%Qnn.
+  -> exists (n : nat), (p ^ n < q)%Qnn.
 Admitted.
 
 Lemma Qnnpowsup {p : Qnn} (plt1 : (p < 1)%Qnn)
-  : LPRsup (fun n => LPRQnn (Qnnminus 1%Qnn (Qnnpow p n) (Qnnpow_le (Qnnlt_le_weak plt1)))) = 1.
+  : LPRsup (fun n => LPRQnn (Qnnminus 1%Qnn (p ^ n) (Qnnpow_le (Qnnlt_le_weak plt1)))) = 1.
 Proof. 
 apply LPReq_compat. split.
 - replace 1 with (LPRsup (fun _ : nat => 1)).
@@ -1902,3 +1871,318 @@ Proof. refine (
   {| pdf := fun p : A * B => let (x, y) := p in pdfmu x * pdfnu y |}
 ).
 Abort.
+
+Lemma unit_prob {A : Type} {x : A} : unit x (K True) = 1.
+Proof. apply LPRind_true. unfold K. constructor. Qed.
+
+Definition bernoulli (p : Qnn) (ple1 : (p <= 1)%Qnn)
+  : Valuation bool :=
+ pchoice (LPRQnn p) (LPRQnn (Qnnminus 1%Qnn p ple1))
+  (unit true) (unit false).
+
+Lemma bernoulli_prob {p : Qnn} {ple1 : (p <= 1)%Qnn}
+  : bernoulli p ple1 (K True) = 1.
+Proof. apply pchoice_prob; try apply unit_prob.
+rewrite LPRQnn_plus.
+apply LPRQnn_eq. apply Qnnminus_plus.
+Qed.
+
+Lemma bind_prob {A B : Type} {mu : Valuation A}
+  {f : A -> Valuation B}
+  : mu (K True) = 1
+  -> (forall a, (f a) (K True) = 1)
+  -> bind mu f (K True) = 1.
+Proof.
+intros Hmu Hf. simpl.
+rewrite <- Hmu. 
+rewrite <- int_indicator.
+apply int_pointwise_eq. unfold pointwise.
+unfold K.
+rewrite LPRind_true by trivial.
+intros a.
+apply LPReq_compat_backwards.
+apply Hf.
+Qed.
+
+Fixpoint binomial (p : Qnn) (ple1 : (p <= 1)%Qnn)
+  (n : nat)
+  : Valuation nat := match n with
+  | 0 => unit 0%nat
+  | S n' => bind (bernoulli p ple1) (fun b => 
+   let inc := if b then S else fun x => x in
+  (map inc (binomial p ple1 n')))
+  end. 
+
+Lemma binomial_prob (p : Qnn) (ple1 : (p <= 1)%Qnn)
+  (n : nat) : binomial p ple1 n (K True) = 1.
+Proof.
+induction n; simpl.
+- unfold K. apply LPRind_true. constructor.
+- unfold K in *. rewrite IHn. 
+rewrite <- (LPRind_true True) by trivial. 
+rewrite int_indicator.
+rewrite LPRind_true by trivial. apply bernoulli_prob.
+Qed.
+
+Require Import Alea.BinCoeff.
+
+Lemma val_iff {A : Type} {mu : Valuation A}
+  {P Q : A -> Prop} : (forall a, P a <-> Q a) -> mu P = mu Q.
+Proof.
+intros. apply LPReq_compat. split; apply monotonic; apply H.
+Qed.
+
+Definition restrict {A : Type} (mu : Valuation A)
+  (P : A -> Prop) : Valuation A.
+Proof.
+refine (
+{| val := fun Q => mu (fun x => P x /\ Q x) |}
+).
+- simpl. erewrite val_iff. apply strict. unfold K.
+  intros. intuition. 
+- intros. apply monotonic. intros. destruct H0.
+  split. assumption. apply H. assumption.
+- intros. replace 
+  (mu (fun x : A => P x /\ U x /\ V x)) with
+  (mu (fun x => (P x /\ U x) /\ (P x /\ V x))). replace 
+  (mu (fun x : A => P x /\ (U x \/ V x))) with
+  (mu (fun x => (P x /\ U x) \/ (P x /\ V x))).
+  apply modular. apply val_iff. intros. intuition.
+  apply val_iff. intros. intuition.
+Defined.
+
+Lemma restrict_monotonic {A : Type} {mu : Valuation A}
+  { P Q : A -> Prop} : (forall a, P a -> Q a) 
+  -> (restrict mu P <= restrict mu Q)%Val.
+Proof.
+intros. unfold Valle. intros p. simpl.
+apply monotonic. intros; intuition.
+Qed.
+
+Lemma restrict_true {A : Type} {mu : Valuation A}
+  { P : A -> Prop } : (forall a, P a)
+  -> restrict mu P = mu.
+Proof.
+intros. apply Valeq_compat. unfold Valeq.
+intros Q. simpl. apply val_iff. intros. intuition.
+Qed.
+
+Lemma restrict_false {A : Type} {mu : Valuation A}
+  {P : A -> Prop} : A -> (forall a, ~ P a)
+  -> restrict mu P = zeroVal.
+Proof. intros. apply Valeq_compat. unfold Valeq. 
+intros Q. simpl. erewrite val_iff. apply strict.
+intros; unfold K; intuition. apply (H a). assumption.
+Qed.
+
+Lemma LPRmax_le {x y x' y' : LPReal} 
+  : x <= x' -> y <= y' -> LPRmax x y <= LPRmax x' y'.
+Proof.
+intros. unfold LPRle. intros q Hmax. simpl in *.
+destruct Hmax; [left | right].
+- apply H. assumption.
+- apply H0. assumption.
+Qed.
+
+Lemma simple_int_monotonic_val {A : Type} {f : Simple A}
+  {mu mu' : Valuation A}
+  : (mu <= mu')%Val -> SimpleIntegral mu f <= SimpleIntegral mu' f.
+Proof. intros. induction f; simpl.
+- apply LPRmult_le_compat. apply LPRle_refl. apply H.
+- simpl. apply LPRmax_le; assumption.
+Qed.
+
+Lemma int_monotonic_val {A : Type} {f : A -> LPReal}
+  {mu mu' : Valuation A}
+  : (mu <= mu')%Val -> integral f mu <= integral f mu'.
+Proof. intros.
+unfold integral. apply LPRsup_monotonic.
+intros. destruct a. simpl. apply simple_int_monotonic_val.
+assumption.
+Qed.
+
+Lemma LPRmax_plus {x x' y y' : LPReal}
+  : LPRmax (x + x') (y + y') <= LPRmax x y + LPRmax x' y'.
+Proof.
+apply LPRmax_le_and; apply LPRplus_le_compat; apply LPRmax_le_or;
+  (left; apply LPRle_refl) || (right; apply LPRle_refl).
+Qed.
+
+Lemma simple_int_sub_adds_val {A : Type} {f : Simple A}
+  {mu mu' : Valuation A}
+  : SimpleIntegral (mu + mu')%Val f 
+  <= SimpleIntegral mu f + SimpleIntegral mu' f.
+Proof.
+induction f; simpl.
+- assert (forall x y, x = y -> x <= y). intros; subst; apply LPRle_refl. 
+  apply H. ring.
+- simpl in *. eapply LPRle_trans. eapply LPRmax_le; eassumption.
+  apply LPRmax_plus.
+Qed.
+
+Lemma int_adds_val {A : Type} {f : A -> LPReal}
+  {mu mu' : Valuation A}
+  : integral f (mu + mu')%Val = integral f mu + integral f mu'.
+Proof.
+Admitted.
+
+Lemma LPRmax_scales {c x y : LPReal} 
+  : LPRmax (c * x) (c * y) = c * LPRmax x y.
+Proof. 
+apply LPReq_compat. split.
+- apply LPRmax_le_and; (apply LPRmult_le_compat;
+  [ apply LPRle_refl 
+  | apply LPRmax_le_or; auto using LPRle_refl]).
+- unfold LPRle; simpl; intros. 
+  destruct H as [a [b [ca [xyb qab]]]].
+  destruct xyb; [left | right];
+  exists a; exists b; auto.
+Qed.
+
+Lemma LPRsup_scales {A : Type} {f : A -> LPReal}
+  {c : LPReal}
+  : c * LPRsup f = LPRsup (fun x => c * f x).
+Proof.
+apply LPReq_compat; split.
+- unfold LPRle; simpl; intros.
+  destruct H as [a [b [ca [sup qab]]]].
+  destruct sup. exists x. exists a. exists b. intuition.
+- apply LPRsup_le. intros. apply LPRmult_le_compat.
+  apply LPRle_refl. apply LPRsup_ge.
+Qed.
+
+Lemma simple_int_scales_val {A : Type} {f : Simple A}
+  {mu : Valuation A} {c : LPReal}
+  : SimpleIntegral (c * mu)%Val f = c * SimpleIntegral mu f.
+Proof. induction f; simpl in *.
+- ring. 
+- rewrite IHf1. rewrite IHf2. apply LPRmax_scales.
+Qed.
+
+Lemma int_scales_val {A : Type} {f : A -> LPReal}
+  {mu : Valuation A} {c : LPReal}
+  : integral f (c * mu)%Val = c * integral f mu.
+Proof.
+unfold integral. symmetry. 
+replace (fun pr : {s : Simple A | pointwise LPRle (SimpleEval s) f} =>
+      SimpleIntegral (c * mu)%Val (proj1_sig pr)) with 
+  (fun pr : {s : Simple A | pointwise LPRle (SimpleEval s) f} =>
+      c * SimpleIntegral mu (proj1_sig pr)).
+apply LPRsup_scales.
+apply functional_extensionality. intros. 
+symmetry. apply simple_int_scales_val.
+Qed.
+
+Definition val_destruct {A : Type} (mu : Valuation A)
+  (P : A -> Prop) : Valuation A :=
+  (restrict mu P + restrict mu (fun a => ~ P a))%Val.
+
+Lemma val_destruct_dec {A : Type} {mu : Valuation A}
+  {P : A -> Prop} : (forall a, {P a} + {~ P a})
+  -> val_destruct mu P = mu.
+Proof.
+intros dec_P.
+apply Valeq_compat.
+unfold Valeq. intros Q. simpl. apply LPReq_compat. split.
+- rewrite modular. replace (mu (fun z : A => (P z /\ Q z) /\ ~ P z /\ Q z))
+  with 0. rewrite (SRadd_0_l LPRsrt). apply monotonic.
+  intuition.
+  erewrite val_iff. symmetry. apply strict. unfold K; intros; intuition.
+- eapply LPRle_trans. 2:apply union_bound2. simpl.
+  apply monotonic. intros. 
+  destruct (dec_P z); [left | right]; intuition.
+Qed.
+
+Lemma Qnnnat_plus {x y : nat} : (Qnnnat (x + y) = Qnnnat x + Qnnnat y)%Qnn.
+Proof.
+induction x.
+- simpl; ring.
+- simpl. rewrite IHx. ring.
+Qed.
+
+Lemma minus_Succ {k n : nat} : (S k <= n -> S (n - S k) = n - k)%nat.
+Proof.
+intros. rewrite Minus.minus_Sn_m. simpl. reflexivity. assumption.
+Qed.
+
+Lemma binomial_bounded {p : Qnn} {ple1 : (p <= 1)%Qnn}
+  {n : nat} (k : nat) : (n < k)%nat -> (binomial p ple1 n) (eq k) = 0.
+Proof.
+intros. generalize dependent k. induction n; intros.
+- simpl. rewrite LPRind_false. reflexivity.
+  unfold not; intros. subst. 
+  apply Lt.lt_0_neq in H. apply H. reflexivity.
+- simpl. unfold bernoulli, pchoice. rewrite int_adds_val.
+  repeat rewrite int_scales_val. repeat rewrite int_dirac.
+  rewrite IHn.
+  assert ((binomial p ple1 n) (fun x : nat => k = S x) = 0).
+  pose proof (Lt.S_pred _ _ H).
+  rewrite (val_iff (Q:= eq (pred k))).
+  apply IHn. unfold lt in *. rewrite H0 in H. apply le_S_n.
+  assumption. intros. split; intros. rewrite H1. simpl. reflexivity.
+  rewrite H0. congruence. rewrite H0. ring.
+  apply Lt.lt_S_n. apply Lt.lt_S. assumption.
+Qed.
+  
+  
+
+Lemma binomial_pdf (p : Qnn) (ple1 : (p <= 1)%Qnn)
+  (n : nat) (k : nat) :
+  (k <= n)%nat ->
+    (binomial p ple1 n) (eq k)
+  = LPRQnn (Qnnnat (comb k n)
+    * p ^ k * Qnnminus 1 p ple1 ^ (n - k))%Qnn.
+Proof. generalize dependent k.
+induction n.
+- intros. apply Le.le_n_0_eq in H. subst. simpl.
+  rewrite LPRind_true by reflexivity.
+  apply LPRQnn_eq. ring.
+- intros k. induction k; intros.
+  + simpl. specialize (IHn 0%nat (Le.le_0_n _)).
+    rewrite comb_0_n in IHn. simpl in IHn.
+    rewrite <- Minus.minus_n_O in IHn.
+    replace 
+     (((1 + 0) * 1 * (Qnnminus 1 p ple1 * Qnnminus 1 p ple1 ^ n))%Qnn)
+     with
+     (Qnnminus 1 p ple1 * ((1 + 0) * 1 * (Qnnminus 1 p ple1 ^ n)))%Qnn
+     by ring.
+    rewrite <- LPRQnn_mult. rewrite <- IHn. unfold bernoulli.
+    unfold pchoice.
+    rewrite int_adds_val. do 2 rewrite int_scales_val.
+    simpl. do 2 rewrite int_dirac.
+    replace ((binomial p ple1 n) (fun x : nat => 0%nat = S x))
+    with 0. replace (fun x : nat => 0%nat = x) with (eq 0%nat)
+     by (extensionality a; reflexivity). 
+    ring. erewrite val_iff. symmetry. apply strict.
+    unfold K. intuition.
+  + simpl. unfold bernoulli. unfold pchoice.
+    rewrite int_adds_val. do 2 rewrite int_scales_val. 
+    simpl. do 2 rewrite int_dirac. 
+    rewrite (val_iff (Q := eq k)).
+    specialize (IHk (Le.le_Sn_le _ _ H)).
+    pose proof (IHn k (le_S_n _ _ H)).
+    rewrite H0.
+    destruct (Compare_dec.le_dec (S k) n).
+    * specialize (IHn (S k) l). 
+      replace (fun x : nat => S k = x) with (eq (S k))
+       by (extensionality a; reflexivity).
+      rewrite IHn. simpl. repeat rewrite LPRQnn_mult.
+      rewrite LPRQnn_plus. apply LPRQnn_eq. 
+      pose proof (@Qnnminus_plus p 1%Qnn ple1).
+      rewrite Qnnnat_plus.
+      replace (Qnnminus 1 p ple1 ^ (n - k))%Qnn
+      with    (Qnnminus 1 p ple1 * Qnnminus 1 p ple1 ^ (n - S k))%Qnn.
+      ring.
+      rewrite <- (@minus_Succ k n) by assumption.
+      simpl. reflexivity.
+    * assert (k = n). apply Le.le_antisym. apply le_S_n. assumption.
+      fold (lt k n) in n0. destruct (Lt.le_or_lt n k). assumption.
+      contradiction. subst. repeat rewrite comb_n_n.
+      repeat rewrite comb_Sn_n.
+      replace ((binomial p ple1 n) (fun x : nat => S n = x)) with (LPRQnn 0%Qnn).
+      repeat rewrite LPRQnn_mult. repeat rewrite LPRQnn_plus.
+      apply LPRQnn_eq. simpl. ring.
+      symmetry. apply binomial_bounded. apply Lt.lt_n_Sn.
+    * intros. split; intros; congruence.
+Qed.
+      
