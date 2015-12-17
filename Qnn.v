@@ -394,16 +394,55 @@ Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare;
 unfold Qnnle; simpl; assumption.
 Qed.
 
-Definition Qnnminus (x y : Qnn) (prf : y <= x) : Qnn.
+Definition Qnnminus (x y : Qnn) : Qnn.
+Proof.
+refine (
+  {| qnn := match (x ?= y)%Qnn with
+   | Lt => 0%Qnn
+   | Eq => 0%Qnn
+   | Gt => x - y
+   end
+  |}
+).
+destruct (x ?= y)%Qnn eqn:destr.
+- apply nonneg.
+- apply nonneg.
+- apply -> Qcle_minus_iff.
+  apply Qnnlt_le_weak. apply Qnngt_alt.
+  assumption.
+Defined.
+
+Infix "-" := Qnnminus : Qnn_scope.
+
+Lemma Qnnminus_Qc {x y : Qnn} : y <= x ->
+  qnn (x - y) = (qnn x - qnn y)%Qc.
+Proof.
+intros ylex. simpl.
+destruct (x ?= y) eqn:destr; simpl.
+- apply Qnneq_alt in destr. subst. ring.
+- apply Qnnlt_alt in destr.
+  apply Qnnlt_not_le in destr.
+  specialize (destr ylex). contradiction.
+- reflexivity.
+Qed.
+
+Definition Qnnminusp (x y : Qnn) (prf : y <= x) : Qnn.
 Proof. refine (
   {| qnn := x - y |}
 ). apply -> Qcle_minus_iff. assumption.
 Defined. 
 
-Definition Qnnminus_irrel {x y : Qnn} {p q : y <= x}
-  : Qnnminus x y p = Qnnminus x y q.
+Definition Qnnminusp_irrel {x y : Qnn} {p q : y <= x}
+  : Qnnminusp x y p = Qnnminusp x y q.
 Proof.
 apply Qnneq_prop. unfold Qnneq. simpl. reflexivity.
+Qed.
+
+Lemma Qnnminus_equiv {x y : Qnn} {ylex : y <= x}
+  : Qnnminusp x y ylex = Qnnminus x y.
+Proof.
+apply Qnneq_prop. unfold Qnneq. symmetry. apply Qnnminus_Qc.
+assumption.
 Qed.
 
 Fixpoint Qnnpow (b : Qnn) (e : nat) := match e with
@@ -421,46 +460,57 @@ replace 1 with (1 * 1) by ring.
 apply Qnnmult_le_compat; assumption.
 Qed.
 
-Lemma Qnnminus_le {x y z : Qnn} (ylex : (y <= x)%Qnn)
-  : (Qnnminus x y ylex <= z <-> x <= y + z)%Qnn.
+Lemma Qnnminus_le {x y z : Qnn} : y <= x 
+  -> (x - y <= z <-> x <= y + z).
 Proof.
 split; intros. 
 - unfold Qnnle. apply Qcle_minus_iff. simpl.
   replace (y + z + - x)%Qc with (z - (x - y))%Qc by ring.
-  apply -> Qcle_minus_iff. apply H.
-- unfold Qnnle. apply Qcle_minus_iff. simpl.
+  apply -> Qcle_minus_iff. rewrite <- Qnnminus_Qc by assumption. 
+  apply H0.
+- unfold Qnnle. rewrite Qnnminus_Qc by assumption. 
+  apply Qcle_minus_iff. simpl.
   replace (z + - (x - y))%Qc with (y + z - x)%Qc by ring.
-  apply -> Qcle_minus_iff. apply H. 
+  apply -> Qcle_minus_iff. apply H0. 
 Qed.
 
-Lemma Qnnminus_lt_l {x y z : Qnn} (ylex : (y <= x)%Qnn)
-  : (Qnnminus x y ylex < z <-> x < y + z)%Qnn.
+Lemma Qnnminus_lt_l {x y z : Qnn} : (y <= x)
+  -> (x - y < z <-> x < y + z).
 Proof.
 split; intros. 
 - unfold Qnnle. apply Qclt_minus_iff. simpl.
   replace (y + z + - x)%Qc with (z - (x - y))%Qc by ring.
-  apply -> Qclt_minus_iff. apply H.
-- unfold Qnnle. apply Qclt_minus_iff. simpl.
+  apply -> Qclt_minus_iff. 
+  rewrite <- Qnnminus_Qc by assumption.
+  apply H0.
+- apply Qclt_minus_iff. rewrite Qnnminus_Qc by assumption.
   replace (z + - (x - y))%Qc with (y + z - x)%Qc by ring.
-  apply -> Qclt_minus_iff. apply H. 
+  apply -> Qclt_minus_iff. apply H0. 
 Qed.
 
-Lemma Qnnminus_lt_r {x y z : Qnn} (ylex : (y <= x)%Qnn)
-  : (z < Qnnminus x y ylex <-> y + z < x)%Qnn.
+Lemma Qnnminus_lt_r {x y z : Qnn} : y <= x
+  -> (z < x - y <-> y + z < x).
 Proof.
 split; intros. 
 - unfold Qnnlt. apply Qclt_minus_iff. simpl.
   replace (x + - (y + z))%Qc with ((x - y) - z)%Qc by ring.
-  apply -> Qclt_minus_iff. apply H.
-- unfold Qnnlt. apply Qclt_minus_iff. simpl.
+  apply -> Qclt_minus_iff. 
+  rewrite <- Qnnminus_Qc by assumption.
+  apply H0.
+- unfold Qnnlt. apply Qclt_minus_iff. 
+  rewrite Qnnminus_Qc by assumption. 
   replace (x - y + - z)%Qc with (x - (y + z))%Qc by ring.
-  apply -> Qclt_minus_iff. apply H. 
+  apply -> Qclt_minus_iff. apply H0. 
 Qed.
 
-Lemma Qnnminus_plus {x y : Qnn} {xley : (x <= y)%Qnn} 
-  : (x + Qnnminus y x xley)%Qnn = y.
+
+Lemma Qnnminus_plus {x y : Qnn}
+  : x <= y -> (x + (y - x)) = y.
 Proof.
-apply Qnneq_prop. unfold Qnneq. simpl. ring.
+  intros. apply Qnneq_prop. unfold Qnneq.
+  replace (qnn (x + (y - x))) 
+  with (qnn x + qnn (y - x)%Qnn)%Qc by reflexivity. 
+  rewrite Qnnminus_Qc by assumption. ring.
 Qed.
 
 Lemma Qnnonehalf_split {x : Qnn}

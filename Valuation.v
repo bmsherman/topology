@@ -250,17 +250,20 @@ intros. apply Valeq_compat.
 unfold Valeq. intros. simpl. ring.
 Qed.
 
-Definition pchoice {A : Type} (p q : LPReal)
+Definition pchoice {A : Type} (p : Qnn)
   (mu mu' : Valuation A) : Valuation A
-  := (p * mu + q * mu')%Val.
+  := (LPRQnn p * mu + LPRQnn (1 - p)%Qnn * mu')%Val.
 
-Lemma pchoice_prob {A : Type} {p q : LPReal}
+Lemma pchoice_prob {A : Type} {p : Qnn}
   {mu mu' : Valuation A} :
-    (p + q = 1) -> mu (K True) = 1 -> mu' (K True) = 1
-  -> (pchoice p q mu mu') (K True) = 1.
+    (p <= 1)%Qnn -> mu (K True) = 1 -> mu' (K True) = 1
+  -> (pchoice p mu mu') (K True) = 1.
 Proof.
 intros. unfold pchoice. simpl. rewrite H0. rewrite H1.
-replace (p * 1 + q * 1) with (p + q) by ring.
+ring_simplify.
+rewrite LPRQnn_plus.
+apply LPRQnn_eq.
+apply Qnnminus_plus.
 assumption.
 Qed.
 
@@ -820,15 +823,24 @@ Proof. intros. induction H. apply Valle_refl.
 eapply Valle_trans. eassumption. apply fixnmono. assumption.
 Qed.
 
-(** If we have a valuation functional which is monotonic, we can take
-    its fixpoint! *)
-Definition fixValuation {A : Type}
-  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
-  (f : Valuation A -> Valuation A)
-  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
-  : Valuation A.
+Require Import Equalities Orders GenericMinMax.
+
+Module JoinLat.
+  Record t : Type :=
+  { ty : Type 
+  ; le : ty -> ty -> Prop
+  ; max : ty -> ty -> ty
+  ; max_l : forall x y, le x (max x y)
+  ; max_r : forall x y, le y (max x y)
+  }.
+End JoinLat.
+
+Definition supValuation {A : Type} (I : JoinLat.t)
+  (f : JoinLat.ty I -> Valuation A)
+  (fmono : forall (n m : JoinLat.ty I), JoinLat.le I n m -> (f n <= f m)%Val)
+ : Valuation A.
 Proof. refine (
-  {| val := fun P => LPRsup (fun n => (fixn f n) P) |}
+  {| val := fun P => LPRsup (fun i => (f i) P) |}
 ).
 - apply LPReq_compat. split. 
   + apply LPRsup_le. intros. erewrite <- strict.
@@ -837,18 +849,35 @@ Proof. refine (
 - intros. apply LPRsup_monotonic. intros n.
   apply monotonic. assumption. 
 - intros.
-  rewrite <- LPRsup_nat_ord by (intros; apply fixnmono2; assumption).
-  rewrite <- LPRsup_nat_ord by (intros; apply fixnmono2; assumption).
+  repeat (rewrite <- (LPRsup_sum_lattice _ _ (JoinLat.le I) (JoinLat.max I));
+    try (auto using JoinLat.max_l, JoinLat.max_r))
+   ; try (intros; apply fmono; auto).
   apply LPRsup_eq_pointwise. intros.
   apply modular.
 Defined.
 
+Definition natJoinLat : JoinLat.t :=
+  {| JoinLat.ty := nat
+  ;  JoinLat.le := le
+  ;  JoinLat.max := max
+  ;  JoinLat.max_l := Max.le_max_l
+  ;  JoinLat.max_r := Max.le_max_r
+  |}.
+
+(** If we have a valuation functional which is monotonic, we can take
+    its fixpoint! *)
+Definition fixValuation {A : Type}
+  (f : Valuation A -> Valuation A)
+  (fmono : forall u v, Valle u v -> Valle (f u) (f v))
+  : Valuation A
+  := supValuation natJoinLat (fun n => (fixn f n)) 
+     (fixnmono2 _ fmono).
+
 Lemma fixValuation_subProb {A : Type}
-  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   (f : Valuation A -> Valuation A)
   (fmono : forall u v, Valle u v -> Valle (f u) (f v))
   (fbounded : forall v, val v (K True) <= 1 -> f v (K True) <= 1)
-  : (fixValuation propext f fmono) (K True) <= 1.
+  : (fixValuation f fmono) (K True) <= 1.
 Proof. simpl. apply LPRsup_le.
 intros n. induction n. simpl. apply LPRzero_min.
 simpl. apply fbounded. assumption.
@@ -876,9 +905,8 @@ Qed.
 (** Modify a measure by rejection sampling. *)
 Definition rejection {A : Type} (v : Valuation A)
   (pred : A -> bool) 
-  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   : Valuation A
-  := fixValuation propext (rejectionFunc v pred)
+  := fixValuation (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
  
 Definition rejection_Prob_lemmaT {A : Type} (v : Valuation A)
@@ -889,10 +917,12 @@ Definition rejection_Prob_lemmaT {A : Type} (v : Valuation A)
   (predPos : v (fun x => pred x = true) p)
   (n : nat) :
  (fixn (rejectionFunc v pred) n) (K True) >= 
-   (LPRQnn (Qnnminus 1%Qnn (p ^ n) (Qnnpow_le ple1))).
-Proof. 
+   (LPRQnn (1 - (p ^ n))%Qnn).
+Proof.
+pose proof (fun n => Qnnpow_le ple1 (n := n)).
 induction n. 
 - simpl. apply LPRQnn_le. apply Qnnminus_le.
+  apply Qnnle_refl.
   replace (1 + 0)%Qnn with 1%Qnn by ring.
   apply Qnnle_refl.
 -  simpl. 
@@ -905,8 +935,7 @@ Definition rejection_Prob {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (vProb : v (K True) = 1)
   (predPos : v (fun x => pred x = true) > 0)
-  (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
-  : (rejection v pred propext) (K True) = 1.
+  : (rejection v pred) (K True) = 1.
 Proof.
 apply LPReq_compat. split.
 - apply fixValuation_subProb. intros. unfold rejectionFunc.
@@ -937,7 +966,7 @@ Qed.
 Definition inf_product' {A : Type} (v : Valuation A)
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
   : Valuation (Streams.Stream A)
-  := fixValuation propext (inf_productFunc v) (inf_productFunc_mono v).
+  := fixValuation (inf_productFunc v) (inf_productFunc_mono v).
 
 Lemma inf_product'_wrong {A : Type} (v : Valuation A)
   (propext : forall (P Q : Prop), (P <-> Q) -> P = Q)
@@ -1290,16 +1319,14 @@ Abort.
 Lemma unit_prob {A : Type} {x : A} : unit x (K True) = 1.
 Proof. apply LPRind_true. unfold K. constructor. Qed.
 
-Definition bernoulli (p : Qnn) (ple1 : (p <= 1)%Qnn)
-  : Valuation bool :=
- pchoice (LPRQnn p) (LPRQnn (Qnnminus 1%Qnn p ple1))
-  (unit true) (unit false).
+Definition bernoulli (p : Qnn) : Valuation bool :=
+ pchoice p (unit true) (unit false).
 
-Lemma bernoulli_prob {p : Qnn} {ple1 : (p <= 1)%Qnn}
-  : bernoulli p ple1 (K True) = 1.
-Proof. apply pchoice_prob; try apply unit_prob.
-rewrite LPRQnn_plus.
-apply LPRQnn_eq. apply Qnnminus_plus.
+Lemma bernoulli_prob {p : Qnn}
+  : (p <= 1)%Qnn -> bernoulli p (K True) = 1.
+Proof. 
+intros. unfold bernoulli. apply pchoice_prob; try apply unit_prob.
+assumption.
 Qed.
 
 Lemma bind_prob {A B : Type} {mu : Valuation A}
@@ -1319,17 +1346,16 @@ apply LPReq_compat_backwards.
 apply Hf.
 Qed.
 
-Fixpoint binomial (p : Qnn) (ple1 : (p <= 1)%Qnn)
-  (n : nat)
+Fixpoint binomial (p : Qnn) (n : nat)
   : Valuation nat := match n with
   | 0 => unit 0%nat
-  | S n' => bind (bernoulli p ple1) (fun b => 
+  | S n' => bind (bernoulli p) (fun b => 
    let inc := if b then S else fun x => x in
-  (map inc (binomial p ple1 n')))
+  (map inc (binomial p n')))
   end. 
 
 Lemma binomial_prob (p : Qnn) (ple1 : (p <= 1)%Qnn)
-  (n : nat) : binomial p ple1 n (K True) = 1.
+  (n : nat) : binomial p n (K True) = 1.
 Proof.
 induction n; simpl.
 - unfold K. apply LPRind_true. constructor.
@@ -1337,6 +1363,7 @@ induction n; simpl.
 rewrite <- (LPRind_true True) by trivial. 
 rewrite int_indicator.
 rewrite LPRind_true by trivial. apply bernoulli_prob.
+assumption.
 Qed.
 
 Require Import Alea.BinCoeff.
@@ -1472,8 +1499,10 @@ Proof.
 intros. rewrite Minus.minus_Sn_m. simpl. reflexivity. assumption.
 Qed.
 
-Lemma binomial_bounded {p : Qnn} {ple1 : (p <= 1)%Qnn}
-  {n : nat} (k : nat) : (n < k)%nat -> (binomial p ple1 n) (eq k) = 0.
+Lemma binomial_bounded {p : Qnn} 
+  {n : nat} (k : nat) 
+  : (n < k)%nat 
+  -> (binomial p n) (eq k) = 0.
 Proof.
 intros. generalize dependent k. induction n; intros.
 - simpl. rewrite LPRind_false. reflexivity.
@@ -1482,7 +1511,7 @@ intros. generalize dependent k. induction n; intros.
 - simpl. unfold bernoulli, pchoice. rewrite int_adds_val.
   repeat rewrite int_scales_val. repeat rewrite int_dirac.
   rewrite IHn.
-  assert ((binomial p ple1 n) (fun x : nat => k = S x) = 0).
+  assert ((binomial p n) (fun x : nat => k = S x) = 0).
   pose proof (Lt.S_pred _ _ H).
   rewrite (val_iff (Q:= eq (pred k))).
   apply IHn. unfold lt in *. rewrite H0 in H. apply le_S_n.
@@ -1490,15 +1519,13 @@ intros. generalize dependent k. induction n; intros.
   rewrite H0. congruence. rewrite H0. ring.
   apply Lt.lt_S_n. apply Lt.lt_S. assumption.
 Qed.
-  
-  
 
-Lemma binomial_pdf (p : Qnn) (ple1 : (p <= 1)%Qnn)
+Lemma binomial_pdf (p : Qnn) 
   (n : nat) (k : nat) :
-  (k <= n)%nat ->
-    (binomial p ple1 n) (eq k)
+  (k <= n)%nat -> (p <= 1)%Qnn ->
+    (binomial p n) (eq k)
   = LPRQnn (Qnnnat (comb k n)
-    * p ^ k * Qnnminus 1 p ple1 ^ (n - k))%Qnn.
+    * p ^ k * (1 - p) ^ (n - k))%Qnn.
 Proof. generalize dependent k.
 induction n.
 - intros. apply Le.le_n_0_eq in H. subst. simpl.
@@ -1509,47 +1536,175 @@ induction n.
     rewrite comb_0_n in IHn. simpl in IHn.
     rewrite <- Minus.minus_n_O in IHn.
     replace 
-     (((1 + 0) * 1 * (Qnnminus 1 p ple1 * Qnnminus 1 p ple1 ^ n))%Qnn)
+     (((1 + 0) * 1 * ((1 - p) * (1 - p) ^ n))%Qnn)
      with
-     (Qnnminus 1 p ple1 * ((1 + 0) * 1 * (Qnnminus 1 p ple1 ^ n)))%Qnn
+     ((1 - p) * ((1 + 0) * 1 * ((1 - p) ^ n)))%Qnn
      by ring.
     rewrite <- LPRQnn_mult. rewrite <- IHn. unfold bernoulli.
     unfold pchoice.
     rewrite int_adds_val. do 2 rewrite int_scales_val.
     simpl. do 2 rewrite int_dirac.
-    replace ((binomial p ple1 n) (fun x : nat => 0%nat = S x))
+    replace ((binomial p n) (fun x : nat => 0%nat = S x))
     with 0. replace (fun x : nat => 0%nat = x) with (eq 0%nat)
      by (extensionality a; reflexivity). 
     ring. erewrite val_iff. symmetry. apply strict.
-    unfold K. intuition.
+    unfold K. intuition. assumption.
   + simpl. unfold bernoulli. unfold pchoice.
     rewrite int_adds_val. do 2 rewrite int_scales_val. 
     simpl. do 2 rewrite int_dirac. 
     rewrite (val_iff (Q := eq k)).
     specialize (IHk (Le.le_Sn_le _ _ H)).
     pose proof (IHn k (le_S_n _ _ H)).
-    rewrite H0.
+    rewrite H1 by assumption.
     destruct (Compare_dec.le_dec (S k) n).
     * specialize (IHn (S k) l). 
       replace (fun x : nat => S k = x) with (eq (S k))
        by (extensionality a; reflexivity).
       rewrite IHn. simpl. repeat rewrite LPRQnn_mult.
       rewrite LPRQnn_plus. apply LPRQnn_eq. 
-      pose proof (@Qnnminus_plus p 1%Qnn ple1).
+      pose proof (@Qnnminus_plus p 1%Qnn H0).
       rewrite Qnnnat_plus.
-      replace (Qnnminus 1 p ple1 ^ (n - k))%Qnn
-      with    (Qnnminus 1 p ple1 * Qnnminus 1 p ple1 ^ (n - S k))%Qnn.
+      replace ((1 - p) ^ (n - k))%Qnn
+      with    ((1 - p) * (1 - p) ^ (n - S k))%Qnn.
       ring.
       rewrite <- (@minus_Succ k n) by assumption.
-      simpl. reflexivity.
+      simpl. reflexivity. assumption.
     * assert (k = n). apply Le.le_antisym. apply le_S_n. assumption.
       fold (lt k n) in n0. destruct (Lt.le_or_lt n k). assumption.
       contradiction. subst. repeat rewrite comb_n_n.
       repeat rewrite comb_Sn_n.
-      replace ((binomial p ple1 n) (fun x : nat => S n = x)) with (LPRQnn 0%Qnn).
+      replace ((binomial p n) (fun x : nat => S n = x)) with (LPRQnn 0%Qnn).
       repeat rewrite LPRQnn_mult. repeat rewrite LPRQnn_plus.
       apply LPRQnn_eq. simpl. ring.
       symmetry. apply binomial_bounded. apply Lt.lt_n_Sn.
     * intros. split; intros; congruence.
 Qed.
-      
+
+Definition geoFix (p : Qnn) (f : Valuation nat) : Valuation nat 
+  := pchoice p (map S f) (unit 0%nat).
+
+Ltac simplVal := repeat 
+  (rewrite int_adds_val || rewrite int_scales_val || rewrite int_dirac).
+
+Lemma geoFixmono { p : Qnn } :
+  (forall u v : Valuation nat,
+      (u <= v)%Val -> (geoFix p u <= geoFix p v)%Val).
+Proof. intros.
+       unfold Valle. intros P. simpl.
+       unfold bernoulli, pchoice. simplVal.
+       apply LPRplus_le_compat;
+         (apply LPRmult_le_compat; (apply LPRle_refl || apply H)).
+Qed.
+
+Definition geometric (p : Qnn) : Valuation nat :=
+  fixValuation (geoFix p) geoFixmono.
+
+Theorem fixValuation_fixed_u {A : Type} (f : Valuation A -> Valuation A)
+  (fmono : forall u v : Valuation A, (u <= v)%Val -> (f u <= f v)%Val)
+  : (fixValuation f fmono <= f (fixValuation f fmono))%Val.
+Proof.
+unfold Valle. intros P. apply LPRsup_le. intros n. destruct n; simpl.
+- apply LPRzero_min.
+- apply fmono. unfold Valle; intros. simpl.
+  apply LPRsup_ge2. exists n. apply LPRle_refl.
+Qed.
+
+Definition Continuous {A : Type} (f : Valuation A -> Valuation A) 
+  (fmono : forall u v : Valuation A, (u <= v)%Val -> (f u <= f v)%Val)
+  := forall (I : JoinLat.t) (nonempty : JoinLat.ty I) (g : JoinLat.ty I -> Valuation A)
+       (gmono : forall m n : JoinLat.ty I, JoinLat.le I m n -> (g m <= g n)%Val)
+       (P : A -> Prop),
+      (f (supValuation I g gmono)) P
+    = LPRsup (fun x : JoinLat.ty I => f (g x) P).
+
+Theorem fixValuation_fixed {A : Type} (f : Valuation A -> Valuation A)
+  (fmono : forall u v : Valuation A, (u <= v)%Val -> (f u <= f v)%Val)
+  : Continuous f fmono
+  -> f (fixValuation f fmono) = fixValuation f fmono.
+Proof.
+intros.
+apply Valeq_compat. apply Valle_antisym.
+- unfold Valle. intros P. unfold Continuous in H.
+  unfold fixValuation at 1. rewrite H.
+  apply LPRsup_le. intros n.
+  simpl. apply LPRsup_ge2. exists (S n). apply LPRle_refl. exact 0%nat.
+- apply fixValuation_fixed_u.
+Qed.
+
+Lemma geoFixContinuous : forall (p : Qnn), Continuous (geoFix p) geoFixmono.
+Proof.
+intros p. unfold Continuous. intros.
+simpl. rewrite (@LPRsup_sum_lattice _ _ _ (JoinLat.le I) (JoinLat.max I)).
+repeat (rewrite <- LPRsup_scales).
+rewrite LPRsup_constant. ring. assumption.
+apply (JoinLat.max_l I). apply (JoinLat.max_r I). intros.
+apply LPRmult_le_compat. apply LPRle_refl. apply gmono. assumption.
+intros. apply LPRle_refl.
+Qed.
+
+Lemma Valzero_min {A : Type} : forall v : Valuation A, (0 <= v)%Val.
+Proof. intros. unfold Valle. intros. simpl. apply LPRzero_min. Qed.
+
+Lemma geometricInvariant (p : Qnn) :
+  geometric p = geoFix p (geometric p).
+Proof.
+unfold geometric. symmetry.
+apply fixValuation_fixed. apply geoFixContinuous.
+Qed.
+
+
+Section Queues.
+  
+  Variable lambda : Qnn.
+  Variable mu : Qnn.
+  Hypothesis mule1 : (mu <= 1)%Qnn.
+  Hypothesis lambdaltmu : (lambda < mu)%Qnn.
+
+  Definition u := (lambda * (1 - mu))%Qnn.
+  Definition d := (mu * (1 - lambda))%Qnn.
+
+  Lemma lambdale1 : (lambda <= 1)%Qnn.
+  Proof. 
+    apply Qnnlt_le_weak. eapply Qnnlt_le_trans; eassumption. 
+  Qed.
+
+  Definition newInput : Valuation bool := bernoulli lambda.
+
+  Definition newOutput : Valuation bool := bernoulli mu.
+
+  Definition transition (n : nat) : Valuation nat := match n with
+    | 0 => map (fun inp : bool => if inp then 1%nat else 0%nat) newInput
+    | S n' => bind newInput (fun inp => 
+         let inc := if inp then S else fun x => x in
+             map (fun out : bool => inc (if out then n' else n))
+             newOutput)
+    end.
+
+  Definition rho := (u * Qnninv d)%Qnn.
+
+  Lemma rholt1 : (rho < 1)%Qnn.
+  Proof. 
+  Admitted.
+
+  Definition steadyState : Valuation nat :=
+   pchoice (mu - lambda) (unit 0%nat) (map S (geometric rho)).
+
+  Theorem steadyState_is_steady :
+   bind steadyState transition = steadyState.
+  Proof.
+  apply Valeq_compat. unfold Valeq. intros.
+  unfold steadyState, pchoice.
+  remember (geometric rho) as geo.
+  simpl.
+  repeat rewrite int_adds_val.
+  repeat rewrite int_scales_val.
+  repeat rewrite int_dirac. simpl.
+  rewrite <- change_of_variables.
+  rewrite Heqgeo at 2.
+  rewrite geometricInvariant.
+  rewrite <- Heqgeo.
+  remember (integral (fun x : nat => (transition (S x)) P) geo) as intgeo.
+  simpl. unfold rho, u, d. ring_simplify.
+  Abort.
+
+End Queues.

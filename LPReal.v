@@ -313,7 +313,7 @@ split; unfold LPRle; intros; simpl in *.
   + apply Qnnlt_zero_prop in H0. contradiction.
   + destruct (Qnn_dec y 0%Qnn) as [[H1 | H1] | H1].
     * apply Qnnlt_zero_prop in H1. contradiction.
-    * pose (Qnnminus _ _ (Qnnlt_le_weak H)).
+    * pose (Qnnminusp _ _ (Qnnlt_le_weak H)).
       pose ((Qnnonehalf * Qnnonehalf * q0)%Qnn) as eps.
       admit.
     * apply LPRplusL. simpl.
@@ -655,31 +655,39 @@ Lemma smallPowers {p : Qnn} : (p < 1)%Qnn
 Admitted.
 
 Lemma Qnnpowsup {p : Qnn} (plt1 : (p < 1)%Qnn)
-  : LPRsup (fun n => LPRQnn (Qnnminus 1%Qnn (p ^ n) (Qnnpow_le (Qnnlt_le_weak plt1)))) = 1.
-Proof. 
+  : LPRsup (fun n => LPRQnn (1 - (p ^ n)))%Qnn = 1.
+Proof.
 apply LPReq_compat. split.
 - replace 1 with (LPRsup (fun _ : nat => 1)).
-  apply LPRsup_monotonic. intros n. induction n; simpl.
-   + unfold LPRle. simpl. intros. apply Qnnminus_lt_r in H.
+  apply LPRsup_monotonic. intros n.
+  induction n; simpl.
+   + unfold LPRle. simpl. intros. 
+     apply Qnnminus_lt_r in H; [|apply Qnnle_refl].
      eapply Qnnle_lt_trans; [| eassumption].
      replace q with (0 + q)%Qnn at 1 by ring. apply Qnnplus_le_compat.
      apply nonneg. apply Qnnle_refl. 
    + unfold LPRle. simpl. intros. 
      apply LPRQnn_le in IHn. apply Qnnminus_lt_r in H.
-     apply Qnnminus_le in IHn.
      eapply Qnnle_lt_trans. Focus 2. apply H.
      replace q with (0 + q)%Qnn at 1 by ring.
      apply Qnnplus_le_compat. apply nonneg. apply Qnnle_refl.
+     pose proof (Qnnpow_le (Qnnlt_le_weak plt1) (n := S n)) as pn1.
+     apply pn1.
    + apply LPRsup_constant. exact 0%nat.
 - unfold LPRle; simpl; intros.
-  pose proof (smallPowers plt1 (Qnnminus 1%Qnn q (Qnnlt_le_weak H))).
+  pose proof (Qnnlt_le_weak H) as Hle.
+  pose proof (smallPowers plt1 (1 - q)%Qnn).
   destruct (Qnn_dec q 0%Qnn).
   destruct s. apply Qnnlt_zero_prop in q0. contradiction.
-  assert ((Qnnminus 1 q (Qnnlt_le_weak H) > 0)%Qnn).
-  apply Qnnminus_lt_r. replace (q + 0)%Qnn with q by ring. assumption. 
+  assert (1 - q > 0)%Qnn.
+  apply Qnnminus_lt_r. assumption. 
+  replace (q + 0)%Qnn with q by ring. assumption. 
   apply H0 in H1. destruct H1. exists x. apply Qnnminus_lt_r.
+  apply Qnnpow_le. apply Qnnlt_le_weak. assumption.
   apply Qnnminus_lt_r in H1. rewrite (SRadd_comm Qnnsrt).
-  assumption. subst. exists 1%nat. simpl. apply Qnnminus_lt_r.
+  assumption. assumption. subst. exists 1%nat. simpl. apply Qnnminus_lt_r.
+  replace (p * 1)%Qnn with p by ring. apply Qnnlt_le_weak.
+  assumption.
   replace (p * 1 + 0)%Qnn with p by ring. assumption.
 Qed.
 
