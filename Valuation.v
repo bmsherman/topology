@@ -1805,6 +1805,177 @@ Definition Continuous {A : Type} (f : Valuation A -> Valuation A)
       (f (supValuation I g gmono)) P
     = LPRsup (fun x : JoinLat.ty I => f (g x) P).
 
+Definition ContinuousV {A : Type} (mu : Valuation A)
+  := forall (I : JoinLat.t) (f : JoinLat.ty I -> (A -> Prop))
+       (fmono : forall (m n : JoinLat.ty I), JoinLat.le I m n -> (forall a, f m a -> f n a))
+       , mu (fun a => exists n, f n a) = LPRsup (fun n => mu (f n)).
+
+Lemma unit_ContinuousV {A : Type} : forall (a : A), ContinuousV (unit a).
+Proof.
+unfold ContinuousV. intros.
+simpl. symmetry. apply LPRle_antisym.
+- apply LPRsup_le. intros n. apply LPRind_imp.
+  intros. exists n. assumption.
+- unfold LPRle. simpl. intros. destruct H as [[n fna] qlt1].
+  exists n. intuition.
+Qed.
+
+Lemma LPRsup_sum_jlat : forall (I : JoinLat.t), let A := JoinLat.ty I in 
+  forall (f g : A -> LPReal) ,
+    (forall n m : A, JoinLat.le I n m -> f n <= f m) ->
+    (forall n m : A, JoinLat.le I n m -> g n <= g m) ->
+    LPRsup (fun x : A => f x + g x) = LPRsup f + LPRsup g.
+Proof.
+intros. eapply LPRsup_sum_lattice.
+apply JoinLat.max_l.
+apply JoinLat.max_r.
+assumption. assumption.
+Qed.
+
+Lemma add_ContinuousV {A : Type} : forall (mu nu : Valuation A),
+  ContinuousV mu -> ContinuousV nu -> ContinuousV (mu + nu)%Val.
+Proof.
+intros. unfold ContinuousV in *. intros. simpl.
+rewrite (LPRsup_sum_jlat I).
+apply LPRplus_eq_compat. apply H. assumption.
+apply H0. assumption. 
+intros. apply monotonic. apply fmono. assumption.
+intros. apply monotonic. apply fmono. assumption.
+Qed.
+
+Lemma LPRsup_iterated {A B : Type} : forall (f : A -> B -> LPReal),
+   LPRsup (fun a => LPRsup (fun b => f a b))
+ = LPRsup (fun b => LPRsup (fun a => f a b)).
+Proof.
+intros. apply LPRle_antisym; unfold LPRle; simpl; intros.
+- destruct H as [a [b fab]]. exists b. exists a. assumption.
+- destruct H as [b [a fab]]. exists a. exists b. assumption.
+Qed.
+
+Lemma sup_ContinuousV {A : Type} : forall (I : JoinLat.t) 
+  (f : JoinLat.ty I -> Valuation A)
+  (fmono : forall m n : JoinLat.ty I, JoinLat.le I m n -> (f m <= f n)%Val)
+  (fcont : forall n : JoinLat.ty I, ContinuousV (f n)),
+  ContinuousV (supValuation I f fmono).
+Proof.
+intros. unfold ContinuousV.
+intros. simpl.
+unfold ContinuousV in fcont.
+replace (fun i : JoinLat.ty I =>
+      (f i) (fun a : A => exists n : JoinLat.ty I0, f0 n a))
+with (fun i : JoinLat.ty I =>
+      LPRsup (fun n0 : JoinLat.ty I0 => (f i) (f0 n0))).
+apply LPRsup_iterated.
+extensionality i. symmetry. apply fcont.
+assumption.
+Qed. 
+
+Require Fin. 
+(* Can probably be generalized to more general families of types than Fin
+   and Nat *)
+
+Lemma restrict_fin_monotonic : forall {mu : Valuation nat}
+  (m n : nat), (m <= n)%nat 
+  -> (restrict mu (fun k => (k < m)%nat) <= restrict mu (fun k => (k < n)%nat))%Val.
+Proof. 
+intros. unfold Valle; intros. simpl. apply monotonic.
+intros. destruct H0. split. eapply Le.le_trans; eassumption. assumption.
+Qed.
+
+Lemma continuous_val_fin_nat : forall (mu : Valuation nat),
+  ContinuousV mu ->
+  mu = supValuation natJoinLat (fun n => restrict mu (fun k => (k < n)%nat)) 
+   restrict_fin_monotonic.
+Proof. intros. apply Valeq_compat. unfold Valeq. intros. simpl.
+unfold ContinuousV in H. specialize (H natJoinLat). rewrite <- H.
+apply val_iff. intros k. split; intros. exists (S k). intuition.
+destruct H0 as [n [kn Pk]]. assumption.
+simpl. intros. destruct H1. split. eapply Le.le_trans; eassumption.
+assumption.
+Qed.
+
+Definition ftonat {n : nat} (x : Fin.t n) : nat :=
+  proj1_sig (Fin.to_nat x).
+
+Lemma ftonat_inj {n : nat} : forall (x y : Fin.t n),
+  ftonat x = ftonat y -> x = y.
+Proof.
+unfold ftonat.
+intros.
+destruct (Fin.to_nat x) eqn:nx. destruct (Fin.to_nat y) eqn:ny.
+simpl in *. subst.
+assert (l0 = l). 
+admit. (* provable since le_nat has proof irrelevance but 
+          can't find a predone proof yet *)
+subst. 
+rewrite <- (Fin.of_nat_to_nat_inv x).
+rewrite <- (Fin.of_nat_to_nat_inv y).
+rewrite nx. rewrite ny. reflexivity.
+Qed.
+
+Lemma nat_restrict_inject : forall (mu : Valuation nat) (n : nat) (P : nat -> Prop)
+  , restrict mu (fun k => (k < n)%nat) P 
+  = (inject ftonat (@ftonat_inj n) mu) (fun x => P (ftonat x)).
+Proof.
+intros. simpl. apply val_iff. intros; split; intros.
+destruct H. exists (Fin.of_nat_lt H).
+assert (ftonat (Fin.of_nat_lt H) = a).
+admit. split. rewrite H1. assumption. assumption.
+destruct H as [fa [Pfa faa]].
+rewrite faa in Pfa.
+unfold ftonat in faa.
+destruct (Fin.to_nat fa). simpl in faa. subst. intuition.
+Qed.
+
+Import NPeano.Nat.
+
+Lemma finiteFin : forall n : nat, Finite.T (Fin.t n).
+Proof. intros. induction n.
+- eapply F.FIso. Focus 2. eapply Iso.Sym. eapply Finite.finIso. 
+  simpl. apply F.F0.
+- eapply F.FIso. Focus 2. eapply Iso.Sym. eapply Finite.finIso.
+  simpl. apply F.FPlus. apply F.F1. eapply F.FIso. eassumption.
+  apply Finite.finIso.
+Qed.
+
+Lemma nat_dec : forall (mu nu : Valuation nat)
+  , (forall (n : nat) (P : Prop), let U x := if eq_dec n x then P else False
+     in mu U = nu U)
+  -> ContinuousV mu -> ContinuousV nu
+  -> mu = nu.
+Proof. intros. 
+rewrite (continuous_val_fin_nat mu) by assumption.
+rewrite (continuous_val_fin_nat nu) by assumption.
+simpl.
+assert (forall n, restrict mu (fun k => (k < n)%nat) = restrict nu (fun k => (k < n)%nat)).
+intros n. apply Valeq_compat. unfold Valeq. intros. 
+do 2 (rewrite nat_restrict_inject).
+replace (inject ftonat (@ftonat_inj n) mu) with (inject ftonat (@ftonat_inj n) nu).
+reflexivity. apply (fin_dec (finiteFin n)).
+intros.  simpl. specialize (H (ftonat a) P0).
+
+assert (forall x, 
+   (fun b : nat => exists a0 : Fin.t n, U a0 /\ ftonat a0 = b) x
+ <-> (fun x : nat => if eq_dec (ftonat a) x then P0 else False) x).
+intros; split; intros.
+destruct H2 as [a' [Ua' fa']].
+destruct (eq_dec (ftonat a) x).
+unfold U in Ua'. subst. apply ftonat_inj in e. subst.
+destruct (F.eq_dec (finiteFin n) a' a'). assumption. contradiction.
+unfold U in Ua'. destruct (F.eq_dec (finiteFin n) a a').
+subst. apply n0. reflexivity. assumption.
+destruct (eq_dec (ftonat a) x). exists a. intuition.
+unfold U. destruct (F.eq_dec (finiteFin n) a a). assumption.
+congruence. contradiction.
+
+do 2 rewrite (val_iff H2).
+symmetry. apply H.
+
+apply Valeq_compat. unfold Valeq. intros P. simpl. apply LPRsup_eq_pointwise.
+intros. specialize (H2 a). pose proof (f_equal (fun v => val v P) H2).
+apply H3.
+Qed.
+
 Theorem fixValuation_fixed {A : Type} (f : Valuation A -> Valuation A)
   (fmono : forall u v : Valuation A, (u <= v)%Val -> (f u <= f v)%Val)
   : Continuous f fmono
@@ -1822,10 +1993,9 @@ Qed.
 Lemma geoFixContinuous : forall (p : Qnn), Continuous (geoFix p) geoFixmono.
 Proof.
 intros p. unfold Continuous. intros.
-simpl. rewrite (@LPRsup_sum_lattice _ _ _ (JoinLat.le I) (JoinLat.max I)).
+simpl. rewrite (LPRsup_sum_jlat I).
 repeat (rewrite <- LPRsup_scales).
-rewrite LPRsup_constant. ring. assumption.
-apply (JoinLat.max_l I). apply (JoinLat.max_r I). intros.
+rewrite LPRsup_constant. ring. assumption. intros.
 apply LPRmult_le_compat. apply LPRle_refl. apply gmono. assumption.
 intros. apply LPRle_refl.
 Qed.
@@ -1893,6 +2063,15 @@ Section Queues.
   rewrite <- Heqgeo.
   remember (integral (fun x : nat => (transition (S x)) P) geo) as intgeo.
   simpl. unfold rho, u, d. ring_simplify.
+  Abort.
+
+  Theorem steadyState_is_steady :
+   bind steadyState transition = steadyState.
+  Proof.
+  apply nat_dec. intros. induction n. simpl. unfold U. simpl.
+  replace (LPRsup (fun i : nat => (fixn (geoFix rho) i) (fun _ : nat => False)))
+  with 0. ring_simplify. unfold steadyState, pchoice. simplVal.
+  simpl. rewrite <- change_of_variables. simpl.
   Abort.
 
 End Queues.
