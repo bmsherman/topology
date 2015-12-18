@@ -1580,6 +1580,194 @@ induction n.
     * intros. split; intros; congruence.
 Qed.
 
+Require Finite.
+
+Module F := Finite.
+
+Lemma val_or_disjoint {A : Type} {mu : Valuation A}
+  : forall (U V : A -> Prop), (forall a, U a -> V a -> False)
+  -> mu U + mu V = mu (fun a => U a \/ V a).
+Proof. intros.
+rewrite modular.
+replace (mu (fun z : A => U z /\ V z)) with 0.
+ring.
+erewrite val_iff.
+symmetry. apply strict.
+unfold K. intros; split; intros; intuition.
+apply (H a); assumption.
+Qed.
+
+Lemma change_of_variables_val {A B : Type} (mu : Valuation A)
+  (f : A -> B) :
+  forall (P : A -> Prop) (Q : B -> Prop),
+  (forall a : A, P a <-> Q (f a))
+  -> mu P = (map f mu) Q.
+Proof. intros. simpl. rewrite (val_iff H). reflexivity.
+Qed.
+
+Definition inject {A B : Type} (f : A -> B)
+  (finj : forall (x y : A), f x = f y -> x = y)
+  (mu : Valuation B)
+  : Valuation A.
+Proof.
+refine (
+  {| val := fun P => mu (fun b => exists a : A, P a /\ f a = b) |}
+).
+- erewrite val_iff. apply strict. unfold K.
+  intros; split; intros.
+  + destruct H. intuition.
+  + contradiction.
+- intros. apply monotonic. intros.
+  destruct H0 as [a [Ua faz]].
+  exists a. split. apply H. assumption. assumption.
+- intros. 
+  remember (fun b : B => exists a : A, U a /\ f a = b) as U'.
+  remember (fun b : B => exists a : A, V a /\ f a = b) as V'.
+  assert (forall x, (fun b : B => exists a : A, (U a /\ V a) /\ f a = b) x
+    <-> (fun b => U' b /\ V' b) x).
+  intros. split; intros. rewrite HeqU'. rewrite HeqV'.
+  destruct H as [a [[Ua Va] fax]].
+  split; exists a; split; try assumption.
+  rewrite HeqU' in H. rewrite HeqV' in H.
+  destruct H as [[a [Ua fax]] [a' [Va' fa'x]]].
+  subst. apply finj in fa'x. subst. exists a. intuition.
+  rewrite (val_iff H).
+  assert (forall x, (fun b : B => exists a : A, (U a \/ V a) /\ f a = b) x
+    <-> (fun b => U' b \/ V' b) x).
+  intros; split; intros. destruct H0 as [a [UVa fax]].
+  destruct UVa; [left | right].
+  rewrite HeqU'. exists a. intuition.
+  rewrite HeqV'. exists a. intuition.
+  destruct H0. rewrite HeqU' in H0. destruct H0 as [a [Ua fax]].
+  exists a. intuition.
+  rewrite HeqV' in H0. destruct H0 as [a [Va fax]].
+  exists a. intuition.
+  rewrite (val_iff H0).
+  apply modular.
+Defined.
+
+Lemma inl_inj {A B : Type} : forall (a a' : A), inl B a = inl a' -> a = a'.
+Proof. intros. congruence. Qed.
+
+Lemma inr_inj {A B : Type} : forall (b b' : B), inr A b = inr b' -> b = b'.
+Proof. intros. congruence. Qed.
+
+Lemma splitValuation {A B : Type} (mu : Valuation (A + B))
+  (P : A + B -> Prop) : mu P = (inject inl inl_inj mu) (fun a => P (inl a))
+                          + (inject inr inr_inj mu) (fun b => P (inr b)).
+Proof.
+pose (fun x : A + B => match x with | inl a => P (inl a) | inr b => False end) as PA.
+  pose (fun x : A + B => match x with | inl a => False | inr b => P (inr b) end) as PB.
+assert (
+  (forall (a : A), ~ PB (inl a)) /\ (forall b : B, ~ PA (inr b)) /\
+  (forall x, P x <-> (fun y => PA y \/ PB y) x)) as H.
+  intuition.
+  destruct H as [PBa [PAb Piff]].
+  rewrite (val_iff Piff).
+  assert (forall x, PA x -> PB x -> False).
+  intros. destruct x. apply (PBa a). assumption.
+  apply (PAb b). assumption.
+  rewrite <- val_or_disjoint by assumption.
+
+  assert (forall v : Valuation (A + B), v PA = (inject inl inl_inj v) (fun x => P (inl x))) as inlprf. 
+  intros. simpl. apply val_iff.
+  intros. split; intros. destruct a. exists a. intuition.
+  simpl in H0. contradiction.
+  destruct H0 as [x [Px inlx]].
+  rewrite <- inlx. simpl. assumption.
+
+  assert (forall v : Valuation (A + B), v PB = (inject inr inr_inj v) (fun x => P (inr x))) as inrprf.
+  intros. simpl. apply val_iff.
+  intros. split; intros. destruct a. simpl in H0. contradiction. 
+  exists b. intuition.
+  destruct H0 as [x [Px inlx]].
+  rewrite <- inlx. simpl. assumption.
+  rewrite inlprf. rewrite inrprf. reflexivity.
+Qed.
+
+Lemma fin_dec {A : Type} : forall (fin : Finite.T A)
+  (mu nu : Valuation A)
+  , (forall (a : A) (P : Prop), let U x := if F.eq_dec fin a x then P else False
+     in mu U = nu U)
+  -> mu = nu.
+Proof.
+intros fin. 
+induction fin; intros; apply Valeq_compat; unfold Valeq; intros P.
+- assert (P = K False). extensionality x. contradiction.
+  rewrite H0. repeat rewrite strict. reflexivity.
+- pose proof (H I (P I)).
+  assert (P = fun x : True => if F.eq_dec Finite.F1 I x then P I else False).
+  extensionality x; destruct x. destruct (F.eq_dec Finite.F1 I I).
+  reflexivity. congruence. rewrite H1. apply H0.
+- repeat rewrite splitValuation.
+  apply LPRplus_eq_compat.
+
+  assert (inject inl inl_inj mu = inject inl inl_inj nu).
+  apply IHfin1. intros.
+  specialize (H (inl a) P0).
+  simpl.
+  assert (forall x, (fun x : A + B =>
+        if F.eq_dec (Finite.FPlus fin1 fin2) (inl a) x then P0 else False) x 
+        <-> (fun b : A + B => exists a0 : A, U a0 /\ inl a0 = b) x).
+  intros. destruct (F.eq_dec (Finite.FPlus fin1 fin2) (inl a) x);
+  split; intros.
+  exists a. unfold U. destruct (F.eq_dec fin1 a a). intuition.
+  congruence. destruct H0 as [a' [Ua' inla']].
+  unfold U in Ua'. destruct (F.eq_dec fin1 a a').
+  subst. assumption. contradiction. contradiction.
+  destruct H0 as [a' [Ua' inla']].
+  unfold U in Ua'. destruct (F.eq_dec fin1 a a'). subst.
+  congruence. contradiction.
+  do 2 rewrite <- (val_iff H0).
+  simpl in H. apply H.
+  rewrite H0. reflexivity.
+
+  assert (inject inr inr_inj mu = inject inr inr_inj nu).
+  apply IHfin2. intros.
+  specialize (H (inr a) P0).
+  simpl.
+  assert (forall x, (fun x : A + B =>
+        if F.eq_dec (Finite.FPlus fin1 fin2) (inr a) x then P0 else False) x 
+        <-> (fun b : A + B => exists a0 : B, U a0 /\ inr a0 = b) x).
+  intros. destruct (F.eq_dec (Finite.FPlus fin1 fin2) (inr a) x);
+  split; intros.
+  exists a. unfold U. destruct (F.eq_dec fin2 a a). intuition.
+  congruence. destruct H0 as [a' [Ua' inla']].
+  unfold U in Ua'. destruct (F.eq_dec fin2 a a').
+  subst. assumption. contradiction. contradiction.
+  destruct H0 as [a' [Ua' inla']].
+  unfold U in Ua'. destruct (F.eq_dec fin2 a a'). subst.
+  congruence. contradiction.
+  do 2 rewrite <- (val_iff H0).
+  simpl in H. apply H.
+  rewrite H0. reflexivity.
+
+- assert (map (Iso.from t) mu = map (Iso.from t) nu).
+  apply IHfin.
+  intros. simpl.
+  specialize (H (Iso.to t a) P0).
+  assert (forall b, (fun x : B => U (Iso.from t x)) b <-> 
+   (fun x : B =>
+        if F.eq_dec (Finite.FIso fin t) (Iso.to t a) x then P0 else False) b).
+  intros b. split; intros.
+  unfold U in H0.
+  destruct (F.eq_dec fin a (Iso.from t b)).
+  destruct (F.eq_dec (Finite.FIso fin t) (Iso.to t a) b). assumption.
+  rewrite e in n. apply n. apply Iso.to_from. contradiction.
+  destruct (F.eq_dec (Finite.FIso fin t) (Iso.to t a) b).
+  unfold U. destruct (F.eq_dec fin a (Iso.from t b)).
+  assumption. apply n. rewrite <- e. symmetry. apply Iso.from_to.
+  contradiction.
+  do 2 rewrite (val_iff H0).
+  apply H.
+  assert (forall v, map (Iso.to t) (map (Iso.from t) v) = v).
+  intros. rewrite <- map_compose. apply Valeq_compat. unfold Valeq.
+  intros. simpl. erewrite val_iff. reflexivity.
+  intros a. rewrite Iso.to_from. intuition.
+  rewrite <- (H1 mu). rewrite <- (H1 nu).
+  rewrite H0. reflexivity.
+Qed.
+
 Definition geoFix (p : Qnn) (f : Valuation nat) : Valuation nat 
   := pchoice p (map S f) (unit 0%nat).
 

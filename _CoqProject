@@ -1,4 +1,6 @@
 -R alea Alea
+Iso.v
+Finite.v
 Valuation.v
 Qnn.v
 LPReal.v
