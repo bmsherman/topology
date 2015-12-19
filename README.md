@@ -7,7 +7,7 @@ An exploration of how to formalize probability in Coq.
   - truncated subtraction
 
 - LPReal.v : Non-negative lower real numbers encoded as lower Dedekind cuts
-  - semiring (0, 1, addition, multiplication
+  - semiring (0, 1, addition, multiplication)
   - indicators of logical propositions
   - supremum, min, max
 
@@ -35,8 +35,6 @@ An exploration of how to formalize probability in Coq.
 - Iso.v : Definition of isomorphisms (bijections)
 
 - Finite.v : Definition and characterization of finite types
-
-- 
 
 - Prob.v, Prob2.v, Prob3.v : these files are old. They were three different
 attempts to encode probability in Coq. In Prob.v and Prob2.v, I was hoping
