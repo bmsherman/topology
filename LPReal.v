@@ -5,9 +5,36 @@ Local Open Scope Qnn.
 Require Import FunctionalExtensionality.
 
 (** Nonnegative lower reals *)
-(* These guys are interesting because we can have proofy
-   bits in them. For example, we can create a real number
-   which is 0 if P = NP and 1 if P /= NP. *)
+(** The nonnegative lower real numbers are encoded here
+    by lower Dedekind cuts. That is, they are predicates
+    on non-negative rational numbers, and can be viewed
+    essentially as subsets of rational numbers. They
+    are downward-closed ([dclosed]) and upward-open ([uopen]),
+    which means that if the predicate holds for some rational
+    number [q], it holds for all rationals which are less, and
+    some rational which is greater.
+
+    We show that [LPReal] forms a semiring, and then we can use
+    the [ring] tactic with them.
+
+    These guys are interesting because we can have proofy
+    bits in them. For example, we can create a real number
+    which is 0 if P = NP and 1 if P /= NP. [LPRindicator]
+    allows us, for any proposition, to create a real number 
+    which is 1 iff the proposition is true, and 0 iff it
+    is false.
+
+    We also have a definition of suprema ([LPRsup]) over an
+    arbitrary indexing type.
+
+    The lower real numbers are closed under addition, multiplication,
+    min, max, supremum, but not (necessarily) under subtraction
+    or infima.
+
+    If LEM is admitted, the lower reals are simply the real numbers
+    as Dedekind cuts.
+
+ *)
 Record LPReal :=
   { lbound :> Qnn -> Prop
   ; dclosed : forall q, lbound q -> forall q', q' <= q -> lbound q'
@@ -24,27 +51,8 @@ Definition LPRlt (r s : LPReal) : Prop :=
 
 Definition LPRgt (r s : LPReal) : Prop := LPRlt s r.
 
-Definition LPRle_refl (r : LPReal) : LPRle r r :=
-  fun _ p => p.
-
-Definition LPRle_trans {r s t : LPReal} 
-  (rs : LPRle r s) (st : LPRle s t) : LPRle r t :=
-  fun q prf => (st q (rs q prf)).
-
 Definition LPReq (r s : LPReal) : Prop :=
   LPRle r s /\ LPRle s r.
-
-Lemma LPReq_refl (x : LPReal) : LPReq x x.
-Proof. split; apply LPRle_refl. Qed.
-
-Lemma LPReq_trans (x y z : LPReal) 
-  : LPReq x y -> LPReq y z -> LPReq x z.
-Proof. intros. destruct H; destruct H0; split;
-  eapply LPRle_trans; eassumption.
-Qed.
-
-Lemma LPReq_compat_backwards (x y : LPReal) : x = y -> LPReq x y.
-Proof. intros H; induction H; apply LPReq_refl. Qed.
 
 Definition LPRQnn (q : Qnn) : LPReal.
 Proof.
@@ -238,6 +246,7 @@ Qed.
 Add Ring LPR_Ring : LPRsrt.
 
 Infix "<=" := LPRle : LPR_scope.
+Infix "==" := LPReq : LPR_scope.
 Infix ">=" := LPRge : LPR_scope.
 Infix ">"  := LPRgt : LPR_scope.
 Infix "<"  := LPRlt : LPR_scope.
@@ -250,6 +259,31 @@ Notation "'1'" := (LPRQnn 1) : LPR_scope.
 Delimit Scope LPR_scope with LPR.
 
 Local Open Scope LPR.
+
+Definition LPRle_refl (r : LPReal) : r <= r :=
+  fun _ p => p.
+
+Definition LPRle_trans {r s t : LPReal} 
+  (rs : r <= s) (st : s <= t) : r <= t :=
+  fun q prf => (st q (rs q prf)).
+
+Lemma LPReq_refl (x : LPReal) : x == x.
+Proof. split; apply LPRle_refl. Qed.
+
+Lemma LPReq_compat_backwards (x y : LPReal) : x = y -> x == y.
+Proof. intros H; induction H; apply LPReq_refl. Qed.
+
+Lemma LPReq_trans (x y z : LPReal) 
+  : x == y -> y == z -> x == z.
+Proof. intros. destruct H; destruct H0; split;
+  eapply LPRle_trans; eassumption.
+Qed.
+
+Theorem LPRle_antisym {x y : LPReal}
+  : x <= y -> y <= x -> x = y.
+Proof.
+intros. apply LPReq_compat. split; assumption.
+Qed.
 
 Theorem LPRplus_le_compat {x y z t : LPReal}
   : (x <= y) -> (z <= t) -> (x + z <= y + t).
@@ -406,6 +440,15 @@ Proof. apply LPRsup_le. intros a.
 apply LPRplus_le_compat; apply LPRsup_ge.
 Qed.
 
+Lemma LPRsup_iterated {A B : Type} : forall (f : A -> B -> LPReal),
+   LPRsup (fun a => LPRsup (fun b => f a b))
+ = LPRsup (fun b => LPRsup (fun a => f a b)).
+Proof.
+intros. apply LPRle_antisym; unfold LPRle; simpl; intros.
+- destruct H as [a [b fab]]. exists b. exists a. assumption.
+- destruct H as [b [a fab]]. exists a. exists b. assumption.
+Qed.
+
 Lemma LPRsup_sum_lattice {A : Type} (f g : A -> LPReal)
   (le : A -> A -> Prop)
   (max : A -> A -> A)
@@ -484,12 +527,6 @@ Proof. refine (
   apply Qnnmin_r.
 Defined.
 
-Theorem LPRle_antisym {x y : LPReal}
-  : x <= y -> y <= x -> x = y.
-Proof.
-intros. apply LPReq_compat. split; assumption.
-Qed.
-
 (* An real number which is an indicator for a logical proposition.
    It is 0 if P is false and 1 if P is true. Without a proof or
    refutation of P, you will not know which! *)
@@ -547,11 +584,6 @@ apply Qnnmult_le_compat. apply Qnnlt_le_weak. assumption.
 apply Qnnle_refl.
 Qed.
 
-Lemma qnn_sqrt {x : Qnn}
-  : (x < 1)%Qnn -> exists y, (y < 1 /\ x <= y * y)%Qnn.
-Proof.
-Admitted.
-
 Lemma LPRind_mult {U V : Prop}
   : LPRindicator (U /\ V) = LPRindicator U * LPRindicator V.
 Proof.
@@ -574,6 +606,14 @@ Lemma LPRind_max {U V : Prop}
 Proof.
 apply LPReq_compat.
 split; unfold LPRle; simpl in *; intros; intuition.
+Qed.
+
+Lemma LPRind_exists : forall (A : Type) (f : A -> Prop),
+  LPRindicator (exists a, f a) = LPRsup (fun a => LPRindicator (f a)).
+Proof.
+intros. apply LPRle_antisym; unfold LPRle; simpl; intros.
+- destruct H as [[a fa] q1]. exists a. intuition.
+- destruct H as [a [fa q1]]. split. exists a. assumption. assumption.
 Qed.
 
 Lemma LPRind_min {U V : Prop}
@@ -648,11 +688,6 @@ Proof.
 intros. apply LPReq_compat; split; unfold LPRsup, LPRle; simpl; intros.
 destruct H. assumption. exists X. assumption. 
 Qed.
-
-Lemma smallPowers {p : Qnn} : (p < 1)%Qnn
-  -> forall (q : Qnn), (q > 0)%Qnn 
-  -> exists (n : nat), (p ^ n < q)%Qnn.
-Admitted.
 
 Lemma Qnnpowsup {p : Qnn} (plt1 : (p < 1)%Qnn)
   : LPRsup (fun n => LPRQnn (1 - (p ^ n)))%Qnn = 1.

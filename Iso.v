@@ -1,5 +1,6 @@
 Require Import FunctionalExtensionality.
 
+(** Isomorphisms between types. *)
 Record T { A B : Type } : Type :=
   { to      : A -> B
   ; from    : B -> A
@@ -9,6 +10,8 @@ Record T { A B : Type } : Type :=
 
 Arguments T : clear implicits.
 
+(** Isomorphisms form an equivalence relation: they are reflexivity,
+    symmetric, and transitive. *)
 Theorem Refl (A : Type) : T A A.
 Proof.
 refine (
@@ -40,21 +43,7 @@ refine (
   reflexivity.
 Qed.
 
-Theorem FuncCong { A A' B B' : Type } :
-  T A A' -> T B B' -> T (A -> B) (A' -> B').
-Proof.
-intros IA IB.
-refine (
-  {| to   := fun f a' => to   IB (f (from IA a'))
-   ; from := fun f a  => from IB (f (to   IA a )) |});
-intros; apply functional_extensionality; intro x; simpl;
-  repeat rewrite (from_to IA);
-  repeat rewrite (to_from IA);
-  repeat rewrite (from_to IB);
-  repeat rewrite (to_from IB);
-  reflexivity.
-Defined.
-
+(* Isomorphisms between Sigma types with different indexing types. *)
 Section SigmaIso.
 
 Definition FSig {B : False -> Type} : T (sigT B) False.
@@ -104,6 +93,9 @@ destruct (from iso2 b) eqn:beqn.
 rewrite <- beqn. rewrite to_from; reflexivity.
 Defined.
 
+(* This is in fact "true" but, without Axiom K, the construction is a little
+   bit convoluted. It is proved in the HoTT library by transferring
+   isomorphisms to equivalences. *)
 Lemma sigmaProp {A A' : Type} {B : A -> Type}
   (iso : T A A') 
   : T (sigT B) (sigT (fun a' => B (from iso a'))).
@@ -123,6 +115,7 @@ Qed.
 
 End SigmaIso.
 
+(* Isomorphisms between function types with different argument types. *)
 Section FunctionIso.
 
 Lemma FFunc {B : Type} : T (False -> B) True.
@@ -206,6 +199,8 @@ Defined.
 
 End FunctionIso.
 
+(** Isomorphism is a congruence over the type forming operations
+   for sums, products, and functions. *)
 Section Ops.
 
 Theorem PlusCong {A B A' B' : Type}
@@ -246,10 +241,27 @@ apply (to_from IA).
 apply (to_from IB).
 Defined.
 
+Theorem FuncCong { A A' B B' : Type } :
+  T A A' -> T B B' -> T (A -> B) (A' -> B').
+Proof.
+intros IA IB.
+refine (
+  {| to   := fun f a' => to   IB (f (from IA a'))
+   ; from := fun f a  => from IB (f (to   IA a )) |});
+intros; apply functional_extensionality; intro x; simpl;
+  repeat rewrite (from_to IA);
+  repeat rewrite (to_from IA);
+  repeat rewrite (from_to IB);
+  repeat rewrite (to_from IB);
+  reflexivity.
+Defined.
+
 End Ops.
 
 Section Infinite.
 
+(** Cantor's diagonal arguments, which says that there is no bijection
+    between natural numbers and sequences of natural numbers. *)
 Theorem Cantor : T nat (nat -> nat) -> False.
 Proof.
 intros iso.

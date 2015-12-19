@@ -3,6 +3,29 @@ Require Import QArith Qcanon.
 Require Import FunctionalExtensionality.
 
 (** Non-negative rational numbers *)
+(** Nothing here should be too surprising.
+    Non-negative rationals, [Qnn] are represented by rational numbers
+    in reduced form together with proofs that the rational numbers
+    are non-negative. Using functional extensionality, these numbers
+    are Leibniz equal whenever the rational numbers they represent are equal.
+
+    There is a subtraction operation, [Qnnminus], which implements
+    a truncated subtraction; if the result should have been negative, it will
+    instead be zero. Lemmas show that it behaves nicely when we indeed
+    subtracted a smaller number from a larger one.
+
+    Division in [Qnn] is handled as in [Qc]: we arbitrarily have 0 / 0 = 0.
+
+    We prove [Qnn] forms a semiring.
+
+    Many definitions and lemmas from [Qc] are essentially reproduced, perhaps
+    in an alterned form for the modified settings where all numbers are 
+    non-negative.
+
+    Axioms required:
+    - functional extensionality: the proof of less-than-or-equal
+      for [Z] is a negation, and to prove that any two negations are equal,
+      we require functional extensionality.  *)
 
 Record Qnn :=
   { qnn :> Qc
@@ -11,11 +34,12 @@ Record Qnn :=
 
 Local Open Scope Z.
 
+(** Proof irrelevance for <= on [Z], assuming
+    functional extensionality. *)
 Theorem Zle_irrel {x y : Z} (prf1 prf2 : x <= y) :
   prf1 = prf2. 
 Proof. unfold Z.le in *.
-apply functional_extensionality.
-intros z. contradiction.
+extensionality z; contradiction.
 Qed.
 
 Local Close Scope Z.
@@ -28,6 +52,8 @@ Local Open Scope Qc.
 Definition Qcle_irrel {x y : Qc} (prf1 prf2 : x <= y)
   : prf1 = prf2 := Qle_irrel prf1 prf2.
 
+(** Comparison operators for [Qnn] simply reduce to those for
+    [Qc]. *)
 Definition Qnnle (x y : Qnn) : Prop := x <= y.
 Definition Qnnge (x y : Qnn) : Prop := x >= y.
 Definition Qnnlt (x y : Qnn) : Prop := x < y.
@@ -62,6 +88,8 @@ Definition Qnnonehalf : Qnn.
 Proof. makeQnn (Qcmake (1 # 2) eq_refl).
 Defined.
 
+(** If two [Qnn]s have the same [Qc] values, they are
+    Leibniz equal. *)
 Theorem Qnneq_prop {x y : Qnn} :
   Qnneq x y -> x = y.
 Proof. intros. destruct x, y. unfold Qnneq in H. simpl in H.
@@ -149,7 +177,6 @@ split; intros. apply Qnneq_prop. apply Qceq_alt; assumption.
 apply Qceq_alt. induction H. reflexivity.
 Qed. 
 
-
 Lemma Qnnmult_le_compat {x y x' y' : Qnn}
   : x <= x' -> y <= y' -> x * y <= x' * y'.
 Proof. intros.
@@ -223,7 +250,9 @@ contradiction.
 setoid_replace (this (/ x)%Qc) with (/ x)%Q.
 apply Qinv_le_0_compat. apply nonneg.
 simpl. apply Qred_correct.
-Defined. 
+Defined.
+
+Notation "/ x" := (Qnninv x) : Qnn_scope.
 
 Lemma Qnn_dec (x y : Qnn) : {x < y} + {y < x} + {x = y}.
 Proof. destruct (Qc_dec x y).
@@ -249,7 +278,7 @@ contradiction.
 Qed.
 
 
-Lemma Qnninv_zero1 {x : Qnn} : Qnninv x = 0 -> x = 0.
+Lemma Qnninv_zero1 {x : Qnn} : / x = 0 -> x = 0.
 Proof. intros. destruct (x ?= 0) eqn:comp.
 apply Qnneq_alt in comp. assumption.
 apply Qnnle_antisym. apply Qclt_le_weak. assumption. apply nonneg.
@@ -259,23 +288,25 @@ rewrite (SRmul_comm Qnnsrt).
 apply Qnnmult_inv_r. assumption.
 Qed. 
 
-Lemma Qnninv_zero2 {x : Qnn} : 0 < x -> 0 < Qnninv x.
+Lemma Qnninv_zero2 {x : Qnn} : 0 < x -> 0 < / x.
 Proof. intros. apply Qnnzero_prop2. unfold not. intros contra.
 apply Qnninv_zero1 in contra. subst. apply Qnnzero_prop2 in H. 
 unfold not in H. apply H. reflexivity. 
 Qed.
 
-Definition Qnndiv (x y : Qnn) : Qnn := x * Qnninv y.
+Definition Qnndiv (x y : Qnn) : Qnn := x * / y.
 
-Lemma Qnndiv_lt (num denom : Qnn) : num < denom -> Qnndiv num denom < 1.
+Infix "/" := Qnndiv : Qnn_scope.
+
+Lemma Qnndiv_lt (num denom : Qnn) : num < denom -> num / denom < 1.
 Proof. intros. unfold Qnndiv.
 destruct (num ?= 0) eqn:comp. apply Qnneq_alt in comp.
-subst. replace (0 * Qnninv denom) with 0 by ring. unfold Qnnlt. 
+subst. replace (0 * / denom) with 0 by ring. unfold Qnnlt. 
 apply Qclt_alt. reflexivity.
 
 apply Qnnlt_alt in comp. apply Qnnlt_zero_prop in comp. contradiction.
 
-apply Qnngt_alt in comp. replace 1 with (denom * Qnninv denom).
+apply Qnngt_alt in comp. replace 1 with (denom * / denom).
 apply Qcmult_lt_compat_r.
 apply Qnninv_zero2. eapply Qnnle_lt_trans. apply (nonneg num). assumption.
 assumption. 
@@ -513,6 +544,35 @@ Proof.
   rewrite Qnnminus_Qc by assumption. ring.
 Qed.
 
+Lemma Qnnminus_mult_distr {c x y : Qnn}
+  : (y <= x) -> c * (x - y) = c * x - c * y.
+Proof.
+intros. apply Qnneq_prop. unfold Qnneq. simpl.
+destruct (x ?= y)%Qnn eqn:xy;
+destruct (c * x ?= c * y)%Qnn eqn:cxcy;
+try ring.
+rewrite Qnneq_alt in xy. subst. rewrite Qnngt_alt in cxcy.
+apply Qnnlt_not_le in cxcy. apply False_rect. apply cxcy.
+apply Qnnle_refl.
+apply Qnnlt_alt in xy. apply Qnnlt_not_le in xy.
+specialize (xy H). contradiction.
+apply Qnneq_alt in cxcy.
+destruct (Qnn_dec c 0). destruct s. apply Qnnlt_zero_prop in q.
+contradiction. admit.
+subst. simpl. ring. apply Qnnlt_alt in cxcy. 
+assert (x < y)%Qnn. replace x with (x * 1) by ring.
+replace y with (y * 1)%Qnn by ring.
+rewrite <- (Qnnmult_inv_r c).
+repeat rewrite (SRmul_assoc Qnnsrt).
+apply Qnnmult_lt_compat_r. admit.
+rewrite (SRmul_comm Qnnsrt x). 
+rewrite (SRmul_comm Qnnsrt y). 
+apply Qnnlt_alt in cxcy. apply cxcy.
+admit.
+apply Qnnlt_not_le in H0. specialize (H0 H). contradiction.
+Qed.
+
+
 Lemma Qnnonehalf_split {x : Qnn}
   : (x = (x + x) * Qnnonehalf)%Qnn.
 Proof. 
@@ -534,7 +594,7 @@ Fixpoint Qnnnat (n : nat) : Qnn := match n with
   | S n' => (1 + Qnnnat n')%Qnn
   end.
 
-Definition Qnnfrac (n : nat) := Qnninv (Qnnnat n).
+Definition Qnnfrac (n : nat) := / (Qnnnat n).
 
 Lemma Qnnnatfrac {n : nat} : (Qnnnat (S n) * Qnnfrac (S n) = 1)%Qnn.
 Proof. unfold Qnnfrac. apply Qnnmult_inv_r. simpl.
@@ -550,3 +610,13 @@ induction x.
 - simpl; ring.
 - simpl. rewrite IHx. ring.
 Qed.
+
+Lemma smallPowers {p : Qnn} : p < 1
+  -> forall (q : Qnn), (q > 0)
+  -> exists (n : nat), (p ^ n < q).
+Admitted.
+
+Lemma qnn_sqrt {x : Qnn}
+  : x < 1 -> exists y, (y < 1 /\ x <= y * y).
+Proof.
+Admitted.

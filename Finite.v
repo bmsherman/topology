@@ -1,11 +1,15 @@
 Require Iso.
 Require Fin.
 
+(** A type family which is isomorphic to Fin.t, but defined in
+    terms of simpler types by recursion, and is a little bit
+    easier to work with. *)
 Fixpoint Fin (n : nat) : Set := match n with
   | 0 => False
   | S n' => (True + Fin n')%type
   end.
 
+(** Fin and Fin.t are isomorphic for every size. *)
 Theorem finIso (n : nat) : Iso.T (Fin.t n) (Fin n).
 Proof.
 induction n.
@@ -193,6 +197,7 @@ intros e. induction e; intros n; simpl.
   apply IHe. apply Iso.Refl.
 Qed.
 
+(** A universe of codes for finite types. *)
 Inductive U : Set :=
   | U0    : U
   | U1    : U
@@ -202,6 +207,7 @@ Inductive U : Set :=
   | UFint : nat -> U
   | UFin : nat -> U.
 
+(** The types which the codes of U represent. *)
 Fixpoint ty (t : U) : Set := match t with
   | U0 => False
   | U1 => True
@@ -212,6 +218,8 @@ Fixpoint ty (t : U) : Set := match t with
   | UFin n => Fin n
   end.
 
+(** For every code for a finite type, we give its cardinality as
+    a natural number. *)
 Fixpoint card (t : U) : nat := match t with
   | U0 => 0
   | U1 => 1
@@ -222,6 +230,8 @@ Fixpoint card (t : U) : nat := match t with
   | UFin n => n
   end.
     
+(** Each type in the finite universe is isomorphic to the Fin.t
+    family whose size is determined by the cardinality function above. *)
 Theorem finChar (t : U) : Iso.T (ty t) (Fin.t (card t)).
 Proof.
 induction t; simpl.
@@ -239,13 +249,25 @@ induction t; simpl.
 - apply Iso.Sym. apply finIso.
 Qed.
 
+(** A type for evidence that a type is finite: a type is finite if
+    any of the following hold:
+    a) it is True
+    b) it is False
+    c) it is a sum of finite types
+    d) it is isomorphic to a finite type
+
+    This is not minimal. We could have replaced b) and c) with the condition
+    e) it is the sum of True with a finite type
+       (this is the analog of Successor)
+    But this definition is simple so I like it.
+*)
+
 Inductive T : Type -> Type :=
   | F0 : T False
   | F1 : T True
   | FPlus : forall {A B}, T A -> T B -> T (A + B)
   | FIso : forall {A B}, T A -> Iso.T A B -> T B
 .
-
 
 
 Lemma finiteSig {A : Type} (fa : T A)
@@ -269,9 +291,12 @@ induction fa; intros b fb.
   exists x. split. assumption.
   eapply Iso.Trans. Focus 2. apply t2.
   admit.
+  (* Here we need Iso.sigmaProp, which we have yet to prove,
+     so we cannot finish the proof here. *)
   (*apply Iso.sigmaProp.*)
 Defined.
 
+(** Sigma types are closed under finiteness. *)
 Theorem sig {A : Type} {B : A -> Type} 
   : T A 
   -> (forall (x : A), T (B x))
@@ -284,7 +309,7 @@ eapply FIso. apply t.
 apply Iso.Sym. assumption.
 Defined.
 
-
+(** Product types are closed under finiteness. *)
 Theorem times {A B : Type} : T A -> T B -> T (A * B).
 Proof.
 intros fa fb.
@@ -292,7 +317,7 @@ eapply FIso. Focus 2. eapply Iso.Sym. eapply Iso.sigTimes.
 apply sig. assumption. apply (fun _ => fb).
 Defined.
 
-Fixpoint finiteMapped {A : Type} (fa : T A)
+Lemma finiteMapped {A : Type} (fa : T A)
   : forall {B : Type}, T B -> sigT (fun S => (T S * Iso.T (A -> B) S)%type).
 Proof.
 induction fa.
@@ -315,6 +340,7 @@ induction fa.
   assumption.
 Defined.
 
+(** Functions are closed under finiteness. *)
 Theorem func {A B : Type} : T A -> T B -> T (A -> B).
 Proof.
 intros FA FB.
@@ -327,6 +353,7 @@ apply Iso.Sym.
 assumption.
 Defined.
 
+(** Any finite type has decidable equality. *)
 Theorem eq_dec {A : Type} : T A -> forall a b : A, {a = b} + {a <> b}.
 Proof.
 intros finite.
