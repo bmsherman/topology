@@ -589,6 +589,38 @@ apply False_rect. apply cxcy. ring_simplify. apply Qnnle_refl.
 apply Qnnlt_not_le in H0. specialize (H0 H). contradiction.
 Qed.
 
+Lemma Qnnminus_plus2 {x y : Qnn}
+  : ((x + y) - y = x)%Qnn .
+Proof.
+apply Qnneq_prop. unfold Qnneq.
+rewrite Qnnminus_Qc. simpl. ring.
+replace y with (0 + y)%Qnn at 1 by ring.
+apply Qnnplus_le_compat. apply nonneg. apply Qnnle_refl.
+Qed.
+
+
+Lemma Qnnminus_eq {x y : Qnn}
+  : (y <= x)%Qnn -> forall z, ((x - y = z)%Qnn <-> (x = y + z)%Qnn).
+Proof.
+intros. split; intros.
+- rewrite <- H0. rewrite Qnnminus_plus. reflexivity. assumption. 
+- rewrite H0 in *. rewrite (SRadd_comm Qnnsrt). 
+  apply Qnnminus_plus2.
+Qed.
+
+Lemma Qnnminus_plus_distr {x y a b : Qnn}
+  : (a <= x -> b <= y -> 
+    x - a + (y - b)
+  = (x + y) - (a + b))%Qnn.
+Proof.
+intros.
+symmetry. rewrite Qnnminus_eq.
+replace (a + b + (x - a + (y - b)))%Qnn
+with ((a + (x - a)) + (b + (y - b)))%Qnn by ring.
+do 2 rewrite Qnnminus_plus by assumption. reflexivity. 
+apply Qnnplus_le_compat; assumption.
+Qed.
+
 Lemma Qnnonehalf_split {x : Qnn}
   : (x = (x + x) * Qnnonehalf)%Qnn.
 Proof. 
@@ -630,4 +662,47 @@ Qed.
 Lemma smallPowers {p : Qnn} : p < 1
   -> forall (q : Qnn), (q > 0)
   -> exists (n : nat), (p ^ n < q).
+Admitted.
+
+Lemma Qnnplus_open {q x y : Qnn} : (q < x + y
+  -> 0 < x -> 0 < y
+  -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y'))%Qnn.
+Proof.
+intros. 
+pose (((x + y) - q) * Qnnonehalf)%Qnn as eps.
+pose (Qnnmin eps (Qnnmin x y)) as eps'.
+exists (x - eps'). exists (y - eps').
+assert (0 < eps)%Qnn. unfold eps.
+replace 0%Qnn with (0 * Qnnonehalf)%Qnn by ring.
+apply Qnnmult_lt_compat_r. rewrite <- Qnnlt_alt.
+reflexivity. apply Qnnminus_lt_r. apply Qnnlt_le_weak.
+assumption. ring_simplify. assumption.
+assert (0 < eps')%Qnn.
+apply Qnnmin_lt_both. assumption. apply Qnnmin_lt_both; assumption.
+assert (eps' <= x)%Qnn. eapply Qnnle_trans.
+apply Qnnmin_r. apply Qnnmin_l.
+assert (eps' <= y)%Qnn. eapply Qnnle_trans.
+apply Qnnmin_r. apply Qnnmin_r.
+split.
+  simpl. apply Qnnminus_lt_l. assumption.
+  replace x with (x + 0)%Qnn at 1 by ring.
+  replace (eps' + x)%Qnn with (x + eps')%Qnn by ring.
+  apply Qnnplus_le_lt_compat. apply Qnnle_refl.
+  assumption.
+split. 
+  simpl. apply Qnnminus_lt_l. assumption.
+  replace y with (y + 0)%Qnn at 1 by ring.
+  replace (eps' + y)%Qnn with (y + eps')%Qnn by ring.
+  apply Qnnplus_le_lt_compat. apply Qnnle_refl.
+  assumption.
+rewrite (@Qnnonehalf_split q).
+replace ((q + q) * Qnnonehalf)%Qnn
+  with (q * Qnnonehalf + q * Qnnonehalf)%Qnn by ring.
+apply Qnnplus_le_compat.
+admit. admit.
+Qed.
+
+Lemma Qnnmult_open {q x y : Qnn} : (q < x * y
+  -> exists x' y', x' < x /\ y' < y /\ (q <= x' * y'))%Qnn.
+Proof.
 Admitted.

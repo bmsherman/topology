@@ -329,6 +329,10 @@ split; intros.
   eapply Qnnlt_le_trans. eassumption. assumption.
 Qed.
 
+Require Import Qcanon.
+Local Close Scope Qc.
+
+
 Lemma LPRQnn_plus {x y : Qnn} 
   : LPRQnn x + LPRQnn y = LPRQnn (x + y)%Qnn.
 Proof.
@@ -347,20 +351,9 @@ split; unfold LPRle; intros; simpl in *.
   + apply Qnnlt_zero_prop in H0. contradiction.
   + destruct (Qnn_dec y 0%Qnn) as [[H1 | H1] | H1].
     * apply Qnnlt_zero_prop in H1. contradiction.
-    * pose (((x + y) - q) * (Qnnonehalf * Qnnonehalf))%Qnn as eps.
-      apply (LPRplusB (x - eps) (y - eps)).
-      assert (0 < eps)%Qnn. unfold eps.
-      replace 0%Qnn with (0 * (Qnnonehalf * Qnnonehalf))%Qnn by ring.
-      apply Qnnmult_lt_compat_r. rewrite <- Qnnlt_alt.
-      reflexivity. apply Qnnminus_lt_r. apply Qnnlt_le_weak.
-      assumption. ring_simplify. assumption.
-      simpl. apply Qnnminus_lt_l. admit.
-      replace x with (x + 0)%Qnn at 1 by ring.
-      replace (eps + x)%Qnn with (x + eps)%Qnn by ring.
-      apply Qnnplus_le_lt_compat. apply Qnnle_refl.
-      assumption.
-      (* Same as the other side *) admit.
-      admit. 
+    * pose proof (Qnnplus_open H H0 H1).
+      destruct H2 as [x' [y' [x'x [y'y sum]]]].
+      eapply LPRplusB. apply x'x. apply y'y. eassumption.
     * apply LPRplusL. simpl.
       eapply Qnnlt_le_trans. eassumption.
       subst. replace (x + 0)%Qnn with x by ring.
@@ -742,7 +735,6 @@ apply LPReq_compat. split.
   replace (p * 1 + 0)%Qnn with p by ring. assumption.
 Qed.
 
-
 Lemma LPRQnn_mult {x y : Qnn} : LPRQnn x * LPRQnn y = LPRQnn (x * y)%Qnn.
 Proof. 
 apply LPRle_antisym; unfold LPRle; simpl; intros.
@@ -753,5 +745,5 @@ apply LPRle_antisym; unfold LPRle; simpl; intros.
   apply nonneg. eassumption.
   apply Qnnmult_le_compat. apply Qnnle_refl.
   apply Qnnlt_le_weak. assumption.
-- admit.
+- apply (Qnnmult_open H). 
 Qed.
