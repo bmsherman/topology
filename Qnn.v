@@ -55,9 +55,9 @@ Definition Qcle_irrel {x y : Qc} (prf1 prf2 : x <= y)
 (** Comparison operators for [Qnn] simply reduce to those for
     [Qc]. *)
 Definition Qnnle (x y : Qnn) : Prop := x <= y.
-Definition Qnnge (x y : Qnn) : Prop := x >= y.
+Definition Qnnge (x y : Qnn) : Prop := Qnnle y x.
 Definition Qnnlt (x y : Qnn) : Prop := x < y.
-Definition Qnngt (x y : Qnn) : Prop := x > y.
+Definition Qnngt (x y : Qnn) : Prop := Qnnlt y x.
 
 Definition Qnneq (x y : Qnn) : Prop := qnn x = qnn y.
 
@@ -169,7 +169,7 @@ split; intros; apply Qclt_alt; assumption.
 Qed. 
 
 Lemma Qnngt_alt {x y : Qnn} : (x ?= y) = Gt <-> x > y.
-split; intros; apply Qcgt_alt; assumption.
+split; intros; unfold Qnngt; apply Qcgt_alt; assumption.
 Qed. 
 
 Lemma Qnneq_alt {x y : Qnn} : (x ?= y) = Eq <-> x = y.
@@ -558,20 +558,36 @@ apply Qnnlt_alt in xy. apply Qnnlt_not_le in xy.
 specialize (xy H). contradiction.
 apply Qnneq_alt in cxcy.
 destruct (Qnn_dec c 0). destruct s. apply Qnnlt_zero_prop in q.
-contradiction. admit.
+contradiction.
+rewrite Qnngt_alt in xy.
+assert (y * c < x * c).
+apply Qnnmult_lt_compat_r. assumption. 
+unfold Qnngt in xy. assumption.
+apply Qnnlt_not_le in H0. apply False_rect. apply H0.
+replace (x * c) with (c * x) by ring.
+replace (y * c) with (c * y) by ring.
+rewrite cxcy. apply Qnnle_refl.
 subst. simpl. ring. apply Qnnlt_alt in cxcy. 
 assert (x < y)%Qnn. replace x with (x * 1) by ring.
 replace y with (y * 1)%Qnn by ring.
 rewrite <- (Qnnmult_inv_r c).
 repeat rewrite (SRmul_assoc Qnnsrt).
-apply Qnnmult_lt_compat_r. admit.
+apply Qnnmult_lt_compat_r.
+apply Qnnlt_alt in cxcy. 
+apply Qnninv_zero2.
+destruct (Qnn_dec c 0). destruct s.
+apply Qnnlt_not_le in q. apply False_rect. apply q. apply nonneg.
+assumption. subst. apply Qnnlt_not_le in cxcy.
+apply False_rect. apply cxcy. ring_simplify. apply Qnnle_refl.
 rewrite (SRmul_comm Qnnsrt x). 
 rewrite (SRmul_comm Qnnsrt y). 
 apply Qnnlt_alt in cxcy. apply cxcy.
-admit.
+destruct (Qnn_dec c 0).
+destruct s. apply Qnnlt_zero_prop in q. contradiction.
+assumption. subst. apply Qnnlt_not_le in cxcy.
+apply False_rect. apply cxcy. ring_simplify. apply Qnnle_refl.
 apply Qnnlt_not_le in H0. specialize (H0 H). contradiction.
 Qed.
-
 
 Lemma Qnnonehalf_split {x : Qnn}
   : (x = (x + x) * Qnnonehalf)%Qnn.
