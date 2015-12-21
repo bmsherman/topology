@@ -1258,16 +1258,13 @@ assert (
   rewrite inlprf. rewrite inrprf. reflexivity.
 Qed.
 
-(** In classical measure theory, if we have finite measures [mu] and [nu],
+(** If we have finite measures [mu] and [nu],
     we can determine whether they are equivalent measures by checking to see
     whether they agree on the measure of each of the singleton sets.
 
-    In the presence of the excluded middle, we could do the same thing, but
-    without the excluded middle, it seems we must be a little more thorough
-    (though I'm not convinced that the hypothesis here couldn't be weakened).
-
-    [fin_dec] allows one to prove equivalence of two finite measures by
-    checking them pointwise. 
+    [build_finite] allows us to build finite distributions by specifying them
+    pointwise, and [fin_dec] allows one to prove equivalence of two finite 
+    measures by checking them pointwise. 
 *)
 
 Fixpoint build_finite {A : Type} (fin : Finite.T A) : (A -> LPReal) -> Valuation A 
@@ -1723,6 +1720,41 @@ intros. unfold geoFix. apply pchoice_ContinuousV.
 apply map_ContinuousV. assumption. apply unit_ContinuousV.
 Qed.
 
+  Ltac indicatorSolve := repeat match goal with
+  | [ |- context[LPRindicator (?x = ?y)] ] =>
+     rewrite LPRind_true by intuition
+  | [ |- context[LPRindicator (?x = ?y)] ] =>
+     rewrite LPRind_false by intuition
+    || rewrite LPRind_false by congruence
+  end.
+
+Lemma geometric_pdf : forall (p : Qnn) (k : nat),
+  geometric p (eq k) = LPRQnn ((1 - p) * p ^ k)%Qnn.
+Proof.
+intros. induction k.
+- simpl. apply LPRsup_prop. intros n. induction n.
+  + simpl. apply LPRzero_min.
+  + simpl. replace ((fixn (geoFix p) n) (fun x : nat => 0%nat = S x))
+    with 0. indicatorSolve. LPRQnn_simpl. apply LPRQnn_le.
+    ring_simplify. apply Qnnle_refl.
+    erewrite val_iff. symmetry. apply strict.
+    intros. unfold K. split; congruence || contradiction.
+  + exists 1%nat. simpl. indicatorSolve. LPRQnn_simpl. apply LPRQnn_le.
+    replace ((p * 0) + _)%Qnn 
+      with (1 - p)%Qnn by ring.
+    ring_simplify. apply Qnnle_refl.
+- remember geometric as geo.  simpl. 
+  replace ((1 - p) * (p * p ^ k))%Qnn
+    with (p * ((1 - p) * p ^ k))%Qnn by ring.
+  rewrite <- LPRQnn_mult. rewrite <- IHk.
+  rewrite Heqgeo. 
+  rewrite geometricInvariant at 1. unfold geoFix, pchoice.
+  simplVal. rewrite <- Heqgeo.
+  simpl. indicatorSolve. ring_simplify.
+  erewrite val_iff. reflexivity.
+  intros; split; intros; congruence.
+Qed.
+
 (** * Queues *)
 (** The simple example about the Geom/Geom/1 queue from our meeting.
     Discrete-time setting. *)
@@ -1768,6 +1800,85 @@ Section Queues.
              newOutput
     end)).
 
+  Fixpoint transition_pdf (n m : nat) : Qnn := (match n with
+    | 0 => match m with
+      | 0 => 1 - lambda
+      | 1 => lambda
+      | _ => 0
+      end
+    | 1 => match m with
+      | 0 => d
+      | 1 => lambda * mu + (1 - mu) * (1 - lambda)
+      | 2 => u
+      | _ => 0
+      end
+    | S (S n') => match m with
+      | 0 => 0
+      | S m' => transition_pdf (S n') m'
+      end
+    end)%Qnn.
+
+  Ltac indicatorReduce := repeat match goal with
+  | [ |- context[LPRindicator (S ?x = S ?y)] ] =>
+     rewrite (LPRind_iff _ (x = y)) by intuition
+  end.
+
+  Lemma transition_pdf_ok : forall (n k : nat),
+    transition n (eq k) = LPRQnn (transition_pdf n k).
+  Proof. intros n. destruct n; intros. simpl.
+  - destruct k; unfold newInput, bernoulli, pchoice.
+    + simpl.
+      simplVal. indicatorSolve. ring.
+    + destruct k. simpl.
+      simplVal. indicatorSolve. ring.
+      induction k. simpl.
+      simplVal. indicatorSolve. ring. simpl.
+      simplVal. indicatorSolve.
+      ring.
+  - generalize dependent k. induction n.
+    + intros k. simpl. unfold newInput, bernoulli, pchoice. destruct k.
+      * simpl. simplVal.
+        indicatorSolve. ring_simplify. unfold d. LPRQnn_simpl. ring.
+      * destruct k. simpl. simplVal.
+        indicatorSolve. ring_simplify. LPRQnn_simpl. reflexivity.
+        destruct k. simpl. simplVal. indicatorSolve.
+        ring_simplify. unfold u. LPRQnn_simpl. reflexivity.
+        simpl. simplVal. indicatorSolve. ring.
+    + intros k. induction k. 
+      * simpl. unfold newInput, bernoulli, pchoice. simplVal.
+        indicatorSolve. ring.
+      * simpl. rewrite <- IHn. simpl.
+        unfold newInput, bernoulli, pchoice. simplVal.
+        indicatorReduce.
+        rewrite (LPRind_iff (S k = S (S (S n)))  (k = S (S n))) by intuition.
+        rewrite (LPRind_iff (S k = S n) (k = n)) by intuition.
+        ring.
+   Qed.
+
+  Lemma transition_localized : forall (nu : Valuation nat) (k : nat),
+    (bind nu transition) (eq k) = (match k with
+      | 0 => 0 | S k' => LPRQnn (transition_pdf k' k) * nu (eq k') end) 
+      + LPRQnn (transition_pdf k k) * nu (eq k)
+      + LPRQnn (transition_pdf (S k) k) * nu (eq (S k)).
+  Proof. intros. simpl. erewrite fubini_no_funext.
+  Focus 2. reflexivity.
+  Focus 3. reflexivity.
+  Focus 2. reflexivity.
+  unfold newInput, bernoulli, pchoice. simplVal. destruct k.
+  - replace 
+(fun a : nat =>
+      match a with
+      | 0 => unit 0%nat
+      | S n' => map (fun out : bool => if out then n' else a) newOutput
+      end (fun x : nat => 0%nat = S x))
+ with (fun _ : nat => 0 * 1).
+    rewrite <- int_scales. ring_simplify.
+    rewrite (nat_char nu) at 1. simpl. unfold build_nat.
+     simpl.
+  
+simpl. 
+  Abort.
+
   Lemma transition_ContinuousV : forall n : nat,
     ContinuousV (transition n).
   Proof.
@@ -1802,13 +1913,6 @@ Section Queues.
     rewrite (@LPRind_false (P /\ 0%nat = S x)) by intuition
   | [ |- context[LPRindicator (P /\ 0%nat = 0%nat) ] ] => 
     rewrite (@LPRind_iff (P /\ 0%nat = 0%nat) P) by intuition
-  end.
-
-  Ltac indicatorSolve := repeat match goal with
-  | [ |- context[LPRindicator (?x = ?y)] ] =>
-     rewrite LPRind_true by trivial
-  | [ |- context[LPRindicator (?x = ?y)] ] =>
-     rewrite LPRind_false by trivial
   end.
 
   Lemma rho_mu_lambda :((1 - rho) * mu * (1 - lambda) = mu - lambda)%Qnn.
@@ -1862,7 +1966,33 @@ Section Queues.
   unfold K. intuition.
   rewrite (val_iff H). rewrite strict. indicatorSolve. ring.
 
-  induction n.  simpl. 
-  Abort.
+
+  unfold steadyState. unfold pchoice. remember (geometric rho) as geo.
+  remember transition as trns.
+  simpl. indicatorSolve. ring_simplify.
+  simplVal.
+  replace (geo (fun x : nat => S n = S x)) with (geo (eq n)).
+  Focus 2. apply val_iff. intros; split; intros; congruence.
+  rewrite <- change_of_variables.
+
+  induction n.
+  - rewrite Heqgeo. rewrite geometricInvariant.
+    unfold geoFix, pchoice. simplVal. rewrite <- Heqgeo. simpl.
+    indicatorSolve. ring_simplify.
+    rewrite <- change_of_variables.
+    replace (geo (fun x : nat => 0%nat = S x)) with 0.
+    Focus 2. erewrite val_iff. symmetry. apply strict. unfold K.
+      intros; split; intros; congruence || contradiction.
+    ring_simplify.
+    rewrite Heqgeo. rewrite geometricInvariant.
+    unfold geoFix, pchoice. simplVal.
+    rewrite <- Heqgeo. rewrite <- change_of_variables.
+    replace (integral (fun x : nat => (trns (S (S (S x)))) (eq 1%nat)) geo)
+      with 0 by admit.
+    ring_simplify.
+    admit.
+  - admit.
+  Abort. 
+  
 
 End Queues.

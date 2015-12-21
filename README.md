@@ -19,7 +19,8 @@ An exploration of how to formalize probability in Coq.
     `map`, `product`, `restrict`, `inject`
   - attempted definition of measurability
   - supremum and fixpoint valuations, continuity of valuation functionals
-  - principles for reasoning about finite and countable measures
+  - principles for constructing and reasoning about 
+    finite and countable measures
   - examples: probabilistic choice, Bernoulli, binomial, geometric
   - example of Geom/Geom/1 queue system
 

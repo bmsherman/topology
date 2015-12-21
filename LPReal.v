@@ -347,9 +347,20 @@ split; unfold LPRle; intros; simpl in *.
   + apply Qnnlt_zero_prop in H0. contradiction.
   + destruct (Qnn_dec y 0%Qnn) as [[H1 | H1] | H1].
     * apply Qnnlt_zero_prop in H1. contradiction.
-    * pose (Qnnminusp _ _ (Qnnlt_le_weak H)).
-      pose ((Qnnonehalf * Qnnonehalf * q0)%Qnn) as eps.
-      admit.
+    * pose (((x + y) - q) * (Qnnonehalf * Qnnonehalf))%Qnn as eps.
+      apply (LPRplusB (x - eps) (y - eps)).
+      assert (0 < eps)%Qnn. unfold eps.
+      replace 0%Qnn with (0 * (Qnnonehalf * Qnnonehalf))%Qnn by ring.
+      apply Qnnmult_lt_compat_r. rewrite <- Qnnlt_alt.
+      reflexivity. apply Qnnminus_lt_r. apply Qnnlt_le_weak.
+      assumption. ring_simplify. assumption.
+      simpl. apply Qnnminus_lt_l. admit.
+      replace x with (x + 0)%Qnn at 1 by ring.
+      replace (eps + x)%Qnn with (x + eps)%Qnn by ring.
+      apply Qnnplus_le_lt_compat. apply Qnnle_refl.
+      assumption.
+      (* Same as the other side *) admit.
+      admit. 
     * apply LPRplusL. simpl.
       eapply Qnnlt_le_trans. eassumption.
       subst. replace (x + 0)%Qnn with x by ring.
@@ -589,8 +600,13 @@ Lemma LPRind_mult {U V : Prop}
 Proof.
 apply LPReq_compat. 
 split; unfold LPRle; simpl in *; intros.
-- intuition. pose proof (qnn_sqrt H1). 
-  destruct H0. exists x. exists x. intuition.
+- intuition. 
+  assert (1 <= 1 * 1).
+  ring_simplify. apply LPRle_refl.
+  unfold LPRle in H0. 
+  specialize (H0 q H1). simpl in H0.
+  destruct H0 as [a [b [pa [pb pab]]]].
+  exists a. exists b. intuition.
 - destruct H as [a [b [pa [pb ab]]]]. intuition.
   eapply Qnnle_lt_trans. eassumption.
   apply Qnnle_lt_trans with (a * 1)%Qnn.
@@ -729,4 +745,13 @@ Qed.
 
 Lemma LPRQnn_mult {x y : Qnn} : LPRQnn x * LPRQnn y = LPRQnn (x * y)%Qnn.
 Proof. 
-Admitted.
+apply LPRle_antisym; unfold LPRle; simpl; intros.
+- destruct H as [a [b [pa [pb pab]]]].
+  eapply Qnnle_lt_trans. eassumption.
+  eapply Qnnle_lt_trans. Focus 2.
+  eapply Qnnmult_lt_compat_r. eapply Qnnle_lt_trans. 2:eassumption.
+  apply nonneg. eassumption.
+  apply Qnnmult_le_compat. apply Qnnle_refl.
+  apply Qnnlt_le_weak. assumption.
+- admit.
+Qed.

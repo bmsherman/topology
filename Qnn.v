@@ -615,8 +615,3 @@ Lemma smallPowers {p : Qnn} : p < 1
   -> forall (q : Qnn), (q > 0)
   -> exists (n : nat), (p ^ n < q).
 Admitted.
-
-Lemma qnn_sqrt {x : Qnn}
-  : x < 1 -> exists y, (y < 1 /\ x <= y * y).
-Proof.
-Admitted.
