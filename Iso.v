@@ -43,8 +43,8 @@ refine (
   reflexivity.
 Qed.
 
-(* Isomorphisms between Sigma types with different indexing types. *)
-Section SigmaIso.
+(** * Sigma type isomorphisms *)
+(** Isomorphisms between Sigma types with different indexing types. *)
 
 Definition FSig {B : False -> Type} : T (sigT B) False.
 Proof. refine (
@@ -113,10 +113,8 @@ intros. destruct a. reflexivity.
 intros. destruct b. reflexivity.
 Qed. 
 
-End SigmaIso.
-
-(* Isomorphisms between function types with different argument types. *)
-Section FunctionIso.
+(** * Function type isomorphisms *)
+(** Isomorphisms between function types with different argument types. *)
 
 Lemma FFunc {B : Type} : T (False -> B) True.
 Proof.
@@ -197,11 +195,9 @@ rewrite (to_from IY).
 reflexivity.
 Defined.
 
-End FunctionIso.
-
+(** * Congruences *)
 (** Isomorphism is a congruence over the type forming operations
-   for sums, products, and functions. *)
-Section Ops.
+    for sums, products, and functions. *)
 
 Theorem PlusCong {A B A' B' : Type}
  (IA : T A A')
@@ -256,10 +252,19 @@ intros; apply functional_extensionality; intro x; simpl;
   reflexivity.
 Defined.
 
-End Ops.
+Theorem eq_dec {A B : Type} : (forall x y : A, {x = y} + {x <> y})
+  -> T A B -> forall x y : B, {x = y} + {x <> y}.
+Proof.
+intros dec t x y.
+destruct (dec (from t x) (from t y)).
+  + left. 
+    replace x with (to t (from t x)) by apply to_from.
+    replace y with (to t (from t y)) by apply to_from.
+    f_equal. assumption.
+  + right. congruence.
+Qed.
 
-Section Infinite.
-
+(** * Infinite *)
 (** Cantor's diagonal arguments, which says that there is no bijection
     between natural numbers and sequences of natural numbers. *)
 Theorem Cantor : T nat (nat -> nat) -> False.
@@ -275,5 +280,3 @@ assert (forall (n : nat), f <> to0 n).
   rewrite <- H0 in H.
   apply (H (from0 f)). reflexivity.
 Qed.
-
-End Infinite.

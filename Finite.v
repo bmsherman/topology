@@ -264,11 +264,44 @@ Qed.
 
 Inductive T : Type -> Type :=
   | F0 : T False
-  | F1 : T True
-  | FPlus : forall {A B}, T A -> T B -> T (A + B)
+  | FS : forall {A}, T A -> T (True + A)
   | FIso : forall {A B}, T A -> Iso.T A B -> T B
 .
 
+Definition fin (n : nat) : T (Fin.t n).
+Proof. eapply FIso. Focus 2. eapply Iso.Sym. eapply finIso.
+induction n; simpl.
+- apply F0.
+- apply FS. assumption.
+Qed.
+
+Definition finU (A : U) : T (ty A).
+Proof. 
+eapply FIso. Focus 2. eapply Iso.Sym. apply finChar.
+apply fin.
+Qed.
+
+Definition iso {A : Type} : T A -> sigT (fun n => Iso.T A (Fin.t n)).
+Proof.
+intros. induction X.
+-  exists 0. apply (finChar U0).
+- destruct IHX. exists (S x). apply Iso.Sym. eapply Iso.Trans. 
+  apply finIso. simpl. apply Iso.PlusCong. apply Iso.Refl.
+  eapply Iso.Trans. eapply Iso.Sym. apply finIso. apply Iso.Sym.
+  assumption.
+- destruct IHX. exists x. eapply Iso.Trans. eapply Iso.Sym. eassumption.
+  assumption. 
+Qed.
+
+Definition true : T True := finU U1.
+
+Definition plus {A B : Type} (fa : T A) (fb : T B) : T (A + B).
+Proof.
+destruct (iso fa), (iso fb).
+eapply (@FIso (Fin.t (x + x0))). apply (finU (UFint (x + x0))).
+eapply Iso.Trans. eapply Iso.Sym. apply finPlus.
+eapply Iso.PlusCong; eapply Iso.Sym; eassumption.
+Qed.
 
 Lemma finiteSig {A : Type} (fa : T A)
   : forall {B : A -> Type}, 
@@ -277,13 +310,12 @@ Lemma finiteSig {A : Type} (fa : T A)
 Proof.
 induction fa; intros b fb.
 - exists False. split. constructor. apply Iso.FSig.
-- exists (b I). split. apply fb. apply Iso.TSig.
-- pose proof (IHfa1 (fun x => b (inl x)) (fun x => fb (inl x))).
-  pose proof (IHfa2 (fun x => b (inr x)) (fun x => fb (inr x))).
-  destruct X. destruct X0. destruct p. destruct p0.
-  exists (x + x0)%type. split.
-  constructor; assumption.
-  apply Iso.PlusSig; assumption.
+- pose proof (IHfa (fun x => b (inr x)) (fun x => fb (inr x))).
+  destruct X. destruct p.
+  exists (b (inl I) + x)%type. constructor. apply plus. apply fb. 
+  assumption.
+  apply Iso.PlusSig. apply (@Iso.TSig (fun x => b (inl x))). 
+  assumption.
 - pose (Iso.Sym t).
   pose proof (IHfa (fun x => b (Iso.from t0 x))
                    (fun x => fb (Iso.from t0 x))).
@@ -321,13 +353,12 @@ Lemma finiteMapped {A : Type} (fa : T A)
   : forall {B : Type}, T B -> sigT (fun S => (T S * Iso.T (A -> B) S)%type).
 Proof.
 induction fa.
-- exists True. apply (F1, Iso.FFunc).
-- intros B fb. exists B. apply (fb, Iso.TFunc).
-- intros B1 fb.
-  destruct (IHfa1 B1 fb). destruct (IHfa2 B1 fb).
-  exists (x * x0)%type.
-  destruct p. destruct p0.
-  apply (times t t1, Iso.PlusFunc t0 t2).
+- intros. exists True. apply (true, Iso.FFunc).
+- intros B fb.
+  destruct (IHfa B fb).
+  exists (B * x)%type.
+  destruct p.
+  apply (times fb t , Iso.PlusFunc Iso.TFunc t0).
 - intros B1 fb.
   destruct (IHfa B1 fb).
   destruct p.
@@ -358,11 +389,10 @@ Theorem eq_dec {A : Type} : T A -> forall a b : A, {a = b} + {a <> b}.
 Proof.
 intros finite.
 induction finite; intros; try (decide equality).
-- destruct a, b. left. reflexivity.
-- destruct (IHfinite (Iso.from t a) (Iso.from t b)).
-  + left. 
-    replace a with (Iso.to t (Iso.from t a)) by apply Iso.to_from.
-    replace b with (Iso.to t (Iso.from t b)) by apply Iso.to_from.
-    f_equal. assumption.
-  + right. congruence.
+- destruct a, b. 
+  + destruct t, t0. auto. 
+  + destruct t. right. congruence.
+  + destruct t. right. congruence.
+  + pose proof (IHfinite a a0). destruct H; [left | right]; congruence.
+- eapply Iso.eq_dec; eassumption.
 Qed.

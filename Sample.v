@@ -132,6 +132,17 @@ Lemma restrictToVecBot {A : Type} {n : nat}
   : forall xs, ~ (@restrictToVec A (K False) n xs).
 Proof. Admitted.
 
+Lemma restrictToVecFactorizes {A : Type} : 
+  A ->
+  forall n U P v,
+  @restrictToVec A (fun z => P /\ U z) n v
+  <-> P /\ restrictToVec U n v.
+Proof.
+intros. 
+induction n.
+- unfold restrictToVec. split; intros.
+Admitted.
+
 Lemma restrictToVecMonotonicP {A : Type} {n : nat}
   : forall { U V : Streams.Stream A -> Prop }
   , (forall (s : Streams.Stream A), U s -> V s)
@@ -221,6 +232,11 @@ refine (
   try assumption).
   (* apply modular. *)
   admit.
+- rewrite LPRsup_scales.
+  apply LPRsup_eq_pointwise.
+  assert A as nonempty. admit.
+  intros. rewrite (val_iff (restrictToVecFactorizes nonempty _ _ _)).
+  apply factorizes.
 Defined.
 
 Lemma streamTl {A : Type} (mu : Valuation A)
@@ -294,6 +310,7 @@ rewrite LPRind_false by intuition.
 intros a. apply IHn. apply LPRzero_min.
 Qed.
 
+(** * Partial valuations *)
 
 (** A datatype for partial computations. We will use this
     to allow definitions of measures which might not be guaranteed
@@ -369,6 +386,17 @@ destruct H; destruct H; exists x;
 destruct (runPartial a x) eqn:partial; intuition.
 Qed.
 
+Lemma partialize_factorizes {A : Type}
+  : forall {P U} a, (partialize (fun z : A => P /\ U z)) a
+       <-> P /\ partialize U a.
+Proof.
+intros. split; intros.
+destruct H. destruct (runPartial a x) eqn:ran. destruct H.
+split. assumption. exists x. rewrite ran. assumption. contradiction.
+destruct H. destruct H0. destruct (runPartial a x) eqn:ran.
+exists x. rewrite ran. intuition. contradiction.
+Qed.
+
 (** We can convert a measure on [Partial A]s to a measure on 
     [A]s by essentially just setting measure 0 to any of the
     values which never terminated. *)
@@ -391,6 +419,8 @@ Proof. refine (
 - intros. rewrite (val_iff partialize_and). 
   rewrite (val_iff partialize_or).
   apply modular.
+- intros. rewrite (val_iff partialize_factorizes).
+  apply factorizes.
 Defined.
 
 (** Random samplers which may diverge. *)

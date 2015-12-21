@@ -25,6 +25,8 @@ Record Valuation {A : Type} :=
               -> val U <= val V
   ; modular : forall {U V},
      val U + val V = val (fun z => U z /\ V z) + val (fun z => U z \/ V z)
+  ; factorizes : forall {U : A -> Prop} {P : Prop},
+     val (fun z => P /\ U z) = LPRindicator P * val U
   }.
 
 Arguments Valuation : clear implicits.
@@ -61,6 +63,8 @@ pose proof (proof_irrel _ monotonic0 monotonic1).
 induction H0.
 pose proof (proof_irrel _ modular0 modular1).
 induction H0.
+pose proof (proof_irrel _ factorizes0 factorizes1).
+induction H0.
 reflexivity.
 Qed.
 
@@ -75,10 +79,11 @@ Definition Valge {A : Type} (x y : Valuation A)
 Definition zeroVal {A : Type} : Valuation A.
 Proof. refine (
   {| val := fun P => 0 |}
-).
+); intros.
 - reflexivity.
-- intros. apply LPRle_refl.
-- intros. reflexivity.
+- apply LPRle_refl.
+- reflexivity.
+- ring.
 Defined.
 
 Lemma qredistribute : forall andLq andRq orLq orRq,
@@ -96,6 +101,7 @@ Proof. refine (
 - rewrite qredistribute. 
   rewrite (qredistribute (ValL (fun z => U z /\ V z))).
   apply LPRplus_eq_compat; apply modular.
+- repeat rewrite factorizes. ring.
 Defined.
 
 (** Scale a valuation by a constant *)
@@ -112,6 +118,7 @@ Proof. refine (
   with (c * (Val (fun z : A => U z /\ V z) + Val (fun z : A => U z \/ V z))) by ring.
   apply LPRmult_eq_compat. reflexivity.
   apply modular.
+- rewrite factorizes. ring.
 Defined.
 
 Infix "<=" := Valle : Val_scope.
@@ -157,6 +164,7 @@ Proof. refine (
 - apply LPRind_false. auto.
 - apply LPRind_imp. apply H.
 - apply LPRind_modular.
+- apply LPRind_mult.
 Defined.
 
 Lemma unit_prob {A : Type} {x : A} : unit x (K True) = 1.
@@ -636,6 +644,8 @@ Proof. refine (
 ((f a) U + (f a) V) =
 ((f a) (fun z : B => U z /\ V z) + (f a) (fun z : B => U z \/ V z))
 ). apply modular. rewrite H. split; apply LPRle_refl.
+- intros. rewrite int_scales. apply int_pointwise_eq.
+  unfold pointwise. intros. apply factorizes.
 Defined.
 
 Lemma bind_ContinuousV {A B : Type} : forall (mu : Valuation A)
@@ -684,6 +694,8 @@ Proof. refine (
 - intros. rewrite int_adds. rewrite int_adds.
   apply int_pointwise_eq. unfold pointwise; intros.
   apply modular.
+- intros. rewrite int_scales. apply int_pointwise_eq.
+  unfold pointwise. intros. apply factorizes.
 Defined.
 
 (** Pushforward of a measure, i.e., map a function over a measure *)
@@ -695,6 +707,7 @@ Proof. refine (
 - apply strict.
 - apply monotonic. auto.
 - apply modular; auto.
+- apply factorizes.
 Defined.
 
 Lemma map_ContinuousV {A B : Type} : forall (mu : Valuation A)
@@ -831,6 +844,8 @@ refine (
   (mu (fun x => (P x /\ U x) \/ (P x /\ V x))).
   apply modular. apply val_iff. intros. intuition.
   apply val_iff. intros. intuition.
+- intros. erewrite val_iff. eapply factorizes. 
+  intuition.
 Defined.
 
 Lemma restrict_monotonic {A : Type} {mu : Valuation A}
@@ -961,6 +976,8 @@ Proof. refine (
    ; try (intros; apply fmono; auto).
   apply LPRsup_eq_pointwise. intros.
   apply modular.
+- intros. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
+  intros. apply factorizes.
 Defined.
 
 Lemma sup_ContinuousV {A : Type} : forall (I : JoinLat.t) 
@@ -1193,6 +1210,11 @@ refine (
   exists a. intuition.
   rewrite (val_iff H0).
   apply modular.
+- intros. erewrite val_iff. apply factorizes.
+  intros. split; intros. destruct H as [a0 [[Pp Ua0] fa0]].
+  subst. split. assumption. exists a0. intuition.
+  destruct H as [Pp [a0 [Ua0 fa0]]].
+  exists a0. intuition.
 Defined.
 
 Lemma inl_inj {A B : Type} : forall (a a' : A), inl B a = inl a' -> a = a'.
@@ -1248,66 +1270,51 @@ Qed.
     checking them pointwise. 
 *)
 
+Fixpoint build_finite {A : Type} (fin : Finite.T A) : (A -> LPReal) -> Valuation A 
+  := match fin with
+  | F.F0 => fun _ => 0%Val
+  | F.FS _ fin' => fun f => 
+     (f (inl I) * unit (inl I) + map inr (build_finite fin' (fun x => f (inr x))))%Val
+  | F.FIso _ _ fin' t => fun f => 
+     map (Iso.to t) (build_finite fin' (fun x => f (Iso.to t x)))
+  end.
+
+Lemma fin_char {A : Type} : forall (fin : Finite.T A) (mu : Valuation A),
+  mu = build_finite fin (fun a => mu (eq a)).
+Proof. 
+intros. induction fin; apply Valeq_compat; unfold Valeq; simpl; intros P.
+- erewrite val_iff. apply strict. intros. contradiction.
+- rewrite splitValuation. apply LPRplus_eq_compat.
+  + simpl. rewrite (SRmul_comm LPRsrt). rewrite <- factorizes.
+    apply val_iff. intros. split; intros.
+    destruct H. destruct x. assumption. exists I. assumption.
+  + rewrite (IHfin (inject _ _ _)).
+    replace (fun a : A => (inject inr inr_inj mu) (eq a))
+    with (fun x : A => mu (eq (inr x))).
+    reflexivity.
+    extensionality a. simpl. apply val_iff. intros; split; intros.
+    destruct a0. congruence. inversion H. subst.
+    exists a0. intuition. destruct H as [a1 [aeqa1 ans]].
+    subst. reflexivity.
+- assert (mu P = (map (Iso.from t) mu) (fun a => P (Iso.to t a))).
+  simpl. apply val_iff. intros b. rewrite Iso.to_from. reflexivity.
+  rewrite H. rewrite (IHfin (map _ _)).
+  replace (fun a : A => (map (Iso.from t) mu) (eq a))
+  with (fun x : A => mu (eq (Iso.to t x))). reflexivity.
+  extensionality a. simpl. apply val_iff. intros. split; intros.
+  rewrite <- H0. symmetry.  apply Iso.from_to. 
+  rewrite H0. apply Iso.to_from.
+Qed.
+
 Lemma fin_dec {A : Type} : forall (fin : Finite.T A)
   (mu nu : Valuation A)
-  , (forall (a : A) (P : Prop), let U x := P /\ a = x
-     in mu U = nu U)
+  , (forall (a : A), mu (eq a) = nu (eq a))
   -> mu = nu.
 Proof.
-intros fin. 
-induction fin; intros; apply Valeq_compat; unfold Valeq; intros P.
-- assert (P = K False). extensionality x. contradiction.
-  rewrite H0. repeat rewrite strict. reflexivity.
-- pose proof (H I (P I)).
-  assert (forall a, P a <-> (fun x : True => P I /\ I = x) a).
-  intros; split; intros; destruct a; intuition. 
-  do 2 rewrite (val_iff H1).
-  apply H0.
-- repeat rewrite splitValuation.
-  apply LPRplus_eq_compat.
-
-  assert (inject inl inl_inj mu = inject inl inl_inj nu).
-  apply IHfin1. intros.
-  specialize (H (inl a) P0).
-  simpl.
-  assert (forall z, (fun x : A + B => P0 /\ inl a = x) z 
-        <-> (fun b : A + B => exists a0 : A, U a0 /\ inl a0 = b) z).
-  intros. split; intros. exists a. unfold U. intuition.
-  destruct H0 as [a' [[prf aa'] inla']]. subst. intuition.
-  do 2 rewrite <- (val_iff H0).
-  simpl in H. apply H.
-  rewrite H0. reflexivity.
-
-  assert (inject inr inr_inj mu = inject inr inr_inj nu).
-  apply IHfin2. intros.
-  specialize (H (inr a) P0).
-  simpl.
-  assert (forall z, (fun x : A + B => P0 /\ inr a = x) z 
-        <-> (fun b : A + B => exists b0 : B, U b0 /\ inr b0 = b) z).
-  intros. split; intros. exists a. unfold U. intuition.
-  destruct H0 as [a' [[prf aa'] inla']]. subst. intuition.
-  do 2 rewrite <- (val_iff H0).
-  simpl in H. apply H.
-  rewrite H0. reflexivity.
-
-- assert (map (Iso.from t) mu = map (Iso.from t) nu).
-  apply IHfin.
-  intros. simpl.
-  specialize (H (Iso.to t a) P0).
-  assert (forall b, (fun x : B => U (Iso.from t x)) b <-> 
-               (fun x : B => P0 /\ Iso.to t a = x) b).
-  intros b. split; intros.
-  unfold U in H0. intuition. rewrite H2. apply Iso.to_from.
-  unfold U. intuition. rewrite <- H2. symmetry. apply Iso.from_to. 
-
-  do 2 rewrite (val_iff H0).
-  apply H.
-  assert (forall v, map (Iso.to t) (map (Iso.from t) v) = v).
-  intros. rewrite <- map_compose. apply Valeq_compat. unfold Valeq.
-  intros. simpl. erewrite val_iff. reflexivity.
-  intros a. rewrite Iso.to_from. intuition.
-  rewrite <- (H1 mu). rewrite <- (H1 nu).
-  rewrite H0. reflexivity.
+intros. rewrite (fin_char fin mu). rewrite (fin_char fin nu).
+replace (fun a => mu (eq a)) with (fun a => nu (eq a))
+  by (extensionality x; intuition).
+reflexivity.
 Qed.
 
 Require Fin. 
@@ -1373,46 +1380,69 @@ unfold ftonat in faa.
 destruct (Fin.to_nat fa). simpl in faa. subst. intuition.
 Qed.
 
-Lemma finiteFin : forall n : nat, Finite.T (Fin.t n).
-Proof. intros. induction n.
-- eapply F.FIso. Focus 2. eapply Iso.Sym. eapply Finite.finIso. 
-  simpl. apply F.F0.
-- eapply F.FIso. Focus 2. eapply Iso.Sym. eapply Finite.finIso.
-  simpl. apply F.FPlus. apply F.F1. eapply F.FIso. eassumption.
-  apply Finite.finIso.
+Fixpoint build_nat_fin (f : nat -> LPReal) (lim : nat) : Valuation nat := 
+  match lim with
+  | 0 => 0%Val
+  | S lim' => (build_nat_fin f lim' + f lim' * unit lim')%Val
+  end.
+
+Lemma build_nat_fin_mono1 {f : nat -> LPReal} : forall n : nat,
+   (build_nat_fin f n <= build_nat_fin f (S n))%Val.
+Proof.
+intros. simpl. unfold Valle. intros. simpl.
+replace ((build_nat_fin f n) P) with ((build_nat_fin f n) P + 0) at 1
+  by ring.
+apply LPRplus_le_compat. apply LPRle_refl. apply LPRzero_min.
+Qed.
+
+Lemma build_nat_fin_mono {f : nat -> LPReal} : forall n m : nat, (n <= m)%nat ->
+   (build_nat_fin f n <= build_nat_fin f m)%Val.
+Proof.
+intros. induction H. apply Valle_refl.
+eapply Valle_trans. apply IHle. apply build_nat_fin_mono1.
+Qed.
+
+Definition build_nat (f : nat -> LPReal) : Valuation nat
+  := supValuation natJoinLat (fun n => build_nat_fin f n) build_nat_fin_mono.
+
+Lemma nat_char : forall (mu : Valuation nat),
+  ContinuousV mu ->
+  mu = build_nat (fun n => mu (eq n)).
+Proof. 
+intros. 
+rewrite (continuous_val_fin_nat mu) at 1 by assumption.
+unfold build_nat.
+apply Valeq_compat; intros P. simpl.
+apply LPRsup_eq_pointwise.
+intros. induction a.
+- simpl. erewrite val_iff. apply strict. unfold K. intuition.
+- simpl. rewrite <- IHa. rewrite (SRmul_comm LPRsrt). 
+  rewrite <- factorizes.
+  rewrite modular.
+  replace (mu (fun z : nat => ((z < a)%nat /\ P z) /\ P a /\ a = z))
+    with 0.
+  ring_simplify. apply val_iff. intros; split; intros.
+  destruct H0. inversion H0. subst. right. intuition.
+  subst. left. intuition. destruct H0. intuition. intuition.
+  subst. assumption.
+  erewrite val_iff. symmetry. apply strict.
+  unfold K. intros; split; intros. destruct H0 as [[lta p] [p1 eqa]].
+  subst. apply NPeano.Nat.lt_neq in lta. apply lta. reflexivity.
+  contradiction.
 Qed.
 
 (** We can prove that two continuous measures on the natural numbers are 
     equal by proving that they are equal pointwise! *)
 Lemma nat_dec : forall {mu nu : Valuation nat}
   , ContinuousV mu -> ContinuousV nu
-  -> (forall (n : nat) (P : Prop), let U x := P /\ n = x in mu U = nu U)
+  -> (forall (n : nat), mu (eq n) = nu (eq n))
   -> mu = nu.
-Proof. intros. 
-rewrite (continuous_val_fin_nat mu) by assumption.
-rewrite (continuous_val_fin_nat nu) by assumption.
-simpl.
-assert (forall n, restrict mu (fun k => (k < n)%nat) = restrict nu (fun k => (k < n)%nat)).
-intros n. apply Valeq_compat. unfold Valeq. intros. 
-do 2 (rewrite nat_restrict_inject).
-replace (inject ftonat (@ftonat_inj n) mu) with (inject ftonat (@ftonat_inj n) nu).
-reflexivity. apply (fin_dec (finiteFin n)).
-intros.  simpl. specialize (H1 (ftonat a) P0).
-
-assert (forall z, 
-   (fun b : nat => exists a0 : Fin.t n, U a0 /\ ftonat a0 = b) z
- <-> (fun x : nat => P0 /\ ftonat a = x) z).
-unfold U. intros; split; intros.
-destruct H2 as [a' [Ua' fa']].
-intuition. subst. reflexivity.
-exists a. intuition.
-
-do 2 rewrite (val_iff H2).
-symmetry. apply H1.
-
-apply Valeq_compat. unfold Valeq. intros P. simpl. apply LPRsup_eq_pointwise.
-intros. specialize (H2 a). pose proof (f_equal (fun v => val v P) H2).
-apply H3.
+Proof. intros.
+rewrite nat_char by assumption.
+rewrite (nat_char mu) by assumption.
+replace (fun n : nat => mu (eq n)) with (fun n : nat => nu (eq n))
+  by (extensionality x; auto).
+reflexivity.
 Qed.
 
 (** * Examples *)
@@ -1774,6 +1804,13 @@ Section Queues.
     rewrite (@LPRind_iff (P /\ 0%nat = 0%nat) P) by intuition
   end.
 
+  Ltac indicatorSolve := repeat match goal with
+  | [ |- context[LPRindicator (?x = ?y)] ] =>
+     rewrite LPRind_true by trivial
+  | [ |- context[LPRindicator (?x = ?y)] ] =>
+     rewrite LPRind_false by trivial
+  end.
+
   Lemma rho_mu_lambda :((1 - rho) * mu * (1 - lambda) = mu - lambda)%Qnn.
   Proof. unfold rho, u, d.
   Admitted.
@@ -1786,27 +1823,27 @@ Section Queues.
   Proof.
   apply nat_dec. apply bind_ContinuousV. apply steadyState_ContinuousV.
   apply transition_ContinuousV. apply steadyState_ContinuousV.
-  intros. unfold U. destruct n. 
+  intros. destruct n. 
   remember transition as trns.
   simpl.
   replace (LPRsup
-     (fun i : nat => (fixn (geoFix rho) i) (fun x : nat => P /\ 0%nat = S x))) with 0.
-  condSolve P.
+     (fun i : nat => (fixn (geoFix rho) i) (fun x : nat => 0%nat = S x))) with 0.
   ring_simplify.
   unfold steadyState, pchoice. simplVal.
   rewrite <- change_of_variables.
   rewrite geometricInvariant. unfold geoFix. 
   unfold pchoice. simplVal. rewrite <- change_of_variables.
   replace (integral
-      (fun x : nat => (trns (S (S x))) (fun x0 : nat => P /\ 0%nat = x0))
+      (fun x : nat => (trns (S (S x))) (eq 0%nat))
       (geometric rho)) with 0.
   rewrite Heqtrns. simpl.
   unfold newInput, bernoulli, pchoice.
-  simplVal. condSolve P. ring_simplify.
+  simplVal. ring_simplify.
   LPRQnn_simpl.
   replace (lambda / mu * (1 - rho) * mu * (1 - lambda))%Qnn
   with (lambda / mu * ((1 - rho) * mu * (1 - lambda)))%Qnn by ring.
   rewrite rho_mu_lambda.
+  indicatorSolve. ring_simplify.
   admit.
 
   replace 0 with (0 * 1). rewrite <- (geometric_prob rho).
@@ -1816,15 +1853,14 @@ Section Queues.
   intros.
   rewrite Heqtrns.
   simpl. unfold newInput, bernoulli, pchoice. simplVal.
-  condSolve P. unfold K. rewrite LPRind_true by trivial.
-  ring.
+  unfold K. indicatorSolve. ring.
   apply rholt1. ring.
   rewrite (LPRsup_eq_pointwise _ (fun _ => 0)).
   symmetry. apply LPRsup_constant. exact 0%nat.
   intros n. induction n; simpl. reflexivity.
-  assert (forall z, (fun x : nat => P /\ 0%nat = S (S x)) z <-> (K False) z).
+  assert (forall z, (fun x : nat => 0%nat = S (S x)) z <-> (K False) z).
   unfold K. intuition.
-  rewrite (val_iff H). rewrite strict. condSolve P. ring.
+  rewrite (val_iff H). rewrite strict. indicatorSolve. ring.
 
   induction n.  simpl. 
   Abort.
