@@ -680,9 +680,9 @@ destruct (power_small p q (nonneg p) H H0).
 exists x. unfold Qnnlt. rewrite Qnnpow_Qc. assumption.
 Qed.
 
-Lemma Qnnplus_open {q x y : Qnn} : (q < x + y
+Lemma Qnnplus_open {q x y : Qnn} : q < x + y
   -> 0 < x -> 0 < y
-  -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y'))%Qnn.
+  -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y').
 Proof.
 intros. 
 pose (((x + y) - q) * Qnnonehalf)%Qnn as eps.
@@ -718,7 +718,7 @@ apply Qnnplus_le_compat.
 admit. admit.
 Qed.
 
-Lemma Qnnmult_open {q x y : Qnn} : (q < x * y
-  -> exists x' y', x' < x /\ y' < y /\ (q <= x' * y'))%Qnn.
+Lemma Qnnmult_open {q x y : Qnn} : q < x * y
+  -> exists x' y', x' < x /\ y' < y /\ (q <= x' * y').
 Proof.
 Admitted.
