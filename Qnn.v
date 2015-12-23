@@ -483,6 +483,14 @@ Fixpoint Qnnpow (b : Qnn) (e : nat) := match e with
 
 Infix "^"  := Qnnpow : Qnn_scope.
 
+Lemma Qnnpow_Qc : forall (b : Qnn) (e : nat),
+  qnn (b ^ e) = ((qnn b) ^ e)%Qc.
+Proof.
+intros. induction e; simpl.
+- reflexivity. 
+- rewrite IHe. reflexivity.
+Qed.
+
 Lemma Qnnpow_le {x : Qnn} {n : nat} :
   x <= 1 -> x ^ n <= 1.
 Proof.
@@ -659,10 +667,18 @@ induction x.
 - simpl. rewrite IHx. ring.
 Qed.
 
+Require Import Clement.SmallPowers.
+Local Close Scope Qc.
+Local Close Scope Q.
+
 Lemma smallPowers {p : Qnn} : p < 1
   -> forall (q : Qnn), (q > 0)
   -> exists (n : nat), (p ^ n < q).
-Admitted.
+Proof.
+intros.
+destruct (power_small p q (nonneg p) H H0).
+exists x. unfold Qnnlt. rewrite Qnnpow_Qc. assumption.
+Qed.
 
 Lemma Qnnplus_open {q x y : Qnn} : (q < x + y
   -> 0 < x -> 0 < y
