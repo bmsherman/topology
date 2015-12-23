@@ -311,7 +311,8 @@ Qed.
 Lemma int_monotonic : forall {A : Type} {f g : A -> LPReal}
      , pointwise LPRle f g -> forall (mu : Valuation A)
      , integral f mu <= integral g mu.
-Proof. intros. unfold integral. apply LPRsup_monotonic_gen.
+Proof.
+intros. unfold integral. apply LPRsup_monotonic_gen.
 intros. destruct a. assert (pointwise LPRle (SimpleEval x) g).
 unfold pointwise in *. intros. eapply LPRle_trans. apply p. apply H.
 exists (exist _ x H0). simpl. apply LPRle_refl.
@@ -541,7 +542,7 @@ pose (s := SStep (f a) (fun a' => a = a')).
   simpl. unfold pointwise. intros. unfold SimpleEval.
   simpl. rewrite (SRmul_comm LPRsrt). apply LPRind_scale_le.
   intros H. induction H. apply LPRle_refl.
-Qed. 
+Qed.
 
 (** Fubini's theorem about iterated integrals. It's likely _wrong_ as stated
     here, but it sure is useful! *)
@@ -866,7 +867,7 @@ Qed.
 
 Lemma restrict_false {A : Type} {mu : Valuation A}
   {P : A -> Prop} : A -> (forall a, ~ P a)
-  -> restrict mu P = zeroVal.
+  -> restrict mu P = 0%Val.
 Proof. intros. apply Valeq_compat. unfold Valeq. 
 intros Q. simpl. erewrite val_iff. apply strict.
 intros; unfold K; intuition. apply (H a). assumption.
@@ -1678,18 +1679,6 @@ Qed.
 
 Ltac LPRQnn_simpl := 
   repeat (rewrite LPRQnn_plus || rewrite LPRQnn_mult).
-
-Lemma geoFixMeas : forall (p : Qnn) (n : nat), (p <= 1)%Qnn ->
-  ((fixn (geoFix p) n) (K True)) = LPRQnn ((1 - p) *
-  (fix f x := match x with | 0 => 0 | S x' => 1 + p * f x' end) n)%Qnn.
-Proof.
-intros. induction n.
-- simpl. apply LPRQnn_eq. ring.
-- simpl. rewrite (@val_iff _ _ _ (K True)). rewrite IHn.
-  unfold K. rewrite LPRind_true by trivial.
-  LPRQnn_simpl. apply LPRQnn_eq. ring_simplify.
-  reflexivity. unfold K. intuition.
-Qed.
 
 Lemma geoFixMeas' : forall (p : Qnn), (p <= 1)%Qnn -> forall n,
   ((fixn (geoFix p) n) (K True)) = LPRQnn (1 - p ^ n)%Qnn.

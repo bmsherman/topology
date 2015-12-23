@@ -71,24 +71,25 @@ Defined.
 (** * Streams *)
 
 Require Vector.
+Module V := Vector.
 
 (** An n-fold IID product of a given measure. *)
 Fixpoint product_n {A : Type} (v : Valuation A)
   (n : nat) : Valuation (Vector.t A n) := match n with
-  | 0 => unit (Vector.nil A)
-  | S n' => bind v (fun x => map (Vector.cons A x n') (product_n v n'))
+  | 0 => unit (V.nil A)
+  | S n' => bind v (fun x => map (V.cons A x n') (product_n v n'))
   end.
 
 Fixpoint product_n2 {A : Type} (v : Valuation A)
   (n : nat) {struct n} : Valuation (Vector.t A n) := match n with
-  | 0 => unit (Vector.nil A)
-  | S n' => bind (product_n v n') (fun xs => map (fun x => Vector.shiftin x xs) v)
+  | 0 => unit (V.nil A)
+  | S n' => bind (product_n2 v n') (fun xs => map (fun x => V.shiftin x xs) v)
   end.
 
 Lemma commute_cons_shiftin {A : Type} {n : nat}
   : forall {xs : Vector.t A n} {a z : A},
-    Vector.cons A a _ (Vector.shiftin z xs)
-  = Vector.shiftin z (Vector.cons A a _ xs).
+    V.cons A a _ (V.shiftin z xs)
+  = V.shiftin z (V.cons A a _ xs).
 Proof.
 destruct n; reflexivity.
 Qed.
@@ -109,74 +110,100 @@ assert (
 ).
 apply functional_extensionality. intros. rewrite IHn. reflexivity.
 rewrite H. clear H.
-rewrite IHn.
-Abort.
+Admitted.
 
 Require Streams.
 
-Fixpoint take_n {A : Type} (s : Streams.Stream A) (n : nat)
-  : Vector.t A n := match n, s with
-  | 0, _ => Vector.nil A
-  | S n', Streams.Cons x xs => Vector.cons A x n' (take_n xs n')
-end.
+Module S := Streams.
 
 (* Restrict a property of streams to a property of vectors of length n.
    The property is true for a vector of length in if the property is
    true for ALL streams which begin with that finite prefix. *)
-Definition restrictToVec {A : Type} (P : Streams.Stream A -> Prop)
-  (n : nat) (x : Vector.t A n) : Prop :=
-  forall (s : Streams.Stream A), take_n s n = x -> P s.
+Fixpoint restrictToVec {A : Type} (P : S.Stream A -> Prop)
+  (n : nat) (prefix : Vector.t A n) : Prop :=
+ (match n as n' return Vector.t A n' -> Prop with
+  | 0 => fun _ => forall (s : S.Stream A), P s
+  | S n' => fun v => match v with
+    | V.cons x n0 xs => restrictToVec (fun s => P (S.Cons x s)) n0 xs
+    | V.nil => False
+    end
+  end) prefix.
 
 Lemma restrictToVecBot {A : Type} {n : nat}
-  (nonempty : (A -> False) -> False)
+  (nonempty : A)
   : forall xs, ~ (@restrictToVec A (K False) n xs).
-Proof. Admitted.
+Proof.
+intros. induction xs; simpl; unfold not, K; intros.
+- apply H. exact (S.const nonempty).
+- apply IHxs. apply H.
+Qed.
 
 Lemma restrictToVecFactorizes {A : Type} : 
   A ->
-  forall n U P v,
+  forall U P n v,
   @restrictToVec A (fun z => P /\ U z) n v
-  <-> P /\ restrictToVec U n v.
+  <-> P /\ @restrictToVec A U n v.
 Proof.
-intros. 
-induction n.
-- unfold restrictToVec. split; intros.
-Admitted.
+intros. generalize dependent U.
+induction v; simpl.
+- split; intros. pose proof (H (S.const X)).
+  destruct H0. split. assumption. intros.
+  destruct (H s). assumption. destruct H. split.
+  assumption. apply H0.
+- intros U. apply (IHv (fun s => U (S.Cons h s))).
+Qed.
 
 Lemma restrictToVecMonotonicP {A : Type} {n : nat}
-  : forall { U V : Streams.Stream A -> Prop }
-  , (forall (s : Streams.Stream A), U s -> V s)
-  -> forall xs, restrictToVec U n xs -> restrictToVec V n xs.
+  : forall { U V : S.Stream A -> Prop }
+  , (forall (s : S.Stream A), U s -> V s)
+  -> forall (xs : Vector.t A n), restrictToVec U n xs -> restrictToVec V n xs.
 Proof.
-intros. unfold restrictToVec in *.
-intros s take. apply H. apply H0. assumption.
+intros. generalize dependent V. generalize dependent U.
+induction xs; simpl in *.
+- intros. apply H. apply H0.
+- intros. eapply IHxs. eassumption.
+  intros. apply H. apply H1.
+Qed.
+
+Lemma restrictToVecShiftin {A : Type} : forall U n a (z : A),
+    restrictToVec U n a
+  -> restrictToVec U (S n) (V.shiftin z a).
+Proof.
+intros. generalize dependent U. induction a.
+- simpl in *. intros. apply H.
+- intros. rewrite <- commute_cons_shiftin.
+  apply IHa. apply H.
 Qed.
 
 Lemma restrictToVecMonotonicN {A : Type} : 
  forall (v : Valuation A) (U : Streams.Stream A -> Prop),
  v (K True) = 1 ->
- forall n m : nat,
- (n <= m)%nat ->
+ forall n : nat,
  (product_n v n) (restrictToVec U n) <=
- (product_n v m) (restrictToVec U m).
-Proof. intros. generalize dependent U.
-induction H0; intros. apply LPRle_refl.
-simpl.
-eapply LPRle_trans. apply IHle.
-rewrite <- int_indicator in H.
-replace ((product_n v m) (restrictToVec U m))
-   with ((product_n v m) (restrictToVec U m) * 1) by ring.
-rewrite <- H.
-rewrite int_scales.
-apply int_monotonic.
-unfold pointwise. intros a. unfold K.
-rewrite LPRind_true by trivial.
-replace ((product_n v m) (restrictToVec U m) * 1)
-   with ((product_n v m) (restrictToVec U m)) by ring.
-(* should see that we can snoc instead of cons and get the
-   same measure *)
-apply monotonic. intros.
-admit.
+ (product_n v (S n)) (restrictToVec U (S n)).
+Proof. 
+intros. rewrite (@product_n_same _ v (S n)).
+simpl. rewrite <- product_n_same.
+rewrite <- int_indicator. apply int_monotonic.
+unfold pointwise. intros.
+replace (LPRindicator _)  with (LPRindicator (restrictToVec U n a) * 1)
+  by ring.
+rewrite <- H. rewrite <- factorizes. 
+apply monotonic. unfold K. intros.
+destruct H0.
+apply restrictToVecShiftin. assumption.
+Qed.
+
+Lemma restrictToVecMonotonicN' {A : Type} : 
+ forall (v : Valuation A) (U : Streams.Stream A -> Prop),
+ v (K True) = 1 ->
+ forall m n : nat, (m <= n)%nat ->
+ (product_n v m) (restrictToVec U m) <=
+ (product_n v n) (restrictToVec U n).
+Proof. 
+intros. induction H0. apply LPRle_refl.
+eapply LPRle_trans. apply IHle. apply restrictToVecMonotonicN.
+assumption.
 Qed.
 
 Lemma valPosNonEmpty {A : Type} {mu : Valuation A}
@@ -199,8 +226,8 @@ Qed.
 (* An infinite product measure, generated by considering finite
    products and taking the limit. *)
 Theorem inf_product {A : Type} (v : Valuation A)
-  (vIsProb : v (K True) = 1)
-  : Valuation (Streams.Stream A).
+  (vIsProb : v (K True) = 1) (nonempty : A)
+  : Valuation (S.Stream A).
 Proof.
 refine (
   {| val := fun P => LPRsup (fun n => (product_n v n) (restrictToVec P n))
@@ -212,103 +239,91 @@ refine (
   rewrite (strict (product_n v x)) in H.
   simpl in H. assumption.
   apply restrictToVecBot.
-  eapply valPosNonEmpty.
-  unfold LPRgt. unfold LPRlt. exists 0%Qnn. split.
-  unfold not. simpl. apply Qnnlt_zero_prop.
-  instantiate (1 := (K True)).
-  instantiate (1 := v).
-  rewrite vIsProb. simpl. apply Qnnlt_alt. apply eq_refl.
+  apply nonempty.
 - apply LPRsup_monotonic.
-  intros n. induction n; simpl.
-  + apply LPRind_imp.
-    unfold restrictToVec. intros H1.
-    intros. apply H. apply H1. apply H0.
-  + apply int_monotonic. unfold pointwise.
-    intros a. apply monotonic. intros.
-    eapply restrictToVecMonotonicP. eassumption.
-    assumption.
+  intros. apply monotonic. apply restrictToVecMonotonicP. assumption.
 - do 2 (rewrite <- LPRsup_nat_ord; 
-  try (apply restrictToVecMonotonicN);
+  try (apply restrictToVecMonotonicN');
   try assumption).
-  (* apply modular. *)
-  admit.
+  (* This is definitely not the case pointwise (check n = 0). 
+     It seems that for this to be the case, we must need U and V to
+     be open sets! This will have to reduce to a Tychonoff-like thing;
+     apparently infinite product measures are not exactly trivial. 
+  *)
+  admit. 
 - rewrite LPRsup_scales.
   apply LPRsup_eq_pointwise.
-  assert A as nonempty. admit.
   intros. rewrite (val_iff (restrictToVecFactorizes nonempty _ _ _)).
   apply factorizes.
 Defined.
 
 Lemma streamTl {A : Type} (mu : Valuation A)
+  (nonempty : A)
   (mu1 : mu (K True) = 1)
-  : map (@Streams.tl A) (inf_product mu mu1) = 
-    inf_product mu mu1.
+  : map (@Streams.tl A) (inf_product mu mu1 nonempty) = 
+    inf_product mu mu1 nonempty.
 Proof.
+(* This proof can almost definitely be cleaned up and made shorter! *)
 apply Valeq_compat. unfold Valeq. intros P.
 simpl. apply LPReq_compat. 
 split; apply LPRsup_le; intros n;
-apply LPRsup_ge2. 
+apply LPRsup_ge2.
+- induction n.
+  + simpl. exists 0%nat. simpl. apply LPRind_imp; intros.
+    apply (H (S.Cons nonempty s)).
+  + destruct IHn. simpl.
+    erewrite int_pointwise_eq.
+    Focus 2. unfold pointwise. intros.
+    rewrite <- (SRmul_1_l LPRsrt) at 1.
+    rewrite (SRmul_comm LPRsrt).
+    rewrite <- (LPRind_true True) by trivial.  reflexivity. 
+    exists n. rewrite <- int_scales.
+    rewrite int_indicator. unfold K in mu1. rewrite mu1.
+    ring_simplify. apply monotonic. trivial.
 - exists (S n). simpl.
-  erewrite fubini_no_funext.
-    Focus 2. intros. rewrite <- int_indicator. reflexivity. 
-    Focus 2. intros. reflexivity.
-    Focus 2. intros. simpl. reflexivity.
-  erewrite int_pointwise_eq.
-    Focus 2. unfold pointwise; intros.
-    rewrite int_indicator. reflexivity.
-  (*
-  apply monotonic.
-  apply int_monotonic. unfold pointwise. 
-  intros xs. rewrite int_indicator.
-*)
-admit.
-- exists (S n). simpl. admit.
+    erewrite int_pointwise_eq.
+    Focus 2. unfold pointwise. intros.
+    rewrite <- (SRmul_1_l LPRsrt) at 1.
+    rewrite (SRmul_comm LPRsrt).
+    rewrite <- (LPRind_true True) by trivial.  reflexivity. 
+    rewrite <- int_scales. rewrite int_indicator. unfold K in mu1.
+    rewrite mu1. ring_simplify. apply LPRle_refl.
 Qed.
 
+(** The truthiness of this axiom is very much up to debate.
+    Probably, it's not true in general. Oh, well, right now
+    foundations are out the window anyway. *)
+Axiom product_char : forall (A B : Type) (mu nu : Valuation (A * B)),
+  (forall (PA : A -> Prop) (PB : B -> Prop), 
+     let P (p : A * B) := let (x, y) := p in PA x /\ PB y in
+     mu P = nu P)
+  -> mu = nu.
+
 Definition streamSampler {A : Type} (mu : Valuation A)
+  (nonempty : A)
   (mu1 : mu (K True) = 1)
-  : Sampler (inf_product mu mu1) mu.
+  : Sampler (inf_product mu mu1 nonempty) mu.
 Proof. refine (
   {| sample := fun r => match r with
      | Streams.Cons a r' => (r', a)
      end
   |}
-). apply Valeq_compat. unfold Valeq. intros P.
-Abort.
-
-
-
-(** This is clearly wrong; this is just the zero measure. I even
-    prove my wrongness a little bit further down. *)
-Definition inf_productFunc {A : Type} (v : Valuation A)
-  (f : Valuation (Streams.Stream A)) : Valuation (Streams.Stream A)
-  := bind v (fun x => map (Streams.Cons x) f).
-
-Lemma inf_productFunc_mono {A : Type} (v : Valuation A)
-  : forall mu1 mu2, Valle mu1 mu2 -> Valle (inf_productFunc v mu1) (inf_productFunc v mu2).
-Proof. 
-intros. unfold Valle in *. intros P. simpl.
-apply int_monotonic. unfold pointwise. intros a.
-apply H.
-Qed.
-
-Definition inf_product' {A : Type} (v : Valuation A)
-  : Valuation (Streams.Stream A)
-  := fixValuation (inf_productFunc v) (inf_productFunc_mono v).
-
-Lemma inf_product'_wrong {A : Type} (v : Valuation A)
-  : inf_product' v = zeroVal.
-Proof.
-apply Valeq_compat. unfold Valeq. intros P.
-simpl. apply LPReq_compat. split.
-apply LPRsup_le. intros n. generalize dependent P. induction n; intros.
-simpl. apply LPRle_refl. simpl.
-rewrite <- strict with v.
-rewrite <- int_indicator. apply int_monotonic.
-unfold pointwise. unfold K.
-rewrite LPRind_false by intuition.
-intros a. apply IHn. apply LPRzero_min.
-Qed.
+).
+apply product_char.
+intros.
+remember (inf_product mu mu1 nonempty) as infp.
+unfold P. simpl.
+erewrite int_pointwise_eq.
+Focus 2. unfold pointwise. intros. rewrite factorizes.
+rewrite (SRmul_comm LPRsrt).
+reflexivity.
+rewrite <- int_scales. rewrite int_indicator.
+erewrite val_iff.
+Focus 2. intros. 
+instantiate (1 := fun s => PA (S.tl s) /\ PB (S.hd s)).
+simpl. destruct a. intuition.
+rewrite Heqinfp at 1. simpl.
+Admitted.
 
 (** * Partial valuations *)
 
@@ -320,10 +335,18 @@ CoInductive Partial {A : Type} : Type :=
  | Now : A -> Partial
  | Later : Partial -> Partial.
 
+Arguments Partial : clear implicits.
+
 (** We can use this to loop. *)
 CoFixpoint loop {A : Type} := @Later A loop.
 
-Arguments Partial : clear implicits.
+Definition unfold_Partial {A : Type} : forall (px : Partial A),
+  px = match px with
+      | Now x => Now x
+      | Later px' => Later px'
+      end.
+Proof. destruct px; reflexivity. Qed.
+
 
 (** Run a partial computation for n steps, returning the value if
     we got a value in that many steps or fewer. *)
@@ -548,3 +571,28 @@ apply LPReq_compat. split.
   apply rejection_Prob_lemmaT. assumption.
   apply Qnnlt_le_weak. assumption. assumption.
 Qed.
+
+Record SemiDec {P : Prop} :=
+  { decide : nat -> option P
+  ; decide_ok : P -> exists n p, decide n = Some p }.
+
+Arguments SemiDec : clear implicits.
+
+Definition SDeventually : forall s : nat -> bool,
+  SemiDec (exists k, s k = true).
+Proof.
+intros. 
+refine ( {| decide := fun n =>
+  match s n as vl return s n = vl -> option (exists k, s k = true) with
+  | true => fun prf => Some (ex_intro (fun x => s x = true) n prf) 
+  | false => fun _ => None
+  end eq_refl |}).
+intros. destruct H.
+exists x. eexists. 
+Abort.
+
+Record CSemiDec {P : Prop} :=
+  { cdecide : nat -> option (~P)
+  ; cdecide_ok : (forall n, cdecide n = None) -> P }.
+
+Arguments CSemiDec : clear implicits.
