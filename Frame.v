@@ -1,18 +1,16 @@
+Require Import SetoidClass.
+
 Module PO.
   Record t {A : Type} : Type :=
-  { le : A -> A -> Prop
-  ; eq : A -> A -> Prop
+  { eq : A -> A -> Prop
+  ; le : A -> A -> Prop
+  ; le_proper : Proper (eq ==> eq ==> iff) le
   ; le_refl : forall x, le x x
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
   ; le_trans : forall x y z, le x y -> le y z -> le x z
   }.
 
   Arguments t : clear implicits.
-
-  Definition eq_refl {A} (tA : t A) : forall a, eq tA a a.
-  Proof. 
-    intros. apply le_antisym; apply le_refl.
-  Qed.
 
   Record morph {A B : Type} (tA : t A) (tB : t B) (f : A -> B) : Prop :=
    { f_le : forall a b, le tA a b -> le tB (f a) (f b)
@@ -24,8 +22,33 @@ Module PO.
   Context {A : Type}.
   Variable PO : t A.
   Let le := le PO.
+  Let eq := PO.eq PO.
 
   Infix "<=" := le.
+
+  Definition eq_refl : Reflexive eq. 
+  Proof. unfold Reflexive. 
+    intros. apply le_antisym; apply le_refl.
+  Qed.
+
+  Definition eq_sym : Symmetric eq.
+  Proof. 
+  unfold Symmetric. intros. apply le_antisym. eapply le_proper.
+  apply eq_refl. apply H. apply le_refl. eapply le_proper.
+  apply H. apply eq_refl. apply le_refl.
+  Qed.
+
+  Definition eq_trans : Transitive eq.
+  Proof.
+    unfold Transitive.
+    intros. apply le_antisym. eapply le_proper. apply H. 
+    apply eq_refl. eapply le_proper. apply H0. apply eq_refl.
+    apply le_refl. eapply le_proper. apply eq_refl. apply H.
+    eapply le_proper. apply eq_refl. apply H0. apply le_refl.
+  Qed.
+
+  Definition top (t : A) : Prop := forall a, a <= t.
+  Definition bottom (b : A) : Prop := forall a, b <= a.
 
   Record max (l r m : A) : Prop :=
   { max_l     : l <= m
@@ -46,7 +69,7 @@ Module PO.
 
   Record inf {I : Type} (f : I -> A) (m : A) : Prop :=
   { inf_le : forall i, m <= f i
-  ; sup_greatest : forall m', (forall i, m' <= f i) -> m' <= m
+  ; inf_greatest : forall m', (forall i, m' <= f i) -> m' <= m
   }.
 
   Lemma morph_id (tA : t A) : morph tA tA (fun x => x).
@@ -62,27 +85,53 @@ Module PO.
 
   End Facts.
 
-  Definition subset (A : Type) : t (A -> Prop).
-  Proof. refine (
-    {| le := fun (P Q : A -> Prop) => forall (a : A), P a -> Q a
-    ; eq := fun (P Q : A -> Prop) => forall (a : A), P a <-> Q a
-    |}
-  ); intros; intuition.
-  Defined.
+  Instance t_equiv : forall {A} (tA : t A), Equivalence (eq tA).
+  Proof. 
+    split; [apply eq_refl | apply eq_sym | apply eq_trans ].
+  Qed.
+
+  Instance le_properI : forall {A} (tA : t A), Proper (eq tA ==> eq tA ==> iff) (le tA).
+  Proof. intros. apply le_proper. Qed.
+
+  Instance morph_properI : forall {A B} (tA : t A) (tB : t B) (f : A -> B)
+    , morph tA tB f -> Proper (eq tA ==> eq tB) f.
+  Proof. intros. destruct H. unfold Proper, respectful. apply f_eq0. Qed.
 
   Definition product {A B : Type} (tA : t A) (tB : t B) : t (A * B).
   Proof. refine (
    {| le := fun (x y : A * B) => le tA (fst x) (fst y) /\ le tB (snd x) (snd y)
    ; eq := fun (x y : A * B) => eq tA (fst x) (fst y) /\ eq tB (snd x) (snd y)
    |}); intros.
+   - split; simpl in *; intros; intuition;
+     (eapply le_proper; 
+      [ ((apply eq_sym; eassumption) || eassumption) 
+      | ((apply eq_sym; eassumption) || eassumption) 
+      | eassumption ]).
    - destruct x. split; apply le_refl.
    - destruct x, y. split; apply le_antisym; intuition.
    - destruct x, y, z. split; eapply le_trans; intuition; eassumption.
   Defined.
+
+  Definition pointwise {A B : Type} (tB : t B) : t (A -> B).
+  Proof. refine (
+    {| le := fun (f g : A -> B) => forall a, le tB (f a) (g a)
+     ; eq := fun (f g : A -> B) => forall a, eq tB (f a) (g a)
+    |}); intros; eauto using le_refl, le_antisym, le_trans.
+  split; simpl in *; intros. rewrite <- H0. rewrite <- H. apply H1.
+  rewrite H0. rewrite H. apply H1.
+  Defined.
+
+  Definition prop : t Prop.
+  Proof. refine (
+    {| le := fun (P Q : Prop) => P -> Q
+     ; eq := fun (P Q : Prop) => P <-> Q
+    |}); intuition.
+  split; simpl in *; intros; intuition.
+  Defined.
+
+  Definition subset (A : Type) : t (A -> Prop) := pointwise prop.
  
 End PO.
-
-Require Import SetoidClass.
 
 Module Lattice.
   Record t {A : Type} : Type :=
@@ -101,6 +150,13 @@ Module Lattice.
   Definition eq {A} (l : t A) : A -> A -> Prop := PO.eq (PO l).
   Definition sup {A} (l : t A) {I : Type} : (I -> A) -> A -> Prop
     := PO.sup (PO l).
+
+  Instance max_properI : forall {A} (tA : t A), Proper (eq tA ==> eq tA ==> eq tA) (max tA).
+  Proof. intros. apply max_proper. Qed.
+
+  Instance min_properI : forall {A} (tA : t A), Proper (eq tA ==> eq tA ==> eq tA) (min tA).
+  Proof. intros. apply min_proper. Qed.
+
 
   Record morph {A B : Type} (tA : t A) (tB : t B) (f : A -> B) : Prop :=
    { f_PO : PO.morph (PO tA) (PO tB) f
@@ -121,16 +177,39 @@ Module Lattice.
   Proof.
   intros. destruct H, H0. constructor; intros.
   - eapply PO.morph_compose; eassumption.
-  - 
-  Admitted.
+  - eapply PO.eq_trans. Focus 2. apply f_max1.
+    apply (PO.f_eq _ _ _ f_PO1).
+    rewrite f_max0. reflexivity.
+  - eapply PO.eq_trans. 2: apply f_min1.
+    apply (PO.f_eq _ _ _ f_PO1).
+    rewrite f_min0. reflexivity.
+  Qed.
 
-  Definition subset (A : Type) : t (A -> Prop).
+  Definition prop : t Prop.
   Proof. refine (
-    {| PO := PO.subset A
-    ; max P Q a := P a \/ Q a
-    ; min P Q a := P a /\ Q a
+    {| PO := PO.prop
+     ; max P Q := P \/ Q
+     ; min P Q := P /\ Q
     |}); simpl; intros; constructor; simpl; firstorder.
   Defined.
+
+  Definition pointwise {A B} (tB : t B) : t (A -> B).
+  Proof. refine (
+    {| PO := PO.pointwise tB
+    ; max f g a := max tB (f a) (g a)
+    ; min f g a := min tB (f a) (g a)
+    |}); simpl; intros.
+    - unfold respectful. unfold Proper. intros.
+      apply max_proper. apply H. apply H0.
+    - constructor; simpl; intros; apply max_ok.
+      apply H. apply H0.
+    - unfold respectful, Proper. intros.
+      apply min_proper. apply H. apply H0.
+    - constructor; simpl; intros; apply min_ok.
+      apply H. apply H0.
+  Defined.
+
+  Definition subset (A : Type) : t (A -> Prop) := pointwise prop.
 
   Definition product {A B : Type} (tA : t A) (tB : t B) : t (A * B).
   Proof. refine (
@@ -172,6 +251,30 @@ Module Frame.
 
   Arguments t : clear implicits.
 
+  Definition le {A} (l : t A) : A -> A -> Prop := L.le (L l).
+  Definition eq {A} (l : t A) : A -> A -> Prop := L.eq (L l).
+  Definition min {A} (l : t A) : A -> A -> A := L.min (L l).
+  Definition max {A} (l : t A) : A -> A -> A := L.max (L l).
+
+  Definition top {A} (tA : t A) : A :=
+    sup tA (fun a => a).
+
+  Definition top_ok {A} (tA : t A) : PO.top (L.PO (L tA)) (top tA).
+  Proof. 
+    unfold PO.top. simpl. pose proof (sup_ok tA (fun a => a)).
+    destruct H. apply sup_ge.
+  Qed.
+
+  Definition bottom {A} (tA : t A) : A :=
+    sup tA (fun contra : False => False_rect _ contra).
+
+  Definition bottom_ok {A} (tA : t A) : PO.bottom (L.PO (L tA)) (bottom tA).
+  Proof.
+    unfold PO.bottom. intros. 
+    apply (PO.sup_least _ (fun contra : False => False_rect _ contra)).
+    apply sup_ok. intros; contradiction.
+  Qed.
+  
   Definition subset (A : Type) : t (A -> Prop).
   Proof. refine (
     {| L := L.subset A
@@ -189,3 +292,29 @@ Module Frame.
   Defined.
   
 End Frame.
+
+Module F := Frame.
+
+Module Valuation.
+
+  Require Import LPReal.
+  Local Open Scope LPR.
+
+  Record t {A} {X : Frame.t A} :=
+  { val :> A -> LPReal
+  ; strict : val (F.bottom X) = 0
+  ; monotonic : forall (U V : A), F.le X U V -> val U <= val V
+  ; modular : forall (U V : A),
+      val U + val V = val (F.max X U V) + val (F.min X U V)
+  }.
+
+  Arguments t {A} X.
+
+  Lemma val_iff {A} {X : Frame.t A} : forall (mu : t X) (U V : A),
+    F.eq X U V -> mu U = mu V.
+  Proof. 
+   intros. apply LPRle_antisym; apply monotonic; 
+   rewrite H; apply PO.le_refl.
+  Qed.
+
+End Valuation.
