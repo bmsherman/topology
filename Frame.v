@@ -112,10 +112,23 @@ Module PO.
    - destruct x, y, z. split; eapply le_trans; intuition; eassumption.
   Defined.
 
-  Definition pointwise {A B : Type} (tB : t B) : t (A -> B).
+  Definition map {A B : Type} (f : A -> B) (tB : t B) : t A.
   Proof. refine (
-    {| le := fun (f g : A -> B) => forall a, le tB (f a) (g a)
-     ; eq := fun (f g : A -> B) => forall a, eq tB (f a) (g a)
+    {| le x y := le tB (f x) (f y)
+    ;  eq x y := eq tB (f x) (f y)
+    |}); intros.
+  - split; simpl in *; intros. 
+    + rewrite <- H. rewrite <- H0. apply H1.
+    + rewrite H.  rewrite H0. apply H1.
+  - apply le_refl.
+  - apply le_antisym; eauto.
+  - eapply le_trans; eauto.
+  Defined.
+
+  Definition pointwise {A} {B : A -> Type} (tB : forall a, t (B a)) : t (forall a, B a).
+  Proof. refine (
+    {| le := fun (f g : forall a : A, B a) => forall a, le (tB a) (f a) (g a)
+     ; eq := fun (f g : forall a : A, B a) => forall a, eq (tB a) (f a) (g a)
     |}); intros; eauto using le_refl, le_antisym, le_trans.
   split; simpl in *; intros. rewrite <- H0. rewrite <- H. apply H1.
   rewrite H0. rewrite H. apply H1.
@@ -129,7 +142,7 @@ Module PO.
   split; simpl in *; intros; intuition.
   Defined.
 
-  Definition subset (A : Type) : t (A -> Prop) := pointwise prop.
+  Definition subset (A : Type) : t (A -> Prop) := pointwise (fun _ => prop).
  
 End PO.
 
@@ -193,11 +206,11 @@ Module Lattice.
     |}); simpl; intros; constructor; simpl; firstorder.
   Defined.
 
-  Definition pointwise {A B} (tB : t B) : t (A -> B).
+  Definition pointwise {A} {B : A -> Type} (tB : forall a, t (B a)) : t (forall a, B a).
   Proof. refine (
     {| PO := PO.pointwise tB
-    ; max f g a := max tB (f a) (g a)
-    ; min f g a := min tB (f a) (g a)
+    ; max f g a := max (tB a) (f a) (g a)
+    ; min f g a := min (tB a) (f a) (g a)
     |}); simpl; intros.
     - unfold respectful. unfold Proper. intros.
       apply max_proper. apply H. apply H0.
@@ -209,7 +222,7 @@ Module Lattice.
       apply H. apply H0.
   Defined.
 
-  Definition subset (A : Type) : t (A -> Prop) := pointwise prop.
+  Definition subset (A : Type) : t (A -> Prop) := pointwise (fun _ => prop).
 
   Definition product {A B : Type} (tA : t A) (tB : t B) : t (A * B).
   Proof. refine (
@@ -295,10 +308,36 @@ End Frame.
 
 Module F := Frame.
 
-Module Valuation.
+(** Join semi-lattices, or directed sets. Natural numbers are
+    one of many examples. We will often generalize sequences, which
+    are functions of type (nat -> A), to nets, which are functions of
+    type (I -> A), where I is a directed set. *)
+Module JoinLat.
+  Record t : Type :=
+  { ty : Type 
+  ; le : ty -> ty -> Prop
+  ; max : ty -> ty -> ty
+  ; max_l : forall x y, le x (max x y)
+  ; max_r : forall x y, le y (max x y)
+  }.
+End JoinLat.
 
-  Require Import LPReal.
-  Local Open Scope LPR.
+Require Import LPReal.
+Local Open Scope LPR.
+
+Lemma LPRsup_sum_jlat : forall (I : JoinLat.t), let A := JoinLat.ty I in 
+  forall (f g : A -> LPReal) ,
+    (forall n m : A, JoinLat.le I n m -> f n <= f m) ->
+    (forall n m : A, JoinLat.le I n m -> g n <= g m) ->
+    LPRsup (fun x : A => f x + g x) = LPRsup f + LPRsup g.
+Proof.
+intros. eapply LPRsup_sum_lattice.
+apply JoinLat.max_l.
+apply JoinLat.max_r.
+assumption. assumption.
+Qed. 
+
+Module Val.
 
   Record t {A} {X : Frame.t A} :=
   { val :> A -> LPReal
@@ -310,11 +349,350 @@ Module Valuation.
 
   Arguments t {A} X.
 
-  Lemma val_iff {A} {X : Frame.t A} : forall (mu : t X) (U V : A),
+  Generalizable Variables A.
+
+  Lemma val_iff : forall `{X : F.t A} (mu : t X) (U V : A),
     F.eq X U V -> mu U = mu V.
   Proof. 
    intros. apply LPRle_antisym; apply monotonic; 
    rewrite H; apply PO.le_refl.
   Qed.
 
-End Valuation.
+  Definition le `{X : F.t A} (mu nu : t X) := forall P, mu P <= nu P.
+
+  Infix "<=" := le : Val_scope.
+  Delimit Scope Val_scope with Val.
+
+  Lemma le_refl `{X : F.t A} (mu : t X) : (mu <= mu)%Val.
+  Proof. unfold le. intros. apply monotonic. apply PO.le_refl. Qed.
+
+  Definition eq `{X : F.t A} (mu nu : t X) := forall P, mu P = nu P.
+  Infix "==" := eq : Val_scope.
+
+  Definition POLPR : PO.t LPReal.
+  Proof. refine (
+    {| PO.eq := Logic.eq
+     ; PO.le := LPRle |}).
+  - apply LPRle_refl.
+  - intros. apply LPRle_antisym; assumption.
+  - intros. eapply LPRle_trans; eassumption.
+  Defined.
+
+  Definition PO `{X : F.t A} : PO.t (t X) := PO.map val (PO.pointwise (fun _ : A => POLPR)).
+
+  Lemma le_trans `{X : F.t A} (x y z : t X) : (x <= y -> y <= z -> x <= z)%Val.
+  Proof. 
+    pose proof (PO.le_trans (@PO _ X)). simpl in H. unfold le. apply H.
+  Qed.
+
+Require Import FunctionalExtensionality.
+Lemma eq_compat_OK 
+  (proof_irrel : forall (P : Prop) (x y : P), x = y)
+  : forall `{X : F.t A} (mu nu : t X), eq mu nu -> mu = nu. 
+Proof.
+intros.
+unfold eq in *.
+destruct mu, nu. simpl in *.
+assert (val0 = val1).
+apply functional_extensionality. assumption.
+induction H0.
+pose proof (proof_irrel _ strict0 strict1).
+induction H0.
+pose proof (proof_irrel _ monotonic0 monotonic1).
+induction H0.
+pose proof (proof_irrel _ modular0 modular1).
+induction H0.
+reflexivity.
+Qed.
+
+Axiom eq_compat : forall `{X : F.t A} (mu nu : t X)
+  , eq mu nu -> mu = nu.
+
+Definition zero `{X : F.t A} : t X.
+Proof. refine (
+  {| val := fun _ => 0 |}
+); intros.
+- reflexivity.
+- apply LPRle_refl.
+- reflexivity.
+Defined.
+
+Notation "'0'" := zero : Val_scope.
+
+Require Import Ring.
+
+Lemma qredistribute : forall andLq andRq orLq orRq,
+    andLq + andRq + (orLq + orRq)
+ = (andLq + orLq) + (andRq + orRq).
+Proof. intros. ring. Qed.
+
+Definition add `{X : F.t A} (mu nu : t X) : t X.
+Proof. refine (
+  {| val := fun P => mu P + nu P |}
+); intros.
+- rewrite strict. rewrite strict. ring.
+- apply LPRplus_le_compat; apply monotonic; assumption.
+- rewrite qredistribute. 
+  rewrite (qredistribute (mu (F.max _ _ _))).
+  apply LPRplus_eq_compat; apply modular.
+Defined.
+
+(** Scale a valuation by a constant *)
+Definition scale `{X : F.t A} (c : LPReal) (mu : t X) : t X.
+Proof. refine (
+  {| val := fun P => c * mu P |}
+); intros.
+- rewrite strict. ring.
+- apply LPRmult_le_compat. apply LPRle_refl.
+  apply monotonic; assumption.
+- replace (c * mu U + c * mu V) with (c * (mu U + mu V)) by ring.
+  replace (c * mu _ + c * mu _) 
+  with (c * (mu (F.max X U V) + mu (F.min X U V))) by ring.
+  apply LPRmult_eq_compat. reflexivity.
+  apply modular.
+Defined.
+
+Infix "+" := add : Val_scope.
+Infix "*" := scale : Val_scope.
+
+Lemma zero_min `{X : F.t A} : forall (mu : t X), (0 <= mu)%Val.
+Proof. intros. unfold le. intros. simpl. apply LPRzero_min. Qed.
+
+Require Import Equalities Orders GenericMinMax.
+
+(** This describes the property of when a valuation is
+    _continuous_. This condition is analagous to countable additivity
+    in measure theory. Essentially, if I have a sequence of subsets
+    which is getting bigger and bigger, then the measure of the union
+    of the subsets is the supremum of the measures of each of the
+    subsets in the sequence. *)
+Definition ContinuousV `{X : F.t A} (mu : t X)
+  := forall (I : JoinLat.t) (f : JoinLat.ty I -> A)
+       (fmono : forall (m n : JoinLat.ty I), JoinLat.le I m n -> F.le X (f m) (f n))
+       , mu (F.sup X f) = LPRsup (fun n => mu (f n)).
+
+(** All the valuations we have seen so far are continuous in this
+    sense. *)
+Lemma zero_ContinuousV `{X : F.t A} : ContinuousV (@zero _ X).
+Proof.
+unfold ContinuousV. intros. simpl. symmetry.
+apply LPRle_antisym.
+- unfold LPRle. simpl. intros. destruct H. assumption.
+- apply LPRzero_min.
+Qed.
+
+Lemma add_ContinuousV: forall `{X : F.t A} {mu nu : t X},
+  ContinuousV mu -> ContinuousV nu -> ContinuousV (mu + nu)%Val.
+Proof.
+intros. unfold ContinuousV in *. intros. simpl.
+rewrite (LPRsup_sum_jlat I).
+apply LPRplus_eq_compat. apply H. assumption.
+apply H0. assumption. 
+intros. apply monotonic. apply fmono. assumption.
+intros. apply monotonic. apply fmono. assumption.
+Qed.
+
+Lemma scale_ContinuousV : forall `{X : F.t A} (c : LPReal) (mu : t X),
+  ContinuousV mu -> ContinuousV (c * mu)%Val.
+Proof.
+intros. unfold ContinuousV in *. intros. simpl.
+rewrite H by assumption.
+apply LPRsup_scales.
+Qed.
+
+Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
+  (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
+
+(** * Integration *)
+
+(** An inductive definition of simple functions. I hesitate to
+    call them functions because they aren't necessarily computable.
+    *)
+
+Module Simple.
+Inductive t `{X : F.t A} :=
+  | SStep : LPReal -> A -> t
+  | SPlus : t -> t -> t.
+
+Arguments t {A} X.
+
+(** Definition of how to integrate simple functions *)
+Fixpoint Integral `{X : F.t A} (mu : Val.t X) 
+  (s : t X) : LPReal := match s with
+  | SStep c P => c * mu P
+  | SPlus f g => Integral mu f + Integral mu g
+  end.
+
+Delimit Scope Simple_scope with Simple.
+Infix "+" := SPlus : Simple_scope.
+
+Definition PO `{X : F.t A} : PO.t (t X) 
+  := PO.map (fun s => (fun mu => Integral mu s)) 
+     (PO.pointwise (fun _ : Val.t X => Val.POLPR)).
+
+Definition le `{X : F.t A} (x y : t X) := 
+  forall (mu : Val.t X), Integral mu x <= Integral mu y.
+
+Definition eq `{X : F.t A} (x y : t X) := 
+  forall (mu : Val.t X), Integral mu x = Integral mu y.
+
+Lemma le_refl `{X : F.t A} : forall (x : t X), le x x.
+Proof.
+pose proof (PO.le_refl (@PO _ X)). unfold le.
+simpl in *. apply H.
+Qed.
+
+Infix "<=" := le : Simple_scope.
+Infix "==" := eq : Simple_scope.
+
+Fixpoint scale `{X : F.t A} (c : LPReal) (s : t X) : t X
+  := match s with
+  | SStep x P => SStep (c * x) P
+  | SPlus l r => SPlus (scale c l) (scale c r)
+  end.
+
+Infix "*" := scale : Simple_scope.
+
+Lemma le_plus `{X : F.t A} : forall (f f' g g' : t X),
+  (f <= f' -> g <= g' -> f + g <= f' + g')%Simple.
+Proof.
+intros. unfold le in *. intros. simpl. apply LPRplus_le_compat; auto.
+Qed.
+
+Lemma int_scales `{X : F.t A} : 
+  forall {c : LPReal} {s : t X} { mu : Val.t X}
+  , Integral mu (c * s)%Simple = c * Integral mu s.
+Proof.
+intros. induction s; simpl.
+- ring.
+- ring_simplify. rewrite IHs1. rewrite IHs2. reflexivity.
+Qed.
+
+Lemma le_scale `{X : F.t A} : forall (c c' : LPReal) (f f' : t X),
+  (c <= c')%LPR -> (f <= f' -> c * f <= c' * f')%Simple.
+Proof.
+intros.  unfold le in *. intros. simpl. repeat rewrite int_scales.
+apply LPRmult_le_compat. assumption. apply H0.
+Qed.
+
+Lemma int_monotonic_val `{X : F.t A} {f : t X}
+  {mu mu' : Val.t X}
+  : (mu <= mu')%Val -> Integral mu f <= Integral mu' f.
+Proof. intros. induction f; simpl.
+- apply LPRmult_le_compat. apply LPRle_refl. apply H.
+- simpl. apply LPRplus_le_compat; assumption.
+Qed.
+
+Lemma int_adds_val `{X : F.t A} {f : t X}
+  {mu mu' : Val.t X}
+  : Integral (mu + mu')%Val f 
+  = Integral mu f + Integral mu' f.
+Proof.
+induction f; simpl.
+- ring. 
+- simpl in *. rewrite IHf1. rewrite IHf2. ring.
+Qed.
+
+Lemma int_scales_val `{X : F.t A} {c : LPReal} {f : t X}
+  {mu : Val.t X}
+  : Integral (c * mu)%Val f 
+  = c * Integral mu f.
+Proof.
+induction f; simpl.
+- ring. 
+- simpl in *. rewrite IHf1. rewrite IHf2. ring.
+Qed.
+
+Lemma int_bottom `{X : F.t A} : forall {mu : Val.t X} (c : LPReal)
+  , Integral mu (SStep c (F.bottom X)) = 0.
+Proof.
+intros. simpl. replace (mu _) with 0 by (symmetry; apply strict). ring.
+Qed.
+
+End Simple.
+
+Module RealFunc.
+
+  Record t {A} (X : F.t A) :=
+    { func :> nat -> Simple.t X
+    ; mono : forall m n, (m <= n)%nat -> Simple.le (func m) (func n) }.
+
+  Definition add {A} {X : F.t A} (f g : t X) : t X.
+  Proof. refine (
+    {| func n := Simple.SPlus (f n) (g n) |}
+  ).
+  intros. unfold Simple.le. intros. 
+  apply Simple.le_plus; apply mono; assumption.
+  Defined.
+
+  Infix "+" := add : RFunc_scope.
+  Delimit Scope RFunc_scope with RFunc.
+
+  Definition scale {A} {X : F.t A} (c : LPReal) (f : t X) : t X.
+  Proof. refine (
+    {| func n := Simple.scale c (f n) |}
+  ).
+  intros. apply Simple.le_scale. apply LPRle_refl. apply mono. assumption.
+  Defined.
+
+  Infix "*" := scale : RFunc_scope.
+
+  Definition integral `{X : F.t A} (f : t X) (mu : Val.t X) :=
+   LPRsup (fun i => Simple.Integral mu (f i)).
+
+  Definition le `{X : F.t A} (f g : t X) := forall (mu : Val.t X),
+    integral f mu <= integral g mu.
+
+  Infix "<=" := le : RFunc_scope.
+
+  Lemma int_adds `{X : F.t A} : forall (f g : t X) (mu : Val.t X),
+     integral (f + g)%RFunc mu = integral f mu + integral g mu.
+  Proof.
+    intros. unfold integral. 
+    apply LPRsup_nat_ord; intros; apply mono; assumption.
+  Qed.
+
+  Lemma le_plus `{X : F.t A} : forall (f f' g g' : t X),
+    (f <= f' -> g <= g' -> f + g <= f' + g')%RFunc.
+  Proof. 
+    unfold le in *. intros. repeat rewrite int_adds.
+    apply LPRplus_le_compat; auto.
+  Qed.
+
+  Lemma int_scales `{X : F.t A} : forall (c : LPReal) (f : t X) (mu : Val.t X)
+    , integral (c * f)%RFunc mu = c * integral f mu.
+  Proof.
+  intros. unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
+  intros n. simpl. apply Simple.int_scales.
+  Qed.
+
+Lemma int_monotonic_val `{X : F.t A} {f : t X}
+  {mu mu' : Val.t X}
+  : (mu <= mu')%Val -> integral f mu <= integral f mu'.
+Proof. 
+  intros. unfold integral. apply LPRsup_monotonic. intros.
+  apply Simple.int_monotonic_val. assumption.
+Qed.
+
+Lemma int_adds_val `{X : F.t A} {f : t X}
+  {mu mu' : Val.t X}
+  : integral f (mu + mu')%Val 
+  = integral f mu + integral f mu'.
+Proof.
+unfold integral. 
+rewrite <- LPRsup_nat_ord by (intros; apply mono; assumption).
+apply LPRsup_eq_pointwise. intros. apply Simple.int_adds_val.
+Qed.
+
+Lemma int_scales_val `{X : F.t A} {c : LPReal} {f : t X}
+  {mu : Val.t X}
+  : integral f (c * mu)%Val
+  = c * integral f mu.
+Proof.
+unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
+intros. apply Simple.int_scales_val.
+Qed.
+
+End RealFunc.
+
+End Val.
