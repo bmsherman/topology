@@ -12,10 +12,12 @@ Module PO.
 
   Arguments t : clear implicits.
 
-  Record morph {A B : Type} (tA : t A) (tB : t B) (f : A -> B) : Prop :=
+  Record morph {A B : Type} {tA : t A} {tB : t B} {f : A -> B} : Prop :=
    { f_le : forall a b, le tA a b -> le tB (f a) (f b)
    ; f_eq : forall a b, eq tA a b -> eq tB (f a) (f b)
    }.
+
+  Arguments morph {A} {B} tA tB f.
 
   Section Facts.
 
@@ -97,6 +99,22 @@ Module PO.
     , morph tA tB f -> Proper (eq tA ==> eq tB) f.
   Proof. intros. destruct H. unfold Proper, respectful. apply f_eq0. Qed.
 
+  Definition one : t True.
+  Proof. refine (
+    {| le := fun _ _ => True
+     ; eq := fun _ _ => True
+    |}); intros; auto.
+  unfold Proper, respectful. intuition.
+  Defined.
+
+  Definition two : t bool.
+  Proof. refine (
+    {| le := Bool.leb
+    ;  eq := Logic.eq
+    |}); intros; auto. destruct x; simpl; trivial.
+    destruct x, y; auto. destruct x, y, z; auto. simpl in *. congruence.
+  Defined.
+
   Definition product {A B : Type} (tA : t A) (tB : t B) : t (A * B).
   Proof. refine (
    {| le := fun (x y : A * B) => le tA (fst x) (fst y) /\ le tB (snd x) (snd y)
@@ -171,11 +189,20 @@ Module Lattice.
   Proof. intros. apply min_proper. Qed.
 
 
-  Record morph {A B : Type} (tA : t A) (tB : t B) (f : A -> B) : Prop :=
+  Record morph {A B : Type} {tA : t A} {tB : t B} {f : A -> B} : Prop :=
    { f_PO : PO.morph (PO tA) (PO tB) f
    ; f_max : forall a b, eq tB (f (max tA a b)) (max tB (f a) (f b))
    ; f_min : forall a b, eq tB (f (min tA a b)) (min tB (f a) (f b))
    }.
+
+  Arguments morph {A} {B} tA tB f.
+
+  Lemma f_eq {A B} {tA : t A} {tB : t B} {f : A -> B} : 
+  morph tA tB f -> Proper (eq tA ==> eq tB) f.
+  Proof. 
+    unfold Proper, respectful. intros. apply (PO.f_eq (f_PO H)).
+    assumption.
+  Qed.
 
   Lemma morph_id {A} (tA : t A) : morph tA tA (fun x => x).
   Proof.
@@ -188,15 +215,36 @@ Module Lattice.
   Lemma morph_compose {A B C} (tA : t A) (tB : t B) (tC : t C)
     : forall f g, morph tA tB f -> morph tB tC g -> morph tA tC (fun x => g (f x)).
   Proof.
-  intros. destruct H, H0. constructor; intros.
-  - eapply PO.morph_compose; eassumption.
-  - eapply PO.eq_trans. Focus 2. apply f_max1.
-    apply (PO.f_eq _ _ _ f_PO1).
-    rewrite f_max0. reflexivity.
-  - eapply PO.eq_trans. 2: apply f_min1.
-    apply (PO.f_eq _ _ _ f_PO1).
-    rewrite f_min0. reflexivity.
+  intros. constructor; intros.
+  - eapply PO.morph_compose; eapply f_PO; eassumption.
+  - rewrite <- (f_max H0). rewrite (f_eq H0). reflexivity.
+    apply (f_max H).
+  - rewrite <- (f_min H0). rewrite (f_eq H0). reflexivity.
+    apply (f_min H).
   Qed.
+
+  Definition one : t True.
+  Proof. refine (
+    {| PO := PO.one
+     ; max := fun _ _ => I
+     ; min := fun _ _ => I
+    |}); intros; auto; unfold Proper, respectful; auto.
+  - destruct l, r. constructor. apply PO.le_refl. apply PO.le_refl.
+    intros. destruct m'. apply PO.le_refl.
+  - destruct l, r. constructor. apply PO.le_refl. apply PO.le_refl.
+    intros. destruct m'. apply PO.le_refl.
+  Defined.
+
+  Definition two : t bool.
+  Proof. refine (
+    {| PO := PO.two
+    ; max := orb
+    ; min := andb
+    |}); intros; constructor;
+  repeat match goal with
+  | [ b : bool |- _ ] => destruct b
+  end; simpl; auto.
+  Defined. 
 
   Definition prop : t Prop.
   Proof. refine (
@@ -254,11 +302,11 @@ Module L := Lattice.
 Module Frame.
   Record t {A : Type} : Type :=
   { L :> L.t A
-  ; sup : forall {I : Type}, (I -> A) -> A
-  ; sup_proper : forall {I : Type},
-     Proper (pointwise_relation _ (L.eq L) ==> L.eq L) (@sup I)
-  ; sup_ok :  forall {I : Type} (f : I -> A), L.sup L f (sup f)
-  ; sup_distr : forall x {I : Type} (f : I -> A)
+  ; sup : forall {Ix : Type}, (Ix -> A) -> A
+  ; sup_proper : forall {Ix : Type},
+     Proper (pointwise_relation _ (L.eq L) ==> L.eq L) (@sup Ix)
+  ; sup_ok :  forall {Ix : Type} (f : Ix -> A), L.sup L f (sup f)
+  ; sup_distr : forall x {Ix : Type} (f : Ix -> A)
     , L.eq L (L.min L x (sup f)) (sup (fun i => L.min L x (f i)))
   }.
 
@@ -287,22 +335,100 @@ Module Frame.
     apply (PO.sup_least _ (fun contra : False => False_rect _ contra)).
     apply sup_ok. intros; contradiction.
   Qed.
-  
-  Definition subset (A : Type) : t (A -> Prop).
+
+  Record morph {A B : Type} {tA : t A} {tB : t B} {f : A -> B} : Prop :=
+  { f_L : L.morph (L tA) (L tB) f
+  ; f_sup : forall {Ix : Type} (g : Ix -> A), eq tB (f (sup tA g)) (sup tB (fun i => f (g i)))
+  }.
+
+  Arguments morph {A} {B} tA tB f.
+
+  Lemma f_eq {A B} {tA : t A} {tB : t B} {f : A -> B} :
+    morph tA tB f -> Proper (eq tA ==> eq tB) f.
+  Proof. 
+    intros. apply (L.f_eq (f_L H)).
+  Qed.
+
+  Lemma f_bottom {A B} {tA : t A} {tB : t B} {f : A -> B} :
+    morph tA tB f -> eq tB (f (bottom tA)) (bottom tB).
+  Proof.
+  intros. unfold bottom. rewrite (f_sup H). apply sup_proper.
+  unfold pointwise_relation. intros. contradiction.
+  Qed.
+
+  Lemma morph_id {A} : forall (tA : t A), morph tA tA (fun x => x).
+  Proof. 
+   intros. constructor. apply L.morph_id. reflexivity.
+  Qed.
+
+  Lemma morph_compose {A B C} : forall (tA : t A) (tB : t B) (tC : t C)
+     (f : A -> B) (g : B -> C), morph tA tB f -> morph tB tC g 
+     -> morph tA tC (fun x => g (f x)).
+  Proof. intros. constructor.
+  - eapply L.morph_compose; eapply f_L; eassumption.
+  - intros. rewrite <- (f_sup H0). rewrite (f_eq H0).
+    reflexivity. rewrite (f_sup H). reflexivity.
+  Qed.
+
+  Definition one : t True.
   Proof. refine (
-    {| L := L.subset A
-    ; sup I f a := exists (i : I), f i a
+    {| L := L.one
+     ; sup := fun _ _ => I
+    |}); intros; auto.
+  - unfold Proper, respectful. intros. reflexivity.
+  - constructor. intros. destruct (f i). apply PO.le_refl.
+    intros.  destruct m'. apply PO.le_refl.
+  Defined.
+
+  Definition prop : t Prop.
+  Proof. refine (
+    {| L := L.prop
+     ; sup := fun _ f => exists i, f i
     |}); simpl; intros.
   - constructor; unfold pointwise_relation, L.eq in H; simpl in H;
      intros [??]; eexists; apply H; eassumption.
   - constructor; simpl; intros.
     + exists i. assumption.
-    + destruct H0. apply (H x a). assumption.
+    + destruct H0. apply (H x). assumption.
   - split; intros. 
     + destruct H as (xa & i & fia). exists i. intuition.
     + destruct H as (i & xa & fia). split. assumption.
       exists i. assumption.
   Defined.
+
+  Definition pointwise {A} {B : A -> Type} : (forall a, t (B a))
+    -> t (forall a, B a).
+  Proof. intros. refine (
+   {| L := L.pointwise X
+   ; sup := fun _ f => fun x => sup (X x) (fun i => f i x)
+   |}); intros.
+  - unfold Proper, respectful, pointwise_relation.
+    intros. unfold L.eq. simpl. intros. 
+    apply (sup_proper (X a)). unfold pointwise_relation.
+    intros a'. apply H.
+  - constructor; intros; simpl. intros.
+    pose proof (@sup_ok _ (X a) Ix (fun i => f i a)).
+    unfold L.sup in H.
+    pose proof (PO.sup_ge (L.PO (X a)) _ _ H).
+    apply H0.
+    intros. pose proof (@sup_ok _ (X a) Ix (fun i => f i a)).
+    unfold L.sup in H0. pose proof (PO.sup_least (L.PO (X a)) _ _ H0).
+    apply H1. intros. apply H.
+  - simpl. unfold L.eq. simpl. intros. 
+    apply (sup_distr (X a)).
+  Defined.
+  
+  Definition subset (A : Type) : t (A -> Prop) := pointwise (fun _ => prop).
+
+  (** continuous map on locales *)
+  Record cmap {A B} {tA : t A} {tB : t B} := 
+  { finv :> B -> A
+  ; cont : morph tB tA finv
+  }.
+
+  Arguments cmap {A} {B} tA tB.
+
+  Definition point {A} (tA : t A) := cmap prop tA.
   
 End Frame.
 
@@ -417,6 +543,12 @@ Proof. refine (
 - reflexivity.
 Defined.
 
+  Instance val_proper `{X : F.t A} : Proper (Logic.eq ==> F.eq X ==> Logic.eq) (@val _ X).
+  Proof.
+   unfold Proper, respectful. intros. rewrite H. apply val_iff.
+   assumption.
+  Qed.
+
 Notation "'0'" := zero : Val_scope.
 
 Require Import Ring.
@@ -457,6 +589,39 @@ Infix "*" := scale : Val_scope.
 
 Lemma zero_min `{X : F.t A} : forall (mu : t X), (0 <= mu)%Val.
 Proof. intros. unfold le. intros. simpl. apply LPRzero_min. Qed.
+
+Definition map {A B} {X : F.t A} {Y : F.t B} (f : F.cmap X Y)
+  (mu : t X) : t Y.
+Proof.
+refine (
+  {| val := fun x => mu (F.finv f x) |}
+).
+Proof. 
+- pose proof (F.f_bottom (F.cont f)).
+  rewrite H. apply strict.
+- intros. apply monotonic. 
+   apply (PO.f_le (L.f_PO (F.f_L (F.cont f)))).
+   apply H.
+- intros. unfold F.min, F.max. 
+  rewrite (L.f_min (F.f_L (F.cont f))).
+  rewrite (L.f_max (F.f_L (F.cont f))).
+  apply modular.
+Defined.
+
+Definition unit_prop : t F.prop.
+Proof.
+refine (
+  {| val := fun P => LPRindicator P |}
+); simpl; intros.
+- apply LPRind_false. unfold not. intros. destruct H.
+  contradiction.
+- unfold F.le, L.le in H. simpl in H. apply LPRind_imp. assumption.
+- unfold F.max, F.min. simpl. rewrite (SRadd_comm LPRsrt (LPRindicator (U \/ V))). 
+  apply LPRind_modular.
+Defined.
+
+Definition unit {A} {X : F.t A} (x : F.point X)
+  : t X := map x unit_prop.
 
 Require Import Equalities Orders GenericMinMax.
 
@@ -609,6 +774,16 @@ Proof.
 intros. simpl. replace (mu _) with 0 by (symmetry; apply strict). ring.
 Qed.
 
+Fixpoint map {B} `{X : F.t A} {Y : F.t B}
+  (f : F.cmap X Y) (s : t Y) : t X
+  := match s with
+  | SStep c P => SStep c (F.finv f P)
+  | SPlus l r => SPlus (map f l) (map f r)
+  end.
+
+Definition eval `{X : F.t A} (f : t X) (x : F.point X) : LPReal :=
+  Integral (unit x) f.
+
 End Simple.
 
 Module RealFunc.
@@ -694,5 +869,3 @@ intros. apply Simple.int_scales_val.
 Qed.
 
 End RealFunc.
-
-End Val.
