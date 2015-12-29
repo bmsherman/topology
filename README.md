@@ -2,13 +2,7 @@ An exploration of how to formalize probability in Coq.
 
 ## Building
 
-The `_CoqProject` file describes the build parameters. To build, run
-the following commands at the base level of the project directory:
-
-```bash
-> coq_makefile -f _CoqProject > Makefile
-> make
-```
+To build, run `make` at the base level of the project directory.
 
 ## Files
 
