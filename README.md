@@ -1,5 +1,15 @@
 An exploration of how to formalize probability in Coq.
 
+## Building
+
+The `_CoqProject` file describes the build parameters. To build, run
+the following commands at the base level of the project directory:
+
+```bash
+> coq_makefile -f _CoqProject > Makefile
+> make
+```
+
 ## Files
 
 - Qnn.v : Non-negative rational numbers
@@ -36,6 +46,9 @@ An exploration of how to formalize probability in Coq.
 - Iso.v : Definition of isomorphisms (bijections)
 
 - Finite.v : Definition and characterization of finite types
+
+- Frame.v : Work in progress; attempting to develop notions of topology
+  so that measures need only be defined for open sets
 
 - Prob.v, Prob2.v, Prob3.v : these files are old. They were three different
 attempts to encode probability in Coq. In Prob.v and Prob2.v, I was hoping

@@ -380,6 +380,30 @@ Module Frame.
     intros.  destruct m'. apply PO.le_refl.
   Defined.
 
+  Inductive Generate {A} {Ix} {basis : Ix -> A} : nat -> Type :=
+    | Base (ix : Ix) : Generate 0
+    | Bump : forall n, Generate n -> Generate (S n)
+    | Sup {Ix'} {n} (f : Ix' -> Generate n) : Generate (S n)
+    | Min : forall m n, Generate m -> Generate n -> Generate (S (Peano.max m n)).
+
+  Arguments Generate {A} {Ix} basis n.
+
+(*
+  Fixpoint leGen {A Ix} {m n k} (X : PO.t A) {basis : Ix -> A} 
+     (x : Generate basis m) (y : Generate basis n) 
+     (wf : m + n <= k) {struct wf} : Prop.
+  Proof. refine ( match x, y with
+  | Bump _ x', _ => leGen _ _ _ _ _ X _ x' y _
+  | _, Bump _ y' => leGen _ _ _ _ _ X _ x y' _
+  | _, Min _ _ yA yB => leGen _ _ _ _ _ X _ x yA _ /\ leGen _ _ _ _ _ X _ x yB _
+  | Min _ _ xA xB, _ => leGen _ _ _ _ _ X _ xA y _ \/ leGen _ _ _ _ _  X _ xB y _
+  | _, Sup _ _ f => exists ix, leGen _ _ _ _ _ X _ x (f ix) _
+  | Sup _ _ f, _ => forall ix, leGen _ _ _ _ _ X _ (f ix) y _
+  | Base ixx, Base ixy => PO.le X (basis ixx) (basis ixy)
+  end).
+  Definition based {A} {Ix} (basis : Ix -> A) : 
+*)
+
   Definition prop : t Prop.
   Proof. refine (
     {| L := L.prop
@@ -676,30 +700,34 @@ Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
 
 Module Simple.
 Inductive t `{X : F.t A} :=
-  | SStep : LPReal -> A -> t
-  | SPlus : t -> t -> t.
+  | Ind : A -> t
+  | Scale : LPReal -> t -> t
+  | Add : t -> t -> t.
 
 Arguments t {A} X.
 
 (** Definition of how to integrate simple functions *)
-Fixpoint Integral `{X : F.t A} (mu : Val.t X) 
-  (s : t X) : LPReal := match s with
-  | SStep c P => c * mu P
-  | SPlus f g => Integral mu f + Integral mu g
+Fixpoint Integral `{X : F.t A} (s : t X) 
+  (mu : Val.t X) : LPReal := match s with
+  | Ind P => mu P
+  | Scale c f => c * Integral f mu
+  | Add f g => Integral f mu + Integral g mu
   end.
 
 Delimit Scope Simple_scope with Simple.
-Infix "+" := SPlus : Simple_scope.
+Infix "+" := Add : Simple_scope.
+Infix "*" := Scale : Simple_scope.
+
 
 Definition PO `{X : F.t A} : PO.t (t X) 
-  := PO.map (fun s => (fun mu => Integral mu s)) 
+  := PO.map Integral 
      (PO.pointwise (fun _ : Val.t X => Val.POLPR)).
 
 Definition le `{X : F.t A} (x y : t X) := 
-  forall (mu : Val.t X), Integral mu x <= Integral mu y.
+  forall (mu : Val.t X), Integral x mu <= Integral y mu.
 
 Definition eq `{X : F.t A} (x y : t X) := 
-  forall (mu : Val.t X), Integral mu x = Integral mu y.
+  forall (mu : Val.t X), Integral x mu = Integral y mu.
 
 Lemma le_refl `{X : F.t A} : forall (x : t X), le x x.
 Proof.
@@ -710,91 +738,83 @@ Qed.
 Infix "<=" := le : Simple_scope.
 Infix "==" := eq : Simple_scope.
 
-Fixpoint scale `{X : F.t A} (c : LPReal) (s : t X) : t X
-  := match s with
-  | SStep x P => SStep (c * x) P
-  | SPlus l r => SPlus (scale c l) (scale c r)
-  end.
-
-Infix "*" := scale : Simple_scope.
-
 Lemma le_plus `{X : F.t A} : forall (f f' g g' : t X),
   (f <= f' -> g <= g' -> f + g <= f' + g')%Simple.
 Proof.
 intros. unfold le in *. intros. simpl. apply LPRplus_le_compat; auto.
 Qed.
 
-Lemma int_scales `{X : F.t A} : 
-  forall {c : LPReal} {s : t X} { mu : Val.t X}
-  , Integral mu (c * s)%Simple = c * Integral mu s.
-Proof.
-intros. induction s; simpl.
-- ring.
-- ring_simplify. rewrite IHs1. rewrite IHs2. reflexivity.
-Qed.
-
 Lemma le_scale `{X : F.t A} : forall (c c' : LPReal) (f f' : t X),
-  (c <= c')%LPR -> (f <= f' -> c * f <= c' * f')%Simple.
+  c <= c' -> (f <= f' -> c * f <= c' * f')%Simple.
 Proof.
-intros.  unfold le in *. intros. simpl. repeat rewrite int_scales.
+intros.  unfold le in *. intros. simpl.
 apply LPRmult_le_compat. assumption. apply H0.
 Qed.
 
 Lemma int_monotonic_val `{X : F.t A} {f : t X}
   {mu mu' : Val.t X}
-  : (mu <= mu')%Val -> Integral mu f <= Integral mu' f.
+  : (mu <= mu')%Val -> Integral f mu <= Integral f mu'.
 Proof. intros. induction f; simpl.
-- apply LPRmult_le_compat. apply LPRle_refl. apply H.
+- apply H.
+- apply LPRmult_le_compat. apply LPRle_refl. apply IHf.
 - simpl. apply LPRplus_le_compat; assumption.
 Qed.
 
 Lemma int_adds_val `{X : F.t A} {f : t X}
   {mu mu' : Val.t X}
-  : Integral (mu + mu')%Val f 
-  = Integral mu f + Integral mu' f.
+  : Integral f (mu + mu')%Val
+  = Integral f mu + Integral f mu'.
 Proof.
 induction f; simpl.
-- ring. 
+- reflexivity.
+- rewrite IHf. ring. 
 - simpl in *. rewrite IHf1. rewrite IHf2. ring.
 Qed.
 
 Lemma int_scales_val `{X : F.t A} {c : LPReal} {f : t X}
   {mu : Val.t X}
-  : Integral (c * mu)%Val f 
-  = c * Integral mu f.
+  : Integral f (c * mu)%Val 
+  = c * Integral f mu.
 Proof.
 induction f; simpl.
-- ring. 
+- reflexivity.
+- rewrite IHf. ring. 
 - simpl in *. rewrite IHf1. rewrite IHf2. ring.
 Qed.
 
-Lemma int_bottom `{X : F.t A} : forall {mu : Val.t X} (c : LPReal)
-  , Integral mu (SStep c (F.bottom X)) = 0.
+Lemma int_bottom `{X : F.t A} : forall {mu : Val.t X}
+  , Integral (Ind (F.bottom X)) mu = 0.
 Proof.
-intros. simpl. replace (mu _) with 0 by (symmetry; apply strict). ring.
+intros. simpl. apply strict.
 Qed.
 
 Fixpoint map {B} `{X : F.t A} {Y : F.t B}
   (f : F.cmap X Y) (s : t Y) : t X
   := match s with
-  | SStep c P => SStep c (F.finv f P)
-  | SPlus l r => SPlus (map f l) (map f r)
+  | Ind P => Ind (F.finv f P)
+  | Scale c s' => Scale c (map f s')
+  | Add l r => Add (map f l) (map f r)
   end.
-
-Definition eval `{X : F.t A} (f : t X) (x : F.point X) : LPReal :=
-  Integral (unit x) f.
 
 End Simple.
 
 Module RealFunc.
 
-  Record t {A} (X : F.t A) :=
+  Record t {A} {X : F.t A} :=
     { func :> nat -> Simple.t X
     ; mono : forall m n, (m <= n)%nat -> Simple.le (func m) (func n) }.
 
+  Arguments t {A} X.
+
+  Definition simple `{X : F.t A} (f : Simple.t X) : t X.
+  Proof. refine (
+   {| func := fun _ => f |}).
+  intros. apply Simple.le_refl.
+  Defined.
+
   Definition add {A} {X : F.t A} (f g : t X) : t X.
   Proof. refine (
-    {| func n := Simple.SPlus (f n) (g n) |}
+    {| func n := Simple.Add (f n) (g n) |}
   ).
   intros. unfold Simple.le. intros. 
   apply Simple.le_plus; apply mono; assumption.
@@ -805,20 +825,54 @@ Module RealFunc.
 
   Definition scale {A} {X : F.t A} (c : LPReal) (f : t X) : t X.
   Proof. refine (
-    {| func n := Simple.scale c (f n) |}
+    {| func n := Simple.Scale c (f n) |}
   ).
   intros. apply Simple.le_scale. apply LPRle_refl. apply mono. assumption.
   Defined.
 
   Infix "*" := scale : RFunc_scope.
 
+  Definition map `{X : F.t A} {B} {Y : F.t B} (f : F.cmap X Y) 
+    (g : t Y) : t X.
+  Proof. refine (
+    {| func := fun i => Simple.map f (g i) |}
+  ). destruct g. simpl.
+  Abort.
+
   Definition integral `{X : F.t A} (f : t X) (mu : Val.t X) :=
-   LPRsup (fun i => Simple.Integral mu (f i)).
+   LPRsup (fun i => Simple.Integral (f i) mu).
+
+  Definition PO `{X : F.t A} : PO.t (t X) 
+    := PO.map (fun f => (fun mu => integral f mu)) 
+       (PO.pointwise (fun _ : Val.t X => Val.POLPR)).
 
   Definition le `{X : F.t A} (f g : t X) := forall (mu : Val.t X),
     integral f mu <= integral g mu.
 
+  Definition eq `{X : F.t A} (f g : t X) := forall (mu : Val.t X),
+    integral f mu = integral g mu.
+
   Infix "<=" := le : RFunc_scope.
+  Infix "==" := eq : RFunc_scope.
+
+  Instance int_proper `{X : F.t A} : Proper (eq ==> Logic.eq ==> Logic.eq) (@integral _ X).
+  Proof.
+   unfold Proper, respectful. unfold eq. intros.  subst. apply H.
+  Qed.
+
+  Lemma int_simple `{X : F.t A} : forall (f : Simple.t X) (mu : Val.t X),
+      integral (simple f) mu = Simple.Integral f mu.
+  Proof.
+    intros. unfold integral, simple. simpl. apply LPRsup_constant. exact 0%nat.
+  Qed.
+
+  Lemma int_zero `{X : F.t A} : forall {mu : Val.t X}
+    , integral (simple (Simple.Ind (F.bottom X))) mu = 0.
+  Proof.
+    intros.
+    rewrite int_simple. simpl.
+    rewrite strict. ring.
+  Qed.
 
   Lemma int_adds `{X : F.t A} : forall (f g : t X) (mu : Val.t X),
      integral (f + g)%RFunc mu = integral f mu + integral g mu.
@@ -837,8 +891,8 @@ Module RealFunc.
   Lemma int_scales `{X : F.t A} : forall (c : LPReal) (f : t X) (mu : Val.t X)
     , integral (c * f)%RFunc mu = c * integral f mu.
   Proof.
-  intros. unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
-  intros n. simpl. apply Simple.int_scales.
+    intros. unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
+    intros n. simpl. reflexivity.
   Qed.
 
 Lemma int_monotonic_val `{X : F.t A} {f : t X}
@@ -868,4 +922,83 @@ unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
 intros. apply Simple.int_scales_val.
 Qed.
 
+Definition eval `{X : F.t A} (f : t X) (x : F.point X) : LPReal :=
+  integral f (unit x).
+
 End RealFunc.
+
+End Val.
+
+Module SubsetVal.
+
+Module RF := Val.RealFunc.
+
+Definition O := F.subset.
+
+Definition Val (A : Type) := Val.t (O A).
+
+Definition point {A} (a : A) : F.point (O A).
+ refine (
+  {| F.finv := fun P => P a |}
+). simpl. constructor; simpl. constructor; simpl; intros. 
+- constructor; simpl; intros; firstorder.
+- reflexivity.
+- reflexivity.
+- reflexivity.
+Defined.
+
+Axiom all_cont : forall {A}, (A -> LPReal) -> RF.t (O A).
+Axiom all_cont_point : forall A (f : A -> LPReal) (a : A), 
+  RF.eval (all_cont f) (point a) = f a.
+Axiom RF_pointwise : forall A (f g : RF.t (O A)),
+  (forall a, RF.eval f (point a) <= RF.eval g (point a)) -> RF.le f g.
+
+Lemma RF_pointwise_eq : forall {A} (f g : RF.t (O A)),
+  (forall a, RF.eval f (point a) = RF.eval g (point a)) -> RF.eq f g.
+Proof. intros. apply (PO.le_antisym RF.PO); apply RF_pointwise; 
+  intros; rewrite H; apply LPRle_refl.
+Qed.
+
+Lemma RF_add : forall {A} (f g : A -> LPReal),
+  RF.eq (RF.add (all_cont f) (all_cont g)) (all_cont (fun x => f x + g x)).
+Proof.
+intros. apply RF_pointwise_eq. intros.
+rewrite all_cont_point. unfold RF.eval. rewrite RF.int_adds.
+apply LPRplus_eq_compat; apply all_cont_point.
+Qed.
+
+Lemma RF_add_eval : forall {A} (f g : A -> LPReal) (a : A),
+    RF.eval (RF.add (all_cont f) (all_cont g)) (point a)
+  = f a + g a.
+Proof.
+intros. unfold RF.eval. rewrite RF_add. apply all_cont_point.
+Qed.
+
+Definition integral {A} (f : A -> LPReal) (mu : Val A) : LPReal :=
+  RF.integral (all_cont f) mu.
+
+(** The "bind" of our monad. Given a measure over the space A, and a
+    function which, given a point in A, returns a measure on B,
+    we can produce a measure on B by integrating over A. *)
+Definition bind {A B : Type}
+  (v : Val A) (f : A -> Val B)
+  : Val B.
+Proof. refine (
+  {| Val.val := fun P => integral (fun x => Val.val (f x) P) v |}
+).
+- apply LPReq_compat. unfold LPReq. split.
+  unfold integral. 
+  rewrite <- (@RF.int_zero _ _ v).
+  apply RF_pointwise. intros. rewrite all_cont_point. 
+  rewrite Val.strict. apply LPRzero_min.
+  apply LPRzero_min.
+- intros. unfold integral. apply RF_pointwise. intros. 
+  repeat rewrite all_cont_point. apply Val.monotonic. 
+  assumption.
+- intros. unfold integral. repeat rewrite <- RF.int_adds. apply RF_pointwise_eq.
+  intros. unfold RF.eval. repeat rewrite RF_add. pose proof all_cont_point.
+  unfold RF.eval in H. repeat rewrite H.
+  apply Val.modular.
+Defined.
+
+End SubsetVal.
