@@ -59,9 +59,9 @@ Proof.
 refine (
   {| lbound := fun q' => (q' < q)%Qnn |}
 ).
-- intros. subst. eapply Qnnle_lt_trans; eassumption.
-- intros. pose proof (Qnnbetween q0 q H). destruct H0.
-  exists x. assumption.
+- abstract (intros; subst; eapply Qnnle_lt_trans; eassumption).
+- abstract (intros q0 H; destruct (Qnnbetween q0 q H) as [x xbetween];
+  eexists; eassumption).
 Defined.
 
 Inductive LPRplusT {x y : LPReal} : Qnn -> Prop :=
@@ -71,19 +71,22 @@ Inductive LPRplusT {x y : LPReal} : Qnn -> Prop :=
 
 Arguments LPRplusT : clear implicits.
 
-Definition LPRplus (x y : LPReal) : LPReal.
+Lemma LPRplus_dclosed : forall x y q, 
+  LPRplusT x y q -> forall q', q' <= q -> LPRplusT x y q'.
 Proof.
-refine (
-  {| lbound := LPRplusT x y |}
-).
-- intros.
-  inversion H; subst; 
-  [apply LPRplusL | apply LPRplusR | eapply LPRplusB].
-  eapply dclosed; eassumption.
-  eapply dclosed; eassumption.
-  eassumption. eassumption. 
-  eapply Qnnle_trans; eassumption.
-- intros. destruct H.
+intros.
+inversion H; subst; 
+[apply LPRplusL | apply LPRplusR | eapply LPRplusB].
+eapply dclosed; eassumption.
+eapply dclosed; eassumption.
+eassumption. eassumption. 
+eapply Qnnle_trans; eassumption.
+Qed.
+
+Lemma LPRplus_uopen : forall x y q, 
+  LPRplusT x y q -> exists q', q < q' /\ LPRplusT x y q'.
+Proof.
+intros. destruct H.
   + pose proof (uopen _ _ H). destruct H0.
     exists x0. intuition. apply LPRplusL. assumption.
   + pose proof (uopen _ _ H). destruct H0.
@@ -94,18 +97,32 @@ refine (
     rewrite (SRadd_comm Qnnsrt x0).
     apply Qnnplus_le_lt_compat. apply Qnnle_refl. assumption. 
     eapply LPRplusB. eassumption. eassumption. apply Qnnle_refl.
-Defined.
+Qed.
 
-Definition LPRmult (x y : LPReal) : LPReal.
+Definition LPRplus (x y : LPReal) : LPReal :=
+  {| lbound := LPRplusT x y
+   ; dclosed := LPRplus_dclosed x y
+   ; uopen := LPRplus_uopen x y
+  |}.
+
+Inductive LPRmultT {x y : LPReal} {q : Qnn} : Prop :=
+  MkLPRmultT : forall a b, lbound x a -> lbound y b -> (q <= a * b) -> LPRmultT.
+
+Arguments LPRmultT : clear implicits.
+
+Lemma LPRmult_dclosed : forall x y q, 
+  LPRmultT x y q -> forall q', q' <= q -> LPRmultT x y q'.
 Proof.
-refine (
-  {| lbound := fun q => exists a b,
-     lbound x a /\ lbound y b /\ (q <= a * b)%Qnn |}
-).
-- intros.
-  destruct H as [a [b [xa [yb sum]]]].
-  exists a. exists b. intuition. eapply Qnnle_trans; eassumption.
-- intros. destruct H as [a [b [pa [pb prod]]]].
+intros.
+destruct H.
+econstructor; try eassumption. 
+eapply Qnnle_trans; eassumption.
+Qed.
+
+Lemma LPRmult_uopen : forall x y q, 
+  LPRmultT x y q -> exists q', q < q' /\ LPRmultT x y q'.
+Proof.
+intros. destruct H as [a b pa pb prod].
   pose proof (uopen _ _ pa). destruct H as [a' [pa' xa']].
   pose proof (uopen _ _ pb). destruct H as [b' [pb' yb']].
   exists (a' * b'). split. eapply Qnnle_lt_trans. eassumption.
@@ -113,9 +130,14 @@ refine (
   apply Qnnmult_le_compat. apply Qnnle_refl. apply Qnnlt_le_weak.
   assumption. apply Qnnmult_lt_compat_r.
   eapply Qnnle_lt_trans. apply (nonneg b). assumption. assumption.
-  exists a'. exists b'. intuition. apply Qnnle_refl.
-Defined.
+  constructor 1 with a' b'; intuition. apply Qnnle_refl.
+Qed.
 
+Definition LPRmult (x y : LPReal) : LPReal :=
+  {| lbound := LPRmultT x y
+  ;  uopen := LPRmult_uopen x y
+  ;  dclosed := LPRmult_dclosed x y
+  |}.
 
 Lemma LPReq_prop : forall r s, LPReq r s ->
   forall q, lbound r q <-> lbound s q.
@@ -123,27 +145,26 @@ Proof.
 intros. destruct H. split. apply H. apply H0.
 Qed.
 
-Lemma LPReq_compat_OK 
-  (propext : forall (x y : Prop), (x <-> y) -> x = y)
-  (proof_irrel : forall (P : Prop) (x y : P), x = y)
-  : forall r s, LPReq r s -> r = s. 
+(** Import the Ensemble Extensionality Axiom *)
+Require Import Coq.Sets.Ensembles.
+
+(** Import the Proof Irrelevance Axiom *)
+Require Import Coq.Logic.ProofIrrelevance.
+
+Lemma LPReq_compat : forall r s, LPReq r s -> r = s. 
 Proof.
 intros. pose proof H as eq. destruct H.
 unfold LPRle in *.
 assert (lbound r = lbound s).
-apply functional_extensionality.
-intros q. apply propext. apply LPReq_prop.
-assumption.
+apply Extensionality_Ensembles. intuition.
 destruct r, s.
 simpl in *. induction H1.
-pose proof (proof_irrel _ dclosed0 dclosed1).
+pose proof (proof_irrelevance _ dclosed0 dclosed1).
 induction H1.
-pose proof (proof_irrel _ uopen0 uopen1).
+pose proof (proof_irrelevance _ uopen0 uopen1).
 induction H1.
 reflexivity.
 Qed.
-
-Axiom LPReq_compat : forall r s, LPReq r s -> r = s.
 
 Ltac LPRsrttac := 
 repeat match goal with
@@ -196,51 +217,55 @@ LPRsrttac.
   rewrite (SRadd_assoc Qnnsrt). 
   apply Qnnplus_le_compat. assumption. apply Qnnle_refl. 
 - eapply dclosed. eassumption. eapply Qnnle_trans. eassumption.
-  replace x0 with (1 * x0) at 2 by ring.
+  replace b with (1 * b) at 2 by ring.
   apply Qnnmult_le_compat. apply Qnnlt_le_weak. assumption.
   apply Qnnle_refl.
 - simpl. pose proof (uopen _ _ H). destruct H0 as [q' [qq' nq']].
-  exists (Qnndiv q q'). exists q'. split. apply Qnndiv_lt. assumption. intuition.
+  constructor 1 with (q / q') q'. apply Qnndiv_lt. assumption. intuition.
   unfold Qnndiv. rewrite <- (SRmul_assoc Qnnsrt).
   replace (Qnninv q' * q') with 1. replace (q * 1) with q by ring.
   apply Qnnle_refl. symmetry. rewrite (SRmul_comm Qnnsrt). 
   apply Qnnmult_inv_r. eapply Qnnle_lt_trans. apply (nonneg q).
   assumption.
-- simpl. exists x0. exists x. intuition.
-  replace (x0 * x) with (x * x0) by ring.
+- simpl. constructor 1 with b a; intuition.
+  rewrite (SRmul_comm Qnnsrt).
   assumption.
-- simpl. exists x0. exists x. intuition.
-  replace (x0 * x) with (x * x0) by ring.
+- simpl. constructor 1 with b a; intuition.
+  rewrite (SRmul_comm Qnnsrt).
   assumption.
-- simpl. exists (x * x1). exists x2. split.
-  exists x. exists x1. intuition. apply Qnnle_refl.
+- simpl. constructor 1 with (a * a0) b0.
+  constructor 1 with a a0; intuition. apply Qnnle_refl.
   intuition. eapply Qnnle_trans. eassumption.
   rewrite <- (SRmul_assoc Qnnsrt).
   apply Qnnmult_le_compat. apply Qnnle_refl. assumption. 
-- simpl. exists x1. exists (x0 * x2). intuition.
-  exists x2. exists x0. intuition. rewrite (SRmul_comm Qnnsrt).
+- simpl. constructor 1 with a0 (b0 * b); intuition.
+  constructor 1 with b0 b; intuition.
+  rewrite (SRmul_comm Qnnsrt).
   apply Qnnle_refl. eapply Qnnle_trans. eassumption.
-  replace (x1 * (x0 * x2)) with ((x1 * x2) * x0) by ring.
+  rewrite (SRmul_assoc Qnnsrt).
   apply Qnnmult_le_compat. assumption. apply Qnnle_refl.
-- apply LPRplusL. simpl. exists q0. exists x0. auto.
-- apply LPRplusR. simpl. exists q0. exists x0. auto.
-- eapply LPRplusB. exists q0. exists x0. intuition. apply Qnnle_refl.
-  exists q'. exists x0. intuition. apply Qnnle_refl. eapply Qnnle_trans.
+- apply LPRplusL. simpl. econstructor; eauto.
+- apply LPRplusR. simpl. econstructor; eauto.
+- eapply LPRplusB. constructor 1 with q0 b; intuition. apply Qnnle_refl.
+  constructor 1 with q' b; intuition.
+  apply Qnnle_refl. eapply Qnnle_trans.
   eassumption. rewrite <- (SRdistr_l Qnnsrt).
   apply Qnnmult_le_compat. assumption. apply Qnnle_refl.
-- exists x. exists x0. intuition. apply LPRplusL. assumption.
-- exists x. exists x0. intuition. apply LPRplusR. assumption.
-- exists (x0 + x). exists (Qnnmax x1 x2). intuition. eapply LPRplusB; try eassumption.
+- constructor 1 with a b; try (apply LPRplusL); assumption.
+- constructor 1 with a b; try (apply LPRplusR); assumption.
+- constructor 1 with (a0 + a) (Qnnmax b0 b); intuition.
+  eapply LPRplusB; try eassumption.
   apply Qnnle_refl. 
-  pattern x1, x2, (Qnnmax x1 x2). apply Qnnmax_induction; intros; assumption.
+  pattern b0, b, (Qnnmax b0 b). apply Qnnmax_induction; intros; assumption.
   eapply Qnnle_trans. eassumption.
   rewrite (SRdistr_l Qnnsrt). apply Qnnplus_le_compat.
-  pattern x1, x2, (Qnnmax x1 x2). apply Qnnmax_induction; intros.
-  eapply Qnnle_trans. eassumption. apply Qnnmult_le_compat.
-  apply Qnnle_refl. assumption. assumption.
-  pattern x1, x2, (Qnnmax x1 x2). apply Qnnmax_induction; intros. assumption.
+  pattern b0, b, (Qnnmax b0 b). apply Qnnmax_induction; intros.
+  assumption. 
   eapply Qnnle_trans. eassumption. apply Qnnmult_le_compat.
   apply Qnnle_refl. assumption.
+  pattern b0, b, (Qnnmax b0 b). apply Qnnmax_induction; intros.
+  eapply Qnnle_trans. eassumption. apply Qnnmult_le_compat.
+  apply Qnnle_refl. assumption. assumption.
 Qed.
 
 Add Ring LPR_Ring : LPRsrt.
@@ -297,8 +322,8 @@ Theorem LPRmult_le_compat {x x' y y' : LPReal}
   : x <= x' -> y <= y' -> x * y <= x' * y'.
 Proof.
 intros. unfold LPRle in *. intros.
-simpl in *. destruct H1 as [a [b [H1 [H2 H3]]]].
-do 2 eexists. split. apply H. eassumption. split.
+simpl in *. destruct H1 as [a b H1 H2 H3].
+econstructor. apply H. eassumption.
 apply H0. eassumption. assumption.
 Qed.
 
@@ -580,7 +605,7 @@ Lemma LPRind_scale_le {P : Prop} {x y : LPReal}
   : (P -> x <= y) -> LPRindicator P * x <= y.
 Proof.
 intros. unfold LPRle; simpl in *; intros.
-destruct H0 as [a [b [pa [pb ab]]]].
+destruct H0 as [a b pa pb ab].
 destruct pa. apply H in H0. apply H0. eapply dclosed. 
 eassumption. eapply Qnnle_trans. eassumption.
 replace b with (1 * b)%Qnn at 2 by ring.
@@ -598,9 +623,9 @@ split; unfold LPRle; simpl in *; intros.
   ring_simplify. apply LPRle_refl.
   unfold LPRle in H0. 
   specialize (H0 q H1). simpl in H0.
-  destruct H0 as [a [b [pa [pb pab]]]].
-  exists a. exists b. intuition.
-- destruct H as [a [b [pa [pb ab]]]]. intuition.
+  destruct H0 as [a b pa pb pab].
+  constructor 1 with a b; simpl; intuition.
+- destruct H as [a b pa pb ab]. simpl in *. intuition.
   eapply Qnnle_lt_trans. eassumption.
   apply Qnnle_lt_trans with (a * 1)%Qnn.
   apply Qnnmult_le_compat. apply Qnnle_refl.
@@ -674,9 +699,9 @@ apply LPReq_compat. split.
   [ apply LPRle_refl 
   | apply LPRmax_le_or; auto using LPRle_refl]).
 - unfold LPRle; simpl; intros. 
-  destruct H as [a [b [ca [xyb qab]]]].
+  destruct H as [a b ca xyb qab].
   destruct xyb; [left | right];
-  exists a; exists b; auto.
+  constructor 1 with a b; auto.
 Qed.
 
 Lemma LPRsup_scales {A : Type} {f : A -> LPReal}
@@ -685,8 +710,8 @@ Lemma LPRsup_scales {A : Type} {f : A -> LPReal}
 Proof.
 apply LPReq_compat; split.
 - unfold LPRle; simpl; intros.
-  destruct H as [a [b [ca [sup qab]]]].
-  destruct sup. exists x. exists a. exists b. intuition.
+  destruct H as [a b ca sup qab].
+  destruct sup. exists x. constructor 1 with a b; intuition.
 - apply LPRsup_le. intros. apply LPRmult_le_compat.
   apply LPRle_refl. apply LPRsup_ge.
 Qed.
@@ -738,12 +763,13 @@ Qed.
 Lemma LPRQnn_mult {x y : Qnn} : LPRQnn x * LPRQnn y = LPRQnn (x * y)%Qnn.
 Proof. 
 apply LPRle_antisym; unfold LPRle; simpl; intros.
-- destruct H as [a [b [pa [pb pab]]]].
+- destruct H as [a b pa pb pab]. simpl in *.
   eapply Qnnle_lt_trans. eassumption.
   eapply Qnnle_lt_trans. Focus 2.
-  eapply Qnnmult_lt_compat_r. eapply Qnnle_lt_trans. 2:eassumption.
+  eapply Qnnmult_lt_compat_r. eapply Qnnle_lt_trans. 3:eassumption.
   apply nonneg. eassumption.
   apply Qnnmult_le_compat. apply Qnnle_refl.
   apply Qnnlt_le_weak. assumption.
-- apply (Qnnmult_open H). 
+- destruct (Qnnmult_open H) as [a [b pab]]. 
+  constructor 1 with a b; intuition.
 Qed.

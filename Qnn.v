@@ -29,7 +29,7 @@ Require Import FunctionalExtensionality.
 
 Record Qnn :=
   { qnn :> Qc
-  ; nonneg : qnn >= 0
+  ; nonneg : 0 <= qnn
   }.
 
 Local Open Scope Z.
@@ -64,21 +64,22 @@ Definition Qnneq (x y : Qnn) : Prop := qnn x = qnn y.
 Definition Qnnplus (x y : Qnn) : Qnn.
 Proof.
 refine ({| qnn := x + y |}).
-replace 0 with (0 + 0) by field.
-apply Qcplus_le_compat; destruct x, y; assumption.
+abstract (replace 0 with (0 + 0) by field;
+apply Qcplus_le_compat; destruct x, y; assumption).
 Defined.
 
 Definition Qnnmult (x y : Qnn) : Qnn.
 Proof.
 refine ({| qnn := x * y |}).
-replace 0 with (0 * y) by field.
-apply Qcmult_le_compat_r; apply nonneg.
+abstract (
+replace 0 with (0 * y) by field;
+apply Qcmult_le_compat_r; apply nonneg).
 Defined.
 
 Definition Qnnzero : Qnn := Build_Qnn 0%Qc (Qcle_refl 0%Qc).
 
-Ltac makeQnn q := apply (Build_Qnn q); unfold Qle; simpl;
-  unfold Z.le; simpl; congruence.
+Ltac makeQnn q := apply (Build_Qnn q); 
+  abstract (unfold Qcle, Qle, Z.le; simpl; congruence).
 
 Definition Qnnone : Qnn.
 Proof. makeQnn 1.
@@ -239,18 +240,21 @@ Proof. unfold Qnnmax; simpl. destruct (x ?= y) eqn:compare; simpl.
 - apply Qclt_le_weak. apply Qnngt_alt. assumption.
 Qed.
 
-Definition Qnninv (x : Qnn) : Qnn.
-Proof. refine (
-  {| qnn := (/ x)%Qc |}
-).
+Lemma Qnninv_nonneg (x : Qnn) : (0 <= / x)%Qc.
+Proof.
 destruct (x ?= 0) eqn:comp. apply Qnneq_alt in comp.
 subst. simpl. apply Qle_refl.
 apply Qnnlt_alt in comp. apply Qnnlt_zero_prop in comp.
 contradiction.
-setoid_replace (this (/ x)%Qc) with (/ x)%Q.
+unfold Qcle. 
+setoid_replace (this (/ x)%Qc) with (/ x)%Q by apply Qred_correct.
 apply Qinv_le_0_compat. apply nonneg.
-simpl. apply Qred_correct.
-Defined.
+Qed.
+
+Definition Qnninv (x : Qnn) : Qnn :=
+  {| qnn := (/ x)%Qc
+   ; nonneg := Qnninv_nonneg x
+  |}.
 
 Notation "/ x" := (Qnninv x) : Qnn_scope.
 
@@ -425,23 +429,28 @@ Proof. intros. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare;
 unfold Qnnle; simpl; assumption.
 Qed.
 
-Definition Qnnminus (x y : Qnn) : Qnn.
-Proof.
-refine (
-  {| qnn := match (x ?= y)%Qnn with
+Lemma Qnnminus_nonneg (x y : Qnn) : (0 <=  match (x ?= y)%Qnn with
    | Lt => 0%Qnn
    | Eq => 0%Qnn
-   | Gt => x - y
-   end
-  |}
-).
+   | Gt => (x - y)%Qc
+   end)%Qc.
+Proof.
 destruct (x ?= y)%Qnn eqn:destr.
 - apply nonneg.
 - apply nonneg.
 - apply -> Qcle_minus_iff.
   apply Qnnlt_le_weak. apply Qnngt_alt.
   assumption.
-Defined.
+Qed.
+
+Definition Qnnminus (x y : Qnn) : Qnn :=
+  {| qnn := match (x ?= y)%Qnn with
+   | Lt => 0%Qnn
+   | Eq => 0%Qnn
+   | Gt => (x - y)%Qc
+   end
+   ;  nonneg := Qnnminus_nonneg x y
+  |}.
 
 Infix "-" := Qnnminus : Qnn_scope.
 
@@ -460,7 +469,7 @@ Qed.
 Definition Qnnminusp (x y : Qnn) (prf : y <= x) : Qnn.
 Proof. refine (
   {| qnn := x - y |}
-). apply -> Qcle_minus_iff. assumption.
+). abstract (apply -> Qcle_minus_iff; assumption).
 Defined. 
 
 Definition Qnnminusp_irrel {x y : Qnn} {p q : y <= x}

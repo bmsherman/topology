@@ -46,9 +46,9 @@ Qed.
 Definition Valeq {A : Type} (val1 val2 : Valuation A) : Prop :=
   forall (P : A -> Prop), val1 P = val2 P.
 
-Lemma Valeq_compat_OK 
-  (proof_irrel : forall (P : Prop) (x y : P), x = y)
-  { A : Type }
+Require Import ProofIrrelevance.
+
+Lemma Valeq_compat { A : Type }
   : forall (mu nu : Valuation A), Valeq mu nu -> mu = nu. 
 Proof.
 intros.
@@ -57,19 +57,16 @@ destruct mu, nu. simpl in *.
 assert (val0 = val1).
 apply functional_extensionality. assumption.
 induction H0.
-pose proof (proof_irrel _ strict0 strict1).
+pose proof (proof_irrelevance _ strict0 strict1).
 induction H0.
-pose proof (proof_irrel _ monotonic0 monotonic1).
+pose proof (proof_irrelevance _ monotonic0 monotonic1).
 induction H0.
-pose proof (proof_irrel _ modular0 modular1).
+pose proof (proof_irrelevance _ modular0 modular1).
 induction H0.
-pose proof (proof_irrel _ factorizes0 factorizes1).
+pose proof (proof_irrelevance _ factorizes0 factorizes1).
 induction H0.
 reflexivity.
 Qed.
-
-Axiom Valeq_compat : forall (A : Type) (mu nu : Valuation A)
-  , Valeq mu nu -> mu = nu.
 
 Definition Valge {A : Type} (x y : Valuation A)
   := Valle x y.
@@ -83,7 +80,7 @@ Proof. refine (
 - reflexivity.
 - apply LPRle_refl.
 - reflexivity.
-- ring.
+- abstract ring.
 Defined.
 
 Lemma qredistribute : forall andLq andRq orLq orRq,
@@ -96,12 +93,13 @@ Definition add {A : Type} (ValL ValR : Valuation A) : Valuation A.
 Proof. refine (
   {| val := fun P => ValL P + ValR P |}
 ); intros.
-- rewrite strict. rewrite strict. ring.
-- apply LPRplus_le_compat; apply monotonic; assumption.
-- rewrite qredistribute. 
-  rewrite (qredistribute (ValL (fun z => U z /\ V z))).
-  apply LPRplus_eq_compat; apply modular.
-- repeat rewrite factorizes. ring.
+- abstract (repeat rewrite strict; ring).
+- abstract (apply LPRplus_le_compat; apply monotonic; assumption).
+- abstract (
+  rewrite qredistribute;
+  rewrite (qredistribute (ValL (fun z => U z /\ V z)));
+  apply LPRplus_eq_compat; apply modular).
+- abstract (repeat rewrite factorizes; ring).
 Defined.
 
 (** Scale a valuation by a constant *)
@@ -110,15 +108,17 @@ Definition scale {A : Type} (c : LPReal)
 Proof. refine (
   {| val := fun P => c * Val P |}
 ); intros.
-- rewrite strict. ring.
-- apply LPRmult_le_compat. apply LPRle_refl.
-  apply monotonic; assumption.
-- replace (c * Val U + c * Val V) with (c * (Val U + Val V)) by ring.
+- abstract (rewrite strict; ring).
+- abstract (apply LPRmult_le_compat; 
+  [ apply LPRle_refl
+  | apply monotonic; assumption]).
+- abstract (
+  replace (c * Val U + c * Val V) with (c * (Val U + Val V)) by ring;
   replace (c * Val _ + c * Val _) 
-  with (c * (Val (fun z : A => U z /\ V z) + Val (fun z : A => U z \/ V z))) by ring.
-  apply LPRmult_eq_compat. reflexivity.
-  apply modular.
-- rewrite factorizes. ring.
+  with (c * (Val (fun z : A => U z /\ V z) + Val (fun z : A => U z \/ V z))) by ring;
+  apply LPRmult_eq_compat;
+  [ reflexivity | apply modular ]).
+- abstract (rewrite factorizes; ring).
 Defined.
 
 Infix "<=" := Valle : Val_scope.
@@ -161,7 +161,7 @@ Definition unit {A : Type} (a : A) : Valuation A.
 Proof. refine (
  {| val := fun P => LPRindicator (P a) |}
 ); intros.
-- apply LPRind_false. auto.
+- abstract (apply LPRind_false; auto).
 - apply LPRind_imp. apply H.
 - apply LPRind_modular.
 - apply LPRind_mult.
@@ -178,7 +178,7 @@ Require Import Equalities Orders GenericMinMax.
     type (I -> A), where I is a directed set. *)
 Module JoinLat.
   Record t : Type :=
-  { ty : Type 
+  { ty :> Type 
   ; le : ty -> ty -> Prop
   ; max : ty -> ty -> ty
   ; max_l : forall x y, le x (max x y)
@@ -186,11 +186,13 @@ Module JoinLat.
   }.
 End JoinLat.
 
-Lemma LPRsup_sum_jlat : forall (I : JoinLat.t), let A := JoinLat.ty I in 
-  forall (f g : A -> LPReal) ,
-    (forall n m : A, JoinLat.le I n m -> f n <= f m) ->
-    (forall n m : A, JoinLat.le I n m -> g n <= g m) ->
-    LPRsup (fun x : A => f x + g x) = LPRsup f + LPRsup g.
+Coercion JoinLat.ty : JoinLat.t >-> Sortclass.
+
+Lemma LPRsup_sum_jlat : forall (I : JoinLat.t),
+  forall (f g : I -> LPReal) ,
+    (forall n m : I, JoinLat.le I n m -> f n <= f m) ->
+    (forall n m : I, JoinLat.le I n m -> g n <= g m) ->
+    LPRsup (fun x : I => f x + g x) = LPRsup f + LPRsup g.
 Proof.
 intros. eapply LPRsup_sum_lattice.
 apply JoinLat.max_l.
@@ -605,8 +607,8 @@ Qed.
 
 (* Theorem 3.13 of Jones 1990 *)
 Theorem directed_monotone_convergence {A : Type} :
-  forall (mu : Valuation A) (I : JoinLat.t), let tI := JoinLat.ty I in
-  forall (g : tI -> (A -> LPReal)),
+  forall (mu : Valuation A) (I : JoinLat.t),
+  forall (g : I -> (A -> LPReal)),
     ContinuousV mu ->
     integral (fun x => LPRsup (fun i => g i x)) mu
   = LPRsup (fun i => integral (fun x => g i x) mu).
@@ -629,24 +631,38 @@ Definition bind {A B : Type}
 Proof. refine (
   {| val := fun P => integral (fun x => (f x) P) v |}
 ).
-- apply LPReq_compat. unfold LPReq. split.
+  Lemma bind_strict {A B : Type} (v : Valuation A)
+    (f : A -> Valuation B) : integral (fun x : A => (f x) (K False)) v = 0.
+  Proof.
+  apply LPReq_compat. unfold LPReq. split.
   erewrite <- integral_zero.
   apply int_monotonic.
   unfold pointwise. intros.
   instantiate (1 := 0).
   rewrite strict. apply LPRzero_min.
   apply LPRzero_min.
-- intros. apply int_monotonic.
-  unfold pointwise. intros.
-  apply monotonic. assumption.
-- intros. do 2 rewrite int_adds. apply int_pointwise_eq.
+  Qed.
+  apply bind_strict.
+- abstract (intros; apply int_monotonic;
+  unfold pointwise; intros;
+  apply monotonic; assumption).
+- Lemma bind_modular {A B : Type} (v : Valuation A)
+    (f : A -> Valuation B) :
+   forall U V : B -> Prop,
+   integral (fun x : A => (f x) U) v + integral (fun x : A => (f x) V) v =
+   integral (fun x : A => (f x) (fun z : B => U z /\ V z)) v +
+   integral (fun x : A => (f x) (fun z : B => U z \/ V z)) v.
+  Proof.
+  intros. do 2 rewrite int_adds. apply int_pointwise_eq.
   unfold pointwise. intros a.
   assert (
 ((f a) U + (f a) V) =
 ((f a) (fun z : B => U z /\ V z) + (f a) (fun z : B => U z \/ V z))
 ). apply modular. rewrite H. split; apply LPRle_refl.
-- intros. rewrite int_scales. apply int_pointwise_eq.
-  unfold pointwise. intros. apply factorizes.
+  Qed.
+  apply bind_modular.
+- abstract (intros; rewrite int_scales; apply int_pointwise_eq;
+  unfold pointwise; intros; apply factorizes).
 Defined.
 
 Lemma bind_ContinuousV {A B : Type} : forall (mu : Valuation A)
@@ -685,18 +701,18 @@ Definition join {A : Type} (mu : Valuation (Valuation A))
 Proof. refine (
   {| val := fun P => integral (fun vA => val vA P) mu |}
 ).
-- replace 0 with (0 * mu (K True)) by ring.
-  rewrite <- int_indicator.
-  rewrite int_scales.
-  apply int_pointwise_eq. unfold pointwise. intros v.
-  rewrite strict. ring.
-- intros. apply int_monotonic. unfold pointwise.
-  intros. apply monotonic. assumption.
-- intros. rewrite int_adds. rewrite int_adds.
-  apply int_pointwise_eq. unfold pointwise; intros.
-  apply modular.
-- intros. rewrite int_scales. apply int_pointwise_eq.
-  unfold pointwise. intros. apply factorizes.
+- abstract (replace 0 with (0 * mu (K True)) by ring;
+  rewrite <- int_indicator;
+  rewrite int_scales;
+  apply int_pointwise_eq; unfold pointwise; intros v;
+  rewrite strict; ring).
+- abstract (intros; apply int_monotonic; unfold pointwise;
+  intros; apply monotonic; assumption).
+- abstract (intros; repeat rewrite int_adds;
+  apply int_pointwise_eq; unfold pointwise; intros;
+  apply modular).
+- abstract (intros; rewrite int_scales; apply int_pointwise_eq;
+  unfold pointwise; intros; apply factorizes).
 Defined.
 
 (** Pushforward of a measure, i.e., map a function over a measure *)
@@ -834,19 +850,21 @@ Proof.
 refine (
 {| val := fun Q => mu (fun x => P x /\ Q x) |}
 ).
-- simpl. erewrite val_iff. apply strict. unfold K.
-  intros. intuition. 
-- intros. apply monotonic. intros. destruct H0.
-  split. assumption. apply H. assumption.
-- intros. replace 
+- abstract (simpl; erewrite val_iff; 
+  [ apply strict
+  | unfold K; intros; intuition ]). 
+- abstract (intros; apply monotonic; intros;
+  destruct H0; intuition).
+- abstract (intros; replace 
   (mu (fun x : A => P x /\ U x /\ V x)) with
-  (mu (fun x => (P x /\ U x) /\ (P x /\ V x))). replace 
+  (mu (fun x => (P x /\ U x) /\ (P x /\ V x)))
+    by (apply val_iff; intros; intuition); replace 
   (mu (fun x : A => P x /\ (U x \/ V x))) with
-  (mu (fun x => (P x /\ U x) \/ (P x /\ V x))).
-  apply modular. apply val_iff. intros. intuition.
-  apply val_iff. intros. intuition.
-- intros. erewrite val_iff. eapply factorizes. 
-  intuition.
+  (mu (fun x => (P x /\ U x) \/ (P x /\ V x)))
+    by (apply val_iff; intros; intuition);
+  apply modular).
+- abstract (intros; erewrite val_iff;
+    [ eapply factorizes | intuition ]).
 Defined.
 
 Lemma restrict_monotonic {A : Type} {mu : Valuation A}
@@ -959,32 +977,31 @@ Qed.
     fixpoint functions in functional programming. *)
 
 Definition supValuation {A : Type} (I : JoinLat.t)
-  (f : JoinLat.ty I -> Valuation A)
-  (fmono : forall (n m : JoinLat.ty I), JoinLat.le I n m -> (f n <= f m)%Val)
+  (f : I -> Valuation A)
+  (fmono : forall (n m : I), JoinLat.le I n m -> (f n <= f m)%Val)
  : Valuation A.
 Proof. refine (
   {| val := fun P => LPRsup (fun i => (f i) P) |}
 ).
-- apply LPReq_compat. split. 
-  + apply LPRsup_le. intros. erewrite <- strict.
-    apply monotonic. intros. assumption. 
-  + apply LPRzero_min.
-- intros. apply LPRsup_monotonic. intros n.
-  apply monotonic. assumption. 
-- intros.
+- abstract (apply LPReq_compat; split;
+  [ apply LPRsup_le; intros; erewrite <- strict;
+    auto using monotonic
+  | apply LPRzero_min ]).
+- abstract (auto using LPRsup_monotonic, monotonic).
+- abstract (intros;
   repeat (rewrite <- (LPRsup_sum_lattice _ _ (JoinLat.le I) (JoinLat.max I));
     try (auto using JoinLat.max_l, JoinLat.max_r))
-   ; try (intros; apply fmono; auto).
-  apply LPRsup_eq_pointwise. intros.
-  apply modular.
-- intros. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
-  intros. apply factorizes.
+   ; try (intros; apply fmono; auto);
+  apply LPRsup_eq_pointwise; intros;
+  apply modular).
+- abstract (intros; rewrite LPRsup_scales; apply LPRsup_eq_pointwise;
+  intros; apply factorizes).
 Defined.
 
 Lemma sup_ContinuousV {A : Type} : forall (I : JoinLat.t) 
-  (f : JoinLat.ty I -> Valuation A)
-  (fmono : forall m n : JoinLat.ty I, JoinLat.le I m n -> (f m <= f n)%Val)
-  (fcont : forall n : JoinLat.ty I, ContinuousV (f n)),
+  (f : I -> Valuation A)
+  (fmono : forall m n : I, JoinLat.le I m n -> (f m <= f n)%Val)
+  (fcont : forall n : I, ContinuousV (f n)),
   ContinuousV (supValuation I f fmono).
 Proof.
 intros. unfold ContinuousV.
@@ -1078,11 +1095,11 @@ Qed.
 
 (** Definition of when a functional is continuous. *)
 Definition Continuous {A : Type} (f : Valuation A -> Valuation A) 
-  := forall (I : JoinLat.t) (nonempty : JoinLat.ty I) (g : JoinLat.ty I -> Valuation A)
-       (gmono : forall m n : JoinLat.ty I, JoinLat.le I m n -> (g m <= g n)%Val)
+  := forall (I : JoinLat.t) (nonempty : I) (g : I -> Valuation A)
+       (gmono : forall m n : I, JoinLat.le I m n -> (g m <= g n)%Val)
        (P : A -> Prop),
       (f (supValuation I g gmono)) P
-    = LPRsup (fun x : JoinLat.ty I => f (g x) P).
+    = LPRsup (fun x : I => f (g x) P).
 
 (** If a functional is continuous, then we indeed reach a fixpoint
     when we apply [fixValuation]. *)
@@ -1180,14 +1197,20 @@ Proof.
 refine (
   {| val := fun P => mu (fun b => exists a : A, P a /\ f a = b) |}
 ).
-- erewrite val_iff. apply strict. unfold K.
-  intros; split; intros.
-  + destruct H. intuition.
-  + contradiction.
-- intros. apply monotonic. intros.
-  destruct H0 as [a [Ua faz]].
-  exists a. split. apply H. assumption. assumption.
-- intros. 
+- abstract (erewrite val_iff; 
+  [ apply strict
+  | unfold K; firstorder ]).
+- abstract (intros; apply monotonic; firstorder).
+- Lemma inject_modular {A B : Type} (f : A -> B)
+  (finj : forall (x y : A), f x = f y -> x = y)
+  (mu : Valuation B)
+  : forall U V : A -> Prop,
+   mu (fun b : B => exists a : A, U a /\ f a = b) +
+   mu (fun b : B => exists a : A, V a /\ f a = b) =
+   mu (fun b : B => exists a : A, (U a /\ V a) /\ f a = b) +
+   mu (fun b : B => exists a : A, (U a \/ V a) /\ f a = b).
+  Proof.
+  intros. 
   remember (fun b : B => exists a : A, U a /\ f a = b) as U'.
   remember (fun b : B => exists a : A, V a /\ f a = b) as V'.
   assert (forall x, (fun b : B => exists a : A, (U a /\ V a) /\ f a = b) x
@@ -1211,18 +1234,17 @@ refine (
   exists a. intuition.
   rewrite (val_iff H0).
   apply modular.
-- intros. erewrite val_iff. apply factorizes.
-  intros. split; intros. destruct H as [a0 [[Pp Ua0] fa0]].
-  subst. split. assumption. exists a0. intuition.
-  destruct H as [Pp [a0 [Ua0 fa0]]].
-  exists a0. intuition.
+  Qed.
+  apply inject_modular; assumption.
+- abstract (intros; erewrite val_iff;
+  [ apply factorizes | firstorder]).
 Defined.
 
 Lemma inl_inj {A B : Type} : forall (a a' : A), inl B a = inl a' -> a = a'.
-Proof. intros. congruence. Qed.
+Proof. congruence. Qed.
 
 Lemma inr_inj {A B : Type} : forall (b b' : B), inr A b = inr b' -> b = b'.
-Proof. intros. congruence. Qed.
+Proof. congruence. Qed.
 
 (** The measure of some subset on a sum type can be computed by
     adding the measure inside each of the two disjuncts. *)
@@ -1549,7 +1571,7 @@ Qed.
 
 Lemma minus_Succ {k n : nat} : (S k <= n -> S (n - S k) = n - k)%nat.
 Proof.
-intros. rewrite Minus.minus_Sn_m. simpl. reflexivity. assumption.
+omega. 
 Qed.
 
 (** The binomial distribution will never return a number of success
@@ -1637,7 +1659,7 @@ induction n.
       repeat rewrite LPRQnn_mult. repeat rewrite LPRQnn_plus.
       apply LPRQnn_eq. simpl. ring.
       symmetry. apply binomial_bounded. apply Lt.lt_n_Sn.
-    * intros. split; intros; congruence.
+    * intros. split; congruence.
 Qed.
 
 (** The functional that generates the geometric distribution. *)
@@ -1684,7 +1706,7 @@ Lemma geoFixMeas' : forall (p : Qnn), (p <= 1)%Qnn -> forall n,
   ((fixn (geoFix p) n) (K True)) = LPRQnn (1 - p ^ n)%Qnn.
 Proof.
 intros. induction n.
-- simpl. reflexivity.
+- simpl. apply LPRQnn_eq.  apply Qnneq_prop. reflexivity.
 - simpl. rewrite (@val_iff _ _ _ (K True)). rewrite IHn.
   unfold K. rewrite LPRind_true by trivial.
   LPRQnn_simpl. apply LPRQnn_eq. ring_simplify.
@@ -1741,7 +1763,7 @@ intros. induction k.
   simplVal. rewrite <- Heqgeo.
   simpl. indicatorSolve. ring_simplify.
   erewrite val_iff. reflexivity.
-  intros; split; intros; congruence.
+  intros; split; congruence.
 Qed.
 
 (** * Queues *)
@@ -1961,7 +1983,7 @@ simpl.
   simpl. indicatorSolve. ring_simplify.
   simplVal.
   replace (geo (fun x : nat => S n = S x)) with (geo (eq n)).
-  Focus 2. apply val_iff. intros; split; intros; congruence.
+  Focus 2. apply val_iff. intros; split; congruence.
   rewrite <- change_of_variables.
 
   induction n.
@@ -1971,7 +1993,7 @@ simpl.
     rewrite <- change_of_variables.
     replace (geo (fun x : nat => 0%nat = S x)) with 0.
     Focus 2. erewrite val_iff. symmetry. apply strict. unfold K.
-      intros; split; intros; congruence || contradiction.
+      intros; split; congruence || contradiction.
     ring_simplify.
     rewrite Heqgeo. rewrite geometricInvariant.
     unfold geoFix, pchoice. simplVal.
