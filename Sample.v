@@ -510,7 +510,7 @@ Definition rejectionFunc {A : Type} (v : Valuation A)
 Lemma rejectionFunc_mono {A : Type} (v : Valuation A)
   (pred : A -> bool)
   : let f := rejectionFunc v pred 
-    in forall mu1 mu2, Valle mu1 mu2 -> Valle (f mu1) (f mu2).
+    in forall mu1 mu2, (mu1 <= mu2 -> f mu1 <= f mu2)%Val.
 Proof. 
 intros. unfold Valle in *. intros P. simpl.
 apply int_monotonic. unfold pointwise. intros a.
@@ -523,7 +523,31 @@ Definition rejection {A : Type} (v : Valuation A)
   : Valuation A
   := fixValuation (rejectionFunc v pred)
      (rejectionFunc_mono v pred).
- 
+
+Lemma restrict_integral : forall (A : Type) (mu : Valuation A) (P : A -> Prop)
+  (f : A -> LPReal),
+    integral f (restrict mu P) 
+  = integral (fun x => LPRindicator (P x) * f x) mu.
+Proof.
+Admitted.
+
+Lemma int_ifthen : forall A (pred : A -> bool) (f fthen felse : A -> LPReal)
+  (mu : Valuation A), 
+  (forall x, f x = if pred x then fthen x else felse x)
+  -> integral f mu
+  = integral fthen (restrict mu (fun x => pred x = true))
+  + integral felse (restrict mu (fun x => pred x = false)).
+Proof.
+intros.
+pose proof (@val_destruct_dec A mu (fun x => pred x = true)).
+erewrite int_pointwise_eq. 2: unfold pointwise; apply H.
+rewrite <- H0 at 1.
+simpl. unfold val_destruct. 
+replace (fun a : A => pred a <> true) with (fun a : A => pred a = false).
+rewrite int_adds_val.
+repeat rewrite restrict_integral.
+Admitted.
+
 Definition rejection_Prob_lemmaT {A : Type} (v : Valuation A)
   (pred : A -> bool) 
   (vProb : v (K True) = 1)
@@ -540,6 +564,32 @@ induction n.
   replace (1 + 0)%Qnn with 1%Qnn by ring.
   apply Qnnle_refl.
 -  simpl. 
+   erewrite (@int_ifthen _ pred _).
+   Focus 2. intros. destruct (pred x); reflexivity.
+   erewrite int_pointwise_eq.
+   Focus 2. unfold pointwise. intros. rewrite unit_prob. 
+   rewrite <- (LPRind_true True) by trivial. reflexivity.
+   rewrite int_indicator.
+   erewrite int_pointwise_eq.
+   Focus 2. unfold pointwise. intros.
+   rewrite <- (SRmul_1_l LPRsrt) at 1.
+   rewrite (SRmul_comm LPRsrt). rewrite <- (LPRind_true True) by trivial.
+   reflexivity.
+   rewrite <- int_scales, int_indicator.
+   replace (1 - p * p ^ n)%Qnn with
+     ((p ^ n * (1 - p)) + (1 - p ^ n))%Qnn.
+   rewrite <- (SRadd_0_l LPRsrt) at 1.
+   rewrite (SRadd_comm LPRsrt).
+
+   eapply LPRle_trans. Focus 2. eapply LPRplus_le_compat.
+   simpl. rewrite (@val_iff _ _ _ (fun a => pred a = true))
+     by intuition. instantiate (1 := LPRQnn p). unfold LPRle. 
+   intros. simpl in H0. eapply dclosed. eassumption. 
+   apply Qnnlt_le_weak. assumption.
+   eapply LPRmult_le_compat. apply IHn. simpl.
+   rewrite (@val_iff _ _ _ (fun a => pred a = false)) by intuition.
+   apply LPRle_refl.
+   
 Admitted. 
 
 
