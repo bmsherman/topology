@@ -7,7 +7,7 @@ Module FormTop.
 Section Defn.
 
 Context {S : Type}.
-Context {PO : PO.t S}.
+Variable PO : PO.t S.
 
 Let le := PO.le PO.
 
@@ -28,6 +28,14 @@ Record t { Cov : S -> (S -> Prop) -> Prop } :=
   }.
 
 Arguments t : clear implicits.
+
+Record tPos { Cov : S -> (S -> Prop) -> Prop } {Pos : S -> Prop} :=
+  { cov :> t Cov
+  ; mono : forall a U, Pos a -> Cov a U -> exists b, U b /\ Pos b
+  ; positive : forall a U, (Pos a -> Cov a U) -> Cov a U
+  }.
+
+Arguments tPos : clear implicits.
 
 Variable Cov : S -> (S -> Prop) -> Prop.
 
@@ -153,8 +161,180 @@ constructor.
   eapply GCov_stable. eassumption. eassumption.
   apply PO.le_refl. apply PO.le_refl.
 Qed.
-  
+
 
 End Defn.
 
 End FormTop.
+
+Module Concrete. 
+Section Concrete.
+
+Variable X S : Type.
+Variable In : X -> S -> Prop.
+
+Definition SPO : PO.t S := PO.map (fun s x => In x s) (PO.subset X).
+
+Definition le s t : Prop := PO.le SPO s t.
+
+Record t : Type :=
+  { here : forall x, { s | In x s }
+  ; local : forall (a b : S) x, In x a -> In x b 
+          -> { c | In x c /\ FormTop.down SPO a b c }
+  }.
+
+Definition Ix (a : S) : Type := sig (fun (g : forall (x : X), In x a -> S) 
+  => forall (x : X) (prf : In x a), In x (g x prf)).
+
+Definition C (a : S) (i : Ix a) : S -> Prop := match i with
+  | exist g _ => fun s => exists (x : X) (prf : In x a), s = g x prf
+  end.
+
+Theorem loc : t -> FormTop.localized SPO Ix C.
+Proof.
+intros conc. destruct conc.
+unfold FormTop.localized. simpl.
+intros. unfold Ix in *. destruct i as [g Pg].
+assert (forall x prf, In x (g x (H x prf))) as Pg'.
+intros. apply Pg.
+pose (fun x xina => local0 a (g x (H x xina)) x xina
+  (Pg' x xina)) as g'.
+assert (forall x prf, In x (proj1_sig (g' x prf))) as Pg''.
+intros. destruct (g' x prf).
+simpl. destruct a0. assumption.
+exists (exist _ (fun x prf => proj1_sig (g' x prf)) Pg''). 
+
+unfold C. intros.
+destruct H0 as [x [prf img]].
+exists (g x (H x prf)). split. exists x. exists (H x prf).
+reflexivity.
+destruct (g' x prf). simpl in *. destruct a0. subst.
+assumption. 
+Qed.
+
+End Concrete.
+End Concrete.
+
+Module Cantor.
+
+Variable A : Type.
+
+Definition S := list A.
+
+Definition Ix (s : S) := True.
+
+Require Import List.
+
+Definition C (s : S) (_ : True) (s' : S) : Prop := exists b,
+  s' = s ++ (b :: nil).
+
+Definition LE {A} (xs ys : list A) : Prop := exists zs,
+  xs = ys ++ zs.
+
+Lemma LE_PO {A : Type} : PO.t (list A).
+Proof.
+refine (
+  {| PO.le := LE
+  ; PO.eq := eq |})
+; intros.
+- unfold LE. exists nil. rewrite app_nil_r. reflexivity.
+- unfold LE in *. destruct H. destruct H0.
+  rewrite H0 in H. rewrite <- app_assoc in H.
+  rewrite <- app_nil_r in H at 1.
+  apply app_inv_head in H.
+  symmetry in H. apply app_eq_nil in H.
+  destruct H.  subst. rewrite app_nil_r.
+  reflexivity.
+- unfold LE in *. destruct H. destruct H0.
+  exists (x1 ++ x0). rewrite H. rewrite H0.
+  rewrite app_assoc. reflexivity.
+Defined.
+
+Definition Cov := @FormTop.GCov S LE_PO Ix C.
+
+Theorem loc : FormTop.localized LE_PO Ix C.
+Proof.
+unfold FormTop.localized.
+intros.  unfold Ix in *. destruct i. exists I.
+intros. unfold C in *. destruct H0.
+simpl in H.
+unfold LE in H. destruct H.
+destruct x0.
+- subst.
+  exists (c ++ x :: nil). split. exists x. reflexivity.
+  unfold FormTop.down. split; simpl; unfold LE.
+  exists (x :: nil). reflexivity.
+  exists nil. repeat rewrite app_nil_r. reflexivity.
+- exists (c ++ a0 :: nil). split. exists a0. reflexivity.
+  unfold FormTop.down. split; simpl; unfold LE.
+  exists (x :: nil). assumption. exists (x0 ++ x :: nil).
+  rewrite <- app_assoc. simpl.
+  rewrite H0. rewrite H. rewrite <- app_assoc. reflexivity.
+Qed.
+
+End Cantor.
+
+Module Product.
+
+Section Product.
+
+Variable S T : Type.
+Variable IS : S -> Type.
+Variable IT : T -> Type.
+Variable CS : forall s, IS s -> (S -> Prop).
+Variable CT : forall t, IT t -> (T -> Prop).
+Variable POS : PO.t S.
+Variable POT : PO.t T.
+
+Definition Ix (p : S * T) : Type := match p with
+  (s, t) => (IS s * T + S * IT t)%type end.
+
+Definition C (p : S * T) : Ix p -> S * T -> Prop
+  := match p as p' return Ix p' -> S * T -> Prop with (a, b) =>
+  fun pI open => let (z, w) := open in match pI with
+    | inl (sI, t) => CS a sI z /\ w = b
+    | inr (s, tI) => z = a /\ CT b tI w
+    end
+  end.
+
+Definition PO := PO.product POS POT.
+
+Theorem loc : 
+    FormTop.localized POS IS CS
+  -> FormTop.localized POT IT CT
+  -> FormTop.localized PO Ix C.
+Proof.
+intros. unfold FormTop.localized in *.
+intros. destruct a as [sa ta], c as [sc tc]. 
+destruct H1.
+simpl in H1, H2, i.
+destruct i as [[sI t]|[s tI]].
+- specialize (H sa sc H1 sI).
+  destruct H. unfold Ix in *.
+  exists (inl (x, t)).
+  intros. destruct s as [su tu].
+  simpl in H3. destruct H3.
+  specialize (H _ H3).
+  destruct H as [u [CSu downu]].
+  simpl. exists (u, tc). split. split. assumption. reflexivity.
+  subst. destruct downu.
+  unfold FormTop.down. split.
+  simpl. split. assumption. apply PO.le_refl.
+  simpl. split. assumption. assumption.
+- specialize (H0 ta tc H2 tI).
+  destruct H0. unfold Ix in *.
+  exists (inr (s, x)).
+  intros. destruct s0 as [su tu].
+  simpl in H3. destruct H3.
+  specialize (H0 _ H4).
+  destruct H0 as [u [CTu downu]].
+  simpl. exists (sc, u). split. split. reflexivity. assumption.
+  subst. destruct downu.
+  unfold FormTop.down. split.
+  simpl. split. apply PO.le_refl. assumption.
+  simpl. split. assumption. assumption.
+Qed.
+
+Definition Cov := FormTop.GCov PO Ix C.
+  
+End Product.
