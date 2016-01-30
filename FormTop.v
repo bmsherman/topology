@@ -377,7 +377,7 @@ intros a'. simpl. intros. destruct H6.
 destruct H6. induction H6. assumption.
 assert (CovS a (fun a' => F a' u)).
 eapply (FormTop.le_left _ H). eassumption. assumption.
-apply cov.
+Abort.
 
 Definition id {S} (POS : PO.t S)
   (s t : S) := PO.le POS s t.
@@ -443,7 +443,6 @@ intros. constructor.
   admit.
 - intros. unfold compose in H1. 
   destruct H1 as [t [Fat Gtb]].
-  apply 
 Abort.
   
 
