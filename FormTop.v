@@ -167,6 +167,8 @@ End Defn.
 
 End FormTop.
 
+Arguments FormTop.t {_} _ _.
+
 Module Concrete. 
 Section Concrete.
 
@@ -338,3 +340,112 @@ Qed.
 Definition Cov := FormTop.GCov PO Ix C.
   
 End Product.
+End Product.
+
+
+Module Cont.
+Section Cont.
+
+Record t {S} {CovS : S -> (S -> Prop) -> Prop} 
+  {T} {POT : PO.t T}
+  {CovT : T -> (T -> Prop) -> Prop}
+ {F : S -> T -> Prop} : Prop :=
+  { here : forall s, exists t, F s t
+  ; local : forall a b c, F a b -> F a c
+    -> exists bc, F a bc /\ FormTop.down POT b c bc
+  ; cov : forall a b V, F a b -> CovT b V
+    -> CovS a (fun s => exists t, V t /\ F s t)
+  }.
+
+Arguments t {S} CovS {T} POT CovT F.
+
+Lemma le_left {S} {POS : PO.t S} {CovS : S -> (S -> Prop) -> Prop}
+  {T} {POT : PO.t T} {CovT : T -> (T -> Prop) -> Prop}
+  : FormTop.t POS CovS
+  -> FormTop.t POT CovT
+  -> forall (F : S -> T -> Prop), t CovS POT CovT F
+  -> forall a b u, PO.le POS a b -> F b u -> F a u.
+Proof.
+intros.
+assert (CovT u (fun u' => u = u')).
+eapply FormTop.refl. eassumption. reflexivity.
+pose proof (cov H1 _ _ _ H3 H4).
+simpl in H5.
+assert (CovS b (fun a' => F a' u)).
+eapply FormTop.monotone. eassumption. 2:apply H5.
+intros a'. simpl. intros. destruct H6.
+destruct H6. induction H6. assumption.
+assert (CovS a (fun a' => F a' u)).
+eapply (FormTop.le_left _ H). eassumption. assumption.
+apply cov.
+
+Definition id {S} (POS : PO.t S)
+  (s t : S) := PO.le POS s t.
+
+Theorem t_id {S} {POS : PO.t S} {CovS : S -> (S -> Prop) -> Prop} 
+  : FormTop.t POS CovS -> t CovS POS CovS (id POS).
+Proof.
+intros. constructor; intros.
+- exists s. unfold id. apply PO.le_refl.
+- unfold id in *. exists a. split. apply PO.le_refl.
+  split; assumption.
+- unfold id in *. eapply FormTop.le_left. eassumption. 
+  eassumption. eapply (FormTop.monotone POS CovS H). 2: eassumption. 
+  intros. exists a0. split. assumption. apply PO.le_refl. 
+Qed.
+
+(*
+Everything in s maps to u
+iff there is some subset T such that
+  everything in s maps to T and
+  everything in T maps to u
+*)
+
+Variable S T : Type.
+
+Variable CovS : S -> (S -> Prop) -> Prop.
+Variable POS : PO.t S.
+Variable CovS_ok : FormTop.t POS CovS.
+
+Variable CovT : T -> (T -> Prop) -> Prop.
+Variable POT : PO.t T.
+Variable CovT_ok : FormTop.t POT CovT.
+
+Variable U : Type.
+Variable CovU : U -> (U -> Prop) -> Prop.
+Variable POU : PO.t U.
+Variable CovU_ok : FormTop.t POU CovU.
+
+Definition compose (F : S -> T -> Prop)
+  (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
+    exists t, F s t /\ G t u.
+
+
+Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
+    t CovS POT CovT F
+  -> t CovT POU CovU G
+  -> t CovS POU CovU (compose F G).
+Proof.
+intros. constructor.
+- intros. pose proof (here H s). destruct H1.
+  pose proof (here H0 x). destruct H2.
+  exists x0. unfold compose. exists x. split; assumption.
+- unfold compose. intros.
+  destruct H1 as [tb [Fatb Gtbb]].
+  destruct H2 as [tc [Fatc Gtcc]].
+  pose proof (local H _ _ _ Fatb Fatc).
+  destruct H1 as [tt' [Fatt' downtt']].
+  pose proof (here H0 tt').
+  destruct H1. 
+
+  exists x. split. 
+  exists tt'. split; assumption. 
+  admit.
+- intros. unfold compose in H1. 
+  destruct H1 as [t [Fat Gtb]].
+  apply 
+Abort.
+  
+
+End Cont.
+End Cont.

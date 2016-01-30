@@ -152,6 +152,15 @@ Module PO.
   rewrite H0. rewrite H. apply H1.
   Defined.
 
+  Definition morph_pointwise {A B C} {tC : t C} (f : B -> A)
+    : morph (pointwise (fun _ : A => tC)) (pointwise (fun _ : B => tC))
+      (fun g b => g (f b)).
+  Proof.
+  constructor; intros; simpl in *; intros.
+  - apply H.
+  - apply H.
+  Qed. 
+
   Definition prop : t Prop.
   Proof. refine (
     {| le := fun (P Q : Prop) => P -> Q
@@ -270,6 +279,16 @@ Module Lattice.
       apply H. apply H0.
   Defined.
 
+  Definition morph_pointwise {A B C} {tC : t C} (f : B -> A)
+    : morph (pointwise (fun _ : A => tC)) (pointwise (fun _ : B => tC))
+      (fun g b => g (f b)).
+  Proof.
+  constructor; intros; simpl in *; intros.
+  - apply PO.morph_pointwise.
+  - apply PO.eq_refl. 
+  - apply PO.eq_refl.
+  Qed. 
+
   Definition subset (A : Type) : t (A -> Prop) := pointwise (fun _ => prop).
 
   Definition product {A B : Type} (tA : t A) (tB : t B) : t (A * B).
@@ -380,30 +399,6 @@ Module Frame.
     intros.  destruct m'. apply PO.le_refl.
   Defined.
 
-  Inductive Generate {A} {Ix} {basis : Ix -> A} : nat -> Type :=
-    | Base (ix : Ix) : Generate 0
-    | Bump : forall n, Generate n -> Generate (S n)
-    | Sup {Ix'} {n} (f : Ix' -> Generate n) : Generate (S n)
-    | Min : forall m n, Generate m -> Generate n -> Generate (S (Peano.max m n)).
-
-  Arguments Generate {A} {Ix} basis n.
-
-(*
-  Fixpoint leGen {A Ix} {m n k} (X : PO.t A) {basis : Ix -> A} 
-     (x : Generate basis m) (y : Generate basis n) 
-     (wf : m + n <= k) {struct wf} : Prop.
-  Proof. refine ( match x, y with
-  | Bump _ x', _ => leGen _ _ _ _ _ X _ x' y _
-  | _, Bump _ y' => leGen _ _ _ _ _ X _ x y' _
-  | _, Min _ _ yA yB => leGen _ _ _ _ _ X _ x yA _ /\ leGen _ _ _ _ _ X _ x yB _
-  | Min _ _ xA xB, _ => leGen _ _ _ _ _ X _ xA y _ \/ leGen _ _ _ _ _  X _ xB y _
-  | _, Sup _ _ f => exists ix, leGen _ _ _ _ _ X _ x (f ix) _
-  | Sup _ _ f, _ => forall ix, leGen _ _ _ _ _ X _ (f ix) y _
-  | Base ixx, Base ixy => PO.le X (basis ixx) (basis ixy)
-  end).
-  Definition based {A} {Ix} (basis : Ix -> A) : 
-*)
-
   Definition prop : t Prop.
   Proof. refine (
     {| L := L.prop
@@ -441,6 +436,15 @@ Module Frame.
   - simpl. unfold L.eq. simpl. intros. 
     apply (sup_distr (X a)).
   Defined.
+
+  Definition morph_pointwise {A B C} {tC : t C} (f : B -> A)
+    : morph (pointwise (fun _ : A => tC)) (pointwise (fun _ : B => tC))
+      (fun g b => g (f b)).
+  Proof.
+  constructor; intros; simpl in *; intros.
+  - apply L.morph_pointwise.
+  - apply PO.eq_refl. 
+  Qed. 
   
   Definition subset (A : Type) : t (A -> Prop) := pointwise (fun _ => prop).
 
@@ -453,7 +457,20 @@ Module Frame.
   Arguments cmap {A} {B} tA tB.
 
   Definition point {A} (tA : t A) := cmap prop tA.
-  
+
+  Definition subset_map {A B} (f : A -> B) : cmap (subset A) (subset B).
+  Proof.
+  refine ( {| finv P x := P (f x) |}).
+  apply morph_pointwise.
+  Defined.
+
+  Definition cmap_compose {A B C} {tA : t A} {tB : t B} {tC : t C}
+    (f : cmap tA tB) (g : cmap tB tC) : cmap tA tC.
+  Proof. refine (
+  {| finv x := finv f (finv g x) |}
+  ). eapply morph_compose; eapply cont.
+  Defined. 
+
 End Frame.
 
 Module F := Frame.
@@ -489,12 +506,26 @@ Qed.
 
 Module Val.
 
+Require Import Equalities Orders GenericMinMax.
+
+(** This describes the property of when a valuation is
+    _continuous_. This condition is analagous to countable additivity
+    in measure theory. Essentially, if I have a sequence of subsets
+    which is getting bigger and bigger, then the measure of the union
+    of the subsets is the supremum of the measures of each of the
+    subsets in the sequence. *)
+Definition ContinuousV {A} (X : F.t A) (mu : (A -> LPReal))
+  := forall (I : JoinLat.t) (f : JoinLat.ty I -> A)
+       (fmono : forall (m n : JoinLat.ty I), JoinLat.le I m n -> F.le X (f m) (f n))
+       , mu (F.sup X f) = LPRsup (fun n => mu (f n)).
+
   Record t {A} {X : Frame.t A} :=
   { val :> A -> LPReal
   ; strict : val (F.bottom X) = 0
   ; monotonic : forall (U V : A), F.le X U V -> val U <= val V
   ; modular : forall (U V : A),
       val U + val V = val (F.max X U V) + val (F.min X U V)
+  ; continuous : ContinuousV X val
   }.
 
   Arguments t {A} X.
@@ -552,6 +583,8 @@ pose proof (proof_irrel _ monotonic0 monotonic1).
 induction H0.
 pose proof (proof_irrel _ modular0 modular1).
 induction H0.
+pose proof (proof_irrel _ continuous0 continuous1).
+induction H0.
 reflexivity.
 Qed.
 
@@ -565,6 +598,10 @@ Proof. refine (
 - reflexivity.
 - apply LPRle_refl.
 - reflexivity.
+- unfold ContinuousV. intros. simpl. symmetry.
+  apply LPRle_antisym.
+  + unfold LPRle. simpl. intros. destruct H. assumption.
+  + apply LPRzero_min.
 Defined.
 
   Instance val_proper `{X : F.t A} : Proper (Logic.eq ==> F.eq X ==> Logic.eq) (@val _ X).
@@ -591,6 +628,12 @@ Proof. refine (
 - rewrite qredistribute. 
   rewrite (qredistribute (mu (F.max _ _ _))).
   apply LPRplus_eq_compat; apply modular.
+- intros. unfold ContinuousV in *. intros. simpl.
+  rewrite (LPRsup_sum_jlat I).
+  apply LPRplus_eq_compat;
+   apply continuous; assumption.
+  intros. apply monotonic. apply fmono. assumption.
+  intros. apply monotonic. apply fmono. assumption.
 Defined.
 
 (** Scale a valuation by a constant *)
@@ -606,6 +649,9 @@ Proof. refine (
   with (c * (mu (F.max X U V) + mu (F.min X U V))) by ring.
   apply LPRmult_eq_compat. reflexivity.
   apply modular.
+- intros. unfold ContinuousV in *. intros. simpl.
+  rewrite continuous by assumption.
+  apply LPRsup_scales.
 Defined.
 
 Infix "+" := add : Val_scope.
@@ -630,6 +676,10 @@ Proof.
   rewrite (L.f_min (F.f_L (F.cont f))).
   rewrite (L.f_max (F.f_L (F.cont f))).
   apply modular.
+- unfold ContinuousV. intros.
+  rewrite (F.f_sup (F.cont f)).
+  apply continuous. intros. 
+  apply (L.f_PO (F.f_L (F.cont f))). apply fmono. assumption.
 Defined.
 
 Definition unit_prop : t F.prop.
@@ -642,52 +692,12 @@ refine (
 - unfold F.le, L.le in H. simpl in H. apply LPRind_imp. assumption.
 - unfold F.max, F.min. simpl. rewrite (SRadd_comm LPRsrt (LPRindicator (U \/ V))). 
   apply LPRind_modular.
+- unfold ContinuousV. intros.
+  apply LPRind_exists. 
 Defined.
 
 Definition unit {A} {X : F.t A} (x : F.point X)
   : t X := map x unit_prop.
-
-Require Import Equalities Orders GenericMinMax.
-
-(** This describes the property of when a valuation is
-    _continuous_. This condition is analagous to countable additivity
-    in measure theory. Essentially, if I have a sequence of subsets
-    which is getting bigger and bigger, then the measure of the union
-    of the subsets is the supremum of the measures of each of the
-    subsets in the sequence. *)
-Definition ContinuousV `{X : F.t A} (mu : t X)
-  := forall (I : JoinLat.t) (f : JoinLat.ty I -> A)
-       (fmono : forall (m n : JoinLat.ty I), JoinLat.le I m n -> F.le X (f m) (f n))
-       , mu (F.sup X f) = LPRsup (fun n => mu (f n)).
-
-(** All the valuations we have seen so far are continuous in this
-    sense. *)
-Lemma zero_ContinuousV `{X : F.t A} : ContinuousV (@zero _ X).
-Proof.
-unfold ContinuousV. intros. simpl. symmetry.
-apply LPRle_antisym.
-- unfold LPRle. simpl. intros. destruct H. assumption.
-- apply LPRzero_min.
-Qed.
-
-Lemma add_ContinuousV: forall `{X : F.t A} {mu nu : t X},
-  ContinuousV mu -> ContinuousV nu -> ContinuousV (mu + nu)%Val.
-Proof.
-intros. unfold ContinuousV in *. intros. simpl.
-rewrite (LPRsup_sum_jlat I).
-apply LPRplus_eq_compat. apply H. assumption.
-apply H0. assumption. 
-intros. apply monotonic. apply fmono. assumption.
-intros. apply monotonic. apply fmono. assumption.
-Qed.
-
-Lemma scale_ContinuousV : forall `{X : F.t A} (c : LPReal) (mu : t X),
-  ContinuousV mu -> ContinuousV (c * mu)%Val.
-Proof.
-intros. unfold ContinuousV in *. intros. simpl.
-rewrite H by assumption.
-apply LPRsup_scales.
-Qed.
 
 Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
   (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
@@ -728,6 +738,20 @@ Definition le `{X : F.t A} (x y : t X) :=
 
 Definition eq `{X : F.t A} (x y : t X) := 
   forall (mu : Val.t X), Integral x mu = Integral y mu.
+
+Lemma int_proper1 `{X : F.t A} : Proper (Logic.eq ==> Val.eq ==> Logic.eq) (@Integral _ X).
+Proof.
+ unfold Proper, respectful. unfold eq. intros.  subst. induction y. 
+ - simpl. apply H0. 
+ - simpl. rewrite IHy. ring.
+ - simpl. rewrite IHy1, IHy2. ring.
+Qed.
+
+Instance int_proper `{X : F.t A} : Proper (eq ==> Val.eq ==> Logic.eq) (@Integral _ X).
+Proof.
+ unfold Proper, respectful. unfold eq. intros. rewrite H.
+ apply int_proper1. reflexivity. assumption.
+Qed.
 
 Lemma le_refl `{X : F.t A} : forall (x : t X), le x x.
 Proof.
@@ -788,13 +812,16 @@ Proof.
 intros. simpl. apply strict.
 Qed.
 
-Fixpoint map {B} `{X : F.t A} {Y : F.t B}
-  (f : F.cmap X Y) (s : t Y) : t X
-  := match s with
-  | Ind P => Ind (F.finv f P)
-  | Scale c s' => Scale c (map f s')
-  | Add l r => Add (map f l) (map f r)
+Fixpoint map_concrete {B} `{X : F.t A} {Y : F.t B}
+  (f : A -> B) (s : t X) : t Y := match s with
+  | Ind P => Ind (f P)
+  | Scale c s' => Scale c (map_concrete f s')
+  | Add l r => Add (map_concrete f l) (map_concrete f r)
   end.
+
+Definition map {B} `{X : F.t A} {Y : F.t B}
+  (f : F.cmap X Y) : t Y -> t X
+  := map_concrete (F.finv f).
 
 End Simple.
 
@@ -855,9 +882,11 @@ Module RealFunc.
   Infix "<=" := le : RFunc_scope.
   Infix "==" := eq : RFunc_scope.
 
-  Instance int_proper `{X : F.t A} : Proper (eq ==> Logic.eq ==> Logic.eq) (@integral _ X).
+  Instance int_proper `{X : F.t A} : Proper (eq ==> Val.eq ==> Logic.eq) (@integral _ X).
   Proof.
-   unfold Proper, respectful. unfold eq. intros.  subst. apply H.
+   unfold Proper, respectful. unfold eq. intros. unfold integral in *.
+   rewrite H. apply LPRsup_eq_pointwise. intros n. apply Simple.int_proper.
+   unfold Simple.eq. reflexivity. assumption.
   Qed.
 
   Lemma int_simple `{X : F.t A} : forall (f : Simple.t X) (mu : Val.t X),
@@ -953,6 +982,91 @@ Axiom all_cont_point : forall A (f : A -> LPReal) (a : A),
 Axiom RF_pointwise : forall A (f g : RF.t (O A)),
   (forall a, RF.eval f (point a) <= RF.eval g (point a)) -> RF.le f g.
 
+Require Finite.
+
+Definition inject {A B}
+  (f : A -> B) : Val.Simple.t (O A) -> Val.Simple.t (O B)
+  := Val.Simple.map_concrete (fun P b => exists a, b = f a /\ P a).
+
+Definition fin_all_cont {A : Type} (fin : Finite.T A) (f : A -> LPReal)
+  : Val.Simple.t (O A).
+Proof.
+induction fin.
+- exact (Val.Simple.Ind (fun _ => False)).
+- unfold O. 
+  pose (Val.Simple.Scale (f (inl I)) (@Val.Simple.Ind _ (O _) (fun x => x = @inl _ A I))) as v1.
+  pose (inject (@inr True _) (IHfin (fun x => f (inr x)))) as v2.
+  exact (Val.Simple.Add v1 v2).
+- pose (IHfin (fun a => f (Iso.to t a))) as v.
+  exact (Val.Simple.map (F.subset_map (Iso.from t)) v).
+Defined.
+
+Require Import Ring. 
+Lemma inject_L : forall A B (a : A) v, Val.Simple.Integral
+     (inject inr v)
+     (Val.unit (point (@inl A B a))) = 0.
+Proof. intros. unfold inject. induction v; simpl.
+- rewrite LPRind_false. reflexivity. unfold not. intros contra.
+  destruct contra. destruct H. congruence.
+- rewrite IHv. ring.
+- rewrite IHv1. rewrite IHv2. ring.
+Qed.
+
+Lemma inject_R : forall A B (b : B) v, Val.Simple.Integral
+     (inject inr v)
+     (Val.unit (point (@inr A B b))) = Val.Simple.Integral v
+     (Val.unit (point b)).
+Proof. intros. unfold inject. induction v; simpl.
+- apply LPRind_iff. split; intros.
+  destruct H. destruct H. inversion H. assumption.
+  exists b. split. reflexivity. assumption.
+- rewrite IHv. ring.
+- rewrite IHv1. rewrite IHv2. ring.
+Qed.
+
+Lemma map_point : forall A B (X : F.t A) (Y : F.t B) 
+  (f : F.cmap X Y) (x : F.point X),
+  Val.eq (Val.map f (Val.unit x))
+         (Val.unit (F.cmap_compose x f)).
+Proof. 
+intros. unfold Val.eq. intros. reflexivity.
+Qed.
+
+Lemma simple_int_map_point : forall {A B} (X : F.t A) (Y : F.t B)
+  (f : F.cmap X Y) s (x : F.point X),
+   Val.Simple.Integral (Val.Simple.map f s) (Val.unit x)
+  = Val.Simple.Integral s (Val.unit (F.cmap_compose x f)).
+Proof.
+intros. induction s; simpl in *. 
+- reflexivity.
+- rewrite <- IHs. reflexivity.
+- rewrite <- IHs1. rewrite <- IHs2. reflexivity.
+Qed.
+
+Theorem fin_all_cont_point : forall {A : Type} 
+  (fin : Finite.T A) (f : A -> LPReal) (a : A),
+   RF.eval (RF.simple (fin_all_cont fin f)) (point a) = f a.
+Proof.
+intros. induction fin.
+- contradiction. 
+- destruct a.
+  + destruct t. unfold RF.eval in *. rewrite RF.int_simple. simpl.
+    rewrite LPRind_true by trivial.
+    rewrite inject_L. ring.
+  + unfold RF.eval in *. rewrite RF.int_simple.
+    simpl. rewrite LPRind_false.
+    specialize (IHfin (fun x => f (inr x)) a).
+    rewrite RF.int_simple in IHfin. rewrite inject_R. rewrite IHfin.
+    ring. congruence.
+-  unfold RF.eval. rewrite RF.int_simple. simpl.
+   specialize (IHfin (fun a0 => f (Iso.to t a0)) (Iso.from t a)).
+   simpl in IHfin. rewrite Iso.to_from in IHfin.
+   unfold RF.eval in IHfin. rewrite RF.int_simple in IHfin.
+   rewrite <- IHfin. simpl. rewrite simple_int_map_point.
+   apply Val.Simple.int_proper. unfold Val.Simple.eq. reflexivity.
+   apply map_point.
+Qed.   
+ 
 Lemma RF_pointwise_eq : forall {A} (f g : RF.t (O A)),
   (forall a, RF.eval f (point a) = RF.eval g (point a)) -> RF.eq f g.
 Proof. intros. apply (PO.le_antisym RF.PO); apply RF_pointwise; 
@@ -977,6 +1091,16 @@ Qed.
 Definition integral {A} (f : A -> LPReal) (mu : Val A) : LPReal :=
   RF.integral (all_cont f) mu.
 
+(* Theorem 3.13 of Jones 1990 *)
+Theorem directed_monotone_convergence {A : Type} :
+  forall (mu : Val.t (O A)) (I : JoinLat.t),
+  forall (g : JoinLat.ty I -> (A -> LPReal)),
+    integral (fun x => LPRsup (fun i => g i x)) mu
+  = LPRsup (fun i => integral (fun x => g i x) mu).
+Proof.
+intros. 
+Admitted.
+
 (** The "bind" of our monad. Given a measure over the space A, and a
     function which, given a point in A, returns a measure on B,
     we can produce a measure on B by integrating over A. *)
@@ -999,6 +1123,12 @@ Proof. refine (
   intros. unfold RF.eval. repeat rewrite RF_add. pose proof all_cont_point.
   unfold RF.eval in H. repeat rewrite H.
   apply Val.modular.
+- unfold Val.ContinuousV. intros. simpl.
+  unfold integral. erewrite RF.int_proper. Focus 3. unfold Val.eq. reflexivity.
+  Focus 2. apply RF_pointwise_eq. intros. do 2 rewrite all_cont_point.
+  apply (Val.continuous (f a)). apply fmono.
+  pose proof @directed_monotone_convergence.
+  unfold integral in H. apply H.
 Defined.
 
 End SubsetVal.
