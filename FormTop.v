@@ -4,12 +4,11 @@ Module FormTop.
 
 (** Inductively generated formal topologies *)
 
+Generalizable All Variables.
+
 Section Defn.
 
-Context {S : Type}.
-Variable PO : PO.t S.
-
-Let le := PO.le PO.
+Context {S} {le eq} {PO : PO.t S le eq}.
 
 Definition down (a b c : S) : Prop :=
   le c a /\ le c b.
@@ -21,7 +20,7 @@ Record t { Cov : S -> (S -> Prop) -> Prop } :=
      -> (forall (a' : S), U a' -> Cov a' V)
      -> Cov a V
   ; le_left : forall (a b : S) (U : S -> Prop)
-     , PO.le PO a b -> Cov b U -> Cov a U
+     , le a b -> Cov b U -> Cov a U
   ; le_right : forall (a : S) (U V : S -> Prop)
     , Cov a U -> Cov a V
     -> Cov a (fun c => exists u v, U u /\ V v /\ down u v c)
@@ -121,7 +120,7 @@ induction H.
 - induction H0; intros.
   + apply grefl. exists a. exists a0. unfold down. intuition.
   + apply IHGCov. apply H2. 
-    eapply PO.le_trans; eassumption.
+    eapply PreO.le_trans; eassumption.
   + pose proof (loc c a0 H3 i) as loc1.
     destruct loc1 as [j loc'].
     apply (ginfinity _ j).
@@ -129,10 +128,10 @@ induction H.
     intros. specialize (loc' u H4).
     destruct loc'. destruct H5. destruct H6.
     eapply H1. eassumption.
-    eapply PO.le_trans. apply H6. assumption.
+    eapply PreO.le_trans. apply H6. assumption.
     assumption.
 - intros. 
-  apply IHGCov. eapply PO.le_trans. apply H2. apply H. 
+  apply IHGCov. eapply PreO.le_trans. apply H2. apply H. 
   apply H3.
 - intros. pose proof (loc c a H2 i) as loc1.
   destruct loc1 as [j loc'].
@@ -141,7 +140,7 @@ induction H.
   intros. specialize (loc' u H4).
   destruct loc'. destruct H5. destruct H6.
   eapply H1. eassumption. assumption.
-  eapply PO.le_trans. apply H6. assumption.
+  eapply PreO.le_trans. apply H6. assumption.
 Qed.
 
 Theorem GCov_formtop : t GCov.
@@ -159,7 +158,7 @@ constructor.
   pose proof GCov_stable as stab.
   unfold stable in stab.
   eapply GCov_stable. eassumption. eassumption.
-  apply PO.le_refl. apply PO.le_refl.
+  apply PreO.le_refl. apply PreO.le_refl.
 Qed.
 
 
@@ -175,14 +174,12 @@ Section Concrete.
 Variable X S : Type.
 Variable In : X -> S -> Prop.
 
-Definition SPO : PO.t S := PO.map (fun s x => In x s) (PO.subset X).
-
-Definition le s t : Prop := PO.le SPO s t.
+Instance SPO : PO.t S _ _ := PO.map (fun s x => In x s) (PO.subset X).
 
 Record t : Type :=
   { here : forall x, { s | In x s }
   ; local : forall (a b : S) x, In x a -> In x b 
-          -> { c | In x c /\ FormTop.down SPO a b c }
+          -> { c | In x c /\ @FormTop.down S (map_op (fun s x => In x s) L.le) a b c }
   }.
 
 Definition Ix (a : S) : Type := sig (fun (g : forall (x : X), In x a -> S) 
@@ -192,7 +189,7 @@ Definition C (a : S) (i : Ix a) : S -> Prop := match i with
   | exist g _ => fun s => exists (x : X) (prf : In x a), s = g x prf
   end.
 
-Theorem loc : t -> FormTop.localized SPO Ix C.
+Theorem loc : t -> @FormTop.localized S (map_op (fun s x => In x s) L.le) Ix C.
 Proof.
 intros conc. destruct conc.
 unfold FormTop.localized. simpl.
@@ -233,28 +230,28 @@ Definition C (s : S) (_ : True) (s' : S) : Prop := exists b,
 Definition LE {A} (xs ys : list A) : Prop := exists zs,
   xs = ys ++ zs.
 
-Lemma LE_PO {A : Type} : PO.t (list A).
+Lemma LE_PO {A : Type} : PO.t (list A) LE eq.
 Proof.
-refine (
-  {| PO.le := LE
-  ; PO.eq := eq |})
-; intros.
-- unfold LE. exists nil. rewrite app_nil_r. reflexivity.
-- unfold LE in *. destruct H. destruct H0.
+constructor; intros.
+- constructor; unfold LE; intros.
+  + exists nil. rewrite app_nil_r. reflexivity.
+  + destruct H. destruct H0.
+    exists (x1 ++ x0). rewrite H. rewrite H0.
+    rewrite app_assoc. reflexivity.
+- unfold Morphisms.Proper, Morphisms.respectful. 
+  unfold LE in *. intros. subst. reflexivity. 
+- unfold LE in *.  destruct H. destruct H0.
   rewrite H0 in H. rewrite <- app_assoc in H.
   rewrite <- app_nil_r in H at 1.
   apply app_inv_head in H.
   symmetry in H. apply app_eq_nil in H.
   destruct H.  subst. rewrite app_nil_r.
   reflexivity.
-- unfold LE in *. destruct H. destruct H0.
-  exists (x1 ++ x0). rewrite H. rewrite H0.
-  rewrite app_assoc. reflexivity.
 Defined.
 
-Definition Cov := @FormTop.GCov S LE_PO Ix C.
+Definition Cov := @FormTop.GCov S LE Ix C.
 
-Theorem loc : FormTop.localized LE_PO Ix C.
+Theorem loc : @FormTop.localized S LE Ix C.
 Proof.
 unfold FormTop.localized.
 intros.  unfold Ix in *. destruct i. exists I.
@@ -278,15 +275,16 @@ End Cantor.
 
 Module Product.
 
+Generalizable All Variables.
 Section Product.
 
 Variable S T : Type.
+Context `{POS : PO.t S leS eqS}. 
+Context `{POT : PO.t T leT eqT}.
 Variable IS : S -> Type.
 Variable IT : T -> Type.
 Variable CS : forall s, IS s -> (S -> Prop).
 Variable CT : forall t, IT t -> (T -> Prop).
-Variable POS : PO.t S.
-Variable POT : PO.t T.
 
 Definition Ix (p : S * T) : Type := match p with
   (s, t) => (IS s * T + S * IT t)%type end.
@@ -302,9 +300,9 @@ Definition C (p : S * T) : Ix p -> S * T -> Prop
 Definition PO := PO.product POS POT.
 
 Theorem loc : 
-    FormTop.localized POS IS CS
-  -> FormTop.localized POT IT CT
-  -> FormTop.localized PO Ix C.
+    @FormTop.localized S leS IS CS
+  -> @FormTop.localized T leT IT CT
+  -> @FormTop.localized (S * T) (prod_op leS leT) Ix C.
 Proof.
 intros. unfold FormTop.localized in *.
 intros. destruct a as [sa ta], c as [sc tc]. 
@@ -321,7 +319,7 @@ destruct i as [[sI t]|[s tI]].
   simpl. exists (u, tc). split. split. assumption. reflexivity.
   subst. destruct downu.
   unfold FormTop.down. split.
-  simpl. split. assumption. apply PO.le_refl.
+  simpl. split. assumption. apply PreO.le_refl.
   simpl. split. assumption. assumption.
 - specialize (H0 ta tc H2 tI).
   destruct H0. unfold Ix in *.
@@ -333,16 +331,16 @@ destruct i as [[sI t]|[s tI]].
   simpl. exists (sc, u). split. split. reflexivity. assumption.
   subst. destruct downu.
   unfold FormTop.down. split.
-  simpl. split. apply PO.le_refl. assumption.
+  simpl. split. apply PreO.le_refl. assumption.
   simpl. split. assumption. assumption.
 Qed.
 
-Definition Cov := FormTop.GCov PO Ix C.
+Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
   
 End Product.
 End Product.
 
-
+(* WIP : Still need to update
 Module Cont.
 Section Cont.
 
@@ -448,3 +446,4 @@ Abort.
 
 End Cont.
 End Cont.
+*)
