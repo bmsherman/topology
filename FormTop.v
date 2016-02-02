@@ -1,4 +1,5 @@
 Require Import Frame.
+Set Asymmetric Patterns.
 
 Module FormTop.
 
@@ -340,7 +341,7 @@ Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
 End Product.
 End Product.
 
-(* WIP : Still need to update
+(*WIP : Still need to update
 Module Cont.
 Section Cont.
 

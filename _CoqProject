@@ -1,3 +1,4 @@
+-R . ""
 -R clement Clement
 -R alea Alea
 Iso.v
@@ -9,3 +10,5 @@ Sample.v
 PDF.v
 Frame.v
 FormTop.v
+clement/SmallPowers.v
+alea/BinCoeff.v

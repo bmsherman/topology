@@ -1,6 +1,8 @@
 Require Iso.
 Require Fin.
 
+Set Asymmetric Patterns.
+
 (** A type family which is isomorphic to Fin.t, but defined in
     terms of simpler types by recursion, and is a little bit
     easier to work with. *)
@@ -169,7 +171,8 @@ induction m; simpl.
     * simpl. rewrite <- splitL in seqn. 
       apply splitInj in seqn. symmetry. assumption.
     * pose proof (IHm t). assert (b = Fin.R n t).
-      apply splitInj. rewrite seqn. symmetry. apply splitR.
+      apply (@splitInj n (m * n)). 
+      rewrite seqn. symmetry. apply splitR.
       rewrite H0. simpl.
       destruct (splitMult m n t) eqn:smeqn.
       simpl. rewrite <- H. reflexivity.
@@ -326,7 +329,7 @@ induction fa; intros b fb.
   (* Here we need Iso.sigmaProp, which we have yet to prove,
      so we cannot finish the proof here. *)
   (*apply Iso.sigmaProp.*)
-Defined.
+Admitted.
 
 (** Sigma types are closed under finiteness. *)
 Theorem sig {A : Type} {B : A -> Type} 

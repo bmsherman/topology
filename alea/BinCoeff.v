@@ -253,6 +253,8 @@ Proof.
   apply comb_monotonic_k; omega.
 Qed.
 
+Require Div2.
+
 Lemma comb_max_half : forall k n, comb k n <= comb (Div2.div2 n) n.
 Proof.
   intros.

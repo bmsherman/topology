@@ -331,8 +331,8 @@ Qed.
 
 Ltac reduceQ := repeat (unfold Qcplus, Qcdiv, Qcinv, Qcmult; 
 match goal with
-| [ |- context[this (!! ?x)%Qc] ] => 
-     setoid_replace (this (!! x)%Qc) with x by (apply Qred_correct)
+| [ |- context[this (Q2Qc ?x)%Qc] ] => 
+     setoid_replace (this (Q2Qc x)%Qc) with x by (apply Qred_correct)
 end).
 
 
@@ -725,7 +725,7 @@ replace ((q + q) * Qnnonehalf)%Qnn
   with (q * Qnnonehalf + q * Qnnonehalf)%Qnn by ring.
 apply Qnnplus_le_compat.
 admit. admit.
-Qed.
+Admitted.
 
 Lemma Qnnmult_open {q x y : Qnn} : q < x * y
   -> exists x' y', x' < x /\ y' < y /\ (q <= x' * y').

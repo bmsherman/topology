@@ -1,6 +1,7 @@
 *.vo
 *.v.d
 *.glob
+*.aux
 *~
 Makefile.coq
 html/

@@ -82,7 +82,8 @@ Module PreO.
     (prod_op leA leB).
   Proof. constructor.
    - destruct x. split; apply le_refl.
-   - unfold prod_op; intros. destruct x, y, z; simpl in *. intuition eauto.
+   - unfold prod_op; intros. destruct x, y, z; simpl in *;
+     intuition; (eapply PreO.le_trans; eassumption).
   Qed.
 
   Definition map {A B : Type} (f : A -> B) `(tB : t B leB) 

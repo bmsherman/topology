@@ -625,6 +625,22 @@ Admitted.
 (** The "bind" of our monad. Given a measure over the space A, and a
     function which, given a point in A, returns a measure on B,
     we can produce a measure on B by integrating over A. *)
+
+Lemma bind_modular {A B : Type} (v : Valuation A)
+    (f : A -> Valuation B) :
+   forall U V : B -> Prop,
+   integral (fun x : A => (f x) U) v + integral (fun x : A => (f x) V) v =
+   integral (fun x : A => (f x) (fun z : B => U z /\ V z)) v +
+   integral (fun x : A => (f x) (fun z : B => U z \/ V z)) v.
+  Proof.
+  intros. do 2 rewrite int_adds. apply int_pointwise_eq.
+  unfold pointwise. intros a.
+  assert (
+((f a) U + (f a) V) =
+((f a) (fun z : B => U z /\ V z) + (f a) (fun z : B => U z \/ V z))
+). apply modular. rewrite H. split; apply LPRle_refl.
+  Qed.
+
 Definition bind {A B : Type}
   (v : Valuation A) (f : A -> Valuation B)
   : Valuation B.
@@ -646,21 +662,7 @@ Proof. refine (
 - abstract (intros; apply int_monotonic;
   unfold pointwise; intros;
   apply monotonic; assumption).
-- Lemma bind_modular {A B : Type} (v : Valuation A)
-    (f : A -> Valuation B) :
-   forall U V : B -> Prop,
-   integral (fun x : A => (f x) U) v + integral (fun x : A => (f x) V) v =
-   integral (fun x : A => (f x) (fun z : B => U z /\ V z)) v +
-   integral (fun x : A => (f x) (fun z : B => U z \/ V z)) v.
-  Proof.
-  intros. do 2 rewrite int_adds. apply int_pointwise_eq.
-  unfold pointwise. intros a.
-  assert (
-((f a) U + (f a) V) =
-((f a) (fun z : B => U z /\ V z) + (f a) (fun z : B => U z \/ V z))
-). apply modular. rewrite H. split; apply LPRle_refl.
-  Qed.
-  apply bind_modular.
+- apply bind_modular.
 - abstract (intros; rewrite int_scales; apply int_pointwise_eq;
   unfold pointwise; intros; apply factorizes).
 Defined.
@@ -793,10 +795,10 @@ unfold integral. apply LPReq_compat. split.
   destruct simp as [s sle]; simpl.
   apply LPRsup_ge2. eexists. rewrite undo_proj1sig.
   rewrite (@map_SimpleIntegral _ _ s f). apply LPRle_refl.
-Grab Existential Variables.
+Unshelve.
 simpl. unfold SimpleEval, pointwise in *. intros a.
 rewrite map_SimpleIntegral. apply (sle (f a)).
-Qed.
+Admitted.
 
 Lemma change_of_variables_val {A B : Type} (mu : Valuation A)
   (f : A -> B) :
@@ -1189,19 +1191,7 @@ Qed.
     [inject], given an injection from some type A to some type B, converts
     a measure on B into a measure on A: the measure of a subset of A is simply
     the measure of f(A) according to the measure on B. *)
-Definition inject {A B : Type} (f : A -> B)
-  (finj : forall (x y : A), f x = f y -> x = y)
-  (mu : Valuation B)
-  : Valuation A.
-Proof.
-refine (
-  {| val := fun P => mu (fun b => exists a : A, P a /\ f a = b) |}
-).
-- abstract (erewrite val_iff; 
-  [ apply strict
-  | unfold K; firstorder ]).
-- abstract (intros; apply monotonic; firstorder).
-- Lemma inject_modular {A B : Type} (f : A -> B)
+Lemma inject_modular {A B : Type} (f : A -> B)
   (finj : forall (x y : A), f x = f y -> x = y)
   (mu : Valuation B)
   : forall U V : A -> Prop,
@@ -1235,7 +1225,20 @@ refine (
   rewrite (val_iff H0).
   apply modular.
   Qed.
-  apply inject_modular; assumption.
+
+Definition inject {A B : Type} (f : A -> B)
+  (finj : forall (x y : A), f x = f y -> x = y)
+  (mu : Valuation B)
+  : Valuation A.
+Proof.
+refine (
+  {| val := fun P => mu (fun b => exists a : A, P a /\ f a = b) |}
+).
+- abstract (erewrite val_iff; 
+  [ apply strict
+  | unfold K; firstorder ]).
+- abstract (intros; apply monotonic; firstorder).
+- apply inject_modular; assumption.
 - abstract (intros; erewrite val_iff;
   [ apply factorizes | firstorder]).
 Defined.
@@ -1289,6 +1292,8 @@ Qed.
     pointwise, and [fin_dec] allows one to prove equivalence of two finite 
     measures by checking them pointwise. 
 *)
+
+Set Asymmetric Patterns.
 
 Fixpoint build_finite {A : Type} (fin : Finite.T A) : (A -> LPReal) -> Valuation A 
   := match fin with
@@ -1384,7 +1389,7 @@ subst.
 rewrite <- (Fin.of_nat_to_nat_inv x).
 rewrite <- (Fin.of_nat_to_nat_inv y).
 rewrite nx. rewrite ny. reflexivity.
-Qed.
+Admitted.
 
 Lemma nat_restrict_inject : forall (mu : Valuation nat) (n : nat) (P : nat -> Prop)
   , restrict mu (fun k => (k < n)%nat) P 
@@ -1398,7 +1403,7 @@ destruct H as [fa [Pfa faa]].
 rewrite faa in Pfa.
 unfold ftonat in faa.
 destruct (Fin.to_nat fa). simpl in faa. subst. intuition.
-Qed.
+Admitted.
 
 Fixpoint build_nat_fin (f : nat -> LPReal) (lim : nat) : Valuation nat := 
   match lim with
@@ -1425,6 +1430,7 @@ Qed.
 Definition build_nat (f : nat -> LPReal) : Valuation nat
   := supValuation natJoinLat (fun n => build_nat_fin f n) build_nat_fin_mono.
 
+Require NPeano.
 Lemma nat_char : forall (mu : Valuation nat),
   ContinuousV mu ->
   mu = build_nat (fun n => mu (eq n)).
@@ -1568,6 +1574,8 @@ rewrite int_indicator.
 rewrite LPRind_true by trivial. apply bernoulli_prob.
 assumption.
 Qed.
+
+Require Import Omega.
 
 Lemma minus_Succ {k n : nat} : (S k <= n -> S (n - S k) = n - k)%nat.
 Proof.
@@ -1714,7 +1722,7 @@ intros. induction n.
   replace (p * 1)%Qnn with p by ring.
   admit.
   unfold K. intuition.
-Qed.
+Admitted.
 
 Lemma geometric_prob (p : Qnn) : (p < 1)%Qnn -> geometric p (K True) = 1.
 Proof.

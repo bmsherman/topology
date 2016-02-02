@@ -69,11 +69,11 @@ Proof.
   edestruct (power_large_util'' (Pos.to_nat (qn * epsilond))) as [ n h ].
   - apply Pos2Nat.is_pos.
   - eexists (S n).
-    rewrite <- (Qmult_lt_l _ _ (/ (' qn # qd))), Qmult_assoc, (Qmult_comm _ (' qn # qd)), Qmult_inv_r, Qmult_1_l
-      by first [ lra | reflexivity ].
+    rewrite <- (Qmult_lt_l _ _ (/ (' qn # qd))), Qmult_assoc, (Qmult_comm _ (' qn # qd)), Qmult_inv_r, Qmult_1_l. 
     unfold Qlt, Qinv in *; simpl in *; unfold Z.lt.
     rewrite <- Pos2Z.inj_compare, Pos2Nat.inj_compare, <- nat_compare_lt, !Pos2Nat.inj_mul, SuccNat2Pos.id_succ, <- !Pos2Nat.inj_mul.
     eassumption.
+   lra. reflexivity.
 Qed.
 
 Lemma power_large_util (q epsilon: Q):

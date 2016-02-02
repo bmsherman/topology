@@ -1,5 +1,8 @@
 Require Import FunctionalExtensionality.
 
+Set Asymmetric Patterns.
+
+
 (** Isomorphisms between types. *)
 Record T { A B : Type } : Type :=
   { to      : A -> B
