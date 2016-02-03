@@ -1,4 +1,4 @@
-Require Import SetoidClass.
+Require Import SetoidClass Coq.Classes.Morphisms.
 Generalizable All Variables.
 
 Definition prod_op {A B} (fA : A -> A -> Prop) (fB : B -> B -> Prop)
@@ -23,10 +23,8 @@ Module PreO.
 
   Section Facts.
 
-  Context {A : Type}.
-  Context {le : A -> A -> Prop}.
-  Variable PO : t A le.
-
+  Context `{le : A -> A -> Prop}.
+  Context `(tA : t A le).
   Infix "<=" := le.
 
   Lemma morph_id : morph le le (fun x => x).
@@ -34,8 +32,9 @@ Module PreO.
     unfold morph; auto.
   Qed.
 
-  Lemma morph_compose {tA : t A le} `{tB : t B leB} `{tC : t C leC}
-    : forall f g, morph le leB f -> morph leB leC g -> morph le leC (fun x => g (f x)).
+  Lemma morph_compose `(tB : t B leB) `(tC : t C leC)
+    : forall (f : A -> B) (g : B -> C), 
+     morph le leB f -> morph leB leC g -> morph le leC (fun x => g (f x)).
   Proof.
     unfold morph; auto.
   Qed.
@@ -78,15 +77,16 @@ Module PreO.
   - destruct x, y, z; auto. simpl in *. congruence.
   Qed.
 
-  Definition product `(tA : t A leA) `(tB : t B leB) : t (A * B)
-    (prod_op leA leB).
+  Definition product `(tA : t A leA) `(tB : t B leB) 
+   : t (A * B) (prod_op leA leB).
   Proof. constructor.
    - destruct x. split; apply le_refl.
-   - unfold prod_op; intros. destruct x, y, z; simpl in *;
+   - unfold prod_op; intros. 
+     destruct x, y, z; simpl in *;
      intuition; (eapply PreO.le_trans; eassumption).
   Qed.
 
-  Definition map {A B : Type} (f : A -> B) `(tB : t B leB) 
+  Definition map `(f : A -> B) `(tB : t B leB) 
     : t A (fun x y => leB (f x) (f y)).
   Proof. constructor; intros.
   - apply le_refl.
@@ -98,8 +98,9 @@ Module PreO.
     (tB : forall a, t (B a) (leB a)) 
     : t (forall a, B a) (pointwise_op leB).
   Proof. 
-    unfold pointwise_op; constructor; intros; 
-    eauto using le_refl, le_trans.
+    unfold pointwise_op; constructor; intros. 
+    - apply le_refl.
+    - eapply le_trans; eauto.
   Qed.
 
   Definition morph_pointwise {A B C} `{tC : t C leC} (f : B -> A)
@@ -119,7 +120,7 @@ Module PreO.
 End PreO.
 
 Module PO.
-  Class t {A : Type} {le eq : A -> A -> Prop} : Prop :=
+  Class t {A : Type} {le : A -> A -> Prop} {eq : A -> A -> Prop} : Prop :=
   { PreO :> PreO.t A le
   ; le_proper : Proper (eq ==> eq ==> iff) le
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
@@ -127,35 +128,36 @@ Module PO.
 
   Arguments t : clear implicits.
 
-  Record morph {A B} {leA eqA : A -> A -> Prop} {leB eqB : B -> B -> Prop} 
-   {f : A -> B} : Prop :=
+  Section Morph.
+  Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
+
+  Record morph {f : A -> B} : Prop :=
    { f_PreO : PreO.morph leA leB f
-   ; f_eq : forall a b, eqA a b -> eqB (f a) (f b)
+   ; f_eq : Proper (eqA ==> eqB) f
    }.
 
-  Arguments morph {A} {B} leA eqA leB eqB f.
+  Arguments morph : clear implicits.
+  
+  End Morph.
+
+  Arguments morph {_} leA eqA {_} leB eqB f.
 
   Section Facts.
+  Context `{tA : t A leA eqA}.
 
-  Context {A : Type}.
-  Context {le eq : A -> A -> Prop}.
-  Context {PO : t A le eq}.
-
-  Infix "<=" := le.
-
-  Definition eq_refl : Reflexive eq. 
+  Definition eq_refl : Reflexive eqA. 
   Proof. unfold Reflexive. 
     intros. apply le_antisym; apply PreO.le_refl.
   Qed.
 
-  Definition eq_sym : Symmetric eq.
+  Definition eq_sym : Symmetric eqA.
   Proof. 
   unfold Symmetric. intros. apply le_antisym. eapply le_proper.
   apply eq_refl. apply H. apply PreO.le_refl. eapply le_proper.
   apply H. apply eq_refl. apply PreO.le_refl.
   Qed.
 
-  Definition eq_trans : Transitive eq.
+  Definition eq_trans : Transitive eqA.
   Proof.
     unfold Transitive.
     intros. apply le_antisym. eapply le_proper. apply H. 
@@ -164,32 +166,32 @@ Module PO.
     eapply le_proper. apply eq_refl. apply H0. apply PreO.le_refl.
   Qed.
 
-  Lemma morph_id : morph le eq le eq (fun x => x).
-  Proof. constructor.
-    - apply PreO.morph_id. 
-    - auto.
-  Qed.
-
-  Lemma morph_compose {B C : Type} {tA : t A le eq} 
-    `{tB : t B leB eqB} `{tC : t C leC eqC}
-    : forall f g, morph le eq leB eqB f 
-    -> morph leB eqB leC eqC g -> morph le eq leC eqC (fun x => g (f x)).
-  Proof.
-    intros. destruct H, H0. constructor; intros.
-    - apply PreO.morph_compose; auto.
-    - auto.
-  Qed.
-
   End Facts.
 
-  Instance t_equiv `(tA : t A leA eqA) : Equivalence eqA.
+  Instance t_equiv `{tA : t A leA eqA} : Equivalence eqA.
   Proof. 
     split; [apply eq_refl | apply eq_sym | apply eq_trans ].
+  Qed.
+
+  Lemma morph_id `{tA : t A leA eqA} : morph leA eqA leA eqA (fun x : A => x).
+  Proof. constructor.
+    - apply PreO.morph_id. 
+    - solve_proper.
+  Qed.
+
+  Lemma morph_compose `{tA : t A leA eqA} `{tB : t B leB eqB} `{tC : t C leC eqC}
+    : forall (f : A -> B) (g : B -> C), morph leA eqA leB eqB f 
+    -> morph leB eqB leC eqC g -> morph leA eqA leC eqC (fun x => g (f x)).
+  Proof.
+    intros. destruct H, H0. constructor; intros.
+    - apply (PreO.morph_compose (leB := leB)); eauto using PreO. apply PreO.
+    - solve_proper.
   Qed.
 
   Instance le_properI `(tA : t A leA eqA) 
     : Proper (eqA ==> eqA ==> iff) leA.
   Proof. intros. apply le_proper. Qed.
+
 
   Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
     : morph leA eqA leB eqB f -> Proper (eqA ==> eqB) f.
@@ -224,12 +226,13 @@ Module PO.
    - unfold prod_op. destruct H, H0. split; apply le_antisym; intuition.
   Qed.
 
-  Definition map {A B} (f : A -> B) `(tB : t B leB eqB) : t A
+  Definition map `(f : A -> B) `(tB : t B leB eqB) : t A
     (map_op f leB) (map_op f eqB).
   Proof. constructor; intros.
   - apply (PreO.map f PreO).
   - unfold map_op; split; simpl in *; intros. 
-    + rewrite <- H. rewrite <- H0. apply H1.
+    + rewrite <- H. rewrite <- H0.
+      assumption.
     + rewrite H.  rewrite H0. apply H1.
   - unfold map_op; eapply le_antisym; eauto.
   Qed.
@@ -254,7 +257,7 @@ Module PO.
   Proof.
   constructor; intros; simpl in *; intros.
   - apply PreO.morph_pointwise. 
-  - unfold pointwise_op in *. intros. apply H.
+  - unfold pointwise_op in *. solve_proper.
   Qed. 
 
   Instance prop : t Prop (fun P Q => P -> Q) (fun P Q => P <-> Q).
@@ -267,14 +270,170 @@ Module PO.
  
 End PO.
 
-Module Lattice.
+(** Join semi-lattices, or directed sets. Natural numbers are
+    one of many examples. We will often generalize sequences, which
+    are functions of type (nat -> A), to nets, which are functions of
+    type (I -> A), where I is a directed set. *)
+Module JoinLat.
 
   Class Ops {A} : Type :=
   { le : A -> A -> Prop
   ; eq : A -> A -> Prop
   ; max : A -> A -> A
-  ; min : A -> A -> A
+  }. 
+
+  Arguments Ops : clear implicits.
+
+  Class t {A : Type} {O : Ops A} : Prop :=
+  { PO :> PO.t A le eq
+  ; max_proper : Proper (eq ==> eq ==> eq) max
+  ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
   }.
+
+  Arguments t : clear implicits.
+
+  Instance max_properI `(tA : t A)
+    : Proper (eq ==> eq ==> eq) max.
+  Proof. intros. apply max_proper. Qed.
+
+  Record morph `{OA : Ops A} `{OB : Ops B}
+    {f : A -> B} : Prop :=
+   { f_PO : PO.morph le eq le eq f
+   ; f_max : forall a b, eq (f (max a b)) (max (f a) (f b))
+   }.
+
+  Arguments morph {A} OA {B} OB f.
+
+  Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
+  morph OA OB f -> Proper (eq ==> eq) f.
+  Proof. 
+    unfold Proper, respectful. intros. apply (PO.f_eq (f_PO H)).
+    assumption.
+  Qed.
+
+  Lemma morph_id {A OA} (tA : t A OA) 
+    : morph OA OA (fun x => x).
+  Proof.
+  constructor; intros.
+  - apply PO.morph_id.
+  - apply PO.eq_refl.
+  Qed.
+
+  Lemma morph_compose {A B C OA OB OC} 
+    (tA : t A OA) (tB : t B OB) (tC : t C OC)
+    : forall f g, morph OA OB f 
+           -> morph OB OC g 
+           -> morph OA OC (fun x => g (f x)).
+  Proof.
+  intros. constructor; intros.
+  - eapply PO.morph_compose; eapply f_PO; eassumption.
+  - rewrite <- (f_max H0). rewrite (f_eq H0). reflexivity.
+    apply (f_max H).
+  Qed.
+
+  Definition one_ops : Ops True :=
+    {| le := fun _ _ => True
+     ; eq := fun _ _ => True
+     ; max := fun _ _ => I
+    |}.
+
+  Definition one : t True one_ops.
+  Proof. 
+  constructor; intros; auto; unfold Proper, respectful; simpl; auto.
+  - apply PO.one. 
+  - destruct l, r. constructor; tauto.
+  Qed.
+
+  Definition two_ops : Ops bool :=
+    {| le := Bool.leb
+     ; eq := Logic.eq
+     ; max := orb
+    |}.
+
+  Definition two : t bool two_ops.
+  Proof. constructor; intros; (
+    apply PO.two || solve_proper
+    ||
+   (try constructor;
+  repeat match goal with
+  | [ b : bool |- _ ] => destruct b
+  end; simpl; auto)).
+  Qed. 
+
+  Instance prop_ops : Ops Prop :=
+    {| le := fun P Q : Prop => P -> Q
+     ; eq := fun P Q : Prop => P <-> Q
+     ; max := fun P Q : Prop => P \/ Q
+    |}.
+
+  Instance prop : t Prop prop_ops.
+  Proof. 
+    constructor; simpl; intros; constructor; simpl; firstorder.
+  Qed.
+
+  Definition pointwise_ops {A B} (O : forall a : A, Ops (B a)) : Ops (forall a, B a) :=
+    {| le := pointwise_op (fun a => @le _ (O a))
+     ; eq := pointwise_op (fun a => @eq _ (O a))
+     ; max :=  (fun f g a => @max _ (O a) (f a) (g a))
+    |}.
+
+  Definition pointwise 
+    `(tB : forall (a : A), t (B a) (OB a)) : 
+     t (forall a, B a) (pointwise_ops OB).
+  Proof. constructor; simpl; intros.
+    - apply PO.pointwise; intros. eapply @PO; apply tB.
+    - unfold respectful, Proper, pointwise_op. intros.
+      apply max_proper. apply H. apply H0.
+    - constructor; unfold pointwise_op; simpl; intros; apply max_ok.
+      apply H. apply H0.
+  Qed.
+
+  Definition morph_pointwise {C OC} {tC : t C OC} `(f : B -> A)
+    : morph (pointwise_ops (fun _ => OC)) (pointwise_ops (fun _ => OC))
+      (fun g b => g (f b)).
+  Proof.
+  constructor; intros; simpl in *; intros.
+  - apply PO.morph_pointwise.
+  - unfold pointwise_op. intros. apply PO.eq_refl. 
+  Qed. 
+
+  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
+    := pointwise (fun _ => prop).
+
+  Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
+    {| le := prod_op le le
+     ; eq := prod_op eq eq
+     ; max := fun (x y : A * B) => (max (fst x) (fst y), max (snd x) (snd y))
+    |}.
+
+  Definition product {A OA B OB} (tA : t A OA) (tB : t B OB) 
+   : t (A * B) (product_ops OA OB).
+  Proof. constructor;
+    (apply PO.product; apply PO) ||
+    (simpl; intros; 
+     constructor; unfold prod_op in *; simpl; intros;
+    repeat match goal with
+    | [ p : (A * B)%type |- _ ] => destruct p; simpl
+    | [ p : _ /\ _ |- _ ] => destruct p; simpl
+    | [  |- _ /\ _ ] => split
+    | [ |- _ ] => eapply PreO.max_l; apply max_ok
+    | [ |- _ ] => eapply PreO.max_r; apply max_ok
+    | [ |- _ ] => apply max_proper; assumption
+    end).
+   eapply PreO.max_least. apply max_ok. assumption. assumption.
+   eapply PreO.max_least. apply max_ok. assumption. assumption.
+   Qed. 
+   
+End JoinLat.
+
+Module Lattice.
+
+  Class Ops {A} : Type :=
+    { le : A -> A -> Prop
+    ; eq : A -> A -> Prop
+    ; max : A -> A -> A
+    ; min : A -> A -> A
+    }.
 
   Arguments Ops : clear implicits.
 
@@ -633,32 +792,18 @@ End Frame.
 
 Module F := Frame.
 
-(** Join semi-lattices, or directed sets. Natural numbers are
-    one of many examples. We will often generalize sequences, which
-    are functions of type (nat -> A), to nets, which are functions of
-    type (I -> A), where I is a directed set. *)
-Module JoinLat.
-  Record t : Type :=
-  { ty : Type 
-  ; le : ty -> ty -> Prop
-  ; max : ty -> ty -> ty
-  ; max_l : forall x y, le x (max x y)
-  ; max_r : forall x y, le y (max x y)
-  }.
-End JoinLat.
-
 Require Import LPReal.
 Local Open Scope LPR.
 
-Lemma LPRsup_sum_jlat : forall (I : JoinLat.t), let A := JoinLat.ty I in 
+Lemma LPRsup_sum_jlat : forall A `(I : JoinLat.t A),
   forall (f g : A -> LPReal) ,
-    (forall n m : A, JoinLat.le I n m -> f n <= f m) ->
-    (forall n m : A, JoinLat.le I n m -> g n <= g m) ->
+    (forall n m : A, JoinLat.le n m -> f n <= f m) ->
+    (forall n m : A, JoinLat.le n m -> g n <= g m) ->
     LPRsup (fun x : A => f x + g x) = LPRsup f + LPRsup g.
 Proof.
 intros. eapply LPRsup_sum_lattice.
-apply JoinLat.max_l.
-apply JoinLat.max_r.
+intros. eapply PreO.max_l. apply JoinLat.max_ok.
+intros. eapply PreO.max_r. apply JoinLat.max_ok.
 assumption. assumption.
 Qed. 
 
@@ -673,8 +818,8 @@ Require Import Equalities Orders GenericMinMax.
     of the subsets is the supremum of the measures of each of the
     subsets in the sequence. *)
 Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
-  := forall (I : JoinLat.t) (f : JoinLat.ty I -> A)
-       (fmono : forall (m n : JoinLat.ty I), JoinLat.le I m n -> L.le (f m) (f n))
+  := forall {I} `{JL : JoinLat.t I} (f : I -> A)
+       (fmono : forall (m n : I), JoinLat.le m n -> L.le (f m) (f n))
        , mu (F.sup f) = LPRsup (fun n => mu (f n)).
 
   Record t {A OA} {X : F.t A OA} :=
@@ -786,7 +931,8 @@ Proof. refine (
 - intros. unfold ContinuousV in *. intros. simpl.
   rewrite (LPRsup_sum_jlat I).
   apply LPRplus_eq_compat;
-   apply continuous; assumption.
+   eapply continuous; assumption.
+   assumption.
   intros. apply monotonic. apply fmono. assumption.
   intros. apply monotonic. apply fmono. assumption.
 Defined.
@@ -805,7 +951,7 @@ Proof. refine (
   apply LPRmult_eq_compat. reflexivity.
   apply modular.
 - intros. unfold ContinuousV in *. intros. simpl.
-  rewrite continuous by assumption.
+  rewrite continuous by eassumption.
   apply LPRsup_scales.
 Defined.
 
@@ -833,7 +979,7 @@ Proof.
   apply modular.
 - unfold ContinuousV. intros.
   rewrite (F.f_sup (F.cont f)).
-  apply continuous. intros. 
+  eapply continuous. eassumption. intros. 
   apply (L.f_PO (F.f_L (F.cont f))). apply fmono. assumption.
 Defined.
 
@@ -1248,8 +1394,8 @@ Definition integral {A} (f : A -> LPReal) (mu : Val A) : LPReal :=
 
 (* Theorem 3.13 of Jones 1990 *)
 Theorem directed_monotone_convergence {A : Type} :
-  forall (mu : Val.t (O A)) (I : JoinLat.t),
-  forall (g : JoinLat.ty I -> (A -> LPReal)),
+  forall (mu : Val.t (O A)) I `(JL : JoinLat.t I),
+  forall (g : I -> (A -> LPReal)),
     integral (fun x => LPRsup (fun i => g i x)) mu
   = LPRsup (fun i => integral (fun x => g i x) mu).
 Proof.
@@ -1281,9 +1427,9 @@ Proof. refine (
 - unfold Val.ContinuousV. intros. simpl.
   unfold integral. erewrite RF.int_proper. Focus 3. unfold Val.eq. reflexivity.
   Focus 2. apply RF_pointwise_eq. intros. do 2 rewrite all_cont_point.
-  apply (Val.continuous (f a)). apply fmono.
+  eapply (Val.continuous (f a)). eassumption. apply fmono.
   pose proof @directed_monotone_convergence.
-  unfold integral in H. apply H.
+  unfold integral in H. eapply H. eassumption.
 Defined.
 
 End SubsetVal.
