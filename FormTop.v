@@ -370,6 +370,8 @@ constructor.
   simpl in ida. apply ida.
 Qed.
 
+End Defn.
+
 End FormTopM.
 
 Module Concrete. 
