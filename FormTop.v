@@ -90,12 +90,11 @@ intros. induction H0.
   apply H.
 Qed.
 
-Lemma gsubset_equiv : t Cov
-  -> forall (U V : S -> Prop)
+Lemma gsubset_equiv : forall (U V : S -> Prop)
   , (forall a : S, U a <-> V a)
   -> forall a, GCov a U <-> GCov a V.
 Proof.
-intros. split; apply gmonotone; firstorder.
+intros. split; apply gmonotone; intro; apply H; assumption.
 Qed.
 
 Lemma le_infinity : forall (a c : S), le a c ->
@@ -168,6 +167,210 @@ End Defn.
 End FormTop.
 
 Arguments FormTop.t {_} _ _.
+
+Module FormTopM.
+
+Generalizable All Variables.
+
+Section Defn.
+
+Context {S} {dotS : S -> S -> S}.
+
+Instance ops : MeetLat.Ops S :=
+  {| MeetLat.le := fun x y => dotS x y = x
+   ; MeetLat.eq := eq
+   ; MeetLat.min := dotS
+  |}.
+
+Definition le := MeetLat.le.
+Definition dot := MeetLat.min.
+
+Context {ML : @MeetLat.t S ops}.
+
+Require Import SetoidClass Morphisms.
+
+Class t { Cov : S -> (S -> Prop) -> Prop } :=
+  { refl : forall (a : S) (U : S -> Prop), U a -> Cov a U
+  ; trans : forall (a : S) (U V : S -> Prop), 
+       Cov a U 
+     -> (forall (a' : S), U a' -> Cov a' V)
+     -> Cov a V
+  ; dot_left : forall (a b : S) (U : S -> Prop)
+     , Cov a U -> Cov (dot a b) U
+  ; dot_right : forall (a : S) (U V : S -> Prop)
+    , Cov a U -> Cov a V
+    -> Cov a (fun c => exists u v, U u /\ V v /\ MeetLat.eq c (dot u v))
+  }.
+
+Arguments t : clear implicits.
+
+Lemma monotone {Cov} : t Cov
+  -> forall (U V : S -> Prop)
+  , (forall a : S, U a -> V a)
+  -> forall a, Cov a U -> Cov a V.
+Proof.
+intros. eapply trans. eassumption.
+intros. apply H0 in H2. eapply refl. eassumption.
+Qed.
+
+Lemma subset_equiv {Cov} : t Cov
+  -> forall (U V : S -> Prop)
+  , (forall a : S, U a <-> V a)
+  -> forall a, Cov a U <-> Cov a V.
+Proof.
+intros. split; apply monotone; firstorder.
+Qed.
+
+Definition asFormTop `(tCov : t Cov) : FormTop.t le Cov.
+Proof.
+constructor; intros.
+- apply refl. assumption.
+- eapply trans. eassumption. assumption.
+- assert (MeetLat.min a b = a). apply (PO.le_antisym (le := MeetLat.le)). 
+  + apply (@PreO.min_l _ _ _ b).
+    apply MeetLat.min_ok.
+  + apply (@PreO.min_greatest _ _ a b).
+    apply MeetLat.min_ok. apply PreO.le_refl. assumption.
+  + rewrite <- H1. rewrite MeetLat.min_comm. 
+    apply dot_left. assumption. 
+- pose (UV := (fun c => exists u v, U u /\ V v /\ MeetLat.eq c (MeetLat.min u v))).
+  apply monotone with UV. assumption.
+  unfold UV. intros.
+  destruct H1 as [u [v [Uv [Vv downP]]]].
+  exists u. exists v. split. assumption. split. assumption.
+  unfold FormTop.down. repeat rewrite downP.
+  split. apply MeetLat.min_ok. apply MeetLat.min_ok. 
+  unfold UV. apply dot_right; assumption.
+Qed.
+
+Variable I : S -> Type.
+Variable C : forall (s : S), I s -> (S -> Prop).
+
+Definition stable (Cov : S -> (S -> Prop) -> Prop) :=
+  forall a b U V, Cov a U -> Cov b V
+  -> Cov (dot a b) (fun s => exists u v, U u /\ V v /\ MeetLat.eq s (dot u v)).
+
+Definition localized := forall (b c : S),
+  forall (i : I c), let a := dot b c in
+  exists (j : I a),
+  (forall s, C a j s -> exists u, C c i u /\ MeetLat.le s (dot a u)).
+
+Inductive GCov : S -> (S -> Prop) -> Prop :=
+  | grefl : forall (a : S) (U : S -> Prop), U a -> GCov a U
+  | gdot_left : forall (a b : S) (U : S -> Prop)
+     , GCov a U -> GCov (dot a b) U
+  | ginfinity : forall (a : S) (i : I a) (U : S -> Prop),
+     (forall u, C a i u -> GCov u U) -> GCov a U.
+
+Hypothesis loc : localized. 
+
+Lemma gmonotone : forall (a : S) (U V : S -> Prop),
+  (forall u, U u -> V u) -> GCov a U -> GCov a V.
+Proof.
+intros. induction H0.
+- apply grefl. apply H. assumption.
+- eapply gdot_left. apply IHGCov. assumption.
+- eapply ginfinity. intros. apply H1. apply H2.
+  apply H.
+Qed.
+
+Lemma gsubset_equiv : forall (U V : S -> Prop)
+  , (forall a : S, U a <-> V a)
+  -> forall a, GCov a U <-> GCov a V.
+Proof.
+intros. split; apply gmonotone; intro; apply H; assumption.
+Qed.
+
+Lemma dot_infinity : forall (b c : S), let a := dot b c in
+  forall (i : I c) (U : S -> Prop), 
+  (forall v, C c i v -> GCov (dot a v) U)
+  -> GCov a U.
+Proof.
+unfold localized in loc.
+intros. destruct (loc b c i).
+apply (ginfinity _ x).
+intros.
+specialize (H0 u H1).
+destruct H0. destruct H0.
+simpl in H2. 
+replace dotS with MeetLat.min in H2 by reflexivity.
+rewrite <- H2.
+rewrite MeetLat.min_comm.
+apply gdot_left. 
+apply H. assumption.
+Qed.
+
+
+Lemma GCov_stable : stable GCov.
+Proof.
+unfold localized in loc.
+unfold stable. intros.
+induction H.
+- induction H0; intros.
+  + apply grefl. exists a. exists a0. intuition.
+  + unfold dot. rewrite MeetLat.min_assoc. 
+    apply gdot_left. apply IHGCov.
+  + pose proof (loc a a0 i) as loc1.
+    destruct loc1 as [j loc'].
+    apply (ginfinity _ j).
+
+    intros. specialize (loc' u H2).
+    destruct loc'. destruct H3.
+    simpl in H4.
+    replace dotS with dot in H4 by reflexivity.
+    rewrite <- H4. unfold dot.
+    rewrite MeetLat.min_comm.
+    apply gdot_left.
+    rewrite <- MeetLat.min_assoc.
+    rewrite (MeetLat.min_comm a0 x).
+    rewrite MeetLat.min_assoc.
+    apply gdot_left. 
+    apply H1. assumption.
+- intros. unfold dot. rewrite <- MeetLat.min_assoc.
+  rewrite (MeetLat.min_comm b0 b).
+  rewrite MeetLat.min_assoc. apply gdot_left.
+  apply IHGCov.
+- intros. pose proof (loc b a i) as loc1.
+  destruct loc1 as [j loc'].
+  unfold dot. rewrite MeetLat.min_comm.
+  apply (ginfinity _ j).
+
+  intros. specialize (loc' u H2).
+  destruct loc'. destruct H3. simpl in H4.
+
+ replace dotS with dot in H4 by reflexivity.
+    rewrite <- H4. unfold dot.
+    rewrite MeetLat.min_comm.
+    apply gdot_left.
+    rewrite <- MeetLat.min_assoc.
+    rewrite (MeetLat.min_comm a x).
+    rewrite MeetLat.min_assoc.
+    apply gdot_left.
+    rewrite MeetLat.min_comm.
+    apply H1. assumption.  
+Qed.
+
+Theorem GCov_formtop : t GCov.
+Proof.
+unfold localized in loc.
+constructor.
+- apply grefl.
+- intros. induction H.
+  + apply H0. assumption.
+  + eapply gdot_left. apply IHGCov. apply H0.
+  + apply (ginfinity _ i). intros. apply H1; assumption.
+- apply gdot_left.
+- intros.
+  pose proof GCov_stable as stab.
+  unfold stable in stab.
+  pose proof GCov_stable.
+  replace a with (dot a a).
+  eapply H1. eassumption. eassumption.
+  pose proof (MeetLat.min_idempotent a) as ida.
+  simpl in ida. apply ida.
+Qed.
+
+End FormTopM.
 
 Module Concrete. 
 Section Concrete.

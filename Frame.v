@@ -42,17 +42,79 @@ Module PreO.
   Definition top (t : A) : Prop := forall a, a <= t.
   Definition bottom (b : A) : Prop := forall a, b <= a.
 
-  Record max (l r m : A) : Prop :=
+  Record max {l r m : A} : Prop :=
   { max_l     : l <= m
   ; max_r     : r <= m
   ; max_least : forall m', l <= m' -> r <= m' -> m <= m'
   }.
 
-  Record min (l r m : A) : Prop :=
+  Arguments max : clear implicits.
+
+  Lemma max_comm : forall l r m, max l r m -> max r l m.
+  Proof.
+  intros. constructor.
+  - apply H.
+  - apply H.
+  - intros. apply H; assumption.
+  Qed.
+
+  Record min {l r m : A} : Prop :=
   { min_l        : m <= l
   ; min_r        : m <= r
   ; min_greatest : forall m', m' <= l -> m' <= r -> m' <= m
   }.
+
+  Arguments min : clear implicits.
+
+  Lemma min_comm : forall l r m, min l r m -> min r l m.
+  Proof.
+  intros. constructor.
+  - apply H.
+  - apply H.
+  - intros. apply H; assumption.
+  Qed.
+
+  Lemma min_assoc : forall a b c, 
+    forall bc, min b c bc ->
+    forall ab, min a b ab ->
+    forall abc, min a bc abc <-> min ab c abc.
+  Proof.
+  intros a b c bc BC ab AB abc. split; intros ABC.
+  - constructor. 
+    + apply (min_greatest AB).
+      * apply (min_l ABC). 
+      * eapply PreO.le_trans. 
+        apply (min_r ABC). apply (min_l BC).
+    + eapply PreO.le_trans. apply (min_r ABC).
+      apply (min_r BC).
+    + intros. apply (min_greatest ABC).
+      * eapply PreO.le_trans. apply H. 
+        apply (min_l AB).
+      * apply (min_greatest BC). 
+        eapply PreO.le_trans. apply H. apply (min_r AB).
+        assumption.
+  - constructor. 
+    + eapply PreO.le_trans. apply (min_l ABC).
+      apply (min_l AB).
+    + apply (min_greatest BC).
+      * eapply PreO.le_trans. 
+        apply (min_l ABC). apply (min_r AB).
+      * apply (min_r ABC). 
+    + intros. apply (min_greatest ABC).
+      * apply (min_greatest AB). 
+        assumption.
+        eapply PreO.le_trans. apply H0. apply (min_l BC).
+      * eapply PreO.le_trans. apply H0. 
+        apply (min_r BC).
+  Qed.
+
+  Lemma min_idempotent : forall a, min a a a.
+  Proof.
+  intros. constructor.
+  - apply le_refl.
+  - apply le_refl.
+  - intros. assumption.
+  Qed.
 
   Record sup {I : Type} (f : I -> A) (m : A) : Prop :=
   { sup_ge : forall i, f i <= m
@@ -119,6 +181,9 @@ Module PreO.
 
 End PreO.
 
+Arguments PreO.max {A} {le} _ _ _ : clear implicits.
+Arguments PreO.min {A} {le} _ _ _ : clear implicits.
+
 Module PO.
   Class t {A : Type} {le : A -> A -> Prop} {eq : A -> A -> Prop} : Prop :=
   { PreO :> PreO.t A le
@@ -164,6 +229,26 @@ Module PO.
     apply eq_refl. eapply le_proper. apply H0. apply eq_refl.
     apply PreO.le_refl. eapply le_proper. apply eq_refl. apply H.
     eapply le_proper. apply eq_refl. apply H0. apply PreO.le_refl.
+  Qed.
+
+  Lemma max_unique : forall l r m m'
+   , PreO.max (le := leA) l r m 
+   -> PreO.max (le := leA) l r m' 
+   -> eqA m m'.
+  Proof.
+  intros. apply PO.le_antisym.
+  - apply H; apply H0.
+  - apply H0; apply H.
+  Qed.
+
+  Lemma min_unique : forall l r m m'
+   , PreO.min (le := leA) l r m 
+   -> PreO.min (le := leA) l r m' 
+   -> eqA m m'.
+  Proof.
+  intros. apply PO.le_antisym.
+  - apply H0; apply H. 
+  - apply H; apply H0.
   Qed.
 
   End Facts.
@@ -425,6 +510,196 @@ Module JoinLat.
    Qed. 
    
 End JoinLat.
+
+Module MeetLat.
+
+  Class Ops {A} : Type :=
+  { le : A -> A -> Prop
+  ; eq : A -> A -> Prop
+  ; min : A -> A -> A
+  }. 
+
+  Arguments Ops : clear implicits.
+
+  Class t {A : Type} {O : Ops A} : Prop :=
+  { PO :> PO.t A le eq
+  ; min_proper : Proper (eq ==> eq ==> eq) min
+  ; min_ok : forall l r, PreO.min (le := le) l r (min l r)
+  }.
+
+  Arguments t : clear implicits.
+
+  Instance min_properI `(tA : t A)
+    : Proper (eq ==> eq ==> eq) min.
+  Proof. intros. apply min_proper. Qed.
+
+  Record morph `{OA : Ops A} `{OB : Ops B}
+    {f : A -> B} : Prop :=
+   { f_PO : PO.morph le eq le eq f
+   ; f_min : forall a b, eq (f (min a b)) (min (f a) (f b))
+   }.
+
+  Arguments morph {A} OA {B} OB f.
+
+  Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
+  morph OA OB f -> Proper (eq ==> eq) f.
+  Proof. 
+    unfold Proper, respectful. intros. apply (PO.f_eq (f_PO H)).
+    assumption.
+  Qed.
+
+  Lemma morph_id {A OA} (tA : t A OA) 
+    : morph OA OA (fun x => x).
+  Proof.
+  constructor; intros.
+  - apply PO.morph_id.
+  - apply PO.eq_refl.
+  Qed.
+
+  Lemma morph_compose {A B C OA OB OC} 
+    (tA : t A OA) (tB : t B OB) (tC : t C OC)
+    : forall f g, morph OA OB f 
+           -> morph OB OC g 
+           -> morph OA OC (fun x => g (f x)).
+  Proof.
+  intros. constructor; intros.
+  - eapply PO.morph_compose; eapply f_PO; eassumption.
+  - rewrite <- (f_min H0). rewrite (f_eq H0). reflexivity.
+    apply (f_min H).
+  Qed.
+
+  Section Props.
+  Context `{tA : t A}.
+
+  Lemma min_l : forall l r, le (min l r) l.
+  Proof. 
+  intros. eapply PreO.min_l. apply min_ok.
+  Qed.
+
+  Lemma min_r : forall l r, le (min l r) r.
+  Proof. 
+  intros. eapply PreO.min_r. apply min_ok.
+  Qed.
+
+  Lemma min_comm : forall l r, eq (min l r) (min r l).
+  Proof.
+  intros.
+  apply PO.min_unique with l r.
+  - apply min_ok.
+  - apply PreO.min_comm. apply min_ok.
+  Qed.
+
+  Lemma min_assoc : forall a b c, 
+    eq (min a (min b c)) (min (min a b) c).
+  Proof. 
+  intros.
+  apply PO.min_unique with a (min b c).
+  - apply min_ok.
+  - apply <- (PreO.min_assoc _ a b c); apply min_ok.
+  Qed.
+
+  Lemma min_idempotent : forall a, eq (min a a) a.
+  Proof.
+  intros. apply PO.min_unique with a a.
+  apply min_ok. apply PreO.min_idempotent. apply PO.PreO.
+  Qed.
+
+  End Props.
+
+  Definition one_ops : Ops True :=
+    {| le := fun _ _ => True
+     ; eq := fun _ _ => True
+     ; min := fun _ _ => I
+    |}.
+
+  Definition one : t True one_ops.
+  Proof. 
+  constructor; intros; auto; unfold Proper, respectful; simpl; auto.
+  - apply PO.one. 
+  - destruct l, r. constructor; tauto.
+  Qed.
+
+  Definition two_ops : Ops bool :=
+    {| le := Bool.leb
+     ; eq := Logic.eq
+     ; min := andb
+    |}.
+
+  Definition two : t bool two_ops.
+  Proof. constructor; intros; (
+    apply PO.two || solve_proper
+    ||
+   (try constructor;
+  repeat match goal with
+  | [ b : bool |- _ ] => destruct b
+  end; simpl; auto)).
+  Qed. 
+
+  Instance prop_ops : Ops Prop :=
+    {| le := fun P Q : Prop => P -> Q
+     ; eq := fun P Q : Prop => P <-> Q
+     ; min := fun P Q : Prop => P /\ Q
+    |}.
+
+  Instance prop : t Prop prop_ops.
+  Proof. 
+    constructor; simpl; intros; constructor; simpl; firstorder.
+  Qed.
+
+  Definition pointwise_ops {A B} (O : forall a : A, Ops (B a)) : Ops (forall a, B a) :=
+    {| le := pointwise_op (fun a => @le _ (O a))
+     ; eq := pointwise_op (fun a => @eq _ (O a))
+     ; min :=  (fun f g a => @min _ (O a) (f a) (g a))
+    |}.
+
+  Definition pointwise 
+    `(tB : forall (a : A), t (B a) (OB a)) : 
+     t (forall a, B a) (pointwise_ops OB).
+  Proof. constructor; simpl; intros.
+    - apply PO.pointwise; intros. eapply @PO; apply tB.
+    - unfold respectful, Proper, pointwise_op. intros.
+      apply min_proper. apply H. apply H0.
+    - constructor; unfold pointwise_op; simpl; intros; apply min_ok.
+      apply H. apply H0.
+  Qed.
+
+  Definition morph_pointwise {C OC} {tC : t C OC} `(f : B -> A)
+    : morph (pointwise_ops (fun _ => OC)) (pointwise_ops (fun _ => OC))
+      (fun g b => g (f b)).
+  Proof.
+  constructor; intros; simpl in *; intros.
+  - apply PO.morph_pointwise.
+  - unfold pointwise_op. intros. apply PO.eq_refl. 
+  Qed. 
+
+  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
+    := pointwise (fun _ => prop).
+
+  Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
+    {| le := prod_op le le
+     ; eq := prod_op eq eq
+     ; min := fun (x y : A * B) => (min (fst x) (fst y), min (snd x) (snd y))
+    |}.
+
+  Definition product {A OA B OB} (tA : t A OA) (tB : t B OB) 
+   : t (A * B) (product_ops OA OB).
+  Proof. constructor;
+    (apply PO.product; apply PO) ||
+    (simpl; intros; 
+     constructor; unfold prod_op in *; simpl; intros;
+    repeat match goal with
+    | [ p : (A * B)%type |- _ ] => destruct p; simpl
+    | [ p : _ /\ _ |- _ ] => destruct p; simpl
+    | [  |- _ /\ _ ] => split
+    | [ |- _ ] => eapply PreO.min_l; apply min_ok
+    | [ |- _ ] => eapply PreO.min_r; apply min_ok
+    | [ |- _ ] => apply min_proper; assumption
+    end).
+   eapply PreO.min_greatest. apply min_ok. assumption. assumption.
+   eapply PreO.min_greatest. apply min_ok. assumption. assumption.
+   Qed. 
+   
+End MeetLat.
 
 Module Lattice.
 
