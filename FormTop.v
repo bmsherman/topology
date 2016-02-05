@@ -374,6 +374,97 @@ End Defn.
 
 End FormTopM.
 
+Module InfoBase. 
+Section InfoBase.
+
+Context {S} {dotS : S -> S -> S}.
+
+Instance ops : MeetLat.Ops S :=
+  {| MeetLat.le := fun x y => dotS x y = x
+   ; MeetLat.eq := eq
+   ; MeetLat.min := dotS
+  |}.
+
+Context {ML : MeetLat.t S ops}.
+
+Definition Ix (s : S) : Type := { t : S & MeetLat.le s t }.
+Definition C (s : S) (s' : Ix s) s'' : Prop := projT1 s' = s''.
+
+Definition loc : @FormTopM.localized S dotS Ix C.
+Proof.
+unfold FormTopM.localized. intros. simpl.
+unfold Ix, C in *.
+destruct i.
+unfold FormTopM.dot in *.
+assert (MeetLat.le (MeetLat.min b c) (MeetLat.min b c)).
+apply PreO.le_refl.
+exists (existT _ (FormTopM.dot b c) H).
+intros.  simpl in *. unfold FormTopM.dot in *.  destruct H. 
+exists x. split. reflexivity.
+replace dotS with MeetLat.min by reflexivity.
+apply (@PO.le_antisym _ MeetLat.le _ _).
+apply MeetLat.min_l.
+simpl. simpl in H0. rewrite H0.
+replace dotS with MeetLat.min by reflexivity.
+rewrite MeetLat.min_idempotent.
+rewrite MeetLat.min_assoc.
+rewrite MeetLat.min_idempotent.
+assert (MeetLat.min s x = s).
+apply (@PO.le_antisym _ MeetLat.le _ _).
+apply MeetLat.min_l.
+apply (@PreO.min_greatest _ MeetLat.le s x).
+apply MeetLat.min_ok. apply PreO.le_refl.
+rewrite <- H0. rewrite <- l.
+replace dotS with MeetLat.min by reflexivity.
+unfold FormTopM.dot.
+rewrite MeetLat.min_assoc.
+apply MeetLat.min_r.
+rewrite H.
+apply (@MeetLat.min_idempotent _ _ ML).
+Qed.
+
+Definition Cov := @FormTopM.GCov _ dotS Ix C.
+
+Definition isCov : @FormTopM.t _ dotS Cov := 
+  FormTopM.GCov_formtop Ix C loc.
+
+End InfoBase.
+End InfoBase.
+
+Module LowerR.
+Require Import Qnn Coq.Classes.Morphisms SetoidClass.
+
+Theorem lowerTop : MeetLat.t Qnn (@InfoBase.ops _ Qnnmin).
+Proof. 
+constructor.
+- constructor.
+  + constructor.
+    * intros. simpl. apply Qnnle_antisym. 
+      apply Qnnmin_r. apply Qnnmin_le_both; apply Qnnle_refl.
+    * simpl. intros. apply Qnnle_antisym.
+      apply Qnnmin_l. apply Qnnmin_le_both. apply Qnnle_refl.
+      rewrite <- H. eapply Qnnle_trans. 
+      apply Qnnmin_r. rewrite <- H0.
+      apply Qnnmin_r.
+  + solve_proper.
+  + intros. simpl in *. rewrite <- H. rewrite <- H0 at 2.
+    apply Qnnle_antisym; apply Qnnmin_le_both;
+      (apply Qnnmin_r || apply Qnnmin_l).
+- solve_proper.
+- intros. constructor; simpl.
+  + apply Qnnle_antisym. apply Qnnmin_l. apply Qnnmin_le_both. 
+    apply Qnnle_refl. apply Qnnmin_l.
+  + apply Qnnle_antisym. apply Qnnmin_l. apply Qnnmin_le_both.
+    apply Qnnle_refl. apply Qnnmin_r.
+  + intros. apply Qnnle_antisym. apply Qnnmin_l.
+    apply Qnnmin_le_both. apply Qnnle_refl.
+    rewrite <- H. apply Qnnmin_le_both. apply Qnnmin_r.
+    eapply Qnnle_trans. apply Qnnmin_l. rewrite <- H0.
+    apply Qnnmin_r.
+Qed.
+
+End LowerR.
+
 Module Concrete. 
 Section Concrete.
 
