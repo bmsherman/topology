@@ -10,7 +10,48 @@ Definition map_op {A B} (f : A -> B) (P : B -> B -> Prop) (x y : A) : Prop :=
 Definition pointwise_op {A} {B : A -> Type} (P : forall a, B a -> B a -> Prop)
   (f g : forall a, B a) := forall a, P a (f a) (g a).
 
+(** A tour of algebraic structures. Most of them are things related to
+    orders or latices.
+    Each definition follows a relatively rigid pattern.
+    Each algebraic structure is defined in its own module. 
+    For instance, preorders are defined in the Module [PreO].
+    The type which defines the algebraic structure for preorders
+    is called [t], which outside the module looks like [PreO.t].
+
+    Let's be concrete. The type [Qnn] of non-negative rational numbers
+    has a relation [Qnnle : Qnn -> Qnn -> Prop] which represents a
+    preorder. Therefore, we can make an instance
+    [H : PO.t Qnn Qnnle] which gives evidence that [Qnnle] is in fact
+    a preorder.
+
+    Within the module [PreO] (and for most algebraic structures), we have a
+    type [morph] which gives evidence that some function in fact is a morphism
+    in that category of algebraic structure; that is, it preserves the structure
+    for whatever algebraic structure we defined. We always prove that the identity
+    function is a morphism [morph_id] and that morphisms are closed under 
+    composition [morph_compose].
+ 
+    At the end we give examples or building blocks for the algebraic structure.
+    There's usually trivial examples of these structures over base types which
+    have only one or two elements. There is usually a way to form products,
+    and often, given an algebraic structure on [B] and a function [f : A -> B],
+    we can define the algebraic structure on [A] by asking whether it holds
+    pointwise in [B].
+
+    Just given a preorder, we can define what it means for something to be
+    a top element or bottom, max or min, infimum or supremum, and so these
+    definitions are given in the [PO] module. Many algebraic structures are
+    then closed under these operations, in which case there will be functions
+    that are defined that implement the given operation. For instance, for
+    meet-semilattices, we have an operation for minimums.
+*)
+    
+
+(** Preorders: types which have a "<=" relation which is reflexitive and
+    transitive *)
 Module PreO.
+  (** The relation [le] (read: Less than or Equal) is a preorder when
+      it is reflexive [le_refl] and transitive [le_trans]. *)
   Class t {A : Type} {le : A -> A -> Prop} : Prop :=
   { le_refl : forall x, le x x
   ; le_trans : forall x y z, le x y -> le y z -> le x z
@@ -18,6 +59,8 @@ Module PreO.
 
   Arguments t : clear implicits.
 
+  (** A morphism of preorders is just a monotonic function. That is,
+      it preserves ordering. *)
   Definition morph `(leA : A -> A -> Prop) `(leB : B -> B -> Prop) `(f : A -> B) : Prop :=
     forall a b, leA a b -> leB (f a) (f b).
 
@@ -39,9 +82,13 @@ Module PreO.
     unfold morph; auto.
   Qed.
 
+  (** [top t] holds if [t] is bigger than everything *)
   Definition top (t : A) : Prop := forall a, a <= t.
+
+  (** [bottom b] holds if [b] is smaller than everything *)
   Definition bottom (b : A) : Prop := forall a, b <= a.
 
+  (** [max l r m] holds if [m] is the maximum of [l] and [r]. *)
   Record max {l r m : A} : Prop :=
   { max_l     : l <= m
   ; max_r     : r <= m
@@ -50,6 +97,7 @@ Module PreO.
 
   Arguments max : clear implicits.
 
+  (** [max] is commutative *)
   Lemma max_comm : forall l r m, max l r m -> max r l m.
   Proof.
   intros. constructor.
@@ -58,6 +106,7 @@ Module PreO.
   - intros. apply H; assumption.
   Qed.
 
+  (** [min l r m] holds if [m] is the minimum of [l] and [r] *)
   Record min {l r m : A} : Prop :=
   { min_l        : m <= l
   ; min_r        : m <= r
@@ -66,6 +115,7 @@ Module PreO.
 
   Arguments min : clear implicits.
 
+  (** [min] is commutative *)
   Lemma min_comm : forall l r m, min l r m -> min r l m.
   Proof.
   intros. constructor.
@@ -74,6 +124,8 @@ Module PreO.
   - intros. apply H; assumption.
   Qed.
 
+  (** [min] is associative, phrased in a relational manner,
+      i.e., minima are associative when they exist *)
   Lemma min_assoc : forall a b c, 
     forall bc, min b c bc ->
     forall ab, min a b ab ->
@@ -116,11 +168,15 @@ Module PreO.
   - intros. assumption.
   Qed.
 
+  (** [sup f m] holds when [m] is the supremum of all
+      values indexed by [f]. *)
   Record sup {I : Type} (f : I -> A) (m : A) : Prop :=
   { sup_ge : forall i, f i <= m
   ; sup_least : forall m', (forall i, f i <= m') -> m <= m'
   }.
 
+  (** [inf f m] holds when [m] is the infimum of all
+      values indexed by [f]. *)
   Record inf {I : Type} (f : I -> A) (m : A) : Prop :=
   { inf_le : forall i, m <= f i
   ; inf_greatest : forall m', (forall i, m' <= f i) -> m' <= m
@@ -129,16 +185,19 @@ Module PreO.
 
   End Facts.
 
+  (** [True], the one-element type, has a trivial preorder *)
   Definition one : t True (fun _ _ => True).
   Proof. constructor; auto.
   Qed.
 
+  (** The preorder on booleans given by False < True *)
   Definition two : t bool Bool.leb.
   Proof. constructor. 
   - intros; auto. destruct x; simpl; trivial.
   - destruct x, y, z; auto. simpl in *. congruence.
   Qed.
 
+  (** Product preorders *)
   Definition product `(tA : t A leA) `(tB : t B leB) 
    : t (A * B) (prod_op leA leB).
   Proof. constructor.
@@ -148,6 +207,9 @@ Module PreO.
      intuition; (eapply PreO.le_trans; eassumption).
   Qed.
 
+  (** Given a preorder on [B] and a function [f : A -> B],
+      we form a preorder on [A] by asking about their order
+      when mapped into [B] by [f]. *)
   Definition map `(f : A -> B) `(tB : t B leB) 
     : t A (fun x y => leB (f x) (f y)).
   Proof. constructor; intros.
@@ -155,6 +217,12 @@ Module PreO.
   - eapply le_trans; eauto.
   Qed.
 
+  (** It's probably easiest to explain the simply-typed
+      version of this: Given a preorder on [B], we can 
+      form a preorder on functions of type [A -> B] by saying
+      [f <= g] (where [f, g : A -> B]) whenever
+      the relation holds pointwise, i.e., for all [a : A],
+      we have [f a <= g a]. *)
   Definition pointwise {A} {B : A -> Type} 
     {leB : forall a, B a -> B a -> Prop}
     (tB : forall a, t (B a) (leB a)) 
@@ -172,11 +240,17 @@ Module PreO.
     unfold morph, pointwise_op. intros; simpl in *; apply H.
   Qed. 
 
+  (** The type of propositions forms a preorder, where "<=" is
+      implication. *)
   Instance prop : t Prop (fun P Q => P -> Q).
   Proof. 
     constructor; auto.
   Qed.
 
+  (** Subsets, in type theory defined as propositional functions,
+      i.e., subsets on [A] are functions of type [f : A -> Prop],
+      form a preorder ordered by subset inclusion. This is actually just
+      the preorder on propositions applied pointwise to functions. *)
   Instance subset (A : Type) : t (A -> Prop) _ := pointwise (fun _ => prop).
 
 End PreO.
@@ -184,6 +258,8 @@ End PreO.
 Arguments PreO.max {A} {le} _ _ _ : clear implicits.
 Arguments PreO.min {A} {le} _ _ _ : clear implicits.
 
+(** Partial orders: We take a preorder, but also have an equality relation [eq]
+    such that [eq x y] exactly when both [le x y] and [le y x]. *)
 Module PO.
   Class t {A : Type} {le : A -> A -> Prop} {eq : A -> A -> Prop} : Prop :=
   { PreO :> PreO.t A le
@@ -210,6 +286,8 @@ Module PO.
   Section Facts.
   Context `{tA : t A leA eqA}.
 
+  (** The equality relation of a partial order must form an
+      equivalence relation. *)
   Definition eq_refl : Reflexive eqA. 
   Proof. unfold Reflexive. 
     intros. apply le_antisym; apply PreO.le_refl.
@@ -277,12 +355,17 @@ Module PO.
     : Proper (eqA ==> eqA ==> iff) leA.
   Proof. intros. apply le_proper. Qed.
 
-
+  (** Morphisms must respect the equality relations on both their
+      source (domain) and target (codomain). *)
   Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
     : morph leA eqA leB eqB f -> Proper (eqA ==> eqB) f.
   Proof. 
     intros. destruct H. unfold Proper, respectful. apply f_eq0. 
   Qed.
+
+  (** Now we will extend the preorders we had to partial orders
+      in the obvious ways. There's really nothing interesting
+      here. *)
 
   Definition one : t True (fun _ _ => True) (fun _ _ => True).
   Proof. 
@@ -355,7 +438,8 @@ Module PO.
  
 End PO.
 
-(** Join semi-lattices, or directed sets. Natural numbers are
+(** Join semi-lattices, or directed sets. Here we take a partial order
+    and add on a maximum operation. Natural numbers are
     one of many examples. We will often generalize sequences, which
     are functions of type (nat -> A), to nets, which are functions of
     type (I -> A), where I is a directed set. *)
@@ -369,6 +453,9 @@ Module JoinLat.
 
   Arguments Ops : clear implicits.
 
+  (** When do the operations [le], [eq], and [max] actually represent
+      a join semi-lattice? We need [le] and [eq] to be a partial order,
+      and we need our [max] operation to actually implement a maximum. *)
   Class t {A : Type} {O : Ops A} : Prop :=
   { PO :> PO.t A le eq
   ; max_proper : Proper (eq ==> eq ==> eq) max
@@ -389,6 +476,8 @@ Module JoinLat.
 
   Arguments morph {A} OA {B} OB f.
 
+  (** A morphism on join semi-lattices respects the equality relation
+      on its source and target. *)
   Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
   morph OA OB f -> Proper (eq ==> eq) f.
   Proof. 
@@ -416,6 +505,7 @@ Module JoinLat.
     apply (f_max H).
   Qed.
 
+  (** Max is very boring for the one-point set *)
   Definition one_ops : Ops True :=
     {| le := fun _ _ => True
      ; eq := fun _ _ => True
@@ -429,6 +519,7 @@ Module JoinLat.
   - destruct l, r. constructor; tauto.
   Qed.
 
+  (** Max for booleans is the boolean OR. *)
   Definition two_ops : Ops bool :=
     {| le := Bool.leb
      ; eq := Logic.eq
@@ -445,6 +536,7 @@ Module JoinLat.
   end; simpl; auto)).
   Qed. 
 
+  (** Max for propositions is the propositional OR, i.e., disjunction *)
   Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
      ; eq := fun P Q : Prop => P <-> Q
@@ -511,6 +603,9 @@ Module JoinLat.
    
 End JoinLat.
 
+(** A meet semi-lattice is literally a join semi-lattice turned
+    upside-down. Instead of having a [max] operation, it has a [min].
+    The code is essentially copied from [JoinLat]. *)
 Module MeetLat.
 
   Class Ops {A} : Type :=
@@ -701,6 +796,9 @@ Module MeetLat.
    
 End MeetLat.
 
+(** A lattice is both a join semi-lattice and a meet semi-lattice;
+    it has both a [max] operation and a [min] operation. Again,
+    this is basically just copied from the two modules above. *)
 Module Lattice.
 
   Class Ops {A} : Type :=
@@ -882,6 +980,27 @@ End Lattice.
 
 Module L := Lattice.
 
+(** A frame represents the essence of the algebraic structure of topologies,
+    without the requirement that this algebraic structure be formed by
+    subsets of an underlying space. The frame is just the algebra itself.
+    A frame has a supremum operation, which corresponds to the fact that
+    topologies are closed under arbitrary union.
+    We call elements of a frame "opens" to indicate that they are reminiscent
+    of open sets.
+
+    Frames are also often referred to as locales. They're the same things, but
+    are used to indicate opposite categories. The category of frames is the
+    opposite of the category of locales. We do this because continuous functions
+    are, in a sense, "backwards". A continuous function in topology 
+    [f : A -> B] is defined by its inverse image which takes open sets in
+    [B] to open sets in [A]. So a continuous function from [A] to [B] corresponds
+    to a frame homomorphism from the frame representing the topology of [B] to the
+    frame representing the topology of [A]. A frame homomorphism is a morphism
+    in the category of frames. The morphisms of the category of locales are called
+    continuous maps, and since it's the opposite category, a continuous 
+    function from [A] to [B] corresponds to a continuous map from the locale
+    for [A] to the locale for [B].
+    *)
 Module Frame.
   Class Ops {A} :=
    { LOps :> L.Ops A
@@ -903,6 +1022,8 @@ Module Frame.
 
   Section Facts.
   Context {A OA} {tA : t A OA}.
+
+  (** Every frame must have a top and bottom element. *)
 
   Definition top : A := sup (fun a => a).
 
@@ -984,6 +1105,8 @@ Module Frame.
   - constructor; trivial.
   Qed.
 
+  (** Propositions form a frame, where supremum is given by the
+      existential quantifier. *)
   Instance prop_ops : Ops Prop :=
     {| LOps := L.prop_ops
      ; sup := (fun _ f => exists i, f i)
@@ -1039,7 +1162,8 @@ Module Frame.
   Instance subset (A : Type) : t (A -> Prop) (subset_ops A):= 
      pointwise (fun _ : A => prop).
 
-  (** continuous map on locales *)
+  (** [cmap] represents a continuous map on locales. It is just a
+      package for a frame homomorphism running in the opposite direction. *)
   Record cmap {A OA} {B OB} := 
   { finv :> B -> A
   ; cont : morph OB OA finv
@@ -1047,8 +1171,12 @@ Module Frame.
 
   Arguments cmap {A} OA {B} OB.
 
+  (** A point in [A] is a continuous map from the frame representing
+      a space with one point ([Prop]) to [A]. *)
   Definition point {A} (OA : Ops A) := cmap prop_ops OA.
 
+  (** Every function [f : A -> B] is continuous on the topology
+      which includes all subsets. *)
   Definition subset_map {A B} (f : A -> B) : cmap (subset_ops A) (subset_ops B).
   Proof.
   refine ( {| finv P x := P (f x) |}).
@@ -1070,6 +1198,8 @@ Module F := Frame.
 Require Import LPReal.
 Local Open Scope LPR.
 
+(** Supremum over directed sets (i.e., join-semilattices)
+    commutes with addition *)
 Lemma LPRsup_sum_jlat : forall A `(I : JoinLat.t A),
   forall (f g : A -> LPReal) ,
     (forall n m : A, JoinLat.le n m -> f n <= f m) ->
@@ -1082,6 +1212,10 @@ intros. eapply PreO.max_r. apply JoinLat.max_ok.
 assumption. assumption.
 Qed. 
 
+(** This module defines valuations. Valuations like measures, rather than
+    being defined on sigma-algebras of subsets, they are defined on
+    locales (= frames).
+*)
 Module Val.
 
 Require Import Equalities Orders GenericMinMax.
@@ -1108,6 +1242,8 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
 
   Arguments t {A} {OA} X.
 
+  (** If two elements of the frame are equal, they are assigned the
+      same measure. *)
   Lemma val_iff : forall `{X : F.t A} (mu : t X) (U V : A),
     L.eq U V -> mu U = mu V.
   Proof. 
@@ -1115,6 +1251,9 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
    rewrite H; apply PreO.le_refl.
   Qed.
 
+  (** We say one valuation [mu] is less than or equal to another valuation
+      [nu] if, for every open [P], the measure [mu] assigns to [P] is
+      less than or equal to the measure [nu] assigns to [P] *)
   Definition le `{X : F.t A} (mu nu : t X) := forall P, mu P <= nu P.
 
   Infix "<=" := le : Val_scope.
@@ -1126,6 +1265,7 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
   Definition eq `{X : F.t A} (mu nu : t X) := forall P, mu P = nu P.
   Infix "==" := eq : Val_scope.
 
+  (** Lower reals have a partial order. *)
   Definition POLPR : PO.t LPReal LPRle Logic.eq.
   Proof. constructor; intros.
   - constructor; intros. apply LPRle_refl.  eapply LPRle_trans; eassumption.
@@ -1133,6 +1273,7 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
   - eapply LPRle_antisym; eassumption.
   Qed.
 
+  (** Our definition of "<=" on valuations induces a partial order structure. *)
   Instance PO `{X : F.t A} : PO.t (t X) le eq 
     := PO.map val (PO.pointwise (fun _ : A => POLPR)).
 
@@ -1141,10 +1282,8 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
     intros. eapply PreO.le_trans; eassumption.
   Qed.
 
-Require Import FunctionalExtensionality.
-Lemma eq_compat_OK 
-  (proof_irrel : forall (P : Prop) (x y : P), x = y)
-  : forall `{X : F.t A} (mu nu : t X), eq mu nu -> mu = nu. 
+Require Import FunctionalExtensionality ProofIrrelevance.
+Lemma eq_compat : forall `{X : F.t A} (mu nu : t X), eq mu nu -> mu = nu. 
 Proof.
 intros.
 unfold eq in *.
@@ -1152,20 +1291,19 @@ destruct mu, nu. simpl in *.
 assert (val0 = val1).
 apply functional_extensionality. assumption.
 induction H0.
-pose proof (proof_irrel _ strict0 strict1).
+pose proof (proof_irrelevance _ strict0 strict1).
 induction H0.
-pose proof (proof_irrel _ monotonic0 monotonic1).
+pose proof (proof_irrelevance _ monotonic0 monotonic1).
 induction H0.
-pose proof (proof_irrel _ modular0 modular1).
+pose proof (proof_irrelevance _ modular0 modular1).
 induction H0.
-pose proof (proof_irrel _ continuous0 continuous1).
+pose proof (proof_irrelevance _ continuous0 continuous1).
 induction H0.
 reflexivity.
 Qed.
 
-Axiom eq_compat : forall `{X : F.t A} (mu nu : t X)
-  , eq mu nu -> mu = nu.
-
+(** The valuation which assigns zero measure to every open. This is the
+    bottom element of the partial order we defined on valuations. *)
 Definition zero `{X : F.t A} : t X.
 Proof. refine (
   {| val := fun _ => 0 |}
@@ -1194,6 +1332,7 @@ Lemma qredistribute : forall andLq andRq orLq orRq,
  = (andLq + orLq) + (andRq + orRq).
 Proof. intros. ring. Qed.
 
+(** We can add two valuations by adding the measure they assign to each open. *)
 Definition add `{X : F.t A} (mu nu : t X) : t X.
 Proof. refine (
   {| val := fun P => mu P + nu P |}
@@ -1236,6 +1375,7 @@ Infix "*" := scale : Val_scope.
 Lemma zero_min `{X : F.t A} : forall (mu : t X), (0 <= mu)%Val.
 Proof. intros. unfold le. intros. simpl. apply LPRzero_min. Qed.
 
+(** We can map a continuous map over a valuation. *)
 Definition map {A OA B OB} {X : F.t A OA} {Y : F.t B OB} (f : F.cmap OA OB)
   (mu : t X) : t Y.
 Proof.
@@ -1258,6 +1398,9 @@ Proof.
   apply (L.f_PO (F.f_L (F.cont f))). apply fmono. assumption.
 Defined.
 
+(** If we view [F.prop] as locale corresponding to the 1-point set, then
+    [unit_prop] is the unique probability distribution we can define for the 1-point 
+    set; it puts all its mass (i.e., a measure of 1) on that single point. *)
 Definition unit_prop : t F.prop.
 Proof.
 refine (
@@ -1272,6 +1415,10 @@ refine (
   apply LPRind_exists. 
 Defined.
 
+(** We can now define a Dirac delta distribution, which is a probability distribution
+    which puts all its mass on a single point. Since a point is just a continuous map from
+    the one-point set, a Dirac delta just maps this continuous function over the
+    probability distribution [unit_prop] for the one-point set. *)
 Definition unit {A OA} {X : F.t A OA} (x : F.point OA)
   : t X := map x unit_prop.
 
@@ -1285,6 +1432,9 @@ Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
     *)
 
 Module Simple.
+
+(** Simple functions are generated by taking indicators of open sets, and closing under
+    scalar multiplication and addition *)
 Inductive t `{X : F.t A} :=
   | Ind : A -> t
   | Scale : LPReal -> t -> t
@@ -1304,6 +1454,10 @@ Delimit Scope Simple_scope with Simple.
 Infix "+" := Add : Simple_scope.
 Infix "*" := Scale : Simple_scope.
 
+(** We define a partial order on simple functions according to
+    whether the integral of one dominates the other for every
+    possible valuation. It is potentially unclear that this
+    is the best definition. *)
 Definition le `{X : F.t A} (x y : t X) := 
   forall (mu : Val.t X), Integral x mu <= Integral y mu.
 
@@ -1386,6 +1540,10 @@ Proof.
 intros. simpl. apply strict.
 Qed.
 
+(** [map_concrete] just maps a function over all the potential opens.
+    It is *not* precomposition with a continuous function.
+    That is given by the following function [map], which uses the
+    definition here. *)
 Fixpoint map_concrete {B} `{X : F.t A} `{Y : F.t B}
   (f : A -> B) (s : t X) : t Y := match s with
   | Ind P => Ind (f P)
@@ -1399,6 +1557,19 @@ Definition map {A B OA OB} {X : F.t A OA} {Y : F.t B OB}
 
 End Simple.
 
+(** The [RealFunc] module represents continuous functions from a locale
+    to the lower real numbers. 
+
+    To do things properly, I should have a locale of lower real numbers,
+    which the requisite operations like +, *, etc. evident as
+    continuous functions, but I have yet to do this. I hope to soon redefine
+    the lower reals in terms of formal topology.
+
+    Instead, I cheat here, and define a continuous function to the lower reals
+    as the supremum of a monotonically increasing sequence of simple functions.
+    This cheat is not so heinous, as it is in fact a theorem that every continuous
+    function can be represented as such.
+     *)
 Module RealFunc.
 
   Record t {A} `{X : F.t A} :=
@@ -1407,6 +1578,7 @@ Module RealFunc.
 
   Arguments t {A} {OA} X.
 
+  (** Any simple function is a continuous lower-real-valued function. *)
   Definition simple `{X : F.t A} (f : Simple.t X) : t X.
   Proof. refine (
    {| func := fun _ => f |}).
@@ -1433,6 +1605,8 @@ Module RealFunc.
 
   Infix "*" := scale : RFunc_scope.
 
+  (** We can precompose a lower-real valued continuous function with
+      an arbitrary continuous function. *)
   Definition map {A OA} {X : F.t A OA} {B OB} {Y : F.t B OB} (f : F.cmap OA OB) 
     (g : t Y) : t X.
   Proof. refine (
@@ -1440,6 +1614,9 @@ Module RealFunc.
   ). destruct g. simpl.
   Abort.
 
+  (** The integral of a continuous function is the supremum of the
+      simple integrals of the simple functions of which it is the
+      supremum. *)
   Definition integral `{X : F.t A} (f : t X) (mu : Val.t X) :=
    LPRsup (fun i => Simple.Integral (f i) mu).
 
@@ -1525,6 +1702,8 @@ unfold integral. rewrite LPRsup_scales. apply LPRsup_eq_pointwise.
 intros. apply Simple.int_scales_val.
 Qed.
 
+(** We can recover what our real-valued continuous function evaluates to
+    by integrating it against a Dirac delta. *)
 Definition eval {A OA} {X : F.t A OA} (f : t X) (x : F.point OA) : LPReal :=
   integral f (unit x).
 
@@ -1532,14 +1711,24 @@ End RealFunc.
 
 End Val.
 
+
+(** Here is where the lying/cheating returns! I attempt to say that every Coq type
+    in fact represents a topological space, where every possible subset is open.
+    Therefore, every function is, by definition, continuous. The difficulty is at
+    the interface with the point where I played by the rules, which is the
+    real-valued functions. *)
 Module SubsetVal.
 
 Module RF := Val.RealFunc.
 
+(** The open sets of a type are simply its subsets, or proposition-valued
+    valued functions from that type. *)
 Definition O := F.subset.
 
 Definition Val (A : Type) := Val.t (O A).
 
+(** Here we convert from a literal point of a Coq type [a : A] to a
+    localic point, which is the class of subsets which include [a]. *)
 Definition point {A} (a : A) : F.point (F.subset_ops A).
  refine (
   {| F.finv := fun P => P a |}
@@ -1550,9 +1739,20 @@ Definition point {A} (a : A) : F.point (F.subset_ops A).
 - reflexivity.
 Defined.
 
+(** We state as an axiom that all functions to the lower reals are continuous,
+    and thus they can be represented by the [RealFunc.t] type. *)
 Axiom all_cont : forall {A}, (A -> LPReal) -> RF.t (O A).
+
+(** Furthermore, we define the behavior of the [all_cont] axiom, by saying
+    that when it is evaluated at a point, we get the value we expect. *)
 Axiom all_cont_point : forall A (f : A -> LPReal) (a : A), 
   RF.eval (all_cont f) (point a) = f a.
+
+(** Finally, we state as an axiom that we can tell when a 
+    lower-real valued function [f]
+    is no greater than [g] in terms of the [RealFunc] definition
+    (its integral is dominated for every possible valuation) by checking
+    their behavior pointwise. *)
 Axiom RF_pointwise : forall A (f g : RF.t (O A)),
   (forall a, RF.eval f (point a) <= RF.eval g (point a)) -> RF.le f g.
 

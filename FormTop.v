@@ -1,19 +1,38 @@
 Require Import Frame.
 Set Asymmetric Patterns.
 
-Module FormTop.
+(** Formal topologies. *)
 
-(** Inductively generated formal topologies *)
+(** Formal topologies as defined in
+
+    [1]
+    Inductively generated formal topologies.
+    Thierry Coquand, Giovanni Sambin, Jan Smith, Silvio Valentini.
+    2000.
+    http://www.math.unipd.it/~silvio/papers/WorkInProg/tig000615.pdf
+
+    I highly suggest reading their paper alongside this module!
+    I will refer to it as [1].
+*)
+Module FormTop.
 
 Generalizable All Variables.
 
 Section Defn.
 
+(** We assume we have some type [S] equipped
+    with a partial order. *)
 Context {S} {le eq} {PO : PO.t S le eq}.
 
+(** States that [c] is less than or equal to the minimum of
+    [a] and [b]. *)
 Definition down (a b c : S) : Prop :=
   le c a /\ le c b.
 
+(** Definition 2.1 of [1].
+    Definition of when the [Cov] relation is indeed a formal cover.
+    Here, the [Cov] relation means the little triangle that is
+    seen in the literature. *)
 Record t { Cov : S -> (S -> Prop) -> Prop } :=
   { refl : forall (a : S) (U : S -> Prop), U a -> Cov a U
   ; trans : forall (a : S) (U V : S -> Prop), 
@@ -29,6 +48,7 @@ Record t { Cov : S -> (S -> Prop) -> Prop } :=
 
 Arguments t : clear implicits.
 
+(** Definition of a formal cover that also has a positivity predicate. *)
 Record tPos { Cov : S -> (S -> Prop) -> Prop } {Pos : S -> Prop} :=
   { cov :> t Cov
   ; mono : forall a U, Pos a -> Cov a U -> exists b, U b /\ Pos b
@@ -57,6 +77,9 @@ Proof.
 intros. split; apply monotone; firstorder.
 Qed.
 
+(** Inductively generated formal topologies. See section
+    3 of [1]. *)
+
 Variable I : S -> Type.
 Variable C : forall (s : S), I s -> (S -> Prop).
 
@@ -70,6 +93,8 @@ Definition localized := forall (a c : S),
   exists (j : I a),
   (forall s, C a j s -> exists u, C c i u /\ down a u s).
 
+(** Given the axiom set [I] and [C], this generates the
+    formal cover corresponding to that axiom set. *)
 Inductive GCov : S -> (S -> Prop) -> Prop :=
   | grefl : forall (a : S) (U : S -> Prop), U a -> GCov a U
   | gle_left : forall (a b : S) (U : S -> Prop)
@@ -97,6 +122,7 @@ Proof.
 intros. split; apply gmonotone; intro; apply H; assumption.
 Qed.
 
+(** Proposition 3.5 of [1] *)
 Lemma le_infinity : forall (a c : S), le a c ->
   forall (i : I c) (U : S -> Prop), 
   (forall u v, C c i v -> down a v u -> GCov u U)
@@ -110,7 +136,6 @@ specialize (H1 u H2).
 destruct H1. destruct H1.
 eapply H0. 2:eassumption. assumption.
 Qed.
-
 
 Lemma GCov_stable : stable GCov.
 Proof.
@@ -143,6 +168,9 @@ induction H.
   eapply PreO.le_trans. apply H6. assumption.
 Qed.
 
+(** Theorem 3.6 of [1].
+    In fact, the formal cover that we defined based on the axiom set 
+    indeed satistifes the requirements of being a formal topology. *)
 Theorem GCov_formtop : t GCov.
 Proof.
 unfold localized in loc.
@@ -168,6 +196,22 @@ End FormTop.
 
 Arguments FormTop.t {_} _ _.
 
+
+
+
+
+(** Formal topologies presented with a minimum operation
+    rather than just a partial order. Most of the material
+    is pretty similar to the module above.
+
+    One good reference for this presentation is
+
+    [2]
+    Formal topology and domains.
+    Giovanni Sambin.
+    2000.
+    http://www.math.unipd.it/~sambin/txt/ftd.pdf
+ *)
 Module FormTopM.
 
 Generalizable All Variables.
@@ -242,6 +286,8 @@ constructor; intros.
   split. apply MeetLat.min_ok. apply MeetLat.min_ok. 
   unfold UV. apply dot_right; assumption.
 Qed.
+
+(** Inductively generated formal topologies for this formulation. *)
 
 Variable I : S -> Type.
 Variable C : forall (s : S), I s -> (S -> Prop).
@@ -374,23 +420,105 @@ End Defn.
 
 End FormTopM.
 
+(** A definition of commutative and idempotent semigroups.
+    This is effectively a semi-lattice (it can be a join semi-lattice
+    or a meet semi-lattice depending on your attitude) defined
+    solely in terms of its min or max operation.
+*)
+Module CommIdemSG.
+
+Generalizable All Variables.
+
+Require Import SetoidClass Coq.Classes.Morphisms.
+
+(** [dot] is a binary operation which is commutative, idempotent, and
+    associative. It is effectively a max or min. *)
+Class t {A} {eq : A -> A -> Prop} {dot : A -> A -> A} :=
+  { eq_equiv :> Equivalence eq
+  ; dot_proper :> Proper (eq ==> eq ==> eq) dot
+  ; dot_idempotent : forall a, eq (dot a a) a
+  ; dot_comm : forall a b, eq (dot a b) (dot b a)
+  ; dot_assoc : forall a b c, eq (dot a (dot b c)) (dot (dot a b) c)
+  }.
+
+Arguments t : clear implicits.
+
+Section Facts.
+Context `{tA : t A eql dot}.
+
+(** Here we define a "<=" relation which makes the [dot] a
+    [min] operation for a meet semi-lattice *)
+Instance ops : MeetLat.Ops A :=
+  {| MeetLat.le := fun x y => eql (dot x y) x
+   ; MeetLat.eq := eql
+   ; MeetLat.min := dot
+  |}.
+
+(** Next, we prove successively, that these definitions using
+    the [dot] operator indeed define a preorder, a partial order,
+    and finally a meet semi-lattice. *)
+Theorem asPreO : PreO.t A MeetLat.le.
+Proof.
+constructor; simpl; intros.
+- apply dot_idempotent.
+- rewrite <- H. rewrite <- H0 at 2.
+  rewrite dot_assoc. reflexivity.
+Qed.
+
+Theorem asPO : PO.t A MeetLat.le eql.
+Proof.
+constructor.
+- apply asPreO.
+- repeat intro; simpl; split; intros. 
+  rewrite <- H, <- H0. assumption.
+  rewrite H, H0. assumption.
+- simpl. intros. rewrite <- H. rewrite <- H0 at 2.
+  rewrite dot_comm. reflexivity.
+Qed.
+
+Instance asMeetLat : MeetLat.t A ops.
+Proof.
+constructor. 
+- apply asPO.
+- solve_proper.
+- intros. constructor; simpl; intros.
+  + rewrite dot_comm. rewrite dot_assoc.
+    rewrite dot_idempotent. reflexivity.
+  + rewrite <- dot_assoc. rewrite dot_idempotent.
+    reflexivity.
+  + rewrite <- H at 2. rewrite <- H0 at 2.
+    rewrite (dot_comm l r). rewrite dot_assoc.
+    reflexivity.
+Qed.
+
+End Facts.
+End CommIdemSG.
+
+(** Information bases, which are the predicative versions of
+    Scott domains. Perhaps, see Definition 1.9 of [2].
+    Though my formulation is a little different; I build off
+    of a pre-existing notion of a meet semi-lattice.
+
+    Also, I directly show that this formal topology is
+    inductively generated by generating it with an axiom set. *)
 Module InfoBase. 
 Section InfoBase.
 
-Context {S} {dotS : S -> S -> S}.
+Generalizable All Variables.
 
-Instance ops : MeetLat.Ops S :=
-  {| MeetLat.le := fun x y => dotS x y = x
-   ; MeetLat.eq := eq
-   ; MeetLat.min := dotS
-  |}.
+Context {S} `{commIdemSG : CommIdemSG.t S eq dot}.
 
-Context {ML : MeetLat.t S ops}.
+Instance ops : MeetLat.Ops S := @CommIdemSG.ops _ eq dot.
+Instance ML : MeetLat.t S ops
+  := CommIdemSG.asMeetLat.
 
+(** The axiom set essentially says that if [s <= t], then
+    [s] is covered by the singleton set [{t}]. *)
 Definition Ix (s : S) : Type := { t : S & MeetLat.le s t }.
 Definition C (s : S) (s' : Ix s) s'' : Prop := projT1 s' = s''.
 
-Definition loc : @FormTopM.localized S dotS Ix C.
+(** This axiom set is localized. *)
+Definition loc : @FormTopM.localized S dot Ix C.
 Proof.
 unfold FormTopM.localized. intros. simpl.
 unfold Ix, C in *.
@@ -399,72 +527,77 @@ unfold FormTopM.dot in *.
 assert (MeetLat.le (MeetLat.min b c) (MeetLat.min b c)).
 apply PreO.le_refl.
 exists (existT _ (FormTopM.dot b c) H).
-intros.  simpl in *. unfold FormTopM.dot in *.  destruct H. 
+intros.  simpl in *. unfold FormTopM.dot in *. destruct H0. 
 exists x. split. reflexivity.
-replace dotS with MeetLat.min by reflexivity.
+replace dot with MeetLat.min by reflexivity.
 apply (@PO.le_antisym _ MeetLat.le _ _).
 apply MeetLat.min_l.
-simpl. simpl in H0. rewrite H0.
-replace dotS with MeetLat.min by reflexivity.
-rewrite MeetLat.min_idempotent.
+simpl.
+replace dot with MeetLat.min by reflexivity.
+rewrite MeetLat.min_assoc.
+rewrite !MeetLat.min_idempotent.
 rewrite MeetLat.min_assoc.
 rewrite MeetLat.min_idempotent.
-assert (MeetLat.min s x = s).
-apply (@PO.le_antisym _ MeetLat.le _ _).
-apply MeetLat.min_l.
-apply (@PreO.min_greatest _ MeetLat.le s x).
-apply MeetLat.min_ok. apply PreO.le_refl.
-rewrite <- H0. rewrite <- l.
-replace dotS with MeetLat.min by reflexivity.
-unfold FormTopM.dot.
-rewrite MeetLat.min_assoc.
-apply MeetLat.min_r.
-rewrite H.
-apply (@MeetLat.min_idempotent _ _ ML).
+rewrite <- l at 2.
+rewrite MeetLat.min_assoc. reflexivity.
 Qed.
 
-Definition Cov := @FormTopM.GCov _ dotS Ix C.
+(** The covering relation for information bases,
+    which we derive from the axiom set above. *)
+Definition Cov := @FormTopM.GCov _ dot Ix C.
 
-Definition isCov : @FormTopM.t _ dotS Cov := 
+(** The proof that [Cov] is a valid formal topology. *)
+Definition isCov : @FormTopM.t _ dot Cov := 
   FormTopM.GCov_formtop Ix C loc.
 
 End InfoBase.
 End InfoBase.
 
+(** Here we intend to define the formal topology for the lower 
+    non-negative real
+    numbers, realizing that the lower real numbers can be made into 
+    a formal topology by showing that they are an information base,
+    taking the non-negative rational numbers, together with the
+    minimum operation, as the meet semilattice for an information base.
+*)
 Module LowerR.
 Require Import Qnn Coq.Classes.Morphisms SetoidClass.
 
+(** In fact, the [Qnnmin] operation is a idempotent,
+    commutative semigroup. I think I have a more generic proof of this
+    somewhere in Frame.v?
+*)
+Theorem lowerCommSG : CommIdemSG.t Qnn eq Qnnmin.
+Proof.
+constructor; intros.
+- apply eq_equivalence.
+- solve_proper.
+- apply Qnnle_antisym. 
+  apply Qnnmin_r. apply Qnnmin_le_both; apply Qnnle_refl.
+- apply Qnnle_antisym; apply Qnnmin_le_both;
+    (apply Qnnmin_r || apply Qnnmin_l).
+- apply Qnnle_antisym. apply Qnnmin_le_both.
+  apply Qnnmin_le_both. apply Qnnmin_l. eapply Qnnle_trans.
+  apply Qnnmin_r. apply Qnnmin_l. eapply Qnnle_trans. apply Qnnmin_r.
+  apply Qnnmin_r.
+  apply Qnnmin_le_both. eapply Qnnle_trans. apply Qnnmin_l.
+  apply Qnnmin_l. apply Qnnmin_le_both. eapply Qnnle_trans.
+  apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
+Qed.
+
 Theorem lowerTop : MeetLat.t Qnn (@InfoBase.ops _ Qnnmin).
 Proof. 
-constructor.
-- constructor.
-  + constructor.
-    * intros. simpl. apply Qnnle_antisym. 
-      apply Qnnmin_r. apply Qnnmin_le_both; apply Qnnle_refl.
-    * simpl. intros. apply Qnnle_antisym.
-      apply Qnnmin_l. apply Qnnmin_le_both. apply Qnnle_refl.
-      rewrite <- H. eapply Qnnle_trans. 
-      apply Qnnmin_r. rewrite <- H0.
-      apply Qnnmin_r.
-  + solve_proper.
-  + intros. simpl in *. rewrite <- H. rewrite <- H0 at 2.
-    apply Qnnle_antisym; apply Qnnmin_le_both;
-      (apply Qnnmin_r || apply Qnnmin_l).
-- solve_proper.
-- intros. constructor; simpl.
-  + apply Qnnle_antisym. apply Qnnmin_l. apply Qnnmin_le_both. 
-    apply Qnnle_refl. apply Qnnmin_l.
-  + apply Qnnle_antisym. apply Qnnmin_l. apply Qnnmin_le_both.
-    apply Qnnle_refl. apply Qnnmin_r.
-  + intros. apply Qnnle_antisym. apply Qnnmin_l.
-    apply Qnnmin_le_both. apply Qnnle_refl.
-    rewrite <- H. apply Qnnmin_le_both. apply Qnnmin_r.
-    eapply Qnnle_trans. apply Qnnmin_l. rewrite <- H0.
-    apply Qnnmin_r.
+apply (@CommIdemSG.asMeetLat _ _ _ lowerCommSG).
 Qed.
 
 End LowerR.
 
+(** A definition of concrete topological spaces. These are formal topologies
+    which are related to a type of points in the expected way, through a
+    relation which I call [In]. See Definition 1.2 in [1]. Their relation
+    which I call [In] looks like [||-], and they read as "lies in" or
+    "forces".
+*)
 Module Concrete. 
 Section Concrete.
 
@@ -479,6 +612,9 @@ Record t : Type :=
           -> { c | In x c /\ @FormTop.down S (map_op (fun s x => In x s) L.le) a b c }
   }.
 
+(** Every concrete topological space can be presented as an
+    inductively generated formal topology. See Section 4.4
+    of [1]. *)
 Definition Ix (a : S) : Type := sig (fun (g : forall (x : X), In x a -> S) 
   => forall (x : X) (prf : In x a), In x (g x prf)).
 
@@ -511,6 +647,8 @@ Qed.
 End Concrete.
 End Concrete.
 
+(** An inductively generated formal topology for the Cantor space.
+    See Section 4.1 of [1]. *)
 Module Cantor.
 
 Variable A : Type.
@@ -570,6 +708,8 @@ Qed.
 
 End Cantor.
 
+(** Product spaces for inductively generated formal topologies.
+    See Section 4.3 of [1]. *)
 Module Product.
 
 Generalizable All Variables.
@@ -636,6 +776,11 @@ Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
   
 End Product.
 End Product.
+
+(** I intend to define continuous relations below! I had some code here,
+    but it broke when I updated to Coq 8.5, and I will probably rework the
+    definitions because these were not good enough.
+*)
 
 (*WIP : Still need to update
 Module Cont.
