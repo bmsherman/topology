@@ -307,7 +307,30 @@ Inductive GCov : S -> (S -> Prop) -> Prop :=
   | ginfinity : forall (a : S) (i : I a) (U : S -> Prop),
      (forall u, C a i u -> GCov u U) -> GCov a U.
 
-Hypothesis loc : localized. 
+Hypothesis loc : localized.
+
+Lemma localized_asFormTop : @FormTop.localized S MeetLat.le I C.
+Proof.
+unfold FormTop.localized, localized in *.
+intros.
+specialize (loc a c i).
+unfold dot, MeetLat.min in *. simpl in *.
+rewrite H in loc.
+destruct loc.
+exists x. intros. specialize (H0 s H1).
+destruct H0. exists x0. destruct H0. split. assumption.
+unfold FormTop.down.
+unfold dot in x. simpl in x.
+change dotS with (MeetLat.min) in *.
+change (@eq S) with (MeetLat.eq) in *.
+split.
+apply PO.le_antisym. apply MeetLat.min_l. apply MeetLat.min_ok.
+apply PreO.le_refl. rewrite <- H2. rewrite MeetLat.min_comm.
+rewrite <- MeetLat.min_assoc. apply MeetLat.min_l.
+apply PO.le_antisym. apply MeetLat.min_l. apply MeetLat.min_ok.
+apply PreO.le_refl. rewrite <- H2. rewrite MeetLat.min_assoc.
+apply MeetLat.min_r.
+Qed.
 
 Lemma gmonotone : forall (a : S) (U V : S -> Prop),
   (forall u, U u -> V u) -> GCov a U -> GCov a V.
@@ -589,6 +612,13 @@ Proof.
 apply (@CommIdemSG.asMeetLat _ _ _ lowerCommSG).
 Qed.
 
+Definition Ix := @InfoBase.Ix Qnn Qnnmin.
+Definition C := @InfoBase.C Qnn Qnnmin.
+
+Definition Cov := @InfoBase.Cov Qnn Qnnmin.
+
+Definition isCov := @InfoBase.isCov Qnn Qnnmin lowerCommSG.
+
 End LowerR.
 
 (** A definition of concrete topological spaces. These are formal topologies
@@ -772,6 +802,16 @@ destruct i as [[sI t]|[s tI]].
 Qed.
 
 Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
+
+Theorem isCov :
+   @FormTop.localized S leS IS CS
+  -> @FormTop.localized T leT IT CT
+  -> FormTop.t (prod_op leS leT) Cov.
+Proof.
+intros HS HT.
+apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT) (prod_op eqS eqT) 
+  PO Cov Ix C (loc HS HT)).
+Qed.
   
 End Product.
 End Product.
@@ -878,3 +918,51 @@ Qed.
 
 End Morph.
 End Cont.
+
+Arguments Cont.t {S} leS {T} leT CovS CovT F : clear implicits.
+
+Module LPRFuncs.
+Require Import Qnn.
+
+Definition plus (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
+  let (l, r) := addends in (l + r = sum)%Qnn.
+
+Definition le := @MeetLat.le _ (@InfoBase.ops _ Qnnmin).
+
+Definition prodCov := (@Product.Cov _ _ le le LowerR.Ix LowerR.Ix LowerR.C LowerR.C).
+
+Theorem lowerR_loc : @FormTop.localized _ le LowerR.Ix LowerR.C.
+Proof.
+apply @FormTopM.localized_asFormTop. apply LowerR.lowerTop.
+apply (@InfoBase.loc Qnn Qnnmin LowerR.lowerCommSG).
+Qed.
+
+Theorem isCov_prodCov : FormTop.t (prod_op le le) prodCov.
+Proof.
+unfold prodCov.
+eapply Product.isCov.
+apply (@MeetLat.PO _ _ LowerR.lowerTop).
+apply (@MeetLat.PO _ _ LowerR.lowerTop).
+apply lowerR_loc. apply lowerR_loc.
+Qed.
+
+Definition plus_cont_defn := 
+  Cont.t (prod_op le le) le 
+  prodCov LowerR.Cov plus.
+
+Theorem plus_cont : plus_cont_defn.
+Proof.
+unfold plus_cont_defn.
+constructor; intros.
+- apply (@FormTop.refl _ _ _ isCov_prodCov). 
+  destruct a. unfold plus. exists (q + q0)%Qnn. reflexivity.
+- destruct a, ab, ac. unfold plus in *. 
+  subst. apply (@FormTop.refl _ _ _ isCov_prodCov).
+  exists (q + q0)%Qnn. split. 2:reflexivity.
+  destruct H. destruct H, H0. simpl in *.
+  split. admit. admit.
+- destruct a. unfold plus in H. subst.
+  (* if q + q0 < sup V, then we can do stuff... *)
+Abort. 
+
+End LPRFuncs.
