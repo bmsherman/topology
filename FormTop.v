@@ -33,7 +33,7 @@ Definition down (a b c : S) : Prop :=
     Definition of when the [Cov] relation is indeed a formal cover.
     Here, the [Cov] relation means the little triangle that is
     seen in the literature. *)
-Record t { Cov : S -> (S -> Prop) -> Prop } :=
+Class t { Cov : S -> (S -> Prop) -> Prop } :=
   { refl : forall (a : S) (U : S -> Prop), U a -> Cov a U
   ; trans : forall (a : S) (U V : S -> Prop), 
        Cov a U 
@@ -64,9 +64,8 @@ Lemma monotone : t Cov
   , (forall a : S, U a -> V a)
   -> forall a, Cov a U -> Cov a V.
 Proof.
-intros. eapply trans. eassumption. eassumption.
+intros. eapply trans. eassumption.
 intros. apply H0 in H2. eapply refl. eassumption.
-assumption.
 Qed.
 
 Lemma subset_equiv : t Cov
@@ -782,56 +781,59 @@ End Product.
     definitions because these were not good enough.
 *)
 
-(*WIP : Still need to update
 Module Cont.
+Generalizable All Variables.
+
 Section Cont.
 
-Record t {S} {CovS : S -> (S -> Prop) -> Prop} 
-  {T} {POT : PO.t T}
-  {CovT : T -> (T -> Prop) -> Prop}
- {F : S -> T -> Prop} : Prop :=
-  { here : forall s, exists t, F s t
-  ; local : forall a b c, F a b -> F a c
-    -> exists bc, F a bc /\ FormTop.down POT b c bc
-  ; cov : forall a b V, F a b -> CovT b V
+Context {S} `{POS : PO.t S leS eqS}.
+Context {T} `{POT : PO.t T leT eqT}.
+
+Context {CovS : S -> (S -> Prop) -> Prop}.
+Context {CovT : T -> (T -> Prop) -> Prop}.
+
+Record t {F : S -> T -> Prop} : Prop :=
+  { here : forall a, CovS a (fun s => exists t, F s t)
+  ; local : forall {a b c}, F a b -> F a c
+    -> CovS a (fun s => exists bc, F s bc /\ FormTop.down (le := leT) b c bc)
+  ; cov : forall {a b} V, F a b -> CovT b V
     -> CovS a (fun s => exists t, V t /\ F s t)
+ (* ; trans : forall a b U, CovS a U -> (forall x, U x -> F x b) -> F a b *)
   }.
 
-Arguments t {S} CovS {T} POT CovT F.
+Arguments t F : clear implicits.
 
-Lemma le_left {S} {POS : PO.t S} {CovS : S -> (S -> Prop) -> Prop}
-  {T} {POT : PO.t T} {CovT : T -> (T -> Prop) -> Prop}
-  : FormTop.t POS CovS
-  -> FormTop.t POT CovT
-  -> forall (F : S -> T -> Prop), t CovS POT CovT F
-  -> forall a b u, PO.le POS a b -> F b u -> F a u.
+End Cont.
+
+Arguments t {S} {T} leT CovS CovT F : clear implicits.
+
+Section Morph.
+
+Context {S} `{POS : PO.t S leS eqS}.
+Context {T} `{POT : PO.t T leT eqT}.
+Context {U} `{POU : PO.t U leU eqU}.
+Context `{FTS : FormTop.t S leS CovS}.
+Context `{FTT : FormTop.t T leT CovT}.
+Context `{FTU : FormTop.t U leU CovU}.
+
+Definition id (s t : S) := CovS s (fun t' => t = t').
+
+Theorem t_id : FormTop.t leS CovS -> t leS CovS CovS id.
 Proof.
-intros.
-assert (CovT u (fun u' => u = u')).
-eapply FormTop.refl. eassumption. reflexivity.
-pose proof (cov H1 _ _ _ H3 H4).
-simpl in H5.
-assert (CovS b (fun a' => F a' u)).
-eapply FormTop.monotone. eassumption. 2:apply H5.
-intros a'. simpl. intros. destruct H6.
-destruct H6. induction H6. assumption.
-assert (CovS a (fun a' => F a' u)).
-eapply (FormTop.le_left _ H). eassumption. assumption.
-Abort.
-
-Definition id {S} (POS : PO.t S)
-  (s t : S) := PO.le POS s t.
-
-Theorem t_id {S} {POS : PO.t S} {CovS : S -> (S -> Prop) -> Prop} 
-  : FormTop.t POS CovS -> t CovS POS CovS (id POS).
-Proof.
-intros. constructor; intros.
-- exists s. unfold id. apply PO.le_refl.
-- unfold id in *. exists a. split. apply PO.le_refl.
-  split; assumption.
-- unfold id in *. eapply FormTop.le_left. eassumption. 
-  eassumption. eapply (FormTop.monotone POS CovS H). 2: eassumption. 
-  intros. exists a0. split. assumption. apply PO.le_refl. 
+intros. constructor; intros; unfold id in *.
+- eapply FormTop.refl. exists a. apply FormTop.refl. 
+  reflexivity. 
+- pose proof (FormTop.le_right a _ _ H0 H1).
+  refine (FormTop.monotone _ _ _ _ _ _ H2).
+  simpl. intros. 
+  destruct H3 as [u [v [bu [cv down]]]].
+  exists a0. subst. split. apply FormTop.refl. reflexivity.
+  assumption.
+- eapply FormTop.trans. apply H0. simpl. intros.
+  subst. refine (FormTop.monotone _ _ _ _ _ _ H1).
+  simpl. intros. exists a0. split. assumption.
+  apply FormTop.refl. reflexivity.
+(*- eapply FormTop.trans. apply H0. apply H1. *)
 Qed.
 
 (*
@@ -841,51 +843,69 @@ iff there is some subset T such that
   everything in T maps to u
 *)
 
-Variable S T : Type.
-
-Variable CovS : S -> (S -> Prop) -> Prop.
-Variable POS : PO.t S.
-Variable CovS_ok : FormTop.t POS CovS.
-
-Variable CovT : T -> (T -> Prop) -> Prop.
-Variable POT : PO.t T.
-Variable CovT_ok : FormTop.t POT CovT.
-
-Variable U : Type.
-Variable CovU : U -> (U -> Prop) -> Prop.
-Variable POU : PO.t U.
-Variable CovU_ok : FormTop.t POU CovU.
-
 Definition compose (F : S -> T -> Prop)
   (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
     exists t, F s t /\ G t u.
 
 
 Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
-    t CovS POT CovT F
-  -> t CovT POU CovU G
-  -> t CovS POU CovU (compose F G).
+    t leT CovS CovT F
+  -> t leU CovT CovU G
+  -> t leU CovS CovU (compose F G).
 Proof.
 intros. constructor.
-- intros. pose proof (here H s). destruct H1.
-  pose proof (here H0 x). destruct H2.
-  exists x0. unfold compose. exists x. split; assumption.
-- unfold compose. intros.
-  destruct H1 as [tb [Fatb Gtbb]].
-  destruct H2 as [tc [Fatc Gtcc]].
-  pose proof (local H _ _ _ Fatb Fatc).
-  destruct H1 as [tt' [Fatt' downtt']].
-  pose proof (here H0 tt').
-  destruct H1. 
+- intros. pose proof (here H a).
+  eapply FormTop.trans. eassumption.
+  simpl. intros. destruct H2. 
+  pose proof (here H0 x).
+  pose proof (cov H _ H2 H3).
+  refine (FormTop.monotone _ _ _ _ _ _ H4).
+  intros. destruct H5 as [t1 [[u Gt1u] Fa0t1]].
+  exists u. unfold compose. exists t1. split; assumption.
+- intros. unfold compose in *.
+  destruct H1 as [t1 [Fat1 Gt1b]]. 
+  destruct H2 as [t2 [Fat2 Gt2b]].
+  pose proof (local H Fat1 Fat2). 
+  eapply FormTop.trans. apply H1.
+  simpl. intros. destruct H2 as [bc [Fa'bc down]].
 
-  exists x. split. 
-  exists tt'. split; assumption. 
+  apply (FormTop.monotone _ FTS)
+  with (fun s => exists t' : T, (exists bc' : U, @FormTop.down _ leU b c bc' /\ G t' bc')
+   /\ F s t'). firstorder.
+  apply (cov H _ Fa'bc).
+  (** I'm pretty sure it's right up until this point! *)
+  destruct down.
+
+  assert (CovT bc (fun t' => G t' b)).
+  apply FormTop.le_left with t1. assumption.
+  pose proof (cov H0 (fun u => u = b) Gt1b).
+  eapply (FormTop.monotone _ FTT).
+  2:apply H4. simpl. intros. destruct H5 as [u [ub Gub]]. 
+  subst. assumption. apply FormTop.refl. reflexivity.
+
+  assert (CovT bc (fun t' => G t' c)).
+  apply FormTop.le_left with t2. assumption.
+  pose proof (cov H0 (fun u => u = c) Gt2b).
+  eapply (FormTop.monotone _ FTT).
+  2:apply H5. simpl. intros. destruct H6 as [u [uc Guc]]. 
+  subst. assumption. apply FormTop.refl. reflexivity. 
+
+  pose proof (FormTop.le_right bc _ _ H4 H5). simpl in H6.
+  eapply FormTop.trans. apply H6. simpl.
+  intros.
   admit.
-- intros. unfold compose in H1. 
+ 
+
+- unfold compose. intros.
   destruct H1 as [t [Fat Gtb]].
+  apply (FormTop.monotone _ FTS)
+    with (fun s => exists t1 : T, (exists u : U, V u /\ G t1 u) /\ F s t1).
+  firstorder.
+  apply (cov H _ Fat).
+  apply (cov H0 _ Gtb). assumption.
+
 Abort.
   
 
+End Morph.
 End Cont.
-End Cont.
-*)
