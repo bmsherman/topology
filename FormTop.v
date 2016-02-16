@@ -794,8 +794,9 @@ Context {CovT : T -> (T -> Prop) -> Prop}.
 
 Record t {F : S -> T -> Prop} : Prop :=
   { here : forall a, CovS a (fun s => exists t, F s t)
-  ; local : forall {a b c}, F a b -> F a c
-    -> CovS a (fun s => exists bc, F s bc /\ FormTop.down (le := leT) b c bc)
+  ; local : forall {a ab ac b c}, @FormTop.down _ leS ab ac a
+    -> F ab b -> F ac c
+    -> CovS a (fun s => exists bc, @FormTop.down _ leT b c bc /\ F s bc)
   ; cov : forall {a b} V, F a b -> CovT b V
     -> CovS a (fun s => exists t, V t /\ F s t)
  (* ; trans : forall a b U, CovS a U -> (forall x, U x -> F x b) -> F a b *)
@@ -805,7 +806,7 @@ Arguments t F : clear implicits.
 
 End Cont.
 
-Arguments t {S} {T} leT CovS CovT F : clear implicits.
+Arguments t {S} leS {T} leT CovS CovT F : clear implicits.
 
 Section Morph.
 
@@ -816,24 +817,15 @@ Context `{FTS : FormTop.t S leS CovS}.
 Context `{FTT : FormTop.t T leT CovT}.
 Context `{FTU : FormTop.t U leU CovU}.
 
-Definition id (s t : S) := CovS s (fun t' => t = t').
+Definition id (s t : S) := s = t.
 
-Theorem t_id : FormTop.t leS CovS -> t leS CovS CovS id.
+Theorem t_id : FormTop.t leS CovS -> t leS leS CovS CovS id.
 Proof.
 intros. constructor; intros; unfold id in *.
-- eapply FormTop.refl. exists a. apply FormTop.refl. 
-  reflexivity. 
-- pose proof (FormTop.le_right a _ _ H0 H1).
-  refine (FormTop.monotone _ _ _ _ _ _ H2).
-  simpl. intros. 
-  destruct H3 as [u [v [bu [cv down]]]].
-  exists a0. subst. split. apply FormTop.refl. reflexivity.
-  assumption.
-- eapply FormTop.trans. apply H0. simpl. intros.
-  subst. refine (FormTop.monotone _ _ _ _ _ _ H1).
-  simpl. intros. exists a0. split. assumption.
-  apply FormTop.refl. reflexivity.
-(*- eapply FormTop.trans. apply H0. apply H1. *)
+- eapply FormTop.refl. exists a. reflexivity.
+- subst. apply FormTop.refl. exists a. tauto.
+- subst. refine (FormTop.monotone _ _ _ _ _ _ H1).
+  firstorder.
 Qed.
 
 (*
@@ -849,9 +841,9 @@ Definition compose (F : S -> T -> Prop)
 
 
 Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
-    t leT CovS CovT F
-  -> t leU CovT CovU G
-  -> t leU CovS CovU (compose F G).
+    t leS leT CovS CovT F
+  -> t leT leU CovT CovU G
+  -> t leS leU CovS CovU (compose F G).
 Proof.
 intros. constructor.
 - intros. pose proof (here H a).
@@ -863,39 +855,17 @@ intros. constructor.
   intros. destruct H5 as [t1 [[u Gt1u] Fa0t1]].
   exists u. unfold compose. exists t1. split; assumption.
 - intros. unfold compose in *.
-  destruct H1 as [t1 [Fat1 Gt1b]]. 
-  destruct H2 as [t2 [Fat2 Gt2b]].
-  pose proof (local H Fat1 Fat2). 
-  eapply FormTop.trans. apply H1.
-  simpl. intros. destruct H2 as [bc [Fa'bc down]].
-
+  intros. 
+  destruct H2 as [t1 [Fat1 Gt1b]]. 
+  destruct H3 as [t2 [Fat2 Gt2b]].
+  pose proof (local H H1 Fat1 Fat2).
+  eapply FormTop.trans. apply H2.
+  simpl. intros. destruct H3 as [bc [Fa'bc down]].
+  pose proof (local H0 Fa'bc Gt1b Gt2b).
   apply (FormTop.monotone _ FTS)
   with (fun s => exists t' : T, (exists bc' : U, @FormTop.down _ leU b c bc' /\ G t' bc')
    /\ F s t'). firstorder.
-  apply (cov H _ Fa'bc).
-  (** I'm pretty sure it's right up until this point! *)
-  destruct down.
-
-  assert (CovT bc (fun t' => G t' b)).
-  apply FormTop.le_left with t1. assumption.
-  pose proof (cov H0 (fun u => u = b) Gt1b).
-  eapply (FormTop.monotone _ FTT).
-  2:apply H4. simpl. intros. destruct H5 as [u [ub Gub]]. 
-  subst. assumption. apply FormTop.refl. reflexivity.
-
-  assert (CovT bc (fun t' => G t' c)).
-  apply FormTop.le_left with t2. assumption.
-  pose proof (cov H0 (fun u => u = c) Gt2b).
-  eapply (FormTop.monotone _ FTT).
-  2:apply H5. simpl. intros. destruct H6 as [u [uc Guc]]. 
-  subst. assumption. apply FormTop.refl. reflexivity. 
-
-  pose proof (FormTop.le_right bc _ _ H4 H5). simpl in H6.
-  eapply FormTop.trans. apply H6. simpl.
-  intros.
-  admit.
- 
-
+  apply (cov H _ down H3).
 - unfold compose. intros.
   destruct H1 as [t [Fat Gtb]].
   apply (FormTop.monotone _ FTS)
@@ -903,8 +873,7 @@ intros. constructor.
   firstorder.
   apply (cov H _ Fat).
   apply (cov H0 _ Gtb). assumption.
-
-Abort.
+Qed.
   
 
 End Morph.
