@@ -57,9 +57,7 @@ Record tPos { Cov : S -> (S -> Prop) -> Prop } {Pos : S -> Prop} :=
 
 Arguments tPos : clear implicits.
 
-Variable Cov : S -> (S -> Prop) -> Prop.
-
-Lemma monotone : t Cov
+Lemma monotone {Cov} : t Cov
   -> forall (U V : S -> Prop)
   , (forall a : S, U a -> V a)
   -> forall a, Cov a U -> Cov a V.
@@ -68,7 +66,7 @@ intros. eapply trans. eassumption.
 intros. apply H0 in H2. eapply refl. eassumption.
 Qed.
 
-Lemma subset_equiv : t Cov
+Lemma subset_equiv {Cov} : t Cov
   -> forall (U V : S -> Prop)
   , (forall a : S, U a <-> V a)
   -> forall a, Cov a U <-> Cov a V.
@@ -216,7 +214,6 @@ Module FormTopM.
 Generalizable All Variables.
 
 Section Defn.
-
 Context {S} {dotS : S -> S -> S}.
 
 Instance ops : MeetLat.Ops S :=
@@ -437,7 +434,6 @@ constructor.
   pose proof (MeetLat.min_idempotent a) as ida.
   simpl in ida. apply ida.
 Qed.
-
 End Defn.
 
 End FormTopM.
@@ -528,49 +524,42 @@ Section InfoBase.
 
 Generalizable All Variables.
 
-Context {S} `{commIdemSG : CommIdemSG.t S eq dot}.
+Context {S : Type}.
 
-Instance ops : MeetLat.Ops S := @CommIdemSG.ops _ eq dot.
-Instance ML : MeetLat.t S ops
-  := CommIdemSG.asMeetLat.
+Hypothesis ops : MeetLat.Ops S.
+Let dot := MeetLat.min. 
+Hypothesis ML : MeetLat.t S ops.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
 Definition Ix (s : S) : Type := { t : S & MeetLat.le s t }.
-Definition C (s : S) (s' : Ix s) s'' : Prop := projT1 s' = s''.
+Definition C (s : S) (s' : Ix s) s'' : Prop := MeetLat.eq (projT1 s') s''.
 
 (** This axiom set is localized. *)
-Definition loc : @FormTopM.localized S dot Ix C.
+Definition loc : @FormTop.localized S MeetLat.le Ix C.
 Proof.
-unfold FormTopM.localized. intros. simpl.
+pose proof (@PO.t_equiv _ _ _ MeetLat.PO) as eqEquiv.
+unfold FormTop.localized. intros. simpl.
 unfold Ix, C in *.
-destruct i.
-unfold FormTopM.dot in *.
-assert (MeetLat.le (MeetLat.min b c) (MeetLat.min b c)).
+destruct i. simpl.
+assert (MeetLat.le a a).
 apply PreO.le_refl.
-exists (existT _ (FormTopM.dot b c) H).
-intros.  simpl in *. unfold FormTopM.dot in *. destruct H0. 
+exists (existT _ a H0).
+intros.  simpl in *. 
 exists x. split. reflexivity.
-replace dot with MeetLat.min by reflexivity.
-apply (@PO.le_antisym _ MeetLat.le _ _).
-apply MeetLat.min_l.
-simpl.
-replace dot with MeetLat.min by reflexivity.
-rewrite MeetLat.min_assoc.
-rewrite !MeetLat.min_idempotent.
-rewrite MeetLat.min_assoc.
-rewrite MeetLat.min_idempotent.
-rewrite <- l at 2.
-rewrite MeetLat.min_assoc. reflexivity.
+split. 
+rewrite H1. apply PreO.le_refl.
+rewrite <- H1.
+eapply PreO.le_trans. eapply H. eassumption.
 Qed.
 
 (** The covering relation for information bases,
     which we derive from the axiom set above. *)
-Definition Cov := @FormTopM.GCov _ dot Ix C.
+Definition Cov := @FormTop.GCov _ MeetLat.le Ix C.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Definition isCov : @FormTopM.t _ dot Cov := 
-  FormTopM.GCov_formtop Ix C loc.
+Definition isCov : @FormTop.t _ MeetLat.le Cov := 
+  FormTop.GCov_formtop Ix C loc.
 
 End InfoBase.
 End InfoBase.
@@ -607,17 +596,29 @@ constructor; intros.
   apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
 Qed.
 
-Theorem lowerTop : MeetLat.t Qnn (@InfoBase.ops _ Qnnmin).
-Proof. 
-apply (@CommIdemSG.asMeetLat _ _ _ lowerCommSG).
+Definition ops : MeetLat.Ops Qnn := 
+  {| MeetLat.le := Qnnle ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmin |}.
+
+Instance QnnML : MeetLat.t Qnn ops.
+Proof.
+constructor. constructor. constructor. 
+- intros; apply Qnnle_refl.
+- intros. eapply Qnnle_trans; eassumption.
+- solve_proper.
+- intros; apply Qnnle_antisym; assumption.
+- solve_proper.
+- intros. constructor.
+  + apply Qnnmin_l.
+  + apply Qnnmin_r.
+  + intros. apply Qnnmin_le_both; assumption.
 Qed.
 
-Definition Ix := @InfoBase.Ix Qnn Qnnmin.
-Definition C := @InfoBase.C Qnn Qnnmin.
+Definition Ix := @InfoBase.Ix Qnn ops.
+Definition C := @InfoBase.C Qnn ops.
 
-Definition Cov := @InfoBase.Cov Qnn Qnnmin.
+Definition Cov := @InfoBase.Cov Qnn ops.
 
-Definition isCov := @InfoBase.isCov Qnn Qnnmin lowerCommSG.
+Definition isCov := @InfoBase.isCov Qnn ops QnnML.
 
 End LowerR.
 
@@ -810,7 +811,7 @@ Theorem isCov :
 Proof.
 intros HS HT.
 apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT) (prod_op eqS eqT) 
-  PO Cov Ix C (loc HS HT)).
+  PO Ix C (loc HS HT)).
 Qed.
   
 End Product.
@@ -864,7 +865,7 @@ Proof.
 intros. constructor; intros; unfold id in *.
 - eapply FormTop.refl. exists a. reflexivity.
 - subst. apply FormTop.refl. exists a. tauto.
-- subst. refine (FormTop.monotone _ _ _ _ _ _ H1).
+- subst. refine (FormTop.monotone _ _ _ _ _ H1).
   firstorder.
 Qed.
 
@@ -891,7 +892,7 @@ intros. constructor.
   simpl. intros. destruct H2. 
   pose proof (here H0 x).
   pose proof (cov H _ H2 H3).
-  refine (FormTop.monotone _ _ _ _ _ _ H4).
+  refine (FormTop.monotone _ _ _ _ _ H4).
   intros. destruct H5 as [t1 [[u Gt1u] Fa0t1]].
   exists u. unfold compose. exists t1. split; assumption.
 - intros. unfold compose in *.
@@ -902,13 +903,13 @@ intros. constructor.
   eapply FormTop.trans. apply H2.
   simpl. intros. destruct H3 as [bc [Fa'bc down]].
   pose proof (local H0 Fa'bc Gt1b Gt2b).
-  apply (FormTop.monotone _ FTS)
+  apply (FormTop.monotone _)
   with (fun s => exists t' : T, (exists bc' : U, @FormTop.down _ leU b c bc' /\ G t' bc')
    /\ F s t'). firstorder.
   apply (cov H _ down H3).
 - unfold compose. intros.
   destruct H1 as [t [Fat Gtb]].
-  apply (FormTop.monotone _ FTS)
+  apply (FormTop.monotone _)
     with (fun s => exists t1 : T, (exists u : U, V u /\ G t1 u) /\ F s t1).
   firstorder.
   apply (cov H _ Fat).
@@ -927,27 +928,25 @@ Require Import Qnn.
 Definition plus (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
   let (l, r) := addends in (l + r = sum)%Qnn.
 
-Definition le := @MeetLat.le _ (@InfoBase.ops _ Qnnmin).
+Definition prodCov := (@Product.Cov _ _ Qnnle Qnnle LowerR.Ix LowerR.Ix LowerR.C LowerR.C).
 
-Definition prodCov := (@Product.Cov _ _ le le LowerR.Ix LowerR.Ix LowerR.C LowerR.C).
-
-Theorem lowerR_loc : @FormTop.localized _ le LowerR.Ix LowerR.C.
+Theorem lowerR_loc : @FormTop.localized _ Qnnle LowerR.Ix LowerR.C.
 Proof.
-apply @FormTopM.localized_asFormTop. apply LowerR.lowerTop.
-apply (@InfoBase.loc Qnn Qnnmin LowerR.lowerCommSG).
+unfold LowerR.Ix, LowerR.C.
+apply (@InfoBase.loc Qnn LowerR.ops LowerR.QnnML).
 Qed.
 
-Theorem isCov_prodCov : FormTop.t (prod_op le le) prodCov.
+Theorem isCov_prodCov : FormTop.t (prod_op Qnnle Qnnle) prodCov.
 Proof.
 unfold prodCov.
 eapply Product.isCov.
-apply (@MeetLat.PO _ _ LowerR.lowerTop).
-apply (@MeetLat.PO _ _ LowerR.lowerTop).
+apply (@MeetLat.PO _ _ LowerR.QnnML).
+apply (@MeetLat.PO _ _ LowerR.QnnML).
 apply lowerR_loc. apply lowerR_loc.
 Qed.
 
 Definition plus_cont_defn := 
-  Cont.t (prod_op le le) le 
+  Cont.t (prod_op Qnnle Qnnle) Qnnle 
   prodCov LowerR.Cov plus.
 
 Theorem plus_cont : plus_cont_defn.
@@ -966,3 +965,37 @@ constructor; intros.
 Abort. 
 
 End LPRFuncs.
+
+Module Bundled.
+
+(* Inductively-generated formal topology *)
+Record IGT : Type :=
+  { S : Type
+  ; le : S -> S -> Prop
+  ; eq : S -> S -> Prop
+  ; PO : PO.t S le eq
+  ; Ix : S -> Type
+  ; C : forall s, Ix s -> (S -> Prop)
+  ; localized : @FormTop.localized _ le Ix C
+  }.
+
+Definition Cov (X : IGT) := @FormTop.GCov _ (le X) (Ix X) (C X).
+
+Instance IGTFT {X : IGT} : FormTop.t (le X) (Cov X) :=
+  @FormTop.GCov_formtop _ _ _ (PO X) _ _ (localized X).
+
+Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
+  (ML : MeetLat.t A ops) : IGT :=
+  {| S := A
+  ; PO := MeetLat.PO
+  ; localized := @InfoBase.loc _ _ ML
+  |}.
+
+Definition One : IGT := InfoBase MeetLat.one.
+
+Definition times (A B : IGT) : IGT :=
+  {| S := S A * S B
+  ; PO := @Product.PO (S A) (S B) (le A) (eq A) (PO A) (le B) (eq B) (PO B)
+  ; localized := @Product.loc (S A) (S B) _ _ (PO A) _ _ (PO B) 
+           (Ix A) (Ix B) (C A) (C B) (localized A) (localized B)
+  |}.
