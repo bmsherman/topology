@@ -22,7 +22,7 @@ Section Defn.
 
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Context {S} {le eq} {PO : PO.t S le eq}.
+Context {S} {le} {PO : PreO.t S le}.
 
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
@@ -62,8 +62,7 @@ Lemma monotone {Cov} : t Cov
   , (forall a : S, U a -> V a)
   -> forall a, Cov a U -> Cov a V.
 Proof.
-intros. eapply trans. eassumption.
-intros. apply H0 in H2. eapply refl. eassumption.
+intros. eauto using trans, refl.
 Qed.
 
 Lemma subset_equiv {Cov} : t Cov
@@ -249,8 +248,7 @@ Lemma monotone {Cov} : t Cov
   , (forall a : S, U a -> V a)
   -> forall a, Cov a U -> Cov a V.
 Proof.
-intros. eapply trans. eassumption.
-intros. apply H0 in H2. eapply refl. eassumption.
+intros. eauto using trans, refl.
 Qed.
 
 Lemma subset_equiv {Cov} : t Cov
@@ -746,8 +744,8 @@ Generalizable All Variables.
 Section Product.
 
 Variable S T : Type.
-Context `{POS : PO.t S leS eqS}. 
-Context `{POT : PO.t T leT eqT}.
+Context `{POS : PreO.t S leS}. 
+Context `{POT : PreO.t T leT}.
 Variable IS : S -> Type.
 Variable IT : T -> Type.
 Variable CS : forall s, IS s -> (S -> Prop).
@@ -764,7 +762,7 @@ Definition C (p : S * T) : Ix p -> S * T -> Prop
     end
   end.
 
-Definition PO := PO.product POS POT.
+Definition PO := PreO.product POS POT.
 
 Theorem loc : 
     @FormTop.localized S leS IS CS
@@ -810,7 +808,7 @@ Theorem isCov :
   -> FormTop.t (prod_op leS leT) Cov.
 Proof.
 intros HS HT.
-apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT) (prod_op eqS eqT) 
+apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT)
   PO Ix C (loc HS HT)).
 Qed.
   
@@ -827,8 +825,8 @@ Generalizable All Variables.
 
 Section Cont.
 
-Context {S} `{POS : PO.t S leS eqS}.
-Context {T} `{POT : PO.t T leT eqT}.
+Context {S} `{POS : PreO.t S leS}.
+Context {T} `{POT : PreO.t T leT}.
 
 Context {CovS : S -> (S -> Prop) -> Prop}.
 Context {CovT : T -> (T -> Prop) -> Prop}.
@@ -851,23 +849,24 @@ Arguments t {S} leS {T} leT CovS CovT F : clear implicits.
 
 Section Morph.
 
-Context {S} `{POS : PO.t S leS eqS}.
-Context {T} `{POT : PO.t T leT eqT}.
-Context {U} `{POU : PO.t U leU eqU}.
+Context {S} `{POS : PreO.t S leS}.
 Context `{FTS : FormTop.t S leS CovS}.
-Context `{FTT : FormTop.t T leT CovT}.
-Context `{FTU : FormTop.t U leU CovU}.
 
 Definition id (s t : S) := s = t.
 
-Theorem t_id : FormTop.t leS CovS -> t leS leS CovS CovS id.
+Theorem t_id : t leS leS CovS CovS id.
 Proof.
-intros. constructor; intros; unfold id in *.
+constructor; intros; unfold id in *.
 - eapply FormTop.refl. exists a. reflexivity.
 - subst. apply FormTop.refl. exists a. tauto.
-- subst. refine (FormTop.monotone _ _ _ _ _ H1).
+- subst. refine (FormTop.monotone FTS _ _ _ _ H0).
   firstorder.
 Qed.
+
+Context {T} `{POT : PreO.t T leT}.
+Context {U} `{POU : PreO.t U leU}.
+Context `{FTT : FormTop.t T leT CovT}.
+Context `{FTU : FormTop.t U leU CovU}.
 
 (*
 Everything in s maps to u
@@ -915,9 +914,109 @@ intros. constructor.
   apply (cov H _ Fat).
   apply (cov H0 _ Gtb). assumption.
 Qed.
-  
 
 End Morph.
+
+Section Products. 
+Context {S} `{POS : PreO.t S leS}.
+Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
+Variable locS : @FormTop.localized _ leS IS CS.
+Let CovS := @FormTop.GCov _ leS IS CS.
+
+Definition diagonal (p : S) (out : S * S) : Prop :=
+  let (out1, out2) := out in leS p out1 /\ leS p out2.
+
+Lemma t_diagonal : t leS (prod_op leS leS)
+  CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
+Proof.
+pose proof (FormTop.GCov_formtop IS CS locS) as FTS.
+constructor; intros; unfold diagonal, CovS in *.
+- apply FormTop.refl. exists (a, a). split; apply PreO.le_refl.
+- destruct b, c. destruct H, H0, H1. subst. subst.
+  apply FormTop.refl. exists (a, a). split.
+  split; split; eauto using PreO.le_trans. 
+  split; apply PreO.le_refl.
+- generalize dependent a. induction H0; intros.
+  + apply FormTop.refl. exists a. 
+    split. assumption. assumption. 
+  + apply IHGCov. destruct a, b, H. simpl in *. 
+    destruct H1. split; eauto using PreO.le_trans.
+  + destruct a. simpl in *. destruct H1. destruct i.
+    * destruct p. unfold FormTop.localized in locS. 
+      specialize (locS a0 s H1 i).
+      destruct locS.
+      apply FormTop.ginfinity with x.
+      intros.
+      specialize (H3 _ H4).
+      destruct H3. destruct H3. 
+      apply H0 with (x0, s0).
+      auto. destruct H5. eauto using PreO.le_trans.
+    * destruct p. unfold FormTop.localized in locS. 
+      specialize (locS a0 s0 H2 i).
+      destruct locS.
+      apply FormTop.ginfinity with x.
+      intros.
+      specialize (H3 _ H4).
+      destruct H3. destruct H3. 
+      apply H0 with (s, x0).
+      auto. destruct H5. eauto using PreO.le_trans.
+Qed.
+  
+
+Context {T} `{POT : PreO.t T leT}.
+Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
+Variable locT : @FormTop.localized _ leT IT CT.
+Let CovT := @FormTop.GCov _ leT IT CT.
+
+Definition proj_L (p : S * T) (out : S) : Prop :=
+  let (s1, t1) := p in s1 = out.
+
+Lemma t_proj_L : t (prod_op leS leT) leS 
+  (@Product.Cov _ _ leS leT IS IT CS CT) CovS proj_L.
+Proof.
+pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
+constructor; intros; unfold proj_L in *.
+- apply FormTop.refl. destruct a. exists s. reflexivity.
+- apply FormTop.refl. destruct a, ab, ac.
+  subst. exists s. destruct H. destruct H, H0.
+  simpl in *. split. split; assumption. reflexivity.
+- destruct a. subst.
+  induction H0. 
+  + apply FormTop.refl. exists a. firstorder.
+  + apply FormTop.le_left with (b, t0).
+    split. assumption. apply PreO.le_refl.
+    assumption.
+  + apply FormTop.ginfinity with (inl (i, t0)). 
+    intros. simpl in *. destruct u. destruct H1. 
+    specialize (H0 _ H1). subst.
+    apply H0.
+Qed.
+
+Definition proj_R (p : S * T) (out : T) : Prop :=
+  let (s1, t1) := p in t1 = out.
+
+Lemma t_proj_R : t (prod_op leS leT) leT 
+  (@Product.Cov _ _ leS leT IS IT CS CT) CovT proj_R.
+Proof.
+pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
+constructor; intros; unfold proj_R in *.
+- apply FormTop.refl. destruct a. exists t0. reflexivity.
+- apply FormTop.refl. destruct a, ab, ac.
+  subst. exists t0. destruct H. destruct H, H0.
+  simpl in *. split. subst. split; assumption. reflexivity.
+- destruct a. subst.
+  induction H0. 
+  + apply FormTop.refl. exists a. firstorder.
+  + apply FormTop.le_left with (s, b).
+    split. apply PreO.le_refl. simpl in H. assumption.
+    assumption.
+  + apply FormTop.ginfinity with (inr (s, i)). 
+    intros. simpl in *. destruct u. destruct H1. 
+    specialize (H0 _ H2). subst.
+    apply H0.
+Qed.
+
+End Products.
 End Cont.
 
 Arguments Cont.t {S} leS {T} leT CovS CovT F : clear implicits.
@@ -968,34 +1067,64 @@ End LPRFuncs.
 
 Module Bundled.
 
+Delimit Scope loc_scope with loc.
+Open Scope loc.
+
 (* Inductively-generated formal topology *)
-Record IGT : Type :=
-  { S : Type
-  ; le : S -> S -> Prop
-  ; eq : S -> S -> Prop
-  ; PO : PO.t S le eq
+Class IGT {S : Type} : Type :=
+  { le : S -> S -> Prop
+  ; PO : PreO.t S le
   ; Ix : S -> Type
   ; C : forall s, Ix s -> (S -> Prop)
   ; localized : @FormTop.localized _ le Ix C
   }.
 
-Definition Cov (X : IGT) := @FormTop.GCov _ (le X) (Ix X) (C X).
+Arguments IGT : clear implicits.
 
-Instance IGTFT {X : IGT} : FormTop.t (le X) (Cov X) :=
-  @FormTop.GCov_formtop _ _ _ (PO X) _ _ (localized X).
+Generalizable All Variables.
+
+Definition Cov `(X : IGT A) := @FormTop.GCov _ le Ix C.
+
+Instance IGTFT `(X : IGT A) : FormTop.t le (Cov X) :=
+  @FormTop.GCov_formtop _ _ PO _ _ localized.
 
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
-  (ML : MeetLat.t A ops) : IGT :=
-  {| S := A
-  ; PO := MeetLat.PO
+  (ML : MeetLat.t A ops) : IGT A :=
+  {| PO := PO.PreO
   ; localized := @InfoBase.loc _ _ ML
   |}.
 
-Definition One : IGT := InfoBase MeetLat.one.
+Definition One : IGT _ := InfoBase MeetLat.one.
 
-Definition times (A B : IGT) : IGT :=
-  {| S := S A * S B
-  ; PO := @Product.PO (S A) (S B) (le A) (eq A) (PO A) (le B) (eq B) (PO B)
-  ; localized := @Product.loc (S A) (S B) _ _ (PO A) _ _ (PO B) 
-           (Ix A) (Ix B) (C A) (C B) (localized A) (localized B)
+Definition times `(LA : IGT A) `(LB : IGT B) : IGT _ :=
+ let POA : PreO.t A _ := PO in let POB : PreO.t B _ := PO in
+  {| PO := Product.PO A B
+  ; localized := Product.loc _ _ _ _ _ _ localized localized
   |}.
+
+Infix "**" := times (at level 80) : loc_scope.
+
+Record cmap `{LA : IGT A} `{LB : IGT B} : Type :=
+  { mp : A -> B -> Prop
+  ; mp_ok : Cont.t le le (Cov LA) (Cov LB) mp
+  }.
+
+Arguments cmap {A} LA {B} LB : clear implicits.
+
+Infix "~>" := cmap (at level 60) : loc_scope.
+
+Definition id `{LA : IGT A} : LA ~> LA := 
+  let POS : PreO.t A _ := PO in
+  {| mp := Cont.id
+  ; mp_ok := Cont.t_id |}.
+
+Definition compose `{LA : IGT A} 
+  `{LB : IGT B} `{LD : IGT D} (f : LA ~> LB) (g : LB ~> LD) : LA ~> LD :=
+  let POA : PreO.t A _ := PO in 
+  let POB : PreO.t B _ := PO in 
+   let POD : PreO.t D _ := PO in
+  {| mp := Cont.compose (mp f) (mp g)
+  ; mp_ok := Cont.t_compose (mp f) (mp g) (mp_ok f) (mp_ok g)
+  |}.
+
+End Bundled.
