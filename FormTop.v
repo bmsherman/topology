@@ -802,16 +802,68 @@ Qed.
 
 Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
 
-Theorem isCov :
-   @FormTop.localized S leS IS CS
-  -> @FormTop.localized T leT IT CT
-  -> FormTop.t (prod_op leS leT) Cov.
+Hypothesis locS : @FormTop.localized S leS IS CS.
+Hypothesis locT : @FormTop.localized T leT IT CT.
+
+Theorem isCov : FormTop.t (prod_op leS leT) Cov.
 Proof.
-intros HS HT.
 apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT)
-  PO Ix C (loc HS HT)).
+  PO Ix C (loc locS locT)).
 Qed.
-  
+
+Let CovS := @FormTop.GCov S leS IS CS.
+Let CovT := @FormTop.GCov T leT IT CT.
+
+Lemma factors : forall a b U V, CovS a U -> CovT b V -> 
+  Cov (a, b) (fun p => let (a', b') := p in U a' /\ V b').
+Proof.
+intros. induction H.
+- induction H0.
+  + apply FormTop.grefl. split; assumption.
+  + eapply FormTop.gle_left. 2:apply IHGCov.
+    split; simpl. apply PreO.le_refl. assumption.
+  + apply FormTop.ginfinity with (inr (a, i)).
+    intros. simpl in H2. destruct u. destruct H2. 
+    subst. apply H1. assumption.
+- apply FormTop.gle_left with (b0, b). split; simpl.
+  assumption. apply PreO.le_refl.
+  apply IHGCov.
+- apply FormTop.ginfinity with (inl (i, b)).
+  intros. simpl in H2. destruct u. destruct H2. 
+  subst. apply H1. assumption.
+Qed.
+
+Lemma unfactors1 : forall ab U, Cov ab U
+  -> CovS (fst ab) (fun s => exists b', U (s, b')).
+Proof.
+intros. induction H.
+- apply FormTop.grefl. destruct a. exists t. assumption.
+- destruct a, b, H. simpl in *. 
+  apply FormTop.gle_left with s0. assumption.
+  assumption.
+- destruct a. destruct i.
+  + destruct p. apply FormTop.ginfinity with i.
+    intros. apply (H0 (u, t)). simpl. simpl in H1.
+    intuition.
+  + destruct p. simpl.
+Admitted.
+
+Lemma unfactors2 : forall ab U, Cov ab U
+  -> CovT (snd ab) (fun t' => exists a', U (a', t')).
+Proof.
+intros. induction H.
+- apply FormTop.grefl. destruct a. exists s. assumption.
+- destruct a, b, H. simpl in *. 
+  apply FormTop.gle_left with t0. assumption.
+  assumption.
+- destruct a. destruct i.
+  + destruct p. simpl. admit.
+  + destruct p. apply FormTop.ginfinity with i.
+    intros. apply (H0 (s, u)). simpl. simpl in H1.
+    intuition.
+Admitted.
+
+
 End Product.
 End Product.
 
@@ -1016,10 +1068,157 @@ constructor; intros; unfold proj_R in *.
     apply H0.
 Qed.
 
+Context {A} `{POA : PreO.t A leA}.
+Context {IA} {CA : forall (t : A), IA t -> (A -> Prop)}.
+Variable locA : @FormTop.localized _ leA IA CA.
+Let CovA := @FormTop.GCov _ leA IA CA.
+
+Context {B} `{POB : PreO.t B leB}.
+Context {IB} {CB : forall (t : B), IB t -> (B -> Prop)}.
+Variable locB : @FormTop.localized _ leB IB CB.
+Let CovB := @FormTop.GCov _ leB IB CB.
+
+Definition parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
+  (p : S * T) (out : A * B) : Prop :=
+  let (s, t) := p in let (a, b) := out in
+   F s a /\ G t b.
+
+Theorem t_parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
+  : t leS leA CovS CovA F
+  -> t leT leB CovT CovB G
+  -> t (prod_op leS leT) (prod_op leA leB)
+      (@Product.Cov _ _ leS leT IS IT CS CT)
+      (@Product.Cov _ _ leA leB IA IB CA CB)
+      (parallel F G).
+Proof.
+intros ContF ContG.
+constructor; intros; unfold parallel in *.
+- apply FormTop.gmonotone with
+  (fun s : S * T => let (s', t') := s in 
+  (fun s'' => exists a, F s'' a) s' /\ (fun t'' => exists b, G t'' b) t').
+  intros. destruct a, u. 
+  destruct H as ((? & ?) & (? & ?)). exists (x, x0).
+  intuition. destruct a. apply Product.factors; try assumption.
+  apply (here ContF). apply (here ContG).
+- destruct ab, ac, b, c.
+  destruct a. unfold FormTop.down, prod_op. simpl.
+  apply FormTop.gmonotone with
+  (fun s2 : S * T => let (s', t') := s2 in
+  (fun s'' => exists a' : A, @FormTop.down _ leA a0 a1 a' /\ F s'' a') s'
+  /\
+  (fun t'' => exists b' : B, @FormTop.down _ leB b b0 b' /\ G t'' b') t'
+  ).
+  intros. destruct u.
+  unfold FormTop.down in H2.
+  destruct H2 as ((? & (? & ?) & ?) & (? & (? & ?) & ?)).
+  exists (x, x0). intuition.
+  apply Product.factors; try assumption.
+  + destruct H. unfold prod_op in H, H2. simpl in H, H2.
+    intuition.
+    eapply (local ContF); try eassumption. split; assumption.
+  + destruct H. unfold prod_op in H, H2. simpl in H, H2.
+    intuition.
+    eapply (local ContG); try eassumption. split; assumption.
+- destruct a, b. destruct H.
+  pose proof (fun U => cov ContF U H).
+  pose proof (fun U => cov ContG U H1).
+  pose proof (Product.unfactors1 _ _ _ _ _ _ locA locB _ _ H0).
+  pose proof (Product.unfactors2 _ _ _ _ _ _ locA locB _ _ H0).
+  specialize (H2 _ H4).
+  specialize (H3 _ H5).
+
+  (** This is likely a misstep in the proof, and in fact we will
+      need to do something smarter. *)
+  apply FormTop.gmonotone with
+  (fun s0 : S * T => let (s', t') := s0 in
+  (fun s'' => exists a' : A, exists b' : B, V (a', b') /\ F s'' a') s'
+  /\
+  (fun t'' => exists b' : B, exists a' : A, V (a', b') /\ G t'' b') t'
+  ).
+  intros.  destruct u. 
+  destruct H6 as ((? & ? & ? & ?) & (? & ? & ? & ?)).
+  exists (x, x1). 
+  admit.
+
+  apply Product.factors; try assumption. 
+  eapply FormTop.gmonotone. 2:apply H2.
+  simpl. intros. firstorder.
+  eapply FormTop.gmonotone. 2:apply H3.
+  simpl. intros. firstorder.
+Admitted.
+
 End Products.
 End Cont.
 
 Arguments Cont.t {S} leS {T} leT CovS CovT F : clear implicits.
+
+Module Discrete.
+Section Discrete.
+
+Generalizable All Variables.
+
+Variable A : Type.
+Hypothesis deceq : forall (x y : A), {x = y} + {x <> y}.
+
+Inductive In (a : A) : option A -> Type :=
+  | MkIn : In a (Some a).
+
+Inductive LE : option A -> option A -> Prop :=
+  | LENone : forall b, LE None b
+  | LEEq : forall a, LE (Some a) (Some a).
+
+Instance PreOLE : PreO.t _ LE.
+Proof.
+constructor; intros.
+- destruct x; constructor.
+- destruct H. apply LENone.
+  assumption.
+Qed.
+
+Instance POLE : PO.t _ LE eq.
+Proof.
+constructor.
+- apply PreOLE.
+- repeat intro. subst. intuition.
+- intros. destruct H. inversion H0. reflexivity.
+  reflexivity.
+Qed.
+
+Let IxA := Concrete.Ix A (option A) In.
+Let CA := Concrete.C A (option A) In.
+Let CovA := @FormTop.GCov (option A) eq IxA CA.
+Let leA := (map_op (fun (s : option A) (x : A) => In x s)
+     (pointwise_op (fun (_ : A) (P Q : Prop) => P -> Q))).
+
+Context {S} `{POS : PreO.t S leS}.
+Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
+Variable locS : @FormTop.localized _ leS IS CS.
+Let CovS := @FormTop.GCov _ leS IS CS.
+
+Context {T} `{POT : PreO.t T leT}.
+Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
+Variable locT : @FormTop.localized _ leT IT CT.
+Let CovT := @FormTop.GCov _ leT IT CT.
+
+Definition discrF (f : A -> S -> T -> Prop)
+  (src : option A) (tgt : T) : Prop := match src with
+  | None => True
+  | Some src' => exists s, f src' s tgt
+  end.
+
+Theorem allCont : forall 
+  (f : A -> S -> T -> Prop),
+  (forall a, Cont.t leS leT CovS CovT (f a))
+  -> Cont.t leA leT CovA CovT (discrF f).
+Proof.
+intros.
+constructor.
+- intros. destruct a.
+  + unfold discrF.
+Abort.
+
+End Discrete.
+End Discrete.
 
 Module LPRFuncs.
 Require Import Qnn.
