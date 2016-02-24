@@ -170,7 +170,7 @@ Defined.
 Lemma unit_prob {A : Type} {x : A} : unit x (K True) = 1.
 Proof. apply LPRind_true. unfold K. constructor. Qed.
 
-Require Import Equalities Orders GenericMinMax.
+Require Import Equalities Coq.Structures.Orders GenericMinMax.
 
 (** Join semi-lattices, or directed sets. Natural numbers are
     one of many examples. We will often generalize sequences, which
@@ -793,11 +793,7 @@ unfold integral. apply LPReq_compat. split.
   admit.
 - apply LPRsup_le; intros simp;
   destruct simp as [s sle]; simpl.
-  apply LPRsup_ge2. eexists. rewrite undo_proj1sig.
-  rewrite (@map_SimpleIntegral _ _ s f). apply LPRle_refl.
-Unshelve.
-simpl. unfold SimpleEval, pointwise in *. intros a.
-rewrite map_SimpleIntegral. apply (sle (f a)).
+  apply LPRsup_ge2.
 Admitted.
 
 Lemma change_of_variables_val {A B : Type} (mu : Valuation A)
@@ -1606,7 +1602,7 @@ intros. generalize dependent k. induction n; intros.
   apply Lt.lt_S_n. apply Lt.lt_S. assumption.
 Qed.
 
-Require Import Alea.BinCoeff.
+Require Import alea.BinCoeff.
 
 (** Characterization of the probability mass function of the [binomial]
     distribution in the usual manner. *)

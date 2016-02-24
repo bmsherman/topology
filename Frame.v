@@ -203,8 +203,9 @@ Module PreO.
   Proof. constructor.
    - destruct x. split; apply le_refl.
    - unfold prod_op; intros. 
-     destruct x, y, z; simpl in *;
-     intuition; (eapply PreO.le_trans; eassumption).
+     destruct x, y, z; simpl in *.
+     destruct H, H0.
+     split; eapply PreO.le_trans; eassumption.
   Qed.
 
   (** Given a preorder on [B] and a function [f : A -> B],
@@ -1218,7 +1219,7 @@ Qed.
 *)
 Module Val.
 
-Require Import Equalities Orders GenericMinMax.
+Require Import Equalities Coq.Structures.Orders GenericMinMax.
 
 (** This describes the property of when a valuation is
     _continuous_. This condition is analagous to countable additivity
@@ -1227,7 +1228,7 @@ Require Import Equalities Orders GenericMinMax.
     of the subsets is the supremum of the measures of each of the
     subsets in the sequence. *)
 Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
-  := forall {I} `{JL : JoinLat.t I} (f : I -> A)
+  := forall I `{JL : JoinLat.t I} (f : I -> A)
        (fmono : forall (m n : I), JoinLat.le m n -> L.le (f m) (f n))
        , mu (F.sup f) = LPRsup (fun n => mu (f n)).
 

@@ -676,7 +676,7 @@ induction x.
 - simpl. rewrite IHx. ring.
 Qed.
 
-Require Import Clement.SmallPowers.
+Require Import clement.SmallPowers.
 Local Close Scope Qc.
 Local Close Scope Q.
 

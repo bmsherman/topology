@@ -1,6 +1,4 @@
--R . ""
--R clement Clement
--R alea Alea
+-R . Prob
 Iso.v
 Finite.v
 Valuation.v

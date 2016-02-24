@@ -215,11 +215,13 @@ Generalizable All Variables.
 Section Defn.
 Context {S} {dotS : S -> S -> S}.
 
-Instance ops : MeetLat.Ops S :=
+Definition ops : MeetLat.Ops S :=
   {| MeetLat.le := fun x y => dotS x y = x
    ; MeetLat.eq := eq
    ; MeetLat.min := dotS
   |}.
+
+Instance ops' : MeetLat.Ops S := ops.
 
 Definition le := MeetLat.le.
 Definition dot := MeetLat.min.
@@ -464,11 +466,13 @@ Context `{tA : t A eql dot}.
 
 (** Here we define a "<=" relation which makes the [dot] a
     [min] operation for a meet semi-lattice *)
-Instance ops : MeetLat.Ops A :=
+Definition ops : MeetLat.Ops A :=
   {| MeetLat.le := fun x y => eql (dot x y) x
    ; MeetLat.eq := eql
    ; MeetLat.min := dot
   |}.
+
+Instance ops' : MeetLat.Ops A := ops.
 
 (** Next, we prove successively, that these definitions using
     the [dot] operator indeed define a preorder, a partial order,
@@ -685,7 +689,7 @@ Definition S := list A.
 
 Definition Ix (s : S) := True.
 
-Require Import List.
+Require Import Coq.Lists.List.
 
 Definition C (s : S) (_ : True) (s' : S) : Prop := exists b,
   s' = s ++ (b :: nil).
@@ -846,6 +850,8 @@ intros. induction H.
     intros. apply (H0 (u, t)). simpl. simpl in H1.
     intuition.
   + destruct p. simpl.
+
+pose proof locS. pose proof locT.
 Admitted.
 
 Lemma unfactors2 : forall ab U, Cov ab U
@@ -857,7 +863,9 @@ intros. induction H.
   apply FormTop.gle_left with t0. assumption.
   assumption.
 - destruct a. destruct i.
-  + destruct p. simpl. admit.
+  + destruct p. simpl. 
+    pose proof locS. pose proof locT.
+    admit.
   + destruct p. apply FormTop.ginfinity with i.
     intros. apply (H0 (s, u)). simpl. simpl in H1.
     intuition.
@@ -867,11 +875,7 @@ Admitted.
 End Product.
 End Product.
 
-(** I intend to define continuous relations below! I had some code here,
-    but it broke when I updated to Coq 8.5, and I will probably rework the
-    definitions because these were not good enough.
-*)
-
+(** Continuous maps. *)
 Module Cont.
 Generalizable All Variables.
 
@@ -1122,8 +1126,8 @@ constructor; intros; unfold parallel in *.
 - destruct a, b. destruct H.
   pose proof (fun U => cov ContF U H).
   pose proof (fun U => cov ContG U H1).
-  pose proof (Product.unfactors1 _ _ _ _ _ _ locA locB _ _ H0).
-  pose proof (Product.unfactors2 _ _ _ _ _ _ locA locB _ _ H0).
+  pose proof (Product.unfactors1 _ _ _ _ _ _ _ _ H0).
+  pose proof (Product.unfactors2 _ _ _ _ _ _ _ _ H0).
   specialize (H2 _ H4).
   specialize (H3 _ H5).
 

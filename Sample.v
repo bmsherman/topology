@@ -114,7 +114,7 @@ apply functional_extensionality. intros. rewrite IHn. reflexivity.
 rewrite H. clear H.
 Admitted.
 
-Require Streams.
+Require Coq.Lists.Streams.
 
 Module S := Streams.
 
