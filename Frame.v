@@ -182,8 +182,18 @@ Module PreO.
   ; inf_greatest : forall m', (forall i, m' <= f i) -> m' <= m
   }.
 
+  (** A directed subset of [A] is one where every two
+      elements have a common upper bound. *)
+  Definition directed {I} (f : I -> A) :=
+    forall i j : I, exists k, f i <= k /\ f j <= k.
 
   End Facts.
+
+  Definition scott_cont `{tA : t A leA} 
+  `{tB : t B leB} (f : A -> B) :=
+  forall I (g : I -> A), @directed _ leA _ g
+  -> forall m, @sup _ leA _ g m 
+  -> @sup _ leB _ (fun i => f (g i)) (f m).
 
   (** [True], the one-element type, has a trivial preorder *)
   Definition one : t True (fun _ _ => True).

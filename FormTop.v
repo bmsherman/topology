@@ -22,7 +22,7 @@ Section Defn.
 
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Context {S} {le} {PO : PreO.t S le}.
+Context {S} {le : S -> S -> Prop} {PO : PreO.t S le}.
 
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
@@ -187,6 +187,39 @@ Qed.
 
 
 End Defn.
+
+Section Localize.
+
+Context {S : Type} {le : S -> S -> Prop}.
+Variable (PO : PreO.t S le).
+Variable (Ix : S -> Type) (C : forall s, Ix s -> (S -> Prop)).
+
+Definition IxL (a : S) := 
+  { i : sigT (fun c => Ix c) | match i with
+    | existT c k => le a c end }.
+
+Definition CL (a : S) : IxL a -> S -> Prop := 
+  fun i => match i with
+  | exist (existT c k) _ => fun z => exists u, C c k u /\ @down _ le a u z
+  end.
+
+Theorem Llocalized : @localized _ le IxL CL.
+Proof.
+unfold localized.
+intros. destruct i. simpl in *. destruct x.
+exists (exist (fun i' => match i' with existT c k => le a c end) 
+  (existT _ x i) (PreO.le_trans _ _ _ H y)).
+simpl. intros.
+destruct H0 as (u & Cxiu & downaus).
+exists s. split. exists u. split. assumption. unfold down in *.
+  destruct downaus.
+  split. eapply PreO.le_trans. apply H0. apply H.
+  assumption.
+  unfold down in *. destruct downaus.
+  split; [assumption | apply PreO.le_refl].
+Qed.
+
+End Localize.
 
 End FormTop.
 
@@ -560,7 +593,7 @@ Qed.
 Definition Cov := @FormTop.GCov _ MeetLat.le Ix C.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Definition isCov : @FormTop.t _ MeetLat.le Cov := 
+Instance isCov : @FormTop.t _ MeetLat.le Cov := 
   FormTop.GCov_formtop Ix C loc.
 
 End InfoBase.
@@ -636,7 +669,10 @@ Section Concrete.
 Variable X S : Type.
 Variable In : X -> S -> Prop.
 
-Instance SPO : PO.t S _ _ := PO.map (fun s x => In x s) (PO.subset X).
+Definition le := (map_op (fun (s : S) (x : X) => In x s)
+            (pointwise_op (fun (_ : X) (P Q : Prop) => P -> Q))).
+
+Instance SPO : PO.t S le _ := PO.map (fun s x => In x s) (PO.subset X).
 
 Record t : Type :=
   { here : forall x, { s | In x s }
@@ -1156,13 +1192,86 @@ End Cont.
 
 Arguments Cont.t {S} leS {T} leT CovS CovT F : clear implicits.
 
+Module InfoBaseCont.
+Section InfoBaseCont.
+Generalizable All Variables.
+Context {S} `{MLS : MeetLat.t S}.
+Context {T} `{MLT : MeetLat.t T}.
+
+
+Let CovS : S -> (S -> Prop) -> Prop := InfoBase.Cov _.
+Let CovT : T -> (T -> Prop) -> Prop := InfoBase.Cov _.
+
+
+Lemma sc_monotone : forall (f : S -> T),
+  PreO.scott_cont f ->
+  forall x y : S, MeetLat.le x y -> MeetLat.le (f x) (f y).
+Proof.
+intros. 
+unfold PreO.scott_cont in H.
+pose (g := fun b : bool => if b then x else y).
+specialize (H _ g).
+assert (@PreO.directed _ MeetLat.le _ g).
+unfold PreO.directed.
+intros.
+exists y. destruct i, j; simpl; split; 
+  assumption || apply PreO.le_refl.
+specialize (H H1 y).
+assert (@PreO.sup _ MeetLat.le _ g y).
+constructor.
+intros. destruct i; simpl. assumption. apply PreO.le_refl.
+intros. specialize (H2 false). simpl in H2.
+assumption.
+specialize (H H2).
+destruct H.
+specialize (sup_ge true). simpl in sup_ge.
+apply sup_ge.
+Qed.
+
+(** I have no idea whether this is in fact
+    a good definition *)
+Record t {F : S -> T -> Prop} :=
+  { le_left : forall a b c, MeetLat.le a b -> F b c -> F a c
+  ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
+  ; convergence : forall a b c, F a b -> F a c ->
+       exists d, @FormTop.down _ MeetLat.le b c d /\ F a d
+  ; here : forall s, exists t, F s t
+  }.
+
+Arguments t : clear implicits.
+
+Theorem cont : forall (F : S -> T -> Prop),
+  t F
+  -> Cont.t MeetLat.le MeetLat.le CovS CovT F.
+Proof.
+intros. constructor; intros.
+- apply FormTop.grefl. apply (here H).
+- apply FormTop.grefl.
+  destruct H0. 
+  apply convergence. assumption.
+  eapply le_left. eassumption. apply H0. assumption. 
+  eapply le_left. eassumption. apply H3. assumption.
+- induction H1. 
+  + apply FormTop.grefl. exists a0. split; assumption.
+  + apply IHGCov. eapply le_right. assumption.
+    eassumption. eassumption.
+  + destruct i.
+    apply (H2 x). unfold InfoBase.C. simpl. reflexivity. 
+    eapply le_right. assumption. eassumption. 
+    eassumption. 
+Qed.
+  
+
+
+End InfoBaseCont.
+End InfoBaseCont.
+
 Module Discrete.
 Section Discrete.
 
 Generalizable All Variables.
 
 Variable A : Type.
-Hypothesis deceq : forall (x y : A), {x = y} + {x <> y}.
 
 Inductive In (a : A) : option A -> Type :=
   | MkIn : In a (Some a).
@@ -1188,41 +1297,72 @@ constructor.
   reflexivity.
 Qed.
 
-Let IxA := Concrete.Ix A (option A) In.
-Let CA := Concrete.C A (option A) In.
-Let CovA := @FormTop.GCov (option A) eq IxA CA.
-Let leA := (map_op (fun (s : option A) (x : A) => In x s)
-     (pointwise_op (fun (_ : A) (P Q : Prop) => P -> Q))).
+Definition Ix := Concrete.Ix A (option A) In.
+Definition C := Concrete.C A (option A) In.
+Definition Cov := @FormTop.GCov (option A) eq Ix C.
 
-Context {S} `{POS : PreO.t S leS}.
-Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
-Variable locS : @FormTop.localized _ leS IS CS.
-Let CovS := @FormTop.GCov _ leS IS CS.
+End Discrete.
 
-Context {T} `{POT : PreO.t T leT}.
-Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
-Variable locT : @FormTop.localized _ leT IT CT.
-Let CovT := @FormTop.GCov _ leT IT CT.
+Section FinFunc.
 
-Definition discrF (f : A -> S -> T -> Prop)
-  (src : option A) (tgt : T) : Prop := match src with
-  | None => True
-  | Some src' => exists s, f src' s tgt
-  end.
+Variable (A B : Type).
 
-Theorem allCont : forall 
-  (f : A -> S -> T -> Prop),
-  (forall a, Cont.t leS leT CovS CovT (f a))
-  -> Cont.t leA leT CovA CovT (discrF f).
+Inductive discrF {f : A -> B} : option A -> option B -> Prop :=
+  | PreImg : forall a, discrF (Some a) (Some (f a))
+  | FNone : discrF None None. 
+
+Arguments discrF : clear implicits.
+
+Hint Constructors LE discrF.
+
+Hypothesis deceqB : forall (b b' : B), {b = b'} + {b <> b'}.
+Theorem fCont : forall (f : A -> B),
+  Cont.t (LE A) (LE B) (Cov A) (Cov B) (discrF f).
 Proof.
 intros.
-constructor.
-- intros. destruct a.
-  + unfold discrF.
+constructor; intros.
+- destruct a. 
+  + apply FormTop.grefl. exists (Some (f a)).
+    constructor.
+  + apply FormTop.grefl. exists None. constructor.
+- destruct H. destruct H, H2; destruct H0, H1;
+  try match goal with
+  | [ |- _ ] => solve[apply FormTop.grefl; exists None;
+      unfold FormTop.down; eauto]
+  end.
+  pose proof (@FormTop.ginfinity _ (LE A) (Ix A) (C A) (Some a)).
+  unfold C, Ix in H. 
 Abort.
 
+End FinFunc.
+
 End Discrete.
-End Discrete.
+
+Module ConcFunc.
+Section ConcFunc.
+Generalizable All Variables.
+Context {S} `{Conc1 : Concrete.t A S In1}.
+Context {T} `{Conc2 : Concrete.t B T In2}.
+
+Let leS := Concrete.le A S In1.
+Let CovS := @FormTop.GCov S leS
+   (Concrete.Ix A S In1) (Concrete.C A S In1).
+
+Let leT := Concrete.le B T In2.
+Let CovT := @FormTop.GCov T leT
+   (Concrete.Ix B T In2) (Concrete.C B T In2).
+
+Definition cmap (f : A -> B) (g : S -> T -> Prop) := 
+  forall (t : T) (a : A), In2 (f a) t <-> (exists s, g s t /\ In1 a s).
+
+Theorem cont : forall f g, cmap f g
+  -> Cont.t leS leT CovS CovT g.
+Proof.
+intros. unfold cmap in H. constructor; intros.
+Abort.
+
+End ConcFunc.
+End ConcFunc.
 
 Module LPRFuncs.
 Require Import Qnn.
