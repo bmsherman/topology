@@ -167,7 +167,7 @@ Qed.
 (** Theorem 3.6 of [1].
     In fact, the formal cover that we defined based on the axiom set 
     indeed satistifes the requirements of being a formal topology. *)
-Theorem GCov_formtop : t GCov.
+Instance GCov_formtop : t GCov.
 Proof.
 unfold localized in loc.
 constructor.
@@ -925,12 +925,11 @@ Context {CovT : T -> (T -> Prop) -> Prop}.
 
 Record t {F : S -> T -> Prop} : Prop :=
   { here : forall a, CovS a (fun s => exists t, F s t)
-  ; local : forall {a ab ac b c}, @FormTop.down _ leS ab ac a
-    -> F ab b -> F ac c
+  ; le_left : forall a b c, leS a c -> F c b -> F a b
+  ; local : forall {a b c}, F a b -> F a c
     -> CovS a (fun s => exists bc, @FormTop.down _ leT b c bc /\ F s bc)
   ; cov : forall {a b} V, F a b -> CovT b V
     -> CovS a (fun s => exists t, V t /\ F s t)
- (* ; trans : forall a b U, CovS a U -> (forall x, U x -> F x b) -> F a b *)
   }.
 
 Arguments t F : clear implicits.
@@ -944,15 +943,21 @@ Section Morph.
 Context {S} `{POS : PreO.t S leS}.
 Context `{FTS : FormTop.t S leS CovS}.
 
-Definition id (s t : S) := s = t.
+Definition id (s t : S) := leS s t.
 
 Theorem t_id : t leS leS CovS CovS id.
 Proof.
 constructor; intros; unfold id in *.
-- eapply FormTop.refl. exists a. reflexivity.
-- subst. apply FormTop.refl. exists a. tauto.
-- subst. refine (FormTop.monotone FTS _ _ _ _ H0).
-  firstorder.
+- eapply FormTop.refl. exists a. apply PreO.le_refl.
+- eapply PreO.le_trans; eassumption.
+- apply FormTop.refl. exists a. split.
+  split; eassumption. apply PreO.le_refl.
+- eapply FormTop.trans with (fun b' => b = b').
+  eapply FormTop.le_left. eassumption.
+  apply FormTop.refl. reflexivity. 
+  intros. subst. eapply FormTop.monotone. eassumption.
+  2:eassumption. intros. exists a0. split. assumption.
+  apply PreO.le_refl.
 Qed.
 
 Context {T} `{POT : PreO.t T leT}.
@@ -977,8 +982,8 @@ Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
   -> t leT leU CovT CovU G
   -> t leS leU CovS CovU (compose F G).
 Proof.
-intros. constructor.
-- intros. pose proof (here H a).
+intros. constructor; intros.
+- pose proof (here H a).
   eapply FormTop.trans. eassumption.
   simpl. intros. destruct H2. 
   pose proof (here H0 x).
@@ -986,18 +991,27 @@ intros. constructor.
   refine (FormTop.monotone _ _ _ _ _ H4).
   intros. destruct H5 as [t1 [[u Gt1u] Fa0t1]].
   exists u. unfold compose. exists t1. split; assumption.
-- intros. unfold compose in *.
+- unfold compose in *.
   intros. 
   destruct H2 as [t1 [Fat1 Gt1b]]. 
-  destruct H3 as [t2 [Fat2 Gt2b]].
-  pose proof (local H H1 Fat1 Fat2).
-  eapply FormTop.trans. apply H2.
-  simpl. intros. destruct H3 as [bc [Fa'bc down]].
-  pose proof (local H0 Fa'bc Gt1b Gt2b).
+  exists t1. split. eapply (le_left H). eassumption.
+  assumption. assumption.
+- unfold compose in *.
+  destruct H1 as [t1 [Fat1 Gt1b]]. 
+  destruct H2 as [t2 [Fat2 Gt2b]].
+  pose proof (local H Fat1 Fat2).
+  eapply FormTop.trans.
+  eassumption. simpl. intros.
+  destruct H2 as (tt & downtt & Fatt).
   apply (FormTop.monotone _)
-  with (fun s => exists t' : T, (exists bc' : U, @FormTop.down _ leU b c bc' /\ G t' bc')
-   /\ F s t'). firstorder.
-  apply (cov H _ down H3).
+  with (fun s => exists t' : T,
+    (fun t'' => exists bc : U, @FormTop.down _ leU b c bc /\ G t'' bc) t' 
+    /\ F s t'). firstorder.
+  eapply (cov H). eassumption.
+  destruct downtt.
+  apply (local H0).
+  eapply (le_left H0). eapply H2. eassumption.
+  eapply (le_left H0). eapply H3. eassumption.
 - unfold compose. intros.
   destruct H1 as [t [Fat Gtb]].
   apply (FormTop.monotone _)
@@ -1024,9 +1038,11 @@ Proof.
 pose proof (FormTop.GCov_formtop IS CS locS) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
 - apply FormTop.refl. exists (a, a). split; apply PreO.le_refl.
-- destruct b, c. destruct H, H0, H1. subst. subst.
-  apply FormTop.refl. exists (a, a). split.
-  split; split; eauto using PreO.le_trans. 
+- destruct b. destruct H0.
+  split; eauto using PreO.le_trans. 
+- destruct b, c. destruct H, H0.
+  apply FormTop.refl. exists (a, a).
+  split. split; unfold prod_op; simpl; split; assumption.
   split; apply PreO.le_refl.
 - generalize dependent a. induction H0; intros.
   + apply FormTop.refl. exists a. 
@@ -1061,51 +1077,63 @@ Variable locT : @FormTop.localized _ leT IT CT.
 Let CovT := @FormTop.GCov _ leT IT CT.
 
 Definition proj_L (p : S * T) (out : S) : Prop :=
-  let (s1, t1) := p in s1 = out.
+  let (s1, t1) := p in leS s1 out.
 
 Lemma t_proj_L : t (prod_op leS leT) leS 
   (@Product.Cov _ _ leS leT IS IT CS CT) CovS proj_L.
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_L in *.
-- apply FormTop.refl. destruct a. exists s. reflexivity.
-- apply FormTop.refl. destruct a, ab, ac.
-  subst. exists s. destruct H. destruct H, H0.
-  simpl in *. split. split; assumption. reflexivity.
-- destruct a. subst.
-  induction H0. 
+- apply FormTop.refl. destruct a. exists s. apply PreO.le_refl.
+- destruct c, a.  destruct H. simpl in H, H1. 
+  eapply PreO.le_trans; eassumption.
+- destruct a. apply FormTop.refl. 
+  exists s. split. split; assumption. apply PreO.le_refl. 
+- destruct a. generalize dependent s. induction H0; intros.
   + apply FormTop.refl. exists a. firstorder.
   + apply FormTop.le_left with (b, t0).
-    split. assumption. apply PreO.le_refl.
-    assumption.
-  + apply FormTop.ginfinity with (inl (i, t0)). 
-    intros. simpl in *. destruct u. destruct H1. 
-    specialize (H0 _ H1). subst.
-    apply H0.
+    split; simpl. eapply PreO.le_trans; eassumption. 
+    apply PreO.le_refl.
+    apply IHGCov. apply PreO.le_refl.
+  + unfold FormTop.localized in locS. 
+    specialize (locS _ _ H1 i).
+    destruct locS.
+    apply FormTop.ginfinity with (inl (x, t0)). 
+    intros. simpl in *. destruct u. destruct H3.
+    subst.
+    specialize (H2 _ H3). destruct H2 as (u & Caiu & downu).
+    eapply H0. eassumption.
+    destruct downu. assumption.
 Qed.
 
 Definition proj_R (p : S * T) (out : T) : Prop :=
-  let (s1, t1) := p in t1 = out.
+  let (s1, t1) := p in leT t1 out.
 
 Lemma t_proj_R : t (prod_op leS leT) leT 
   (@Product.Cov _ _ leS leT IS IT CS CT) CovT proj_R.
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_R in *.
-- apply FormTop.refl. destruct a. exists t0. reflexivity.
-- apply FormTop.refl. destruct a, ab, ac.
-  subst. exists t0. destruct H. destruct H, H0.
-  simpl in *. split. subst. split; assumption. reflexivity.
-- destruct a. subst.
-  induction H0. 
+- apply FormTop.refl. destruct a. exists t0. apply PreO.le_refl.
+- destruct c, a.  destruct H. simpl in H, H1. 
+  eapply PreO.le_trans; eassumption.
+- destruct a. apply FormTop.refl. 
+  exists t0. split. split; assumption. apply PreO.le_refl. 
+- destruct a. generalize dependent t0. induction H0; intros.
   + apply FormTop.refl. exists a. firstorder.
   + apply FormTop.le_left with (s, b).
-    split. apply PreO.le_refl. simpl in H. assumption.
-    assumption.
-  + apply FormTop.ginfinity with (inr (s, i)). 
-    intros. simpl in *. destruct u. destruct H1. 
-    specialize (H0 _ H2). subst.
-    apply H0.
+    split; simpl. apply PreO.le_refl. 
+    eapply PreO.le_trans; eassumption. 
+    apply IHGCov. apply PreO.le_refl.
+  + unfold FormTop.localized in locT. 
+    specialize (locT _ _ H1 i).
+    destruct locT.
+    apply FormTop.ginfinity with (inr (s, x)). 
+    intros. simpl in *. destruct u. destruct H3.
+    subst.
+    specialize (H2 _ H4). destruct H2 as (u & Caiu & downu).
+    eapply H0. eassumption.
+    destruct downu. assumption.
 Qed.
 
 Context {A} `{POA : PreO.t A leA}.
@@ -1140,51 +1168,14 @@ constructor; intros; unfold parallel in *.
   destruct H as ((? & ?) & (? & ?)). exists (x, x0).
   intuition. destruct a. apply Product.factors; try assumption.
   apply (here ContF). apply (here ContG).
-- destruct ab, ac, b, c.
-  destruct a. unfold FormTop.down, prod_op. simpl.
-  apply FormTop.gmonotone with
-  (fun s2 : S * T => let (s', t') := s2 in
-  (fun s'' => exists a' : A, @FormTop.down _ leA a0 a1 a' /\ F s'' a') s'
-  /\
-  (fun t'' => exists b' : B, @FormTop.down _ leB b b0 b' /\ G t'' b') t'
-  ).
-  intros. destruct u.
-  unfold FormTop.down in H2.
-  destruct H2 as ((? & (? & ?) & ?) & (? & (? & ?) & ?)).
-  exists (x, x0). intuition.
-  apply Product.factors; try assumption.
-  + destruct H. unfold prod_op in H, H2. simpl in H, H2.
-    intuition.
-    eapply (local ContF); try eassumption. split; assumption.
-  + destruct H. unfold prod_op in H, H2. simpl in H, H2.
-    intuition.
-    eapply (local ContG); try eassumption. split; assumption.
-- destruct a, b. destruct H.
-  pose proof (fun U => cov ContF U H).
-  pose proof (fun U => cov ContG U H1).
-  pose proof (Product.unfactors1 _ _ _ _ _ _ _ _ H0).
-  pose proof (Product.unfactors2 _ _ _ _ _ _ _ _ H0).
-  specialize (H2 _ H4).
-  specialize (H3 _ H5).
-
-  (** This is likely a misstep in the proof, and in fact we will
-      need to do something smarter. *)
-  apply FormTop.gmonotone with
-  (fun s0 : S * T => let (s', t') := s0 in
-  (fun s'' => exists a' : A, exists b' : B, V (a', b') /\ F s'' a') s'
-  /\
-  (fun t'' => exists b' : B, exists a' : A, V (a', b') /\ G t'' b') t'
-  ).
-  intros.  destruct u. 
-  destruct H6 as ((? & ? & ? & ?) & (? & ? & ? & ?)).
-  exists (x, x1). 
-  admit.
-
-  apply Product.factors; try assumption. 
-  eapply FormTop.gmonotone. 2:apply H2.
-  simpl. intros. firstorder.
-  eapply FormTop.gmonotone. 2:apply H3.
-  simpl. intros. firstorder.
+- destruct c, b, a. destruct H; simpl in *.
+  destruct H0. split.
+  eapply (le_left ContF); eassumption.
+  eapply (le_left ContG); eassumption.
+- destruct a, b, c.
+  destruct H, H0.
+  pose proof (local ContF H H0).
+  pose proof (local ContG H1 H2).
 Admitted.
 
 End Products.
@@ -1233,8 +1224,8 @@ Qed.
 Record t {F : S -> T -> Prop} :=
   { le_left : forall a b c, MeetLat.le a b -> F b c -> F a c
   ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
-  ; convergence : forall a b c, F a b -> F a c ->
-       exists d, @FormTop.down _ MeetLat.le b c d /\ F a d
+  ; local : forall a b c, F a b -> F a c ->
+       CovS a (fun s => exists d, @FormTop.down _ MeetLat.le b c d /\ F s d)
   ; here : forall s, exists t, F s t
   }.
 
@@ -1246,11 +1237,8 @@ Theorem cont : forall (F : S -> T -> Prop),
 Proof.
 intros. constructor; intros.
 - apply FormTop.grefl. apply (here H).
-- apply FormTop.grefl.
-  destruct H0. 
-  apply convergence. assumption.
-  eapply le_left. eassumption. apply H0. assumption. 
-  eapply le_left. eassumption. apply H3. assumption.
+- eapply (le_left H); eassumption. 
+- eapply local; eassumption.
 - induction H1. 
   + apply FormTop.grefl. exists a0. split; assumption.
   + apply IHGCov. eapply le_right. assumption.
@@ -1265,6 +1253,57 @@ Qed.
 
 End InfoBaseCont.
 End InfoBaseCont.
+
+Module IGCont.
+Section IGCont.
+Generalizable All Variables.
+Context {S} `{POS : PreO.t S leS}.
+Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
+Variable locS : @FormTop.localized _ leS IS CS.
+Let CovS := @FormTop.GCov _ leS IS CS.
+
+Context {T} `{POT : PreO.t T leT}.
+Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
+Variable locT : @FormTop.localized _ leT IT CT.
+Let CovT := @FormTop.GCov _ leT IT CT.
+
+Record t {F : S -> T -> Prop} :=
+  { here : forall s, exists t, F s t
+  ; local : forall a b c, F a b -> F a c ->
+       CovS a (fun s => exists d, @FormTop.down _ leT b c d /\ F s d)
+  ; le_left : forall a b c, leS a c -> F c b -> F a b
+  ; le_right :  forall a b c,  F a b -> leT b c -> F a c
+  ; ax_right : forall a b (j : IT b), F a b -> 
+     CovS a (fun s => exists d, CT b j d /\ F s d)
+  }.
+
+Arguments t : clear implicits.
+
+Theorem cont : forall F, t F -> Cont.t leS leT CovS CovT F.
+Proof.
+pose proof (FormTop.GCov_formtop IS CS locS) as FTS.
+intros. constructor; intros.
+- apply FormTop.grefl. apply (here H).
+- eapply le_left; eassumption.
+- apply local; assumption.
+- generalize dependent a. induction H1; intros.
+  + apply FormTop.grefl. exists a. split; assumption.
+  + apply IHGCov. eapply le_right; eassumption.
+  + pose proof (ax_right H _ _ i H2).
+    apply (@FormTop.trans S leS CovS FTS _ _ _ H3).  
+    intros. destruct H4 as (d & CTaid & Fad).
+    eapply H1; eassumption.
+Qed.
+
+Theorem converse : forall F, Cont.t leS leT CovS CovT F -> t F.
+Proof.
+intros.
+constructor; intros.
+Abort. 
+
+
+End IGCont.
+End IGCont.
 
 Module Discrete.
 Section Discrete.
@@ -1325,13 +1364,6 @@ constructor; intros.
   + apply FormTop.grefl. exists (Some (f a)).
     constructor.
   + apply FormTop.grefl. exists None. constructor.
-- destruct H. destruct H, H2; destruct H0, H1;
-  try match goal with
-  | [ |- _ ] => solve[apply FormTop.grefl; exists None;
-      unfold FormTop.down; eauto]
-  end.
-  pose proof (@FormTop.ginfinity _ (LE A) (Ix A) (C A) (Some a)).
-  unfold C, Ix in H. 
 Abort.
 
 End FinFunc.
@@ -1368,7 +1400,7 @@ Module LPRFuncs.
 Require Import Qnn.
 
 Definition plus (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
-  let (l, r) := addends in (l + r = sum)%Qnn.
+  let (l, r) := addends in (l + r <= sum)%Qnn.
 
 Definition prodCov := (@Product.Cov _ _ Qnnle Qnnle LowerR.Ix LowerR.Ix LowerR.C LowerR.C).
 
@@ -1396,15 +1428,23 @@ Proof.
 unfold plus_cont_defn.
 constructor; intros.
 - apply (@FormTop.refl _ _ _ isCov_prodCov). 
-  destruct a. unfold plus. exists (q + q0)%Qnn. reflexivity.
-- destruct a, ab, ac. unfold plus in *. 
-  subst. apply (@FormTop.refl _ _ _ isCov_prodCov).
-  exists (q + q0)%Qnn. split. 2:reflexivity.
-  destruct H. destruct H, H0. simpl in *.
-  split. admit. admit.
-- destruct a. unfold plus in H. subst.
-  (* if q + q0 < sup V, then we can do stuff... *)
-Abort. 
+  destruct a. unfold plus. exists (q + q0)%Qnn. apply Qnnle_refl. 
+- unfold plus in *. 
+  destruct H. destruct a, c. simpl in *.
+  eapply Qnnle_trans; [| eassumption].
+  apply Qnnplus_le_compat; eassumption.
+- unfold plus in *. destruct a; simpl in *. 
+  apply FormTop.grefl. exists (Qnnmin b c).
+  split. split. apply Qnnmin_l. apply Qnnmin_r.
+  apply Qnnmin_le_both; assumption.
+- destruct a. unfold plus in H.
+  induction H0.
+  + apply FormTop.grefl. exists a. split; assumption.
+  + apply IHGCov. eapply Qnnle_trans.
+    eassumption. eassumption.
+  + destruct i. eapply H1. simpl. reflexivity.
+    eapply Qnnle_trans. eassumption. eassumption.
+Qed. 
 
 End LPRFuncs.
 
