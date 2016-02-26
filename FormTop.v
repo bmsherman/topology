@@ -837,7 +837,7 @@ destruct i as [[sI t]|[s tI]].
   subst. destruct downu.
   unfold FormTop.down. split.
   simpl. split. apply PreO.le_refl. assumption.
-  simpl. split. assumption. assumption.
+  simpl. red. eauto. 
 Qed.
 
 Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
@@ -1116,12 +1116,15 @@ pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_R in *.
 - apply FormTop.refl. destruct a. exists t0. apply PreO.le_refl.
 - destruct c, a.  destruct H. simpl in H, H1. 
-  eapply PreO.le_trans; eassumption.
+  eauto using PreO.le_trans.
 - destruct a. apply FormTop.refl. 
   exists t0. split. split; assumption. apply PreO.le_refl. 
 - destruct a. generalize dependent t0. induction H0; intros.
   + apply FormTop.refl. exists a. firstorder.
   + apply FormTop.le_left with (s, b).
+    (** We would like
+        eauto using (PreO.le_refl, PreO.le_trans)
+        to work here, but it is dumb! *)
     split; simpl. apply PreO.le_refl. 
     eapply PreO.le_trans; eassumption. 
     apply IHGCov. apply PreO.le_refl.
@@ -1456,7 +1459,7 @@ Open Scope loc.
 (* Inductively-generated formal topology *)
 Class IGT {S : Type} : Type :=
   { le : S -> S -> Prop
-  ; PO : PreO.t S le
+  ; PO :> PreO.t S le
   ; Ix : S -> Type
   ; C : forall s, Ix s -> (S -> Prop)
   ; localized : @FormTop.localized _ le Ix C
@@ -1497,15 +1500,11 @@ Arguments cmap {A} LA {B} LB : clear implicits.
 Infix "~>" := cmap (at level 60) : loc_scope.
 
 Definition id `{LA : IGT A} : LA ~> LA := 
-  let POS : PreO.t A _ := PO in
   {| mp := Cont.id
   ; mp_ok := Cont.t_id |}.
 
 Definition compose `{LA : IGT A} 
   `{LB : IGT B} `{LD : IGT D} (f : LA ~> LB) (g : LB ~> LD) : LA ~> LD :=
-  let POA : PreO.t A _ := PO in 
-  let POB : PreO.t B _ := PO in 
-   let POD : PreO.t D _ := PO in
   {| mp := Cont.compose (mp f) (mp g)
   ; mp_ok := Cont.t_compose (mp f) (mp g) (mp_ok f) (mp_ok g)
   |}.

@@ -58,7 +58,7 @@ Module PreO.
   }.
 
   Arguments t : clear implicits.
-
+  
   (** A morphism of preorders is just a monotonic function. That is,
       it preserves ordering. *)
   Definition morph `(leA : A -> A -> Prop) `(leB : B -> B -> Prop) `(f : A -> B) : Prop :=
@@ -113,7 +113,7 @@ Module PreO.
   ; min_greatest : forall m', m' <= l -> m' <= r -> m' <= m
   }.
 
-  Arguments min : clear implicits.
+  Global Arguments min : clear implicits.
 
   (** [min] is commutative *)
   Lemma min_comm : forall l r m, min l r m -> min r l m.
@@ -267,7 +267,6 @@ Module PreO.
 End PreO.
 
 Arguments PreO.max {A} {le} _ _ _ : clear implicits.
-Arguments PreO.min {A} {le} _ _ _ : clear implicits.
 
 (** Partial orders: We take a preorder, but also have an equality relation [eq]
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
