@@ -335,7 +335,7 @@ Theorem Frame : Frame.t (S -> Prop) FOps.
 Proof.
 constructor; intros.
 - apply FrameLatt.
-- simpl.unfold eqA, supA, Sat, pointwise_relation. repeat intro.
+- simpl. unfold eqA, supA, Sat, pointwise_relation. repeat intro.
   split; intros; (eapply trans; [eassumption|]); intros.
   + simpl in *. destruct H1. eapply trans. apply -> (H x0).
     apply refl. assumption.
