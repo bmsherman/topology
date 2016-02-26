@@ -1568,6 +1568,37 @@ apply eq_compat. unfold eq. intros. apply LPRle_antisym.
 - apply fixValuation_fixed_u.
 Qed.
 
+(** * Reasoning about measures *)
+
+(** A set of techniques for reasoning about measures. *)
+
+(** Binary version of the union bound. *)
+Lemma union_bound2 {A OA} {X : F.t A OA} {mu : t X}
+  (P Q : A)
+  : mu (L.min P Q) <= mu P + mu Q.
+Proof.
+rewrite modular. eapply LPRle_trans.
+Focus 2. eapply LPRplus_le_compat.
+apply LPRzero_min. apply LPRle_refl.
+rewrite (SRadd_0_l LPRsrt). 
+apply LPRle_refl.
+Qed.
+
+(** Finite version of the union bound. *)
+Lemma union_bound {A OA} {X : F.t A OA} {mu : t X}
+  (xs : list A)
+  : mu (List.fold_right L.min F.bottom xs) <=
+    List.fold_right LPRplus 0 (List.map (val mu) xs).
+Proof.
+induction xs; simpl.
+- rewrite strict. apply LPRle_refl.
+- eapply LPRle_trans. Focus 2. 
+  eapply LPRplus_le_compat.
+  Focus 2. apply IHxs. apply LPRle_refl.
+  apply union_bound2.
+Qed.
+
+
 (** * Integration *)
 
 (** An inductive definition of simple functions. I hesitate to
