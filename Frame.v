@@ -207,6 +207,10 @@ Module PreO.
   - destruct x, y, z; auto. simpl in *. congruence.
   Qed.
 
+  Definition Nat : t nat le.
+  Proof. constructor; [ apply Le.le_refl | apply Le.le_trans ].
+  Qed.
+
   (** Product preorders *)
   Definition product `(tA : t A leA) `(tB : t B leB) 
    : t (A * B) (prod_op leA leB).
@@ -392,6 +396,14 @@ Module PO.
     - destruct x, y; auto.
   Qed.
 
+  Definition Nat : t nat le Logic.eq.
+  Proof.
+  constructor; intros.
+  - apply PreO.Nat.
+  - solve_proper.
+  - apply Le.le_antisym; assumption.
+  Qed.
+
   Definition product `(tA : t A leA eqA) `(tB : t B leB eqB) 
     : t (A * B) (prod_op leA leB) (prod_op eqA eqB).
   Proof. constructor; intros.
@@ -545,6 +557,21 @@ Module JoinLat.
   | [ b : bool |- _ ] => destruct b
   end; simpl; auto)).
   Qed. 
+
+  Instance Nat_ops : Ops nat :=
+    {| le := Peano.le
+     ; eq := Logic.eq
+     ; max := Peano.max
+    |}.
+
+  Require Max.
+  Instance Nat : t nat Nat_ops.
+  Proof. constructor; intros.
+  - apply PO.Nat.
+  - solve_proper.
+  - constructor. simpl. apply Max.le_max_l. apply Max.le_max_r.
+    apply Max.max_lub.
+  Qed.
 
   (** Max for propositions is the propositional OR, i.e., disjunction *)
   Instance prop_ops : Ops Prop :=
@@ -1434,6 +1461,112 @@ Definition unit {A OA} {X : F.t A OA} (x : F.point OA)
 
 Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
   (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
+
+Definition supValuation {A OA} {X : F.t A OA}
+  I `{JL : JoinLat.t I} (f : I -> t X)
+    (fmono : forall (m n : I), JoinLat.le m n -> (f m <= f n)%Val)
+ : t X.
+Proof.
+refine (
+  {| val := fun P => LPRsup (fun i => f i P) |}).
+- apply LPRle_antisym. apply LPRsup_le.
+  intros. rewrite strict. apply LPRle_refl. apply LPRzero_min.
+- intros. apply LPRsup_le. intros.
+  apply LPRsup_ge2. exists a. apply monotonic. assumption.
+- intros. unfold le in fmono.
+  repeat  erewrite <- LPRsup_sum_jlat by auto.
+  apply LPRsup_eq_pointwise. intros. apply modular.
+- unfold ContinuousV. intros. apply LPRle_antisym. 
+  apply LPRsup_le. intros. rewrite continuous.
+  apply LPRsup_le. intros. apply LPRsup_ge2. exists a0.
+  apply LPRsup_ge2. exists a. apply LPRle_refl. assumption. assumption.
+  apply LPRsup_le. intros. apply LPRsup_le. intros.
+  apply LPRsup_ge2. exists a0. apply monotonic.
+  apply F.sup_ok.
+Defined.
+
+(** The nth iteration of the fixpoint of a functional on
+    measures *)
+Fixpoint fixn {A OA} {X : F.t A OA} 
+  (f : t X -> t X) (n : nat)
+  : t X
+  := match n with
+  | 0 => 0%Val
+  | S n' => f (fixn f n')
+  end.
+
+(** If our valuation functional is monotonic, then the
+    fixpoint is nondecreasing. *)
+Lemma fixnmono {A OA} {X : F.t A OA}
+  (f : t X -> t X)
+  (fmono : forall u v, (u <= v -> f u <= f v)%Val)
+  : forall (n : nat), (fixn f n <= fixn f (S n))%Val.
+Proof. intros. induction n.
+simpl. unfold le; intros. simpl. apply LPRzero_min.
+simpl. apply fmono. assumption.
+Qed.
+
+Lemma fixnmono2 {A OA} {X : F.t A OA}
+  (f : t X -> t X)
+  (fmono : forall u v, (u <= v -> f u <= f v)%Val)
+  : forall (m n : nat), (JoinLat.le m n)%nat -> (fixn f m <= fixn f n)%Val.
+Proof. intros. induction H. apply le_refl. 
+eapply le_trans. eassumption. apply fixnmono. assumption.
+Qed.
+
+(** If we have a valuation functional which is monotonic, we can take
+    its fixpoint! *)
+Definition fixValuation {A OA} {X : F.t A OA}
+  (f : t X -> t X)
+  (fmono : forall u v, (u <= v -> f u <= f v)%Val)
+  : t X
+  := supValuation nat (fun n => (fixn f n)) 
+     (fixnmono2 f fmono).
+
+Lemma fixValuation_subProb {A OA} {X : F.t A OA}
+  (f : t X -> t X)
+  (fmono : forall u v, (u <= v -> f u <= f v)%Val)
+  (fbounded : forall v, val v F.top <= 1 -> val (f v) F.top <= 1)
+  : (fixValuation f fmono) F.top <= 1.
+Proof. unfold fixValuation.  simpl. apply LPRsup_le.
+intros n. induction n. simpl. apply LPRzero_min.
+simpl. apply fbounded. assumption.
+Qed.
+
+Theorem fixValuation_fixed_u {A OA} {X : F.t A OA} 
+  (f : t X -> t X)
+  (fmono : forall u v : t X, (u <= v)%Val -> (f u <= f v)%Val)
+  : (fixValuation f fmono <= f (fixValuation f fmono))%Val.
+Proof.
+unfold le. intros P. apply LPRsup_le. intros n. destruct n; simpl.
+- apply LPRzero_min.
+- apply fmono. unfold le; intros. simpl.
+  apply LPRsup_ge2. exists n. apply LPRle_refl.
+Qed.
+
+(** Definition of when a functional is continuous. *)
+Definition Continuous {A OA} {X : F.t A OA} (f : t X -> t X) 
+  := forall I `(JL : JoinLat.t I) (nonempty : I) (g : I -> t X)
+       (gmono : forall m n : I, JoinLat.le m n -> (g m <= g n)%Val)
+       (P : A),
+      (f (supValuation I g gmono)) P
+    = LPRsup (fun x : I => f (g x) P).
+
+(** If a functional is continuous, then we indeed reach a fixpoint
+    when we apply [fixValuation]. *)
+Theorem fixValuation_fixed {A OA} {X : F.t A OA} (f : t X -> t X)
+  (fmono : forall u v : t X, (u <= v)%Val -> (f u <= f v)%Val)
+  : Continuous f
+  -> f (fixValuation f fmono) = fixValuation f fmono.
+Proof.
+intros.
+apply eq_compat. unfold eq. intros. apply LPRle_antisym.
+-  unfold Continuous in H.
+  unfold fixValuation at 1. rewrite H.
+  apply LPRsup_le. intros n.
+  simpl. apply LPRsup_ge2. exists (S n). apply LPRle_refl. exact 0%nat.
+- apply fixValuation_fixed_u.
+Qed.
 
 (** * Integration *)
 
