@@ -221,6 +221,146 @@ Qed.
 
 End Localize.
 
+Section ToFrame.
+Context {S : Type}.
+Variable (le : S -> S -> Prop) (Cov : S -> (S -> Prop) -> Prop).
+
+Definition Sat (U : S -> Prop) (s : S) : Prop :=
+  Cov s U.
+
+Definition leA (U V : S -> Prop) : Prop := forall s, Sat U s -> Sat V s.
+Definition eqA (U V : S -> Prop) : Prop := forall s, Sat U s <-> Sat V s.
+
+Definition minA (U V : S -> Prop) (s : S) : Prop :=
+  exists u v, U u /\ V v /\ @down _ le u v s.
+
+Definition maxA (U V : S -> Prop) (s : S) : Prop := U s \/ V s.
+
+Definition supA I (f : I -> (S -> Prop)) (s : S) : Prop := exists i, f i s.
+
+Definition LOps : Lattice.Ops (S -> Prop) :=
+  {| Lattice.le := leA
+  ;  Lattice.eq := eqA
+  ;  Lattice.max := maxA
+  ;  Lattice.min := minA
+  |}.
+
+Instance LOps' : Lattice.Ops (S -> Prop) := LOps.
+
+Definition FOps : Frame.Ops (S -> Prop) := 
+  {| Frame.LOps := LOps
+   ; Frame.sup := supA
+  |}.
+
+Instance FOps' : Frame.Ops (S -> Prop) := FOps.
+
+Hypothesis PO : PreO.t S le.
+Hypothesis tS : @t S le Cov. 
+
+Theorem FramePreO : PreO.t (S -> Prop) leA.
+Proof.
+constructor; unfold leA, Sat; intros.
+- assumption.
+- apply H0. apply H. assumption.
+Qed.
+
+Require Import Morphisms SetoidClass.
+
+Theorem FramePO : PO.t (S -> Prop) leA eqA.
+Proof.
+constructor; unfold eqA, Sat; intros.
+- apply FramePreO.
+- unfold leA, Sat. solve_proper.
+- unfold leA, Sat in *. intuition.
+Qed.
+
+Theorem FrameLatt : Lattice.t (S -> Prop) LOps.
+Proof.
+constructor; intros.
+- apply FramePO.
+- simpl. repeat intro. unfold eqA, Sat in *.
+  split; intros. 
+  + eapply trans. apply H1.
+    unfold maxA in *.
+    intros. destruct H2. apply (monotone tS y).
+    auto. apply H. apply refl. assumption.
+    apply (monotone tS y0). auto.
+    apply H0.  apply refl. assumption.
+  + eapply trans. apply H1.
+    unfold maxA in *.
+    intros. destruct H2. apply (monotone tS x).
+    auto. apply H. apply refl. assumption.
+    apply (monotone tS x0). auto.
+    apply H0.  apply refl. assumption.
+- constructor.
+  + simpl. unfold leA, maxA, Sat. intros.
+    apply trans with l. assumption.
+    intros. apply refl. auto.
+  + simpl. unfold leA, maxA, Sat. intros.
+    apply trans with r. assumption.
+    intros. apply refl. auto.
+  + simpl. unfold leA, maxA, Sat. intros.
+    apply trans with (fun s0 => l s0 \/ r s0). assumption.
+    intros. destruct H2. 
+      apply H. apply refl. assumption.
+      apply H0. apply refl. assumption.
+- simpl. repeat intro. unfold eqA, minA, Sat in *. 
+  split; intros.
+  + eapply trans. apply H1. simpl. intros.
+    destruct H2 as (u & v & xu & x0v & downuva).
+    destruct downuva.
+    apply le_right. 
+    apply H. eapply le_left. apply H2. apply refl. assumption.
+    apply H0. eapply le_left. apply H3. apply refl. assumption.
+  + eapply trans. apply H1. simpl. intros.
+    destruct H2 as (u & v & xu & x0v & downuva).
+    destruct downuva.
+    apply le_right. 
+    apply H. eapply le_left. apply H2. apply refl. assumption.
+    apply H0. eapply le_left. apply H3. apply refl. assumption.
+- simpl. constructor; unfold leA, minA, Sat; intros.
+  + eapply trans. eassumption. simpl. intros. 
+    destruct H0 as (u & v & lu & rv & (ua & va)).
+    eapply le_left. apply ua. apply refl. assumption.
+  + eapply trans. eassumption. simpl. intros. 
+    destruct H0 as (u & v & lu & rv & (ua & va)).
+    eapply le_left. apply va. apply refl. assumption.
+  + eapply trans. eassumption. intros.
+    apply le_right. 
+    apply H. apply refl. assumption.
+    apply H0. apply refl. assumption.
+Qed.
+
+Theorem Frame : Frame.t (S -> Prop) FOps.
+Proof.
+constructor; intros.
+- apply FrameLatt.
+- simpl.unfold eqA, supA, Sat, pointwise_relation. repeat intro.
+  split; intros; (eapply trans; [eassumption|]); intros.
+  + simpl in *. destruct H1. eapply trans. apply -> (H x0).
+    apply refl. assumption.
+    intros. apply refl. exists x0. assumption.
+  + simpl in *. destruct H1. eapply trans. apply <- (H x0).
+    apply refl. assumption.
+    intros. apply refl. exists x0. assumption.
+- simpl. unfold supA. constructor; unfold leA, Sat; intros.
+  + apply trans with (f i). assumption.
+    intros. apply refl. exists i. assumption.
+  + eapply trans. eassumption. simpl. intros.
+    destruct H1. apply (H x a'). apply refl. assumption.
+- simpl. unfold minA, supA, eqA, Sat. intros.
+  split; intros. 
+  + eapply trans. eassumption. simpl. intros.
+    destruct H0 as (u & v & xu & (i & fiv) & downuva).
+    apply refl. exists i. exists u. exists v. tauto. 
+  + eapply trans. eassumption. simpl. intros.
+    destruct H0 as (i & u & v & xu & fiv & downuva).
+    apply refl. exists u. exists v. split. assumption.
+    split. exists i. assumption. assumption.
+Qed. 
+
+End ToFrame.
+
 End FormTop.
 
 Arguments FormTop.t {_} _ _.
