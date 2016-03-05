@@ -8,5 +8,6 @@ Sample.v
 PDF.v
 Frame.v
 FormTop.v
+Integration.v
 clement/SmallPowers.v
 alea/BinCoeff.v
