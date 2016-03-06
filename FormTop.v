@@ -1617,35 +1617,84 @@ constructor.
   reflexivity.
 Qed.
 
-Definition Ix := Concrete.Ix A (option A) In.
-Definition C := Concrete.C A (option A) In.
-Definition Cov := @FormTop.GCov (option A) eq Ix C.
+Hypothesis deceq : forall a a' : A, {a = a'} + {a <> a'}.
+
+Definition min (mx my : option A) := match mx with
+  | None => None
+  | Some x => match my with
+    | None => None
+    | Some y => if deceq x y then Some x else None
+    end
+  end.
+
+Definition ops' : MeetLat.Ops (option A) :=
+  {| MeetLat.le := LE
+   ; MeetLat.eq := Logic.eq
+   ; MeetLat.min := min
+  |}.
+
+Instance ops : MeetLat.Ops (option A) := ops'.
+
+Require Import Morphisms.
+
+Ltac MLdecsolve l r := 
+destruct l, r; simpl;
+repeat match goal with
+| [ |- context[deceq ?x ?y] ] => destruct (deceq x y)
+| _ => constructor
+| [ H: LE ?x ?y  |- _ ] => inversion H; clear H; subst
+end.
+
+Instance ML : MeetLat.t (option A) ops.
+Proof.
+constructor.
+- apply POLE.
+- solve_proper.
+- intros. constructor.
+  + MLdecsolve l r.
+  + MLdecsolve l r. subst. constructor.
+  + simpl in *. intros. destruct m'; MLdecsolve l r.
+    congruence.
+Qed.
+
+Definition Ix := InfoBase.Ix ops.
+Definition C := InfoBase.C ops.
+Definition Cov := InfoBase.Cov ops.
 
 End Discrete.
 
 Section FinFunc.
 
 Variable (A B : Type).
+Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
+Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
+
+Let opsA := Discrete.ops A deceqA.
+Let opsB := Discrete.ops B deceqB.
 
 Inductive discrF {f : A -> B} : option A -> option B -> Prop :=
   | PreImg : forall a, discrF (Some a) (Some (f a))
-  | FNone : discrF None None. 
+  | FNone : forall b, discrF None b. 
 
 Arguments discrF : clear implicits.
 
 Hint Constructors LE discrF.
 
-Hypothesis deceqB : forall (b b' : B), {b = b'} + {b <> b'}.
-Theorem fCont : forall (f : A -> B),
-  Cont.t (LE A) (LE B) (Cov A) (Cov B) (discrF f).
+Instance MLB : MeetLat.t _ opsB := Discrete.ML B deceqB.
+
+Ltac inv H := inversion H; clear H; subst.
+Theorem fCont (f : A -> B) :
+  InfoBaseCont.t opsA opsB (discrF f).
 Proof.
-intros.
 constructor; intros.
-- destruct a. 
-  + apply FormTop.grefl. exists (Some (f a)).
-    constructor.
-  + apply FormTop.grefl. exists None. constructor.
-Abort.
+- inv H0. inv H. constructor. constructor. 
+  inv H. constructor.
+- inv H. inv H0. constructor. constructor.
+- inv H. inv H0. rewrite MeetLat.min_idempotent.
+  constructor. constructor.
+- destruct s. exists (Some (f a)). constructor.
+  exists None. constructor.
+Qed.
 
 End FinFunc.
 
