@@ -728,12 +728,36 @@ rewrite <- H1.
 eapply PreO.le_trans. eapply H. eassumption.
 Qed.
 
+Definition Cov (s : S) (U : S -> Prop) : Prop :=
+  exists t, U t /\ MeetLat.le s t.
+
 (** The covering relation for information bases,
     which we derive from the axiom set above. *)
-Definition Cov := @FormTop.GCov _ MeetLat.le Ix C.
+Definition GCov := @FormTop.GCov _ MeetLat.le Ix C.
+
+Require Import Morphisms SetoidClass.
+Theorem CovEquiv : forall s U, Cov s U <-> GCov s U.
+Proof.
+intros. unfold Cov, GCov. split; intros.
+- destruct H as (t & Ut & st).
+  apply FormTop.ginfinity with (existT _ t st).
+  unfold C. simpl. intros.
+  apply FormTop.gle_left with t.
+  rewrite H. apply PreO.le_refl.
+  apply FormTop.grefl. assumption.
+- induction H. 
+  + exists a. split. assumption. apply PreO.le_refl.
+  + destruct IHGCov as (t & Ut & bt).
+    exists t. split. assumption. eapply PreO.le_trans; eassumption.
+  + destruct i. unfold C in *. simpl in *.
+    assert (MeetLat.eq x x) as eqx. reflexivity.
+    specialize (H x eqx).
+    specialize (H0 x eqx). destruct H0 as (t & Ut & xt).
+    exists t. split. assumption. eapply PreO.le_trans; eassumption.
+Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Instance isCov : @FormTop.t _ MeetLat.le Cov := 
+Instance isCov : @FormTop.t _ MeetLat.le GCov := 
   FormTop.GCov_formtop Ix C loc.
 
 End InfoBase.
@@ -771,10 +795,10 @@ constructor; intros.
   apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
 Qed.
 
-Definition ops : MeetLat.Ops Qnn := 
+Definition opsU : MeetLat.Ops Qnn := 
   {| MeetLat.le := Qnnle ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmin |}.
 
-Instance QnnML : MeetLat.t Qnn ops.
+Instance UML : MeetLat.t Qnn opsU.
 Proof.
 constructor. constructor. constructor. 
 - intros; apply Qnnle_refl.
@@ -788,12 +812,29 @@ constructor. constructor. constructor.
   + intros. apply Qnnmin_le_both; assumption.
 Qed.
 
+Definition ops : MeetLat.Ops Qnn := 
+  {| MeetLat.le := Qnnge ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmax |}.
+
+Instance ML : MeetLat.t Qnn ops.
+Proof.
+constructor. constructor. constructor. 
+- intros; apply Qnnle_refl.
+- intros. simpl in *. eapply Qnnle_trans; eassumption.
+- solve_proper.
+- intros; apply Qnnle_antisym; assumption.
+- solve_proper.
+- simpl in *. intros. constructor.
+  + apply Qnnmax_l.
+  + apply Qnnmax_r.
+  + intros. apply Qnnmax_induction; auto.
+Qed.
+
 Definition Ix := @InfoBase.Ix Qnn ops.
 Definition C := @InfoBase.C Qnn ops.
 
 Definition Cov := @InfoBase.Cov Qnn ops.
 
-Definition isCov := @InfoBase.isCov Qnn ops QnnML.
+Definition isCov := @InfoBase.isCov Qnn opsU UML.
 
 End LowerR.
 
@@ -1464,8 +1505,7 @@ Qed.
 Record t {F : S -> T -> Prop} :=
   { le_left : forall a b c, MeetLat.le a b -> F b c -> F a c
   ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
-  ; local : forall a b c, F a b -> F a c ->
-       CovS a (fun s => exists d, @FormTop.down _ MeetLat.le b c d /\ F s d)
+  ; local : forall {a b c}, F a b -> F a c -> F a (MeetLat.min b c)
   ; here : forall s, exists t, F s t
   }.
 
@@ -1476,23 +1516,24 @@ Theorem cont : forall (F : S -> T -> Prop),
   -> Cont.t MeetLat.le MeetLat.le CovS CovT F.
 Proof.
 intros. constructor; intros.
-- apply FormTop.grefl. apply (here H).
+- unfold CovS, InfoBase.Cov. exists a. 
+  split. apply (here H). apply PreO.le_refl.
 - eapply (le_left H); eassumption. 
-- eapply local; eassumption.
-- induction H1. 
-  + apply FormTop.grefl. exists a0. split; assumption.
-  + apply IHGCov. eapply le_right. assumption.
-    eassumption. eassumption.
-  + destruct i.
-    apply (H2 x). unfold InfoBase.C. simpl. reflexivity. 
-    eapply le_right. assumption. eassumption. 
-    eassumption. 
+- unfold CovS, InfoBase.Cov. exists a. 
+  split. exists (MeetLat.min b c). split. 
+  split; apply MeetLat.min_ok. apply local; assumption.
+  apply PreO.le_refl.
+- unfold CovT, CovS, InfoBase.Cov in *. 
+  destruct H1 as (t0 & Vt0 & bt0).
+  exists a. split. exists t0. split. assumption.
+  apply (le_right H) with b; assumption.
+  apply PreO.le_refl.
 Qed.
-  
-
 
 End InfoBaseCont.
 End InfoBaseCont.
+
+Arguments InfoBaseCont.t {S} SOps {T} TOps F : rename, clear implicits.
 
 Module IGCont.
 Section IGCont.
@@ -1639,52 +1680,66 @@ End ConcFunc.
 Module LPRFuncs.
 Require Import Qnn.
 
-Definition plus (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
+Definition plusL (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
+  let (l, r) := addends in (l + r >= sum)%Qnn.
+
+Definition plusU (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
   let (l, r) := addends in (l + r <= sum)%Qnn.
 
-Definition prodCov := (@Product.Cov _ _ Qnnle Qnnle LowerR.Ix LowerR.Ix LowerR.C LowerR.C).
-
-Theorem lowerR_loc : @FormTop.localized _ Qnnle LowerR.Ix LowerR.C.
+Theorem plus_cont : InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
+  LowerR.ops plusL.
 Proof.
-unfold LowerR.Ix, LowerR.C.
-apply (@InfoBase.loc Qnn LowerR.ops LowerR.QnnML).
-Qed.
-
-Theorem isCov_prodCov : FormTop.t (prod_op Qnnle Qnnle) prodCov.
-Proof.
-unfold prodCov.
-eapply Product.isCov.
-apply (@MeetLat.PO _ _ LowerR.QnnML).
-apply (@MeetLat.PO _ _ LowerR.QnnML).
-apply lowerR_loc. apply lowerR_loc.
-Qed.
-
-Definition plus_cont_defn := 
-  Cont.t (prod_op Qnnle Qnnle) Qnnle 
-  prodCov LowerR.Cov plus.
-
-Theorem plus_cont : plus_cont_defn.
-Proof.
-unfold plus_cont_defn.
-constructor; intros.
-- apply (@FormTop.refl _ _ _ isCov_prodCov). 
-  destruct a. unfold plus. exists (q + q0)%Qnn. apply Qnnle_refl. 
-- unfold plus in *. 
-  destruct H. destruct a, c. simpl in *.
-  eapply Qnnle_trans; [| eassumption].
+constructor; unfold plusL; intros.
+- destruct a, b. destruct H. simpl in *. unfold Qnnge in *.
+  eapply Qnnle_trans; [eassumption|].
   apply Qnnplus_le_compat; eassumption.
-- unfold plus in *. destruct a; simpl in *. 
-  apply FormTop.grefl. exists (Qnnmin b c).
-  split. split. apply Qnnmin_l. apply Qnnmin_r.
-  apply Qnnmin_le_both; assumption.
-- destruct a. unfold plus in H.
-  induction H0.
-  + apply FormTop.grefl. exists a. split; assumption.
-  + apply IHGCov. eapply Qnnle_trans.
-    eassumption. eassumption.
-  + destruct i. eapply H1. simpl. reflexivity.
-    eapply Qnnle_trans. eassumption. eassumption.
-Qed. 
+- destruct a. simpl in *. unfold Qnnge in *. eapply Qnnle_trans.
+  eassumption. assumption.
+- destruct a. apply Qnnmax_induction; intros; assumption.
+- destruct s. exists (q + q0)%Qnn. apply Qnnle_refl.
+Qed.
+
+Theorem plus_contU : InfoBaseCont.t (MeetLat.product_ops LowerR.opsU LowerR.opsU)
+  LowerR.opsU plusU.
+Proof.
+constructor; unfold plusU; intros.
+- destruct a, b. destruct H. simpl in *.
+  eapply Qnnle_trans; [|eassumption].
+  apply Qnnplus_le_compat; eassumption.
+- destruct a. simpl in *. eapply Qnnle_trans.
+  eassumption. assumption.
+- destruct a. apply Qnnmin_le_both; assumption.
+- destruct s. exists (q + q0)%Qnn. apply Qnnle_refl.
+Qed.
+
+Require Import LPReal.
+Definition toLPR (x : True -> Qnn -> Prop)
+  (cont : InfoBaseCont.t (MeetLat.one_ops) (LowerR.ops) x)
+  : LPReal.
+Proof.
+refine ({| lbound := fun q => exists r, (q < r)%Qnn /\ x I r |}); intros.
+- destruct H as (r & rq & xIr).
+  exists r. split. eapply Qnnle_lt_trans; eassumption. eassumption. 
+- destruct H as (r & rq & xIr).
+  pose proof (Qnnaverage _ _ rq). destruct H.
+  exists ((q + r) * Qnnonehalf)%Qnn. split. assumption.
+  exists r. auto.
+Defined.
+
+(** I made an error in defining my formal-topology-based lower reals,
+    so I can't express the number 0 *)
+Definition fromLPR (x : LPReal)
+  (xgt0 : (0 < x)%LPR)
+  : InfoBaseCont.t (MeetLat.one_ops) (LowerR.ops) (fun _ => lbound x).
+Proof.
+constructor; intros.
+- assumption.
+- simpl in *. eapply dclosed. apply H. apply H0.
+- simpl. apply Qnnmax_induction; intros; assumption. 
+- unfold LPRlt in xgt0.
+  destruct xgt0 as (q & zq & xq). exists q. assumption.
+Qed.
+
 
 End LPRFuncs.
 
