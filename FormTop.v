@@ -1074,6 +1074,103 @@ Record t {F : S -> T -> Prop} : Prop :=
 
 Arguments t F : clear implicits.
 
+(** Convert a continuous map for formal topologies to a 
+    frame homomorphism (i.e., continuous map on locales)
+  *)
+Definition frame (F : S -> T -> Prop) (U : T -> Prop) (s : S) : Prop :=
+  exists t', U t' /\ F s t'.
+
+Hypothesis FTS : FormTop.t leS CovS. 
+Hypothesis FTT : FormTop.t leT CovT.
+Let FrameS := FormTop.Frame leS CovS POS FTS.
+Let FrameT := FormTop.Frame leT CovT POT FTT.
+
+Variable F : S -> T -> Prop.
+Hypothesis cont : t F.
+
+Instance POFS : PO.t (S -> Prop) (FormTop.leA CovS) (FormTop.eqA CovS).
+Proof.
+eapply FormTop.FramePO. eassumption.
+Qed.
+
+Instance POFT : PO.t (T -> Prop) (FormTop.leA CovT) (FormTop.eqA CovT).
+Proof.
+eapply FormTop.FramePO. eassumption.
+Qed.
+
+Theorem monotone : PreO.morph (FormTop.leA CovT) (FormTop.leA CovS)
+   (frame F).
+Proof.
+unfold PreO.morph. intros. unfold frame.
+simpl. unfold FormTop.leA, FormTop.Sat.
+intros. simpl in H. unfold FormTop.leA, FormTop.Sat in H.
+apply (FormTop.trans _ _ _ H0). intros.
+destruct H1 as [t' [at' Fa't']].
+apply (cov cont _ Fa't'). apply H. apply FormTop.refl.
+assumption.
+Qed.
+
+Require Import Morphisms SetoidClass.
+
+Theorem toLattice : 
+   L.morph (FormTop.LOps leT CovT) (FormTop.LOps leS CovS) (frame F).
+Proof.
+constructor.
+  + constructor.
+     * apply monotone.
+     * repeat intro. split; apply monotone; simpl in H;
+       rewrite H; apply PreO.le_refl.
+  + intros. unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
+    intros. apply (FormTop.subset_equiv _). clear s.
+    intros. unfold FormTop.maxA. split; intros.
+    * destruct H as [t' [abt' Fa't']].
+      destruct abt'; [left | right]; exists t'; tauto.
+    * firstorder.
+  + intros. unfold frame. simpl. apply PO.le_antisym;
+    unfold FormTop.leA, FormTop.Sat; intros.
+    * apply (FormTop.trans _ _ _ H). clear s H.
+      intros. unfold FormTop.minA in H.
+      destruct H as (t' & (u & v & au & bv & downuv) & Fat).
+      destruct downuv as (ut' & vt').
+      unfold FormTop.minA.
+      apply FormTop.le_right;
+      apply (cov cont _ Fat).
+      apply FormTop.le_left with u. assumption.
+      apply FormTop.refl. assumption.
+      apply FormTop.le_left with v. assumption.
+      apply FormTop.refl. assumption.
+    * apply (FormTop.trans _ _ _ H). clear s H.
+      intros. unfold FormTop.minA in *.
+      destruct H as (u & v & (t1 & at1 & Fut1)
+        & (t2 & bt2 & Fvt2) & (ua' & va')).
+      pose proof (le_left cont _ _ _ ua' Fut1) as Fat1.
+      pose proof (le_left cont _ _ _ va' Fvt2) as Fat2.
+      pose proof (local cont Fat1 Fat2).
+      refine (FormTop.monotone _ _ _ _ _ H).
+      intros.
+      destruct H0 as (bc & downbc & fabc).
+      exists bc. split. exists t1. exists t2. auto. assumption.
+Qed.
+
+Theorem toFrame : Frame.morph 
+  (FormTop.FOps leT CovT) (FormTop.FOps leS CovS) (frame F).
+Proof.
+constructor.
+- apply toLattice.
+- unfold frame. simpl. intros.
+  (** Can clean up this proof! Should follow from subset_equiv! *)
+  apply PO.le_antisym;
+  unfold FormTop.leA, FormTop.Sat; intros.
+  + unfold FormTop.supA in *.
+    apply (FormTop.trans _ _ _ H). clear s H.
+    intros. destruct H as (t' & (i & git) & Fat).
+    apply FormTop.refl. exists i. exists t'. auto.
+  + unfold FormTop.supA in *.
+    apply (FormTop.trans _ _ _ H). clear s H.
+    intros. destruct H as (i & t' & git' & Fat').
+    apply FormTop.refl. exists t'. split. exists i. assumption. assumption.
+Qed.
+
 End Cont.
 
 Arguments t {S} leS {T} leT CovS CovT F : clear implicits.
