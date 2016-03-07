@@ -316,6 +316,7 @@ Definition point {A} (a : A) : F.point (F.subset_ops A).
 - reflexivity.
 - reflexivity.
 - reflexivity.
+- split; intros. exists True. exact I. exists (fun _ => True). exact I.
 Defined.
 
 (** We state as an axiom that all functions to the lower reals are continuous,

@@ -1210,6 +1210,14 @@ constructor.
     apply (FormTop.trans _ _ _ H). clear s H.
     intros. destruct H as (i & t' & git' & Fat').
     apply FormTop.refl. exists t'. split. exists i. assumption. assumption.
+- unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
+  intros. split; intros. unfold FormTop.supA.
+  apply FormTop.refl. exists (fun _ => True). constructor.
+  unfold FormTop.supA.
+  pose proof (here cont s).
+  eapply FormTop.trans. apply H0. clear H0. simpl.
+  intros. destruct H0. apply FormTop.refl.
+  exists x. split. exists (fun _ => True). constructor. assumption.
 Qed.
 
 End Cont.

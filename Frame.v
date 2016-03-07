@@ -1056,9 +1056,16 @@ Module Frame.
   }.
 
   Arguments t : clear implicits.
-
   Section Facts.
   Context {A OA} {tA : t A OA}.
+
+  Definition sup_proper_u : forall {Ix : Type} (f g : Ix -> A),
+    (forall (i : Ix), L.eq (f i) (g i)) -> L.eq (sup f) (sup g).
+  Proof.
+  intros. apply sup_proper. unfold pointwise_relation.
+  assumption.
+  Qed.
+
 
   (** Every frame must have a top and bottom element. *)
 
@@ -1087,6 +1094,7 @@ Module Frame.
   Record morph {f : A -> B} : Prop :=
   { f_L : L.morph LOps LOps f
   ; f_sup : forall {Ix : Type} (g : Ix -> A), L.eq (f (sup g)) (sup (fun i => f (g i)))
+  ; f_top : L.eq (f top) top
   }.
 
   Arguments morph : clear implicits.
@@ -1099,7 +1107,7 @@ Module Frame.
 
   Lemma f_bottom {f : A -> B} : morph f -> L.eq (f bottom) bottom.
   Proof.
-  intros. unfold bottom. rewrite (f_sup H). apply sup_proper.
+  intros MF. unfold bottom. rewrite (f_sup MF). apply sup_proper.
   unfold pointwise_relation. intros. contradiction.
   Qed.
 
@@ -1113,7 +1121,7 @@ Module Frame.
   Lemma morph_id : morph OA OA (fun x => x).
   Proof. 
    intros. constructor. apply L.morph_id. apply L.
-   reflexivity.
+   reflexivity. reflexivity.
   Qed.
 
   Lemma morph_compose {B OB} {tB : t B OB}
@@ -1126,6 +1134,8 @@ Module Frame.
   - eapply L.morph_compose; (apply L || (eapply f_L; eassumption)).
   - intros. rewrite <- (f_sup H0). rewrite (f_eq H0).
     reflexivity. rewrite (f_sup H). reflexivity.
+  - rewrite <- (f_top H0). rewrite (f_eq H0).
+    reflexivity. rewrite (f_top H). reflexivity.
   Qed.
 
   End MorphProps.
@@ -1185,6 +1195,15 @@ Module Frame.
     apply (sup_distr (t := H a)).
   Qed.
 
+  Lemma sup_pointwise {A} {OA} {X : t A OA} {Ix Ix'} (f : Ix -> A) (g : Ix' -> A)
+  : (forall (i : Ix), exists (j : Ix'), L.le (f i) (g j))
+  -> L.le (sup f) (sup g).
+  Proof.
+  intros. eapply PreO.sup_least. apply sup_ok. intros.
+  destruct (H i). eapply PreO.le_trans. eassumption.
+  apply PreO.sup_ge. apply sup_ok.
+  Qed.
+
   Definition morph_pointwise {A B C OC} {tC : t C OC} (f : B -> A)
     : morph (pointwise_ops (fun _ : A => OC)) (pointwise_ops (fun _ : B => OC))
       (fun g b => g (f b)).
@@ -1192,6 +1211,10 @@ Module Frame.
   constructor; intros; simpl in *; intros.
   - apply L.morph_pointwise.
   - unfold pointwise_op. intros. apply PO.eq_refl. 
+  - unfold pointwise_op. intros. apply PO.le_antisym.
+    + apply sup_pointwise. intros. exists (fun b => i (f b)).
+      apply PreO.le_refl. 
+    + apply sup_pointwise. intros. exists (fun _ => i a). apply PreO.le_refl.
   Qed. 
 
   Instance subset_ops A : Ops (A -> Prop) := pointwise_ops (fun _ => prop_ops).
@@ -1460,6 +1483,12 @@ Defined.
 Definition unit {A OA} {X : F.t A OA} (x : F.point OA)
   : t X := map x unit_prop.
 
+Lemma unit_prob {A OA} {X : F.t A OA} (x : F.point OA) : unit x (F.top) = 1.
+Proof.
+simpl. apply LPRind_true.
+rewrite (F.f_top (F.cont x)). simpl. exists True. constructor.
+Qed.
+
 Definition pointwise {A B : Type} (cmp : B -> B -> Prop)
   (f g : A -> B) : Prop := forall (a : A), cmp (f a) (g a).
 
@@ -1598,6 +1627,48 @@ induction xs; simpl.
   Focus 2. apply IHxs. apply LPRle_refl.
   apply union_bound2.
 Qed.
+
+(** Finite distributions *)
+Require Import Qnn.
+Section FinDist.
+Context {A} {OA} {X : F.t A OA}.
+
+Fixpoint uniform_helper (p : LPReal) (xs : list (F.point OA)) := match xs with
+  | nil => 0%Val
+  | (x :: xs')%list => (p * unit x + uniform_helper p xs')%Val
+end.
+
+Lemma uniform_helper_weight {p : LPReal} {xs : list (F.point OA)}
+  : uniform_helper p xs F.top = LPRQnn (Qnnnat (length xs)) * p.
+Proof.
+induction xs. 
+- simpl. ring. 
+- simpl. pose proof (unit_prob a) as UP. simpl in UP.
+  rewrite UP. rewrite IHxs. rewrite <- LPRQnn_plus.
+  ring.
+Qed.
+
+(** A uniform distribution over a finite, non-empty list
+    of elements. *)
+Definition uniform {n : nat} (xs : Vector.t (F.point OA) (S n)) :=
+  uniform_helper (LPRQnn (Qnnfrac (S n))) (Vector.to_list xs).
+
+Lemma Vector_length {T} {n : nat} {xs : Vector.t T n}
+  : length (Vector.to_list xs) = n.
+Proof. induction xs.
+- reflexivity.
+- unfold Vector.to_list in *. simpl. rewrite IHxs. reflexivity.
+Qed.
+
+Lemma uniform_prob : forall {n : nat} {xs : Vector.t (F.point OA) (S n)}
+  , (uniform xs) F.top = 1.
+Proof.
+intros. unfold uniform.
+rewrite uniform_helper_weight. rewrite Vector_length.
+rewrite LPRQnn_mult. rewrite Qnnnatfrac. reflexivity.
+Qed.
+
+End FinDist.
 
 End Val.
 
