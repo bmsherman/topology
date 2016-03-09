@@ -1217,9 +1217,9 @@ Module Frame.
     + apply sup_pointwise. intros. exists (fun _ => i a). apply PreO.le_refl.
   Qed. 
 
-  Instance subset_ops A : Ops (A -> Prop) := pointwise_ops (fun _ => prop_ops).
+  Definition subset_ops A : Ops (A -> Prop) := pointwise_ops (fun _ => prop_ops).
   
-  Instance subset (A : Type) : t (A -> Prop) (subset_ops A):= 
+  Definition subset (A : Type) : t (A -> Prop) (subset_ops A):= 
      pointwise (fun _ : A => prop).
 
   (** [cmap] represents a continuous map on locales. It is just a
@@ -1669,6 +1669,35 @@ rewrite LPRQnn_mult. rewrite Qnnnatfrac. reflexivity.
 Qed.
 
 End FinDist.
+
+Section OTPExample.
+
+Require Fin.
+Definition permutation {A} (f : A -> A) :=
+  exists (g : A -> A), forall a, g (f a) = a.
+
+Fixpoint finToVec {A} {n} : (Fin.t n -> A) -> Vector.t A n := match n with
+  | 0 => fun _ => Vector.nil A
+  | S n' => fun f => let ans := finToVec (fun x => f (Fin.FS x)) in
+     Vector.cons A (f Fin.F1) _ ans
+  end.
+
+Context {A} {OA} {X : F.t A OA}. 
+Definition uniformF {n : nat} (f : Fin.t (S n) -> F.point OA)
+  := uniform (finToVec f).
+
+Theorem perm_uniform {n} (xs : Fin.t (S n) -> F.point OA)
+  (f : Fin.t (S n) -> Fin.t (S n)) (permf : permutation f)
+  : (uniformF xs == uniformF (fun i => xs (f i)))%Val.
+Proof.
+unfold eq; intros. simpl.
+induction n; unfold eq; intros.
+- simpl. replace (f Fin.F1) with (@Fin.F1 0). reflexivity.
+  admit.
+- simpl.
+Abort.
+
+End OTPExample.
 
 End Val.
 

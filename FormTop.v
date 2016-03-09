@@ -188,6 +188,15 @@ Qed.
 
 End Defn.
 
+Arguments t {S} _ _ : clear implicits.
+
+Require Import Morphisms RelationClasses Basics.
+Instance t_proper {S : Type} : 
+  Proper ((eq ==> eq ==> iff) ==> (eq ==> eq ==> iff) ==> iff) (@t S).
+Proof.
+Admitted.
+
+
 Section Localize.
 
 Context {S : Type} {le : S -> S -> Prop}.
@@ -362,11 +371,6 @@ Qed.
 End ToFrame.
 
 End FormTop.
-
-Arguments FormTop.t {_} _ _.
-
-
-
 
 
 (** Formal topologies presented with a minimum operation
@@ -757,8 +761,16 @@ intros. unfold Cov, GCov. split; intros.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Instance isCov : @FormTop.t _ MeetLat.le GCov := 
+Instance isCovG : FormTop.t MeetLat.le GCov := 
   FormTop.GCov_formtop Ix C loc.
+
+Require Import Morphisms.
+Instance isCov : FormTop.t MeetLat.le Cov.
+Proof.
+assert ((eq ==> eq ==> iff)%signature Cov GCov).
+pose proof CovEquiv.
+simpl_relation. rewrite H. apply isCovG.
+Qed.
 
 End InfoBase.
 End InfoBase.
@@ -854,6 +866,8 @@ Definition le := (map_op (fun (s : S) (x : X) => In x s)
             (pointwise_op (fun (_ : X) (P Q : Prop) => P -> Q))).
 
 Instance SPO : PO.t S le _ := PO.map (fun s x => In x s) (PO.subset X).
+
+Instance SubsetFrameOps : Frame.Ops (X -> Prop) := Frame.subset_ops X.
 
 Record t : Type :=
   { here : forall x, { s | In x s }
@@ -1199,17 +1213,13 @@ Proof.
 constructor.
 - apply toLattice.
 - unfold frame. simpl. intros.
-  (** Can clean up this proof! Should follow from subset_equiv! *)
-  apply PO.le_antisym;
-  unfold FormTop.leA, FormTop.Sat; intros.
-  + unfold FormTop.supA in *.
-    apply (FormTop.trans _ _ _ H). clear s H.
-    intros. destruct H as (t' & (i & git) & Fat).
-    apply FormTop.refl. exists i. exists t'. auto.
-  + unfold FormTop.supA in *.
-    apply (FormTop.trans _ _ _ H). clear s H.
-    intros. destruct H as (i & t' & git' & Fat').
-    apply FormTop.refl. exists t'. split. exists i. assumption. assumption.
+  unfold FormTop.eqA, FormTop.Sat.
+  apply (FormTop.subset_equiv FTS).
+  intros; split; intros.
+  + destruct H as (t' & (i & git) & Fat).
+    exists i. exists t'. auto.
+  + destruct H as (i & t' & git' & Fat').
+    exists t'. split. exists i. assumption. assumption.
 - unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
   intros. split; intros. unfold FormTop.supA.
   apply FormTop.refl. exists (fun _ => True). constructor.
@@ -1219,6 +1229,11 @@ constructor.
   intros. destruct H0. apply FormTop.refl.
   exists x. split. exists (fun _ => True). constructor. assumption.
 Qed.
+
+Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
+  (FormTop.FOps leT CovT) :=
+  {| Frame.finv := frame F
+   ; Frame.cont := toFrame |}.
 
 End Cont.
 
@@ -1471,6 +1486,72 @@ End Products.
 End Cont.
 
 Arguments Cont.t {S} leS {T} leT CovS CovT F : clear implicits.
+
+Module One.
+Section One.
+
+Definition Cov (_ : True) (U : True -> Prop) : Prop := U I.
+
+Require Import Morphisms.
+Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov (InfoBase.Cov MeetLat.one_ops).
+Proof.
+simpl_relation.
+intros. unfold Cov, InfoBase.Cov. split; intros.
+- exists I. tauto.
+- destruct H as ([] & Ut & _). assumption.
+Qed.
+
+Instance FTOne : FormTop.t (@MeetLat.le _ MeetLat.one_ops) Cov.
+Proof.
+rewrite CovEquiv.
+apply InfoBase.isCov. apply MeetLat.one.
+Qed.
+
+Instance one_ops : MeetLat.Ops True := MeetLat.one_ops.
+Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
+
+Require Import Morphisms.
+Definition FTtoFrame : 
+  Frame.morph (FormTop.FOps MeetLat.le Cov) Frame.prop_ops (fun U => U I).
+Proof.
+simpl. unfold Cov.
+constructor.
+- constructor.
+  + constructor. simpl. unfold FormTop.leA, FormTop.Sat, Cov.
+    unfold PreO.morph. intros. auto.
+    simpl_relation. simpl in *. unfold FormTop.eqA, FormTop.Sat in *.
+    apply H. constructor.
+  + simpl. unfold FormTop.maxA. tauto.
+  + simpl. unfold FormTop.minA. unfold FormTop.down. intros.
+    split; intros. destruct H as ([] & [] & au & bv & _).
+    auto. exists I. exists I. tauto.
+- simpl. unfold FormTop.supA. tauto.
+- simpl. unfold FormTop.supA. split; intros []; intros. 
+  exists True. constructor. exists (fun _ => True). constructor.
+Qed.
+
+Context {S} `{MLS : MeetLat.t S}.
+Variable CovS : S -> (S -> Prop) -> Prop.
+
+Definition Point (f : S -> Prop) := Cont.t MeetLat.le MeetLat.le Cov CovS (fun _ => f).
+
+Hypothesis FTS : FormTop.t MeetLat.le CovS.
+
+Instance FrameS : Frame.t (S -> Prop) (FormTop.FOps MeetLat.le CovS)
+  := FormTop.Frame MeetLat.le CovS _ FTS.
+
+Instance FrameOne : Frame.t (True -> Prop) (FormTop.FOps MeetLat.le Cov)
+  := FormTop.Frame MeetLat.le Cov _ FTOne.
+
+Definition toFPoint (f : S -> Prop) (pointf : Point f) :
+  Frame.cmap Frame.prop_ops
+  (FormTop.FOps MeetLat.le CovS) :=
+  {| Frame.finv := fun x => Cont.frame (fun _ => f) x I 
+  ; Frame.cont := Frame.morph_compose _ _
+    (Cont.toFrame FTOne FTS (fun _ => f) pointf) FTtoFrame |}.
+
+End One.
+End One.
 
 Module InfoBaseCont.
 Section InfoBaseCont.
@@ -1993,7 +2074,6 @@ constructor.
   + unfold LCov. intros.
     pose proof (fun (s' : S) (insa : In s' a) =>
       FormTop.le_right s' _ _ (H s' insa) (H0 s' insa)).
-    (*eapply FormTop.trans. apply H2. assumption. simpl.*)
     eapply FormTop.monotone. eassumption. 2: apply (H2 s H1). simpl.
     intros. destruct H3 as 
       (u & v & (xs & Inxs & Uxs) & (ys & Inys & Vys) & downuva).
