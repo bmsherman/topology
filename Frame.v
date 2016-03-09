@@ -211,6 +211,9 @@ Module PreO.
   Proof. constructor; [ apply Le.le_refl | apply Le.le_trans ].
   Qed.
 
+  Definition discrete (A : Type) : t A Logic.eq.
+  Proof. constructor; auto. intros; subst; auto. Qed.
+
   (** Product preorders *)
   Definition product `(tA : t A leA) `(tB : t B leB) 
    : t (A * B) (prod_op leA leB).
@@ -402,6 +405,14 @@ Module PO.
   - apply PreO.Nat.
   - solve_proper.
   - apply Le.le_antisym; assumption.
+  Qed.
+
+  Definition discrete (A : Type) : t A Logic.eq Logic.eq.
+  Proof.
+  constructor; intros.
+  - apply PreO.discrete.
+  - solve_proper.
+  - assumption.
   Qed.
 
   Definition product `(tA : t A leA eqA) `(tB : t B leB eqB) 
@@ -1669,35 +1680,6 @@ rewrite LPRQnn_mult. rewrite Qnnnatfrac. reflexivity.
 Qed.
 
 End FinDist.
-
-Section OTPExample.
-
-Require Fin.
-Definition permutation {A} (f : A -> A) :=
-  exists (g : A -> A), forall a, g (f a) = a.
-
-Fixpoint finToVec {A} {n} : (Fin.t n -> A) -> Vector.t A n := match n with
-  | 0 => fun _ => Vector.nil A
-  | S n' => fun f => let ans := finToVec (fun x => f (Fin.FS x)) in
-     Vector.cons A (f Fin.F1) _ ans
-  end.
-
-Context {A} {OA} {X : F.t A OA}. 
-Definition uniformF {n : nat} (f : Fin.t (S n) -> F.point OA)
-  := uniform (finToVec f).
-
-Theorem perm_uniform {n} (xs : Fin.t (S n) -> F.point OA)
-  (f : Fin.t (S n) -> Fin.t (S n)) (permf : permutation f)
-  : (uniformF xs == uniformF (fun i => xs (f i)))%Val.
-Proof.
-unfold eq; intros. simpl.
-induction n; unfold eq; intros.
-- simpl. replace (f Fin.F1) with (@Fin.F1 0). reflexivity.
-  admit.
-- simpl.
-Abort.
-
-End OTPExample.
 
 End Val.
 

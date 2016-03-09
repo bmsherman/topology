@@ -703,25 +703,21 @@ Section InfoBase.
 
 Generalizable All Variables.
 
-Context {S : Type}.
-
-Hypothesis ops : MeetLat.Ops S.
-Let dot := MeetLat.min. 
-Hypothesis ML : MeetLat.t S ops.
+Context {S : Type} `{PO : PO.t S leS eqS}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
-Definition Ix (s : S) : Type := { t : S & MeetLat.le s t }.
-Definition C (s : S) (s' : Ix s) s'' : Prop := MeetLat.eq (projT1 s') s''.
+Definition Ix (s : S) : Type := { t : S & leS s t }.
+Definition C (s : S) (s' : Ix s) s'' : Prop := eqS (projT1 s') s''.
 
 (** This axiom set is localized. *)
-Definition loc : @FormTop.localized S MeetLat.le Ix C.
+Definition loc : @FormTop.localized S leS Ix C.
 Proof.
-pose proof (@PO.t_equiv _ _ _ MeetLat.PO) as eqEquiv.
+pose proof (@PO.t_equiv _ _ _ PO) as eqEquiv.
 unfold FormTop.localized. intros. simpl.
 unfold Ix, C in *.
 destruct i. simpl.
-assert (MeetLat.le a a).
+assert (leS a a).
 apply PreO.le_refl.
 exists (existT _ a H0).
 intros.  simpl in *. 
@@ -733,11 +729,11 @@ eapply PreO.le_trans. eapply H. eassumption.
 Qed.
 
 Definition Cov (s : S) (U : S -> Prop) : Prop :=
-  exists t, U t /\ MeetLat.le s t.
+  exists t, U t /\ leS s t.
 
 (** The covering relation for information bases,
     which we derive from the axiom set above. *)
-Definition GCov := @FormTop.GCov _ MeetLat.le Ix C.
+Definition GCov := @FormTop.GCov _ leS Ix C.
 
 Require Import Morphisms SetoidClass.
 Theorem CovEquiv : forall s U, Cov s U <-> GCov s U.
@@ -754,18 +750,18 @@ intros. unfold Cov, GCov. split; intros.
   + destruct IHGCov as (t & Ut & bt).
     exists t. split. assumption. eapply PreO.le_trans; eassumption.
   + destruct i. unfold C in *. simpl in *.
-    assert (MeetLat.eq x x) as eqx. reflexivity.
+    assert (eqS x x) as eqx. reflexivity.
     specialize (H x eqx).
     specialize (H0 x eqx). destruct H0 as (t & Ut & xt).
     exists t. split. assumption. eapply PreO.le_trans; eassumption.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Instance isCovG : FormTop.t MeetLat.le GCov := 
+Instance isCovG : FormTop.t leS GCov := 
   FormTop.GCov_formtop Ix C loc.
 
 Require Import Morphisms.
-Instance isCov : FormTop.t MeetLat.le Cov.
+Instance isCov : FormTop.t leS Cov.
 Proof.
 assert ((eq ==> eq ==> iff)%signature Cov GCov).
 pose proof CovEquiv.
@@ -841,12 +837,12 @@ constructor. constructor. constructor.
   + intros. apply Qnnmax_induction; auto.
 Qed.
 
-Definition Ix := @InfoBase.Ix Qnn ops.
-Definition C := @InfoBase.C Qnn ops.
+Definition Ix := @InfoBase.Ix Qnn Qnnge.
+Definition C := @InfoBase.C Qnn Qnnge.
 
-Definition Cov := @InfoBase.Cov Qnn ops.
+Definition Cov := @InfoBase.Cov Qnn Qnnge.
 
-Definition isCov := @InfoBase.isCov Qnn opsU UML.
+Definition isCov := @InfoBase.isCov Qnn Qnnge Logic.eq (@MeetLat.PO _ _ ML).
 
 End LowerR.
 
@@ -1493,7 +1489,7 @@ Section One.
 Definition Cov (_ : True) (U : True -> Prop) : Prop := U I.
 
 Require Import Morphisms.
-Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov (InfoBase.Cov MeetLat.one_ops).
+Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov (@InfoBase.Cov _ (fun _ _ => True)).
 Proof.
 simpl_relation.
 intros. unfold Cov, InfoBase.Cov. split; intros.
@@ -1501,14 +1497,16 @@ intros. unfold Cov, InfoBase.Cov. split; intros.
 - destruct H as ([] & Ut & _). assumption.
 Qed.
 
+Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
+Instance POOne : PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
+
 Instance FTOne : FormTop.t (@MeetLat.le _ MeetLat.one_ops) Cov.
 Proof.
 rewrite CovEquiv.
-apply InfoBase.isCov. apply MeetLat.one.
+apply InfoBase.isCov.
 Qed.
 
 Instance one_ops : MeetLat.Ops True := MeetLat.one_ops.
-Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
 
 Require Import Morphisms.
 Definition FTtoFrame : 
@@ -1530,22 +1528,21 @@ constructor.
   exists True. constructor. exists (fun _ => True). constructor.
 Qed.
 
-Context {S} `{MLS : MeetLat.t S}.
+Context {S leS eqS} {POS : PO.t S leS eqS}.
 Variable CovS : S -> (S -> Prop) -> Prop.
 
-Definition Point (f : S -> Prop) := Cont.t MeetLat.le MeetLat.le Cov CovS (fun _ => f).
+Definition Point (f : S -> Prop) := Cont.t MeetLat.le leS Cov CovS (fun _ => f).
 
-Hypothesis FTS : FormTop.t MeetLat.le CovS.
+Hypothesis FTS : FormTop.t leS CovS.
 
-Instance FrameS : Frame.t (S -> Prop) (FormTop.FOps MeetLat.le CovS)
-  := FormTop.Frame MeetLat.le CovS _ FTS.
+Instance FrameS : Frame.t (S -> Prop) (FormTop.FOps leS CovS)
+  := FormTop.Frame leS CovS _ FTS.
 
 Instance FrameOne : Frame.t (True -> Prop) (FormTop.FOps MeetLat.le Cov)
   := FormTop.Frame MeetLat.le Cov _ FTOne.
 
 Definition toFPoint (f : S -> Prop) (pointf : Point f) :
-  Frame.cmap Frame.prop_ops
-  (FormTop.FOps MeetLat.le CovS) :=
+  Frame.cmap Frame.prop_ops (FormTop.FOps leS CovS) :=
   {| Frame.finv := fun x => Cont.frame (fun _ => f) x I 
   ; Frame.cont := Frame.morph_compose _ _
     (Cont.toFrame FTOne FTS (fun _ => f) pointf) FTtoFrame |}.
@@ -1560,8 +1557,8 @@ Context {S} `{MLS : MeetLat.t S}.
 Context {T} `{MLT : MeetLat.t T}.
 
 
-Let CovS : S -> (S -> Prop) -> Prop := InfoBase.Cov _.
-Let CovT : T -> (T -> Prop) -> Prop := InfoBase.Cov _.
+Let CovS : S -> (S -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
+Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
 
 
 Lemma sc_monotone : forall (f : S -> T),
@@ -1682,73 +1679,33 @@ Generalizable All Variables.
 
 Variable A : Type.
 
-Inductive In (a : A) : option A -> Type :=
-  | MkIn : In a (Some a).
-
-Inductive LE : option A -> option A -> Prop :=
-  | LENone : forall b, LE None b
-  | LEEq : forall a, LE (Some a) (Some a).
-
-Instance PreOLE : PreO.t _ LE.
-Proof.
-constructor; intros.
-- destruct x; constructor.
-- destruct H. apply LENone.
-  assumption.
-Qed.
-
-Instance POLE : PO.t _ LE eq.
-Proof.
-constructor.
-- apply PreOLE.
-- repeat intro. subst. intuition.
-- intros. destruct H. inversion H0. reflexivity.
-  reflexivity.
-Qed.
-
 Hypothesis deceq : forall a a' : A, {a = a'} + {a <> a'}.
 
-Definition min (mx my : option A) := match mx with
-  | None => None
-  | Some x => match my with
-    | None => None
-    | Some y => if deceq x y then Some x else None
-    end
-  end.
+Definition Ix := @InfoBase.Ix _ (@Logic.eq A).
+Definition C := @InfoBase.C _ (@Logic.eq A).
+Definition CovI := @InfoBase.Cov _ (@Logic.eq A).
 
-Definition ops' : MeetLat.Ops (option A) :=
-  {| MeetLat.le := LE
-   ; MeetLat.eq := Logic.eq
-   ; MeetLat.min := min
-  |}.
-
-Instance ops : MeetLat.Ops (option A) := ops'.
+(** Woops I should have a positivity predicate to say that the
+    "None" is covered by nothing *)
+Definition Cov (a : A) (U : A -> Prop) : Prop := U a.
 
 Require Import Morphisms.
-
-Ltac MLdecsolve l r := 
-destruct l, r; simpl;
-repeat match goal with
-| [ |- context[deceq ?x ?y] ] => destruct (deceq x y)
-| _ => constructor
-| [ H: LE ?x ?y  |- _ ] => inversion H; clear H; subst
-end.
-
-Instance ML : MeetLat.t (option A) ops.
+Theorem CovEquiv : (eq ==> eq ==> iff)%signature CovI Cov.
 Proof.
-constructor.
-- apply POLE.
-- solve_proper.
-- intros. constructor.
-  + MLdecsolve l r.
-  + MLdecsolve l r. subst. constructor.
-  + simpl in *. intros. destruct m'; MLdecsolve l r.
-    congruence.
+simpl_relation. unfold Cov, CovI, InfoBase.Cov.
+split; intros.
+- destruct H as (t & xt & leat). subst.  assumption. 
+-  exists y. auto.
 Qed.
 
-Definition Ix := InfoBase.Ix ops.
-Definition C := InfoBase.C ops.
-Definition Cov := InfoBase.Cov ops.
+Instance FTproper : Proper _ FormTop.t := @FormTop.t_proper A.
+Instance discretePO : PO.t A Logic.eq Logic.eq := PO.discrete A.
+
+Instance isCov : FormTop.t Logic.eq Cov.
+Proof.
+rewrite <- CovEquiv.
+apply InfoBase.isCov.
+Qed.
 
 End Discrete.
 
@@ -1758,31 +1715,26 @@ Variable (A B : Type).
 Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
 Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
 
-Let opsA := Discrete.ops A deceqA.
-Let opsB := Discrete.ops B deceqB.
-
-Inductive discrF {f : A -> B} : option A -> option B -> Prop :=
-  | PreImg : forall a, discrF (Some a) (Some (f a))
-  | FNone : forall b, discrF None b. 
+Inductive discrF {f : A -> B} : A -> B -> Prop :=
+  | PreImg : forall a, discrF a (f a).
 
 Arguments discrF : clear implicits.
 
-Hint Constructors LE discrF.
+Hint Constructors discrF.
 
-Instance MLB : MeetLat.t _ opsB := Discrete.ML B deceqB.
+Instance POB : PO.t B Logic.eq Logic.eq := PO.discrete B.
 
 Ltac inv H := inversion H; clear H; subst.
+
 Theorem fCont (f : A -> B) :
-  InfoBaseCont.t opsA opsB (discrF f).
+  Cont.t Logic.eq Logic.eq (Cov A) (Cov B) (discrF f).
 Proof.
-constructor; intros.
-- inv H0. inv H. constructor. constructor. 
-  inv H. constructor.
-- inv H. inv H0. constructor. constructor.
-- inv H. inv H0. rewrite MeetLat.min_idempotent.
-  constructor. constructor.
-- destruct s. exists (Some (f a)). constructor.
-  exists None. constructor.
+constructor; unfold Cov; intros.
+- exists (f a). constructor.
+- subst. assumption.
+- inv H. inv H0. exists (f a). split.
+  split; reflexivity. constructor.
+- exists b. auto.
 Qed.
 
 End FinFunc.
@@ -1907,7 +1859,7 @@ Instance IGTFT `(X : IGT A) : FormTop.t le (Cov X) :=
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   (ML : MeetLat.t A ops) : IGT A :=
   {| PO := PO.PreO
-  ; localized := @InfoBase.loc _ _ ML
+  ; localized := @InfoBase.loc _ _ _ MeetLat.PO
   |}.
 
 Definition One : IGT _ := InfoBase MeetLat.one.
