@@ -114,7 +114,7 @@ refine (
 Proof.
 intros. destruct a. reflexivity.
 intros. destruct b. reflexivity.
-Qed. 
+Defined. 
 
 (** * Function type isomorphisms *)
 (** Isomorphisms between function types with different argument types. *)
@@ -282,4 +282,46 @@ assert (forall (n : nat), f <> to0 n).
 - pose proof (to_from0 f).
   rewrite <- H0 in H.
   apply (H (from0 f)). reflexivity.
+Qed.
+
+(** * Subsets *)
+
+Lemma sig_eq (A : Type) (P : A -> Prop) (Pirrel : forall a (p q : P a), p = q)
+  : forall (x y : sig P), projT1 x = projT1 y -> x = y.
+Proof.
+intros. destruct x, y. simpl in *.
+induction H. rewrite (Pirrel x p p0).
+reflexivity.
+Qed.
+
+Theorem subset {A B : Type} (P : A -> Prop) (Q : B -> Prop)
+  (i : T A B)
+  : (forall a, P a -> Q (to i a))
+  -> (forall b, Q b -> P (from i b))
+  -> (forall a (p q : P a), p = q)
+  -> (forall b (p q : Q b), p = q)
+  -> T (sig P) (sig Q).
+Proof.
+intros PimpQ QimpP Pirrel Qirrel.
+refine (
+  {| to := fun sa => match sa with
+    | exist a pa => exist Q (to i a) (PimpQ a pa)
+    end
+  ;  from := fun sb => match sb with
+    | exist b pb => exist P (from i b) (QimpP b pb)
+    end
+  |}
+); intros inp; destruct inp; simpl;
+  apply sig_eq; try assumption; simpl.
+  apply from_to. apply to_from.
+Qed.
+
+Theorem subsetSelf {A : Type} (P Q : A -> Prop)
+  : (forall a, P a <-> Q a)
+  -> (forall a (p q : P a), p = q)
+  -> (forall b (p q : Q b), p = q)
+  -> T (sig P) (sig Q).
+Proof.
+intros. apply (subset _ _ (Refl A)); try assumption; 
+ intros; simpl; firstorder.
 Qed.

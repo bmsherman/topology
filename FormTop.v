@@ -1711,16 +1711,11 @@ End Discrete.
 
 Section FinFunc.
 
-Variable (A B : Type).
+Context {A B : Type}.
 Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
 Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
 
-Inductive discrF {f : A -> B} : A -> B -> Prop :=
-  | PreImg : forall a, discrF a (f a).
-
-Arguments discrF : clear implicits.
-
-Hint Constructors discrF.
+Definition discrF (f : A -> B) (x : A) (y : B) : Prop := f x = y.
 
 Instance POB : PO.t B Logic.eq Logic.eq := PO.discrete B.
 
