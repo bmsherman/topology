@@ -226,7 +226,7 @@ Proof. refine (
 - apply (nonneg _ _ _ H).
 Defined.
 
-Require Import Streams.
+Require Import Coq.Lists.Streams.
 
 Definition Cantor := Stream bool.
 
@@ -451,6 +451,7 @@ induction f; intros g.
   + 
 Abort.
 *)
+Abort.
 
 (* We can lower-bound the integral of a general function f against a measure
    by lower-bounding the integral of a simple function which is no larger
