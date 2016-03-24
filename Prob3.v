@@ -44,17 +44,13 @@ end.
 Definition unit {A : Type} (a : A) : Valuation A.
 Proof. refine (
   {| val := unitProb a |}
-); intros; repeat proveUnit.
-exists 1. exists 1. repeat proveUnit.
-exists 0. exists 1. repeat proveUnit.
-exists 0. exists 1. repeat proveUnit.
-exists 0. exists 0. repeat proveUnit.
-exists 1. repeat proveUnit.
-exists 1. repeat proveUnit.
-exists 0. repeat proveUnit.
-exists 0. exists 1. repeat proveUnit.
-exists 0. repeat proveUnit.
-exists 0. exists 0. repeat proveUnit.
+    ); intros;
+    let rec t := repeat match goal with
+                       | [  |- exists _, _ ] => exists 0; solve [t]
+                       | [  |- exists _, _ ] => exists 1; solve [t]
+                       | _ => repeat proveUnit
+                       end
+    in t.
 Defined.
 
 Lemma Qcmult_le_0_compat : forall {x y : Qc},
