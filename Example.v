@@ -1,4 +1,4 @@
-Require Import Frame FormTop.
+Require Import Frame FormTop FrameVal.
 
 (** If we view [F.prop] as locale corresponding to the 1-point set, then
     [unit_prop] is the unique probability distribution we can define for the 1-point 

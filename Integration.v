@@ -1,7 +1,7 @@
-Require Import Frame Frame LPReal.
+Require Import Frame FrameVal LPReal.
 Require Import Morphisms Ring.
 
-Import Frame.ValNotation.
+Import FrameVal.ValNotation.
 Local Open Scope LPR.
 
 Generalizable All Variables.

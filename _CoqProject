@@ -12,5 +12,7 @@ FormTop.v
 Integration.v
 clement/SmallPowers.v
 alea/BinCoeff.v
+FrameVal.v
 FTVal.v
 Example.v
+Classical.v

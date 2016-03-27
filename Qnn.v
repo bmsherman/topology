@@ -731,3 +731,65 @@ Lemma Qnnmult_open {q x y : Qnn} : q < x * y
   -> exists x' y', x' < x /\ y' < y /\ (q <= x' * y').
 Proof.
 Admitted.
+
+Module Instances.
+
+Require Import Frame.
+
+Definition opsU : MeetLat.Ops Qnn := 
+  {| MeetLat.le := Qnnle ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmin |}.
+
+Definition ops : MeetLat.Ops Qnn := 
+  {| MeetLat.le := Qnnge ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmax |}.
+
+Instance UML : MeetLat.t Qnn opsU.
+Proof.
+constructor. constructor. constructor. 
+- intros; apply Qnnle_refl.
+- intros. eapply Qnnle_trans; eassumption.
+- solve_proper.
+- intros; apply Qnnle_antisym; assumption.
+- solve_proper.
+- intros. constructor.
+  + apply Qnnmin_l.
+  + apply Qnnmin_r.
+  + intros. apply Qnnmin_le_both; assumption.
+Qed.
+
+Instance ML : MeetLat.t Qnn ops.
+Proof.
+constructor. constructor. constructor. 
+- intros; apply Qnnle_refl.
+- intros. simpl in *. eapply Qnnle_trans; eassumption.
+- solve_proper.
+- intros; apply Qnnle_antisym; assumption.
+- solve_proper.
+- simpl in *. intros. constructor.
+  + apply Qnnmax_l.
+  + apply Qnnmax_r.
+  + intros. apply Qnnmax_induction; auto.
+Qed.
+
+(** In fact, the [Qnnmin] operation is a idempotent,
+    commutative semigroup. I think I have a more generic proof of this
+    somewhere in Frame.v?
+*)
+Theorem lowerCommSG : CommIdemSG.t Qnn eq Qnnmin.
+Proof.
+pose opsU.
+constructor; intros.
+- apply eq_equivalence.
+- solve_proper.
+- replace (@eq Qnn _ _) with (@MeetLat.eq Qnn _ (MeetLat.min a a) a) by reflexivity. 
+ apply MeetLat.min_idempotent.
+- apply Qnnle_antisym; apply Qnnmin_le_both;
+    (apply Qnnmin_r || apply Qnnmin_l).
+- apply Qnnle_antisym. apply Qnnmin_le_both.
+  apply Qnnmin_le_both. apply Qnnmin_l. eapply Qnnle_trans.
+  apply Qnnmin_r. apply Qnnmin_l. eapply Qnnle_trans. apply Qnnmin_r.
+  apply Qnnmin_r.
+  apply Qnnmin_le_both. eapply Qnnle_trans. apply Qnnmin_l.
+  apply Qnnmin_l. apply Qnnmin_le_both. eapply Qnnle_trans.
+  apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
+Qed.
+End Instances.

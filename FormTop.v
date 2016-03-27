@@ -370,6 +370,36 @@ Qed.
 
 End ToFrame.
 
+Section Subspace.
+Context {S : Type} {leS : S -> S -> Prop}.
+Hypothesis POS : PreO.t S leS.
+Variable Cov : S -> (S -> Prop) -> Prop.
+
+Definition SubspaceCov (V : S -> Prop) (a : S)
+  (U : S -> Prop) : Prop := Cov a (fun s => V s \/ U s).
+
+Theorem TSubspace (V : S -> Prop) : FormTop.t leS Cov 
+  -> FormTop.t leS (SubspaceCov V).
+Proof.
+intros FTS. constructor; unfold SubspaceCov; intros.
+- apply refl. right. assumption.
+- eapply trans. apply H. clear H. simpl. intros.
+  destruct H. apply refl. left. assumption.
+  apply H0. assumption.
+- apply le_left with b; assumption.
+- pose proof (le_right a _ _ H H0). 
+  eapply trans. apply H1.
+  clear H1. simpl. intros. 
+  destruct H1 as (u & v & VUu & VVv & (ua & va)).
+  destruct VUu. apply (le_left _ _ _ ua).
+  apply refl. left.  assumption.
+  destruct VVv. apply (le_left _ _ _ va).
+  apply refl. left. assumption.
+  apply refl. right. exists u. exists v. unfold down. auto.
+Qed.
+
+End Subspace.
+
 End FormTop.
 
 
@@ -615,82 +645,6 @@ End Defn.
 
 End FormTopM.
 
-(** A definition of commutative and idempotent semigroups.
-    This is effectively a semi-lattice (it can be a join semi-lattice
-    or a meet semi-lattice depending on your attitude) defined
-    solely in terms of its min or max operation.
-*)
-Module CommIdemSG.
-
-Generalizable All Variables.
-
-Require Import SetoidClass Coq.Classes.Morphisms.
-
-(** [dot] is a binary operation which is commutative, idempotent, and
-    associative. It is effectively a max or min. *)
-Class t {A} {eq : A -> A -> Prop} {dot : A -> A -> A} :=
-  { eq_equiv :> Equivalence eq
-  ; dot_proper :> Proper (eq ==> eq ==> eq) dot
-  ; dot_idempotent : forall a, eq (dot a a) a
-  ; dot_comm : forall a b, eq (dot a b) (dot b a)
-  ; dot_assoc : forall a b c, eq (dot a (dot b c)) (dot (dot a b) c)
-  }.
-
-Arguments t : clear implicits.
-
-Section Facts.
-Context `{tA : t A eql dot}.
-
-(** Here we define a "<=" relation which makes the [dot] a
-    [min] operation for a meet semi-lattice *)
-Definition ops : MeetLat.Ops A :=
-  {| MeetLat.le := fun x y => eql (dot x y) x
-   ; MeetLat.eq := eql
-   ; MeetLat.min := dot
-  |}.
-
-Instance ops' : MeetLat.Ops A := ops.
-
-(** Next, we prove successively, that these definitions using
-    the [dot] operator indeed define a preorder, a partial order,
-    and finally a meet semi-lattice. *)
-Theorem asPreO : PreO.t A MeetLat.le.
-Proof.
-constructor; simpl; intros.
-- apply dot_idempotent.
-- rewrite <- H. rewrite <- H0 at 2.
-  rewrite dot_assoc. reflexivity.
-Qed.
-
-Theorem asPO : PO.t A MeetLat.le eql.
-Proof.
-constructor.
-- apply asPreO.
-- repeat intro; simpl; split; intros. 
-  rewrite <- H, <- H0. assumption.
-  rewrite H, H0. assumption.
-- simpl. intros. rewrite <- H. rewrite <- H0 at 2.
-  rewrite dot_comm. reflexivity.
-Qed.
-
-Instance asMeetLat : MeetLat.t A ops.
-Proof.
-constructor. 
-- apply asPO.
-- solve_proper.
-- intros. constructor; simpl; intros.
-  + rewrite dot_comm. rewrite dot_assoc.
-    rewrite dot_idempotent. reflexivity.
-  + rewrite <- dot_assoc. rewrite dot_idempotent.
-    reflexivity.
-  + rewrite <- H at 2. rewrite <- H0 at 2.
-    rewrite (dot_comm l r). rewrite dot_assoc.
-    reflexivity.
-Qed.
-
-End Facts.
-End CommIdemSG.
-
 (** Information bases, which are the predicative versions of
     Scott domains. Perhaps, see Definition 1.9 of [2].
     Though my formulation is a little different; I build off
@@ -771,78 +725,56 @@ Qed.
 End InfoBase.
 End InfoBase.
 
-(** Here we intend to define the formal topology for the lower 
-    non-negative real
+(** Here we intend to define the formal topology for the lower real
     numbers, realizing that the lower real numbers can be made into 
     a formal topology by showing that they are an information base,
-    taking the non-negative rational numbers, together with the
-    minimum operation, as the meet semilattice for an information base.
+    taking the rational numbers, together with the
+    maximum operation, as the meet semilattice for an information base.
 *)
+
 Module LowerR.
-Require Import Qnn Coq.Classes.Morphisms SetoidClass.
+Require Import QArith QArith.Qminmax.
 
-(** In fact, the [Qnnmin] operation is a idempotent,
-    commutative semigroup. I think I have a more generic proof of this
-    somewhere in Frame.v?
-*)
-Theorem lowerCommSG : CommIdemSG.t Qnn eq Qnnmin.
-Proof.
-constructor; intros.
-- apply eq_equivalence.
-- solve_proper.
-- apply Qnnle_antisym. 
-  apply Qnnmin_r. apply Qnnmin_le_both; apply Qnnle_refl.
-- apply Qnnle_antisym; apply Qnnmin_le_both;
-    (apply Qnnmin_r || apply Qnnmin_l).
-- apply Qnnle_antisym. apply Qnnmin_le_both.
-  apply Qnnmin_le_both. apply Qnnmin_l. eapply Qnnle_trans.
-  apply Qnnmin_r. apply Qnnmin_l. eapply Qnnle_trans. apply Qnnmin_r.
-  apply Qnnmin_r.
-  apply Qnnmin_le_both. eapply Qnnle_trans. apply Qnnmin_l.
-  apply Qnnmin_l. apply Qnnmin_le_both. eapply Qnnle_trans.
-  apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
-Qed.
+Definition opsU : MeetLat.Ops Q := 
+  {| MeetLat.le := Qle ; MeetLat.eq := Qeq; MeetLat.min := Qmin |}.
 
-Definition opsU : MeetLat.Ops Qnn := 
-  {| MeetLat.le := Qnnle ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmin |}.
+Definition ops : MeetLat.Ops Q := 
+  {| MeetLat.le := fun x y => x >= y ; MeetLat.eq := Qeq; MeetLat.min := Qmax |}.
 
-Instance UML : MeetLat.t Qnn opsU.
+Instance UML : MeetLat.t Q opsU.
 Proof.
 constructor. constructor. constructor. 
-- intros; apply Qnnle_refl.
-- intros. eapply Qnnle_trans; eassumption.
+- intros; apply Qle_refl.
+- intros. eapply Qle_trans; eassumption.
 - solve_proper.
-- intros; apply Qnnle_antisym; assumption.
+- intros; apply Qle_antisym; assumption.
 - solve_proper.
-- intros. constructor.
-  + apply Qnnmin_l.
-  + apply Qnnmin_r.
-  + intros. apply Qnnmin_le_both; assumption.
+- intros. constructor; simpl.
+  + apply Q.le_min_l. 
+  + apply Q.le_min_r. 
+  + intros. apply Q.min_glb; assumption.
 Qed.
 
-Definition ops : MeetLat.Ops Qnn := 
-  {| MeetLat.le := Qnnge ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmax |}.
-
-Instance ML : MeetLat.t Qnn ops.
+Instance ML : MeetLat.t Q ops.
 Proof.
 constructor. constructor. constructor. 
-- intros; apply Qnnle_refl.
-- intros. simpl in *. eapply Qnnle_trans; eassumption.
+- intros; apply Qle_refl.
+- simpl. intros. eapply Qle_trans; eassumption.
+- simpl. solve_proper.
+- intros; apply Qle_antisym; assumption.
 - solve_proper.
-- intros; apply Qnnle_antisym; assumption.
-- solve_proper.
-- simpl in *. intros. constructor.
-  + apply Qnnmax_l.
-  + apply Qnnmax_r.
-  + intros. apply Qnnmax_induction; auto.
+- intros. constructor; simpl.
+  + apply Q.le_max_l. 
+  + apply Q.le_max_r. 
+  + intros. apply Q.max_lub; assumption.
 Qed.
 
-Definition Ix := @InfoBase.Ix Qnn Qnnge.
-Definition C := @InfoBase.C Qnn Qnnge.
+Definition Ix := @InfoBase.Ix Q (fun x y => x >= y).
+Definition C := @InfoBase.C Q (fun x y => x >= y).
 
-Definition Cov := @InfoBase.Cov Qnn Qnnge.
+Definition Cov := @InfoBase.Cov Q (fun x y => x >= y).
 
-Definition isCov := @InfoBase.isCov Qnn Qnnge Logic.eq (@MeetLat.PO _ _ ML).
+Definition isCov := @InfoBase.isCov Q (fun x y => x >= y) Qeq (@MeetLat.PO _ _ ML).
 
 End LowerR.
 
@@ -1763,68 +1695,39 @@ End ConcFunc.
 End ConcFunc.
 
 Module LPRFuncs.
-Require Import Qnn.
+Require Import QArith.
 
-Definition plusL (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
-  let (l, r) := addends in (l + r >= sum)%Qnn.
+Definition plusL (addends : Q * Q) (sum : Q) :  Prop :=
+  let (l, r) := addends in (sum <= l + r).
 
-Definition plusU (addends : Qnn * Qnn) (sum : Qnn) :  Prop :=
-  let (l, r) := addends in (l + r <= sum)%Qnn.
+Definition plusU (addends : Q * Q) (sum : Q) :  Prop :=
+  let (l, r) := addends in (l + r <= sum).
+
+Require Import QArith.Qminmax.
 
 Theorem plus_cont : InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
   LowerR.ops plusL.
 Proof.
 constructor; unfold plusL; intros.
-- destruct a, b. destruct H. simpl in *. unfold Qnnge in *.
-  eapply Qnnle_trans; [eassumption|].
-  apply Qnnplus_le_compat; eassumption.
-- destruct a. simpl in *. unfold Qnnge in *. eapply Qnnle_trans.
-  eassumption. assumption.
-- destruct a. apply Qnnmax_induction; intros; assumption.
-- destruct s. exists (q + q0)%Qnn. apply Qnnle_refl.
+- destruct a, b. destruct H. simpl in *.
+  eapply Qle_trans; [eassumption|].
+  apply Qplus_le_compat; eassumption.
+- destruct a. simpl in *. eapply Qle_trans; eassumption.
+- destruct a. simpl. apply Q.max_lub; assumption.
+- destruct s. exists (q + q0). apply Qle_refl.
 Qed.
 
 Theorem plus_contU : InfoBaseCont.t (MeetLat.product_ops LowerR.opsU LowerR.opsU)
   LowerR.opsU plusU.
 Proof.
-constructor; unfold plusU; intros.
+constructor; unfold plusL; intros.
 - destruct a, b. destruct H. simpl in *.
-  eapply Qnnle_trans; [|eassumption].
-  apply Qnnplus_le_compat; eassumption.
-- destruct a. simpl in *. eapply Qnnle_trans.
-  eassumption. assumption.
-- destruct a. apply Qnnmin_le_both; assumption.
-- destruct s. exists (q + q0)%Qnn. apply Qnnle_refl.
+  eapply Qle_trans; [|eassumption].
+  apply Qplus_le_compat; eassumption.
+- destruct a. simpl in *. eapply Qle_trans; eassumption.
+- destruct a. simpl. apply Q.min_glb; assumption.
+- destruct s. exists (q + q0). apply Qle_refl.
 Qed.
-
-Require Import LPReal.
-Definition toLPR (x : True -> Qnn -> Prop)
-  (cont : InfoBaseCont.t (MeetLat.one_ops) (LowerR.ops) x)
-  : LPReal.
-Proof.
-refine ({| lbound := fun q => exists r, (q < r)%Qnn /\ x I r |}); intros.
-- destruct H as (r & rq & xIr).
-  exists r. split. eapply Qnnle_lt_trans; eassumption. eassumption. 
-- destruct H as (r & rq & xIr).
-  pose proof (Qnnaverage _ _ rq). destruct H.
-  exists ((q + r) * Qnnonehalf)%Qnn. split. assumption.
-  exists r. auto.
-Defined.
-
-(** I made an error in defining my formal-topology-based lower reals,
-    so I can't express the number 0 *)
-Definition fromLPR (x : LPReal)
-  (xgt0 : (0 < x)%LPR)
-  : InfoBaseCont.t (MeetLat.one_ops) (LowerR.ops) (fun _ => lbound x).
-Proof.
-constructor; intros.
-- assumption.
-- simpl in *. eapply dclosed. apply H. apply H0.
-- simpl. apply Qnnmax_induction; intros; assumption. 
-- unfold LPRlt in xgt0.
-  destruct xgt0 as (q & zq & xq). exists q. assumption.
-Qed.
-
 
 End LPRFuncs.
 
