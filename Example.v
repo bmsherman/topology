@@ -343,7 +343,8 @@ Fixpoint build_finite {A : Type} (fin : Finite.T A) : (A -> LPReal) -> Val.t (fr
   := match fin with
   | Finite.F0 => fun _ => 0%Val
   | Finite.FS _ fin' => fun f =>
-     (f (inl I) * Val.unit (point (inl I)) + Val.map (Ffunc inr) (build_finite fin' (fun x => f (inr x))))%Val
+     (f (inl I) * Val.unit (point (inl I)) 
+     + Val.map (Ffunc inr) (build_finite fin' (fun x => f (inr x))))%Val
   | Finite.FIso _ _ fin' t => fun f =>
      Val.map (Ffunc (Iso.to t)) (build_finite fin' (fun x => f (Iso.to t x)))
   end.
@@ -397,6 +398,34 @@ Proof. refine (
 reflexivity. destruct b. destruct t. reflexivity.
 Defined.
 
+Theorem iso_false_subset {A} : Iso.T False (sig (fun _ : A => False)).
+Proof. refine (
+  {| Iso.to := False_rect _
+  ; Iso.from := fun p : sig (fun _ => False) => let (x, px) := p in False_rect _ px
+  |}); intros.
+- contradiction.
+- destruct b. contradiction.
+Defined.
+
+Definition subset_sum_distr {A B} {P : A + B -> Prop} :
+  Iso.T (sig P) (sig (fun a => P (inl a)) + sig (fun b => P (inr b))).
+Proof.
+refine (
+  {| Iso.to := fun (p : sig P) => let (x, px) := p in match x as x'
+  return P x' -> sig (fun a => P (inl a)) + sig (fun b => P (inr b)) with
+  | inl a => fun px' => inl (exist (fun a' => P (inl a')) a px')
+  | inr b => fun px' => inr (exist (fun b' => P (inr b')) b px')
+  end px
+  ; Iso.from := fun p => match p with
+  | inl (exist a pa) => exist _ (inl a) pa
+  | inr (exist b pb) => exist _ (inr b) pb
+  end
+  |}
+); intros.
+- destruct a as (x & px). destruct x; reflexivity.
+- destruct b as [s | s]; destruct s; reflexivity.
+Defined.
+
 Require Import ProofIrrelevance.
 Theorem fin_dec_subset {A} (fin : Finite.T A) {P : A -> Prop}
   : (forall a, {P a} + {~ P a}) -> Finite.T (sig P).
@@ -405,23 +434,48 @@ generalize dependent P. induction fin; intros P decP.
 - eapply Finite.FIso. apply Finite.F0.
   eapply Iso.Trans. apply iso_true_subset. 
   apply Iso.subsetSelf; firstorder.
-- destruct (decP (inl I)). 
-  + admit. 
-  + eapply Finite.FIso.
-    apply (IHfin (fun a => P (inr a))). intros. apply decP.
-    admit.
+- eapply Finite.FIso. 2: eapply Iso.Sym; apply subset_sum_distr.
+  destruct (decP (inl I)).
+  + eapply Finite.FIso. Focus 2.
+    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => True)); intros; auto.
+    destruct a. tauto. destruct p0, q. reflexivity.
+    apply proof_irrelevance. apply Iso.Refl.
+    eapply Finite.FIso. Focus 2. eapply Iso.PlusCong.
+    apply iso_true_subset. apply Iso.Refl.
+    apply Finite.FS. apply IHfin. intros. apply decP.  
+  + eapply Finite.FIso. Focus 2.
+    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => False)); intros; auto.
+    destruct a. tauto. contradiction. destruct b. congruence.
+    apply Iso.Refl. eapply Finite.FIso. Focus 2. eapply Iso.PlusCong.
+    apply iso_false_subset. apply Iso.Refl.
+    eapply Finite.FIso. Focus 2.
+    eapply Iso.Trans. Focus 2. apply Iso.PlusComm.
+    apply Finite.botNull. apply IHfin. intros; apply decP.
 - eapply Finite.FIso. apply (IHfin (fun a => P (Iso.to t a))). 
   intros. apply decP. apply Iso.subset with t; firstorder.
   rewrite Iso.to_from. assumption. apply proof_irrelevance.
   apply proof_irrelevance.
-Admitted.
+Defined.
 
 Theorem sum_finite_subset_dec_equiv {A} (fin : Finite.T A)
   (P : A -> Prop) (decP : forall a, {P a} + {~ P a}) (f : A -> LPReal)
   : sum_finite_subset fin P f =
     sum_finite (fin_dec_subset fin decP) (fun x => f (projT1 x)).
 Proof.
-Admitted.
+unfold sum_finite_subset.
+induction fin.
+- simpl. reflexivity.
+- simpl. destruct (decP (inl I)); simpl.
+  + rewrite LPRind_true by assumption. ring_simplify.
+    apply LPRplus_eq_compat. reflexivity.
+    erewrite IHfin. apply sum_finite_equiv.
+    intros. destruct a. simpl. reflexivity.
+  + rewrite LPRind_false by assumption. ring_simplify.
+    erewrite IHfin. apply sum_finite_equiv.
+    intros.  destruct a. simpl. reflexivity. 
+- simpl. erewrite IHfin. apply sum_finite_equiv.
+  intros. destruct a. simpl. reflexivity.
+Qed.
 
 Theorem sum_finite_iso {A B} (fin : Finite.T A) (f : A -> LPReal)
  (i : Iso.T A B) : sum_finite fin f = sum_finite 
@@ -676,6 +730,41 @@ Theorem sum_finite_fin_equiv : forall A (fin1 fin2 : Finite.T A) f,
 Proof.
 Admitted.
 
+Lemma build_finite_extensional_f:
+  forall (A : Type) (fin : Finite.T A) (f g : A -> LPReal) (P : A -> Prop),
+  (forall x, f x = g x) ->
+  (build_finite fin f) P = (build_finite fin g) P.
+Proof.
+intros. induction fin.
+- simpl. reflexivity.
+- simpl. erewrite IHfin.
+  apply LPRplus_eq_compat. rewrite H. reflexivity.
+  reflexivity. simpl. intros. apply H.
+- simpl. specialize (IHfin (fun x => f (Iso.to t x))
+   (fun x => g (Iso.to t x))).
+  apply IHfin. intros. apply H.
+Qed.
+
+Lemma discrF_identity {A} : forall U (f : A -> A), (forall a, f a = a)
+ -> @L.eq _ (@F.LOps _ (DOps A)) (Cont.frame (Discrete.discrF f) U) U.
+Proof.
+intros. simpl. unfold FormTop.eqA, Discrete.Cov, Discrete.discrF,
+  FormTop.Sat, Cont.frame.
+intros s. split; intros. destruct H0 as (t & Ut & fst).
+rewrite <- H. rewrite fst. assumption.
+exists (f s). split. rewrite H. assumption. reflexivity.
+Qed.
+
+Lemma discrete_inj_e :
+  forall (A B : Type) (f : A -> B),
+  (forall x y : A, f x = f y -> x = y) ->
+  forall x y, f x = y
+  -> @L.eq _ (@F.LOps _ (DOps A)) (eq x) (Cont.frame (Discrete.discrF f) (eq y)).
+Proof.
+intros. rewrite <- H0. apply discrete_inj.
+assumption.
+Qed.
+
 Theorem OTPGood : forall f,
   sum_finite finiteFN f = 1%LPR ->
   Val.map (Ffunc plus2) 
@@ -689,15 +778,14 @@ rewrite (sum_finite_subset_dec_equiv _ _ (fun x => F_eq_dec _ _)).
 rewrite (sum_finite_iso _ _ (group_action_l x)). 
 erewrite sum_finite_equiv. 
 Focus 2. intros.  simpl. 
-replace 
-  (Cont.frame
-        (Discrete.discrF
-           (fun p : {_ : F N & F N} => let (x0, y) := p in (x0, y)))
-        (eq (a, (x - a)%F)))
-  with
-  (eq (existT (fun _ => F N) a (x - a)))%F
-  by admit. rewrite build_finite_ok.
-  reflexivity.
+erewrite Val.val_iff.
+rewrite build_finite_ok. Focus 2.
+symmetry.
+apply discrete_inj_e. intros. destruct x0, y.
+congruence. 
+instantiate (1 := existT (fun _ => F N) a (x - a)%F).
+simpl. reflexivity. simpl. reflexivity.
+unfold Cont.frame, Discrete.discrF.
 erewrite sum_finite_equiv. Focus 2. intros.
 rewrite (SRmul_comm LPRsrt). reflexivity.
 rewrite sum_finite_scales.

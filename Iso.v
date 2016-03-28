@@ -44,7 +44,7 @@ refine (
 - rewrite (to_from AB).
   rewrite (to_from BC).
   reflexivity.
-Qed.
+Defined.
 
 (** * Sigma type isomorphisms *)
 (** Isomorphisms between Sigma types with different indexing types. *)
@@ -255,6 +255,21 @@ intros; apply functional_extensionality; intro x; simpl;
   reflexivity.
 Defined.
 
+Definition PlusComm {A B} : T (A + B) (B + A).
+Proof. refine (
+  {| to := fun x => match x with
+  | inl a => inr a
+  | inr b => inl b
+  end
+  ; from := fun y => match y with
+  | inl b => inr b
+  | inr a => inl a
+  end
+  |}); intros.
+- destruct a; reflexivity.
+- destruct b; reflexivity.
+Defined.
+
 Theorem eq_dec {A B : Type} : (forall x y : A, {x = y} + {x <> y})
   -> T A B -> forall x y : B, {x = y} + {x <> y}.
 Proof.
@@ -314,7 +329,7 @@ refine (
 ); intros inp; destruct inp; simpl;
   apply sig_eq; try assumption; simpl.
   apply from_to. apply to_from.
-Qed.
+Defined.
 
 Theorem subsetSelf {A : Type} (P Q : A -> Prop)
   : (forall a, P a <-> Q a)
@@ -324,4 +339,4 @@ Theorem subsetSelf {A : Type} (P Q : A -> Prop)
 Proof.
 intros. apply (subset _ _ (Refl A)); try assumption; 
  intros; simpl; firstorder.
-Qed.
+Defined.

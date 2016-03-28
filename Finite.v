@@ -52,7 +52,7 @@ refine (
 |}).
 reflexivity.
 intros b. destruct b. reflexivity. contradiction.
-Qed.
+Defined.
 
 Fixpoint split (m : nat)
   : forall (n : nat), Fin.t (m + n) -> (Fin.t m + Fin.t n).
