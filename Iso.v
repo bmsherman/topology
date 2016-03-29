@@ -340,3 +340,27 @@ Proof.
 intros. apply (subset _ _ (Refl A)); try assumption; 
  intros; simpl; firstorder.
 Defined.
+
+
+(** Proof irrelevant-things *)
+
+Inductive inhabited {A : Type} : Prop :=
+  | elem (a : A) : inhabited.
+
+Arguments inhabited : clear implicits.
+
+Require Import ProofIrrelevance.
+
+Theorem inhabited_idempotent {A : Type} :
+  T A (inhabited A * A).
+Proof.
+refine (
+  {| to := fun a => (elem a, a)
+   ; from := fun p => snd p
+  |}
+).
+- intros. reflexivity.
+- intros. destruct b. simpl.
+  replace (elem a) with i by apply proof_irrelevance.
+  reflexivity.
+Defined.
