@@ -624,33 +624,26 @@ Proof.
 simpl. intros. eapply F_add_reg_l. eassumption.
 Qed.
 
+Theorem iso_uniform {A} (fin : Finite.T A) : forall f g c,
+  (forall a, f (g a) = a)
+  -> (forall a, g (f a) = a)
+  -> Val.map (Ffunc f) (build_finite fin (fun _ => c))
+    = build_finite fin (fun _ => c).
+Proof.
+intros. apply (fin_dec fin). intros.
+simpl. rewrite build_finite_ok.
+rewrite <- (H a).
+rewrite <- discrete_inj.
+rewrite build_finite_ok. reflexivity.
+intros. rewrite <- (H0 x). rewrite <- (H0 y). f_equal. 
+assumption.
+Qed.
+
 Theorem OPTFN : forall (x : F N),
   Val.map (Ffunc (fun y => x + y))%F uniformFN = uniformFN.
 Proof.
-intros. apply fin_dec. apply finiteFN.
-intros. simpl. rewrite <- (Iso.from_to iso a) at 2.
-rewrite <- (discrete_inj (Iso.from iso)).
-rewrite build_finite_ok.
-replace a with (x + (a - x))%F by ring.
-pose proof (discrete_inj (fun y => (x + y)%F) (plus_inj x)) as dinj.
-assert (forall x0, (eq x0) = (Cont.frame (Discrete.discrF (fun y : F N => (x + y)%F))
-              (eq ((fun y : F N => (x + y)%F) x0))))
-  by admit.
-(** This is not in fact true. They are equal according to L.eq but not
-    eq. However, there's some complicated rewriting to do, depending on
-    getting good "Proper" instances for frame morphisms, and I haven't
-    gotten to work yet.
-    Should be able to do
-    rewrite <- (discrete_inj (fun y => (x + y)%F))
-    once this works. *)
-clear dinj. rewrite <- H.
-rewrite <- (Iso.from_to iso (a - x)%F).
-rewrite <- (discrete_inj (Iso.from iso)).
-rewrite build_finite_ok. reflexivity.
-intros. rewrite <- (Iso.to_from iso). rewrite <- H0.
-rewrite (Iso.to_from iso). reflexivity.
-intros. rewrite <- (Iso.to_from iso). rewrite <- H.
-rewrite (Iso.to_from iso). reflexivity.
+intros. apply (iso_uniform _ _ (fun y => y - x)%F);
+  intros; ring.
 Qed.
 
 Definition build_finite_prod {A B} (fin : Finite.T (A * B))
@@ -684,11 +677,6 @@ Qed.
 Definition finiteFN2 : Finite.T (F N * F N) := 
   Finite.times finiteFN finiteFN.
 
-Lemma pair_eq : forall A B (a a' : A) (b b' : B), a = a' -> b = b' -> (a, b) = (a', b').
-Proof.
-intros; subst; reflexivity.
-Qed.
-
 Theorem group_action_l : forall z, 
   Iso.T (sig (fun p : F N * F N => plus2 p = z)) (F N).
 Proof.
@@ -701,7 +689,7 @@ intros. unfold plus2. ring.
   |}).
 - intros. apply Iso.sig_eq. intros. apply UIP_dec. apply F_eq_dec.
   simpl. destruct a. simpl. destruct x. simpl. unfold plus2 in e. rewrite <- e.
-  apply pair_eq; ring.
+  f_equal; ring.
 - intros. simpl. ring.
 Defined.
 
@@ -725,9 +713,69 @@ intros A fin. induction fin; simpl; intros.
 - apply IHfin.
 Qed.
 
+Lemma sum_finite_pt {A} (fin : Finite.T A) :
+  forall (x : A),
+  sum_finite fin (fun y => LPRindicator (x = y)) = 1.
+Proof.
+induction fin; intros.
+- contradiction.
+- simpl. destruct x.
+  + destruct t. rewrite LPRind_true by reflexivity.
+    rewrite (sum_finite_equiv _ _ (fun _ => 0)).
+    rewrite sum_finite_const. ring. intros.
+    rewrite LPRind_false by congruence. reflexivity.
+  + rewrite LPRind_false by congruence.
+    rewrite (sum_finite_equiv _ _ (fun x => LPRindicator (a = x))).
+    rewrite IHfin. ring.
+    intros. apply LPRind_iff. split; congruence.
+- simpl. rewrite <- (IHfin (Iso.from t x)).
+  apply sum_finite_equiv. intros.
+  apply LPRind_iff. split; intros; subst.
+  apply Iso.from_to. symmetry. apply Iso.to_from.
+Qed.
+
+Lemma sum_finite_char {A} (fin : Finite.T A) :
+  forall (f : A -> LPReal) x,
+  f x = sum_finite fin (fun y => LPRindicator (x = y) * f y).
+Proof.
+intros.
+assert (forall y, LPRindicator (x = y) * f y = f x * LPRindicator (x = y)).
+intros. rewrite (SRmul_comm LPRsrt (f x)).
+apply LPRle_antisym; apply LPRind_scale_le; intros; subst;
+  rewrite LPRind_true by trivial; ring_simplify; apply LPRle_refl.
+erewrite sum_finite_equiv.
+2: apply H.
+rewrite sum_finite_scales. rewrite sum_finite_pt.
+ring.
+Qed.
+
+Theorem sum_finite_adds {A} (fin : Finite.T A) :
+  forall (f g : A -> LPReal),
+  sum_finite fin (fun x => f x + g x) 
+  = sum_finite fin f + sum_finite fin g.
+Proof.
+induction fin; intros; simpl.
+- ring.
+- rewrite IHfin. ring.
+- rewrite IHfin. ring.
+Qed.
+
 Theorem sum_finite_fin_equiv : forall A (fin1 fin2 : Finite.T A) f,
   sum_finite fin1 f = sum_finite fin2 f.
 Proof.
+intros.
+erewrite sum_finite_equiv. Focus 2. intros.
+rewrite (sum_finite_char fin2). reflexivity.
+induction fin2; simpl.
+- rewrite sum_finite_const. ring.
+- rewrite sum_finite_adds. erewrite sum_finite_equiv.
+  Focus 2. intros. rewrite (SRmul_comm LPRsrt).
+  rewrite (LPRind_iff _ (inl I = a)) by (split; auto). 
+  reflexivity.
+  rewrite sum_finite_scales. rewrite sum_finite_pt.
+  apply LPRplus_eq_compat. ring.
+  admit.
+- admit.
 Admitted.
 
 Lemma build_finite_extensional_f:
