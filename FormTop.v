@@ -14,6 +14,11 @@ Set Asymmetric Patterns.
     I highly suggest reading their paper alongside this module!
     I will refer to it as [1].
 *)
+
+Definition compose {S T U} (F : S -> T -> Prop)
+  (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
+    exists t, F s t /\ G t u.
+
 Module FormTop.
 
 Generalizable All Variables.
@@ -1201,11 +1206,6 @@ iff there is some subset T such that
   everything in T maps to u
 *)
 
-Definition compose (F : S -> T -> Prop)
-  (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
-    exists t, F s t /\ G t u.
-
-
 Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
     t leS leT CovS CovT F
   -> t leT leU CovT CovU G
@@ -1484,13 +1484,25 @@ End One.
 
 Module InfoBaseCont.
 Section InfoBaseCont.
+
 Generalizable All Variables.
+
+Require Import Morphisms.
+
 Context {S} `{MLS : MeetLat.t S}.
 Context {T} `{MLT : MeetLat.t T}.
 
+Record pt {F : T -> Prop} : Prop :=
+  { pt_local : forall {a b}, F a -> F b -> F (MeetLat.min a b)
+  ; pt_le_right : forall a b, MeetLat.le a b -> F a -> F b
+  ; pt_here : exists c, F c
+  }.
 
-Let CovS : S -> (S -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
-Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
+Arguments pt : clear implicits.
+
+Instance pt_proper : Proper ((eq ==> iff) ==> iff) pt.
+Proof.
+Admitted.
 
 
 Lemma sc_monotone : forall (f : S -> T),
@@ -1529,6 +1541,10 @@ Record t {F : S -> T -> Prop} :=
 
 Arguments t : clear implicits.
 
+
+Let CovS : S -> (S -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
+Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
+
 Theorem cont : forall (F : S -> T -> Prop),
   t F
   -> Cont.t MeetLat.le MeetLat.le CovS CovT F.
@@ -1549,6 +1565,82 @@ intros. constructor; intros.
 Qed.
 
 End InfoBaseCont.
+
+Arguments t {_} {_} {_} {_} F.
+Arguments pt {_} {_} F.
+
+Section Compose.
+
+Context {S : Type} {SOps} {MLS : MeetLat.t S SOps}.
+
+Instance OneOps : MeetLat.Ops True := MeetLat.one_ops.
+
+Theorem to_pt : forall (F : True -> S -> Prop), t F ->
+  pt (F I).
+Proof.
+intros. constructor; intros.
+- apply (local H); assumption. 
+- eapply (le_right H); eassumption. 
+- apply (here H).
+Qed.
+
+Theorem from_pt : forall (F : S -> Prop), pt F -> t (fun _ => F).
+Proof.
+intros. constructor; intros.
+- assumption.
+- eapply (pt_le_right H); eassumption.
+- apply (pt_local H); assumption.
+- apply (pt_here H).
+Qed.
+
+Context {T TOps} {MLT : MeetLat.t T TOps}.
+Context {U UOps} {MLU : MeetLat.t U UOps}.
+
+Theorem t_compose (F : S -> T -> Prop) (G : T -> U -> Prop)
+  : t F -> t G
+  -> t (compose F G).
+Proof.
+intros HF HG.
+constructor; unfold compose; intros.
+- destruct H0 as (t & Fbt & Gtc).
+  exists t. split. 
+  + eapply (le_left HF); eassumption.
+  + assumption.
+- destruct H as (t & Fat & Gtb).
+  exists t. split. assumption. eapply (le_right HG); eassumption.
+- destruct H as (t & Fat & Gtb).
+  destruct H0 as (t' & Fat' & Gt'c).
+  exists (MeetLat.min t t'). split. 
+  + apply (local HF); assumption.
+  + apply (local HG); eapply (le_left HG). 
+    apply MeetLat.min_l. assumption. 
+    apply MeetLat.min_r. assumption. 
+- destruct (here HF s). destruct (here HG x).
+  exists x0. exists x. auto.
+Qed.
+
+End Compose.
+
+Section EvalPt.
+
+Context {S SOps} {MLS : MeetLat.t S SOps}.
+Context {T TOps} {MLT : MeetLat.t T TOps}.
+
+Definition eval (F : S -> T -> Prop) (x : S -> Prop) (t : T) : Prop :=
+  exists s, x s /\ F s t.
+
+Require Import Morphisms.
+Theorem eval_pt (F : S -> T -> Prop) (x : S -> Prop)
+  : pt x -> t F -> pt (eval F x).
+Proof.
+intros Hx HF.
+pose proof (t_compose (fun _ => x) F (from_pt _ Hx) HF).
+apply to_pt in H. 
+eapply pt_proper. 2: eassumption. simpl_relation.
+Qed.
+
+End EvalPt.
+
 End InfoBaseCont.
 
 Arguments InfoBaseCont.t {S} SOps {T} TOps F : rename, clear implicits.
@@ -1697,24 +1789,106 @@ End ConcFunc.
 Module LPRFuncs.
 Require Import QArith.
 
-Definition plusL (addends : Q * Q) (sum : Q) :  Prop :=
-  let (l, r) := addends in (sum <= l + r).
+Definition lift_binop (op : Q -> Q -> Q) (args : Q * Q) (result : Q) : Prop :=
+  let (l, r) := args in (result <= op l r).
+
+Definition plusL := lift_binop Qplus.
 
 Definition plusU (addends : Q * Q) (sum : Q) :  Prop :=
   let (l, r) := addends in (l + r <= sum).
 
 Require Import QArith.Qminmax.
 
+Theorem lift_binop_cont : forall op
+  (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'),
+  InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
+  LowerR.ops (lift_binop op).
+Proof.
+intros. constructor; unfold lift_binop; intros;
+repeat match goal with
+| [ a : (_ * _)%type |- _ ] => destruct a
+| [ H : MeetLat.le (_, _) (_, _) |- _ ] => destruct H
+end; simpl in *.
+- eapply Qle_trans. apply H0. 
+  apply le_compat; assumption.
+- eapply Qle_trans; eassumption.
+- apply Q.max_lub; assumption.
+- exists (op q q0). apply Qle_refl.
+Qed.
+
 Theorem plus_cont : InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
   LowerR.ops plusL.
 Proof.
-constructor; unfold plusL; intros.
-- destruct a, b. destruct H. simpl in *.
-  eapply Qle_trans; [eassumption|].
-  apply Qplus_le_compat; eassumption.
-- destruct a. simpl in *. eapply Qle_trans; eassumption.
-- destruct a. simpl. apply Q.max_lub; assumption.
-- destruct s. exists (q + q0). apply Qle_refl.
+apply lift_binop_cont. apply Qplus_le_compat.
+Qed.
+
+Record LReal :=
+  { lbound :> Q -> Prop
+  ; dclosed : forall q, lbound q -> forall q', q' <= q -> lbound q'
+  ; uopen : forall q, lbound q -> exists q', (q < q') /\ lbound q'
+  ; nonempty : exists q, lbound q
+  }.
+
+Definition LRle (x y : LReal) : Prop := forall q, x q -> y q.
+Definition LReq (x y : LReal) : Prop := LRle x y /\ LRle y x.
+
+Require Import Coq.Sets.Ensembles ProofIrrelevance.
+
+Definition LReal_eq_compat (x y : LReal) :
+  LReq x y -> x = y.
+Proof.
+intros H. unfold LReq, LRle in H. destruct H.
+destruct x, y; simpl in *.
+assert (lbound0 = lbound1).
+apply Extensionality_Ensembles. unfold Same_set, Included, In.
+split; assumption.
+induction H1.
+replace dclosed0 with dclosed1 by apply proof_irrelevance.
+replace uopen0 with uopen1 by apply proof_irrelevance.
+replace nonempty0 with nonempty1 by apply proof_irrelevance.
+reflexivity.
+Qed.
+
+Require Import Coq.Program.Basics.
+
+Instance LReal_proper (x : LReal) : Proper (Qle --> impl) (lbound x).
+Proof.
+unfold Proper, respectful, impl, flip. intros.
+eapply dclosed; eassumption.
+Qed.
+
+Instance LReal_proper2 (x : LReal) : Proper (Qeq ==> iff) (lbound x).
+Proof.
+unfold Proper, respectful. intros. split; intros; 
+  (eapply dclosed; [eassumption| rewrite H; apply Qle_refl]).
+Qed.
+
+Require Import Qnn.
+
+Definition pt_to_LReal (x : Q -> Prop) (ptx : @InfoBaseCont.pt _ LowerR.ops x) 
+  : LReal.
+Proof.
+refine ({| lbound := fun q => exists u, q < u /\ x u |}); intros.
+- destruct H as (u & qu & xu).
+  exists u. split. eapply Qle_lt_trans; eassumption. assumption.
+- destruct H as (u & qu & xu).
+  pose proof (Qbetween q u qu).
+  destruct H as (mid & midl & midu).
+  exists mid. split.  assumption. exists u. split. apply midu.
+  assumption.
+- destruct (InfoBaseCont.pt_here ptx) as (l & xl).
+  exists (l - 1). exists l. split. rewrite Qlt_minus_iff. ring_simplify.
+  reflexivity. assumption.
+Defined.
+
+Require Import Morphisms SetoidClass.
+Definition LReal_to_pt (x : LReal) : @InfoBaseCont.pt _ LowerR.ops (lbound x).
+Proof.
+constructor; intros.
+- simpl. destruct (Q.max_dec a b); setoid_rewrite q; assumption.
+- eapply dclosed; eassumption.
+- destruct (nonempty x) as (l & xl).
+  exists l. assumption.
 Qed.
 
 Theorem plus_contU : InfoBaseCont.t (MeetLat.product_ops LowerR.opsU LowerR.opsU)
@@ -1783,9 +1957,9 @@ Definition id `{LA : IGT A} : LA ~> LA :=
   {| mp := Cont.id
   ; mp_ok := Cont.t_id |}.
 
-Definition compose `{LA : IGT A} 
+Definition comp `{LA : IGT A} 
   `{LB : IGT B} `{LD : IGT D} (f : LA ~> LB) (g : LB ~> LD) : LA ~> LD :=
-  {| mp := Cont.compose (mp f) (mp g)
+  {| mp := compose (mp f) (mp g)
   ; mp_ok := Cont.t_compose (mp f) (mp g) (mp_ok f) (mp_ok g)
   |}.
 

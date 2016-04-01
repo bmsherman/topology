@@ -618,12 +618,6 @@ Definition uniformFN : Val.t (frameA (F N)) :=
 
 Definition uniformFN' : Val.t (frameA (F N)) := uniformF (F N) (Iso.from iso).
 
-Lemma plus_inj (x : F N) : let f y := (x + y)%F in
-  forall a b, f a = f b -> a = b.
-Proof.
-simpl. intros. eapply F_add_reg_l. eassumption.
-Qed.
-
 Theorem iso_uniform {A} (fin : Finite.T A) : forall f g c,
   (forall a, f (g a) = a)
   -> (forall a, g (f a) = a)
