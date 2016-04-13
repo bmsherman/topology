@@ -1,7 +1,15 @@
+#Coq
 *.vo
 *.v.d
 *.glob
-*.aux
-*~
+
 Makefile.coq
 html/
+
+*~
+
+#Latex
+*.bbl
+*.aux
+*.blg
+*.log
