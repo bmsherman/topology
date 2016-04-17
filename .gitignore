@@ -13,3 +13,4 @@ html/
 *.aux
 *.blg
 *.log
+*.synctex.gz
