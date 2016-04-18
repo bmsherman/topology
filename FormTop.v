@@ -781,6 +781,59 @@ Definition Cov := @InfoBase.Cov Q (fun x y => x >= y).
 
 Definition isCov := @InfoBase.isCov Q (fun x y => x >= y) Qeq (@MeetLat.PO _ _ ML).
 
+Instance Cov_isCov : FormTop.t (fun x y => x >= y) Cov
+  := isCov.
+
+
+Definition Cov' (a : Q) (U : Q -> Prop) :=
+  forall u, a < u -> Cov u U.
+
+Definition Ix' (a : Q) := option Q.
+
+Definition C' (a : Q) (p : Ix' a) : Q -> Prop := match p with
+  | None => fun u => a < u
+  | Some l => fun l' => l <= a -> l == l'
+  end.
+
+Require Import Qnn.
+Definition Cov'Equiv : forall a U,
+  Cov' a U <-> @FormTop.GCov _ (fun x y => x >= y) Ix' C' a U.
+Proof.
+intros. unfold Cov'. split; intros.
+- apply FormTop.ginfinity with None. simpl.
+  intros. unfold Cov, InfoBase.Cov in H.
+  specialize (H u H0). destruct H as (t & Ut & ut).
+  apply FormTop.gle_left with t. assumption.
+  apply FormTop.grefl. assumption.
+- generalize dependent u. 
+  induction H; intros.
+  + exists a. split. assumption. apply Qlt_le_weak. assumption.
+  + apply IHGCov. eapply Qle_lt_trans; eassumption.
+  + destruct i; simpl in *. 
+    * apply (H0 (Qmin a q)). intros. symmetry.
+      apply Q.min_r_iff. assumption.
+      eapply Qle_lt_trans. apply Q.le_min_l. assumption.
+    * destruct (Qbetween a u H1) as (mid & mida & midu).
+      apply H0 with mid; assumption.
+Qed.
+
+(* Think: how can this be generalized? *)
+(* Now I could use the previous proof instead. *)
+Theorem isCov' : FormTop.t (fun x y => x >= y) Cov'.
+Proof.
+constructor; unfold Cov'; intros.
+- apply FormTop.le_left with a.
+  apply Qlt_le_weak. assumption. apply FormTop.refl.
+  assumption.
+- destruct (Qbetween a u H1) as (mid & mida & midu).
+  unfold Cov, InfoBase.Cov in *.
+  specialize (H mid mida). destruct H as (t & Ut & lt).
+  eapply H0.
+  apply Ut. eapply Qle_lt_trans. apply lt. assumption.
+- apply H0. eapply Qle_lt_trans; eassumption.
+- apply FormTop.le_right; auto.
+Qed.
+
 End LowerR.
 
 (** A definition of concrete topological spaces. These are formal topologies
