@@ -194,6 +194,8 @@ Qed.
 End Defn.
 
 Arguments t {S} _ _ : clear implicits.
+Arguments localized {S} le {I} C : clear implicits.
+Arguments GCov {S} le {I} C _ _ : clear implicits.
 
 Require Import Morphisms RelationClasses Basics.
 Instance t_proper {S : Type} : 
@@ -217,7 +219,7 @@ Definition CL (a : S) : IxL a -> S -> Prop :=
   | exist (existT c k) _ => fun z => exists u, C c k u /\ @down _ le a u z
   end.
 
-Theorem Llocalized : @localized _ le IxL CL.
+Theorem Llocalized : localized le CL.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *. destruct x.
@@ -405,6 +407,16 @@ Qed.
 
 End Subspace.
 
+Section GSubspace.
+Context {S leS} {POS : PreO.t S leS}.
+Context {Ix : S -> Type}.
+Variable C : forall s, Ix s -> S -> Prop.
+
+Definition SubspaceC (V : S -> Prop) (s : S) (ix : Ix s) (s' : S) : Prop :=
+  V s' \/ C s ix s'.
+
+End GSubspace.
+
 End FormTop.
 
 
@@ -438,7 +450,7 @@ Instance ops' : MeetLat.Ops S := ops.
 Definition le := MeetLat.le.
 Definition dot := MeetLat.min.
 
-Context {ML : @MeetLat.t S ops}.
+Context {ML : MeetLat.t S ops}.
 
 Require Import SetoidClass Morphisms.
 
@@ -518,7 +530,7 @@ Inductive GCov : S -> (S -> Prop) -> Prop :=
 
 Hypothesis loc : localized.
 
-Lemma localized_asFormTop : @FormTop.localized S MeetLat.le I C.
+Lemma localized_asFormTop : FormTop.localized MeetLat.le C.
 Proof.
 unfold FormTop.localized, localized in *.
 intros.
@@ -670,7 +682,7 @@ Definition Ix (s : S) : Type := { t : S & leS s t }.
 Definition C (s : S) (s' : Ix s) s'' : Prop := eqS (projT1 s') s''.
 
 (** This axiom set is localized. *)
-Definition loc : @FormTop.localized S leS Ix C.
+Definition loc : FormTop.localized leS C.
 Proof.
 pose proof (@PO.t_equiv _ _ _ PO) as eqEquiv.
 unfold FormTop.localized. intros. simpl.
@@ -871,7 +883,7 @@ Definition C (a : S) (i : Ix a) : S -> Prop := match i with
   | exist g _ => fun s => exists (x : X) (prf : In x a), s = g x prf
   end.
 
-Theorem loc : t -> @FormTop.localized S (map_op (fun s x => In x s) L.le) Ix C.
+Theorem loc : t -> FormTop.localized (map_op (fun s x => In x s) L.le) C.
 Proof.
 intros conc. destruct conc.
 unfold FormTop.localized. simpl.
@@ -933,9 +945,9 @@ constructor; intros.
   reflexivity.
 Defined.
 
-Definition Cov := @FormTop.GCov S LE Ix C.
+Definition Cov := FormTop.GCov LE C.
 
-Theorem loc : @FormTop.localized S LE Ix C.
+Theorem loc : FormTop.localized LE C.
 Proof.
 unfold FormTop.localized.
 intros.  unfold Ix in *. destruct i. exists I.
@@ -986,9 +998,9 @@ Definition C (p : S * T) : Ix p -> S * T -> Prop
 Definition PO := PreO.product POS POT.
 
 Theorem loc : 
-    @FormTop.localized S leS IS CS
-  -> @FormTop.localized T leT IT CT
-  -> @FormTop.localized (S * T) (prod_op leS leT) Ix C.
+    FormTop.localized leS CS
+  -> FormTop.localized leT CT
+  -> FormTop.localized (prod_op leS leT) C.
 Proof.
 intros. unfold FormTop.localized in *.
 intros. destruct a as [sa ta], c as [sc tc]. 
@@ -1021,10 +1033,10 @@ destruct i as [[sI t]|[s tI]].
   simpl. red. eauto. 
 Qed.
 
-Definition Cov := @FormTop.GCov (S * T) (prod_op leS leT) Ix C.
+Definition Cov := FormTop.GCov (prod_op leS leT) C.
 
-Hypothesis locS : @FormTop.localized S leS IS CS.
-Hypothesis locT : @FormTop.localized T leT IT CT.
+Hypothesis locS : FormTop.localized leS CS.
+Hypothesis locT : FormTop.localized leT CT.
 
 Theorem isCov : FormTop.t (prod_op leS leT) Cov.
 Proof.
@@ -1032,8 +1044,8 @@ apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT)
   PO Ix C (loc locS locT)).
 Qed.
 
-Let CovS := @FormTop.GCov S leS IS CS.
-Let CovT := @FormTop.GCov T leT IT CT.
+Let CovS := FormTop.GCov leS CS.
+Let CovT := FormTop.GCov leT CT.
 
 Lemma factors : forall a b U V, CovS a U -> CovT b V -> 
   Cov (a, b) (fun p => let (a', b') := p in U a' /\ V b').
@@ -1308,8 +1320,8 @@ End Morph.
 Section Products. 
 Context {S} `{POS : PreO.t S leS}.
 Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
-Variable locS : @FormTop.localized _ leS IS CS.
-Let CovS := @FormTop.GCov _ leS IS CS.
+Variable locS : FormTop.localized leS CS.
+Let CovS := FormTop.GCov leS CS.
 
 Definition diagonal (p : S) (out : S * S) : Prop :=
   let (out1, out2) := out in leS p out1 /\ leS p out2.
@@ -1355,8 +1367,8 @@ Qed.
 
 Context {T} `{POT : PreO.t T leT}.
 Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
-Variable locT : @FormTop.localized _ leT IT CT.
-Let CovT := @FormTop.GCov _ leT IT CT.
+Variable locT : FormTop.localized leT CT.
+Let CovT := FormTop.GCov leT CT.
 
 Definition proj_L (p : S * T) (out : S) : Prop :=
   let (s1, t1) := p in leS s1 out.
@@ -1423,13 +1435,13 @@ Qed.
 
 Context {A} `{POA : PreO.t A leA}.
 Context {IA} {CA : forall (t : A), IA t -> (A -> Prop)}.
-Variable locA : @FormTop.localized _ leA IA CA.
-Let CovA := @FormTop.GCov _ leA IA CA.
+Variable locA : FormTop.localized leA CA.
+Let CovA := FormTop.GCov leA CA.
 
 Context {B} `{POB : PreO.t B leB}.
 Context {IB} {CB : forall (t : B), IB t -> (B -> Prop)}.
-Variable locB : @FormTop.localized _ leB IB CB.
-Let CovB := @FormTop.GCov _ leB IB CB.
+Variable locB : FormTop.localized leB CB.
+Let CovB := FormTop.GCov leB CB.
 
 Definition parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
   (p : S * T) (out : A * B) : Prop :=
@@ -1702,14 +1714,16 @@ Module IGCont.
 Section IGCont.
 Generalizable All Variables.
 Context {S} `{POS : PreO.t S leS}.
-Context {IS} {CS : forall (s : S), IS s -> (S -> Prop)}.
-Variable locS : @FormTop.localized _ leS IS CS.
-Let CovS := @FormTop.GCov _ leS IS CS.
+Context {IS : S -> Type}.
+Variable CS : forall (s : S), IS s -> (S -> Prop).
+Variable locS : FormTop.localized leS CS.
+Let CovS := FormTop.GCov leS CS.
 
 Context {T} `{POT : PreO.t T leT}.
-Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
-Variable locT : @FormTop.localized _ leT IT CT.
-Let CovT := @FormTop.GCov _ leT IT CT.
+Context {IT : T -> Type}.
+Variable CT : forall (t : T), IT t -> (T -> Prop).
+Variable locT : FormTop.localized leT CT.
+Let CovT := FormTop.GCov leT CT.
 
 Record t {F : S -> T -> Prop} :=
   { here : forall s, exists t, F s t
@@ -1748,6 +1762,9 @@ Abort.
 
 End IGCont.
 End IGCont.
+
+Arguments IGCont.t {S} leS {IS} CS
+                   {T} leT {IT} CT F : clear implicits.
 
 Module Discrete.
 Section Discrete.
@@ -1843,7 +1860,7 @@ Module LPRFuncs.
 Require Import QArith.
 
 Definition lift_binop (op : Q -> Q -> Q) (args : Q * Q) (result : Q) : Prop :=
-  let (l, r) := args in (result <= op l r).
+  let (l, r) := args in (result < op l r).
 
 Definition plusL := lift_binop Qplus.
 
@@ -1852,8 +1869,8 @@ Definition plusU (addends : Q * Q) (sum : Q) :  Prop :=
 
 Require Import QArith.Qminmax.
 
-Theorem lift_binop_cont : forall op
-  (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'),
+Theorem lift_binop_cont_ib : forall op
+  (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'), 
   InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
   LowerR.ops (lift_binop op).
 Proof.
@@ -1862,17 +1879,41 @@ repeat match goal with
 | [ a : (_ * _)%type |- _ ] => destruct a
 | [ H : MeetLat.le (_, _) (_, _) |- _ ] => destruct H
 end; simpl in *.
-- eapply Qle_trans. apply H0. 
+- eapply Qlt_le_trans. apply H0. 
   apply le_compat; assumption.
-- eapply Qle_trans; eassumption.
-- apply Q.max_lub; assumption.
-- exists (op q q0). apply Qle_refl.
+- eapply Qle_lt_trans; eassumption.
+- apply Q.max_lub_lt; assumption.
+- exists (op q q0 - 1). apply Qlt_minus_iff.
+  ring_simplify. reflexivity.
 Qed.
 
-Theorem plus_cont : InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
-  LowerR.ops plusL.
+Theorem lift_binop_cont : forall op
+  (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'),
+  IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y)) 
+           (Product.C _ _ _ _ LowerR.C' LowerR.C')
+           (fun x y => x >= y) LowerR.C'
+           (lift_binop op).
 Proof.
-apply lift_binop_cont. apply Qplus_le_compat.
+intros.
+constructor; intros.
+- destruct s as (a & b). exists (op a b - 1).
+  apply Qlt_minus_iff. ring_simplify.
+  reflexivity.
+- destruct a as (a1 & a2). simpl in *.
+  apply FormTop.grefl. exists (Qmax b c).
+  split. split; [apply Q.le_max_l | apply Q.le_max_r ].
+  simpl. apply Q.max_lub_lt; assumption.
+- destruct a, c. simpl in *. unfold prod_op in *.
+  destruct H as (pr1 & pr2). simpl in *.
+  eapply Qlt_le_trans. apply H0. apply le_compat; assumption.
+- destruct a as (a1 & a2). simpl in *.
+  eapply Qle_lt_trans; eassumption.
+- destruct a as (a1 & a2). 
+  simpl; apply FormTop.grefl; destruct j; simpl in *.
+  + exists (Qmin q b). split. symmetry. apply Q.min_l_iff. assumption.
+    eapply Qle_lt_trans. apply Q.le_min_r. assumption.
+  + destruct (Qnn.Qbetween b (op a1 a2) H) as (mid & between).
+    exists mid. apply between.
 Qed.
 
 Record LReal :=
@@ -1969,14 +2010,14 @@ Class IGT {S : Type} : Type :=
   ; PO :> PreO.t S le
   ; Ix : S -> Type
   ; C : forall s, Ix s -> (S -> Prop)
-  ; localized : @FormTop.localized _ le Ix C
+  ; localized : FormTop.localized le C
   }.
 
 Arguments IGT : clear implicits.
 
 Generalizable All Variables.
 
-Definition Cov `(X : IGT A) := @FormTop.GCov _ le Ix C.
+Definition Cov `(X : IGT A) := FormTop.GCov le C.
 
 Instance IGTFT `(X : IGT A) : FormTop.t le (Cov X) :=
   @FormTop.GCov_formtop _ _ PO _ _ localized.
