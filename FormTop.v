@@ -103,7 +103,24 @@ Inductive GCov : S -> (S -> Prop) -> Prop :=
   | ginfinity : forall (a : S) (i : I a) (U : S -> Prop),
      (forall u, C a i u -> GCov u U) -> GCov a U.
 
-Hypothesis loc : localized. 
+Inductive GCovL : S -> (S -> Prop) -> Prop :=
+  | glrefl : forall (a : S) (U : S -> Prop), U a -> GCovL a U
+  | glle_left : forall (a b : S) (U : S -> Prop)
+    , le a b -> GCovL b U -> GCovL a U
+  | gle_infinity : forall (a b : S) (i : I b) (U : S -> Prop)
+    , le a b -> (forall u, (exists u', C b i u' /\ down a u' u) -> GCovL u U)
+    -> GCovL a U.
+
+Lemma Lmore : forall a U, GCov a U -> GCovL a U.
+Proof.
+intros. induction H.
+- apply glrefl. assumption.
+- apply glle_left with b; assumption.
+- apply (gle_infinity a a i _ (PreO.le_refl _)).
+  intros. destruct H1 as (u' & Caiu' & (ua & uu')).
+  apply glle_left with u'. assumption. apply H0.
+  assumption.
+Qed.
 
 Lemma gmonotone : forall (a : S) (U V : S -> Prop),
   (forall u, U u -> V u) -> GCov a U -> GCov a V.
@@ -116,12 +133,24 @@ intros. induction H0.
   apply H.
 Qed.
 
+Lemma gmonotoneL : forall a (U V : S -> Prop),
+  (forall u , U u -> V u) -> GCovL a U -> GCovL a V.
+Proof.
+intros. induction H0.
+- apply glrefl. apply H. assumption.
+- eapply glle_left. eassumption. apply IHGCovL. assumption.
+- eapply gle_infinity. eassumption. intros. apply H2.
+  apply H3. apply H.
+Qed.
+
 Lemma gsubset_equiv : forall (U V : S -> Prop)
   , (forall a : S, U a <-> V a)
   -> forall a, GCov a U <-> GCov a V.
 Proof.
 intros. split; apply gmonotone; intro; apply H; assumption.
 Qed.
+
+Hypothesis loc : localized. 
 
 (** Proposition 3.5 of [1] *)
 Lemma le_infinity : forall (a c : S), le a c ->
@@ -196,6 +225,7 @@ End Defn.
 Arguments t {S} _ _ : clear implicits.
 Arguments localized {S} le {I} C : clear implicits.
 Arguments GCov {S} le {I} C _ _ : clear implicits.
+Arguments GCovL {S} le {I} C _ _ : clear implicits.
 
 Require Import Morphisms RelationClasses Basics.
 Instance t_proper {S : Type} : 
@@ -211,8 +241,8 @@ Variable (PO : PreO.t S le).
 Variable (Ix : S -> Type) (C : forall s, Ix s -> (S -> Prop)).
 
 Definition IxL (a : S) := 
-  { i : sigT (fun c => Ix c) | match i with
-    | existT c k => le a c end }.
+  { i : sigT Ix | match i with
+    | existT c _ => le a c end }.
 
 Definition CL (a : S) : IxL a -> S -> Prop := 
   fun i => match i with
@@ -233,6 +263,29 @@ exists s. split. exists u. split. assumption. unfold down in *.
   assumption.
   unfold down in *. destruct downaus.
   split; [assumption | apply PreO.le_refl].
+Qed.
+
+Theorem cov_equiv : forall a U,
+  GCovL le C a U <-> GCov le CL a U.
+Proof.
+intros. split; intros.
+- induction H.
+  + apply grefl. assumption.
+  + apply gle_left with b; assumption.
+  + pose (exist (fun j : sigT Ix => match j with existT c _ => le a c end)
+       (existT Ix b i) H : IxL a).
+  apply ginfinity with i0.
+  intros. apply H1.
+  unfold CL in H2.
+  simpl in H2. destruct H2 as (u' & Caiu' & (ua & uu')).
+  exists u'. split. assumption. split; eassumption.
+- induction H.
+  + apply glrefl. assumption.
+  + apply glle_left with b; assumption.
+  + destruct i as ((c & i) & ac).
+    simpl in *.
+    apply (gle_infinity _ _ a c i). assumption.
+    intros. apply H0. apply H1.
 Qed.
 
 End Localize.
@@ -377,47 +430,91 @@ Qed.
 
 End ToFrame.
 
-Section Subspace.
+End FormTop.
+
+Module Subspace.
+
+Section Defn.
 Context {S : Type} {leS : S -> S -> Prop}.
 Hypothesis POS : PreO.t S leS.
-Variable Cov : S -> (S -> Prop) -> Prop.
+Variable CovS : S -> (S -> Prop) -> Prop.
 
-Definition SubspaceCov (V : S -> Prop) (a : S)
-  (U : S -> Prop) : Prop := Cov a (fun s => V s \/ U s).
+Definition Cov (V : S -> Prop) (a : S)
+  (U : S -> Prop) : Prop := CovS a (fun s => V s \/ U s).
 
-Theorem TSubspace (V : S -> Prop) : FormTop.t leS Cov 
-  -> FormTop.t leS (SubspaceCov V).
+Theorem t (V : S -> Prop) : FormTop.t leS CovS 
+  -> FormTop.t leS (Cov V).
 Proof.
-intros FTS. constructor; unfold SubspaceCov; intros.
-- apply refl. right. assumption.
-- eapply trans. apply H. clear H. simpl. intros.
-  destruct H. apply refl. left. assumption.
+intros FTS. constructor; unfold Cov; intros.
+- apply FormTop.refl. right. assumption.
+- eapply FormTop.trans. apply H. clear H. simpl. intros.
+  destruct H. apply FormTop.refl. left. assumption.
   apply H0. assumption.
-- apply le_left with b; assumption.
-- pose proof (le_right a _ _ H H0). 
-  eapply trans. apply H1.
+- apply FormTop.le_left with b; assumption.
+- pose proof (FormTop.le_right a _ _ H H0). 
+  eapply FormTop.trans. apply H1.
   clear H1. simpl. intros. 
   destruct H1 as (u & v & VUu & VVv & (ua & va)).
-  destruct VUu. apply (le_left _ _ _ ua).
-  apply refl. left.  assumption.
-  destruct VVv. apply (le_left _ _ _ va).
-  apply refl. left. assumption.
-  apply refl. right. exists u. exists v. unfold down. auto.
+  destruct VUu. apply (FormTop.le_left _ _ _ ua).
+  apply FormTop.refl. left.  assumption.
+  destruct VVv. apply (FormTop.le_left _ _ _ va).
+  apply FormTop.refl. left. assumption.
+  apply FormTop.refl. right. exists u. exists v. unfold FormTop.down. auto.
 Qed.
 
-End Subspace.
+End Defn.
 
-Section GSubspace.
-Context {S leS} {POS : PreO.t S leS}.
+Arguments Cov {S} CovS V a U : clear implicits.
+
+Section IGDefn.
+Context {S} {leS : S -> S -> Prop}.
+Hypothesis POS : PreO.t S leS.
 Context {Ix : S -> Type}.
-Variable C : forall s, Ix s -> S -> Prop.
+Variable C : forall a, Ix a -> (S -> Prop).
 
-Definition SubspaceC (V : S -> Prop) (s : S) (ix : Ix s) (s' : S) : Prop :=
-  V s' \/ C s ix s'.
+Variable V : S -> Prop. 
 
-End GSubspace.
+Definition SIx (a : S) : Type :=
+  (Ix a + { I : True | V a })%type.
 
-End FormTop.
+Definition SC (a : S) (i : SIx a) : S -> Prop := 
+  match i with
+  | inl i' => C a i'
+  | inr _ => fun _ => False
+  end.
+
+Theorem same : forall a U,
+  FormTop.GCovL leS SC a U <-> Cov (FormTop.GCovL leS C) V a U.
+Proof.
+intros. unfold Cov. split; intros.
+- induction H.
+  + apply FormTop.glrefl. right. assumption.
+  + apply FormTop.glle_left with b. assumption.
+    assumption.
+  + destruct i.
+    * apply (FormTop.gle_infinity _ _ a b i).
+      assumption. intros. apply H1. simpl. apply H2.
+    * destruct s. apply FormTop.glle_left with b. assumption.
+      apply FormTop.glrefl. left. assumption.
+- remember (fun s => V s \/ U s) as U' in H. induction H; subst.
+  + destruct H.
+    * eapply FormTop.gmonotoneL. Focus 2.
+    pose proof (FormTop.gle_infinity SIx SC a a (inr (exist (fun _ => V a) I H)) (fun _ => False) 
+       (PreO.le_refl _)).
+    apply H0. intros. simpl in *.
+    destruct H1 as (u' & bot & downau). contradiction. simpl.
+    intros. contradiction.
+    * apply FormTop.glrefl. assumption.
+  + apply FormTop.glle_left with b. assumption. apply IHGCovL.
+    reflexivity.
+  + apply (FormTop.gle_infinity SIx SC a b (inl i)).
+    assumption. intros.
+    apply H1. apply H2. reflexivity.
+Qed.
+
+End IGDefn.
+
+End Subspace.
 
 
 (** Formal topologies presented with a minimum operation
@@ -1127,6 +1224,14 @@ Record t {F : S -> T -> Prop} : Prop :=
 
 Arguments t F : clear implicits.
 
+Record pt {F : T -> Prop} :=
+  { pt_here : exists t, F t
+  ; pt_local : forall {b c}, F b -> F c -> exists d, @FormTop.down _ leT b c d /\ F d
+  ; pt_cov : forall {b V}, F b -> CovT b V -> exists v, F v /\ V v
+  }.
+
+Arguments pt F : clear implicits.
+
 (** Convert a continuous map for formal topologies to a 
     frame homomorphism (i.e., continuous map on locales)
   *)
@@ -1236,6 +1341,7 @@ Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
 End Cont.
 
 Arguments t {S} leS {T} leT CovS CovT F : clear implicits.
+Arguments pt {T} leT CovT F : clear implicits.
 
 Section Morph.
 
@@ -1759,7 +1865,6 @@ intros.
 constructor; intros.
 Abort. 
 
-
 End IGCont.
 End IGCont.
 
@@ -1959,43 +2064,43 @@ Qed.
 
 Require Import Qnn.
 
-Definition pt_to_LReal (x : Q -> Prop) (ptx : @InfoBaseCont.pt _ LowerR.ops x) 
+Instance FTR : FormTop.t (fun x y => x >= y) LowerR.Cov'
+  := LowerR.isCov'.
+
+Definition pt_to_LReal (x : Q -> Prop) (ptx : Cont.pt (fun x y => x >= y) LowerR.Cov' x)
   : LReal.
 Proof.
-refine ({| lbound := fun q => exists u, q < u /\ x u |}); intros.
+refine ({| lbound := fun q => exists u, q <= u /\ x u |}); intros.
 - destruct H as (u & qu & xu).
-  exists u. split. eapply Qle_lt_trans; eassumption. assumption.
+  exists u. split. eapply Qle_trans; eassumption. assumption.
 - destruct H as (u & qu & xu).
-  pose proof (Qbetween q u qu).
-  destruct H as (mid & midl & midu).
-  exists mid. split.  assumption. exists u. split. apply midu.
+  assert (LowerR.Cov' u (fun q' => q < q')).
+  unfold LowerR.Cov'.
+  intros. unfold LowerR.Cov, InfoBase.Cov.
+  exists u0. split. eapply Qle_lt_trans; eassumption. apply Qle_refl.
+  pose proof (Cont.pt_cov ptx xu H).
+  simpl in H0. destruct H0 as (q' & xq' & qq').
+  exists q'. split. assumption. exists q'. split. apply Qle_refl.
   assumption.
-- destruct (InfoBaseCont.pt_here ptx) as (l & xl).
-  exists (l - 1). exists l. split. rewrite Qlt_minus_iff. ring_simplify.
-  reflexivity. assumption.
-Defined.
+- destruct (Cont.pt_here ptx) as (l & xl).
+  exists l. exists l. split. apply Qle_refl. assumption.
+Qed.
 
 Require Import Morphisms SetoidClass.
-Definition LReal_to_pt (x : LReal) : @InfoBaseCont.pt _ LowerR.ops (lbound x).
+Definition LReal_to_pt (x : LReal) : Cont.pt (fun x y => x >= y) LowerR.Cov' (lbound x).
 Proof.
 constructor; intros.
-- simpl. destruct (Q.max_dec a b); setoid_rewrite q; assumption.
-- eapply dclosed; eassumption.
-- destruct (nonempty x) as (l & xl).
-  exists l. assumption.
+- apply nonempty.
+- exists (Qmax b c). split. split. apply Q.le_max_l. apply Q.le_max_r.
+  destruct (Q.max_dec b c); setoid_rewrite q; assumption.
+- unfold LowerR.Cov', LowerR.Cov, InfoBase.Cov in H0.
+  destruct (uopen x _ H) as (x0 & bx0 & xx0).
+  specialize (H0 x0 bx0).
+  destruct H0 as (t & Vt & tl).
+  exists t. split. apply dclosed with x0; assumption. assumption.
 Qed.
 
-Theorem plus_contU : InfoBaseCont.t (MeetLat.product_ops LowerR.opsU LowerR.opsU)
-  LowerR.opsU plusU.
-Proof.
-constructor; unfold plusL; intros.
-- destruct a, b. destruct H. simpl in *.
-  eapply Qle_trans; [|eassumption].
-  apply Qplus_le_compat; eassumption.
-- destruct a. simpl in *. eapply Qle_trans; eassumption.
-- destruct a. simpl. apply Q.min_glb; assumption.
-- destruct s. exists (q + q0). apply Qle_refl.
-Qed.
+Definition CovNN := Subspace.Cov LowerR.Cov (fun q => q < 0).
 
 End LPRFuncs.
 
