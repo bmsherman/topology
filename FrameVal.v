@@ -78,7 +78,7 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
   (** Lower reals have a partial order. *)
   Definition POLPR : PO.t LPReal LPRle Logic.eq.
   Proof. constructor; intros.
-  - constructor; intros. apply LPRle_refl.  eapply LPRle_trans; eassumption.
+  - constructor; intros. reflexivity. eapply LPRle_trans; eassumption.
   - unfold Proper, respectful. intros. subst. reflexivity.
   - eapply LPRle_antisym; eassumption.
   Qed.
@@ -89,7 +89,7 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
 
   Lemma le_trans `{X : F.t A} (x y z : t X) : (x <= y -> y <= z -> x <= z)%Val.
   Proof.
-    intros. eapply PreO.le_trans; eassumption.
+    apply PreO.le_trans.
   Qed.
 
 Require Import FunctionalExtensionality ProofIrrelevance.
@@ -119,7 +119,7 @@ Proof. refine (
   {| val := fun _ => 0 |}
 ); intros.
 - reflexivity.
-- apply LPRle_refl.
+- reflexivity.
 - reflexivity.
 - unfold ContinuousV. intros. simpl. symmetry.
   apply LPRle_antisym.
@@ -167,7 +167,7 @@ Proof. refine (
   {| val := fun P => c * mu P |}
 ); intros.
 - rewrite strict. ring.
-- apply LPRmult_le_compat. apply LPRle_refl.
+- apply LPRmult_le_compat. reflexivity.
   apply monotonic; assumption.
 - replace (c * mu U + c * mu V) with (c * (mu U + mu V)) by ring.
   replace (c * mu _ + c * mu _) 
@@ -249,7 +249,7 @@ Proof.
 refine (
   {| val := fun P => LPRsup (fun i => f i P) |}).
 - apply LPRle_antisym. apply LPRsup_le.
-  intros. rewrite strict. apply LPRle_refl. apply LPRzero_min.
+  intros. rewrite strict. reflexivity. apply LPRzero_min.
 - intros. apply LPRsup_le. intros.
   apply LPRsup_ge2. exists a. apply monotonic. assumption.
 - intros. unfold le in fmono.
@@ -258,7 +258,7 @@ refine (
 - unfold ContinuousV. intros. apply LPRle_antisym. 
   apply LPRsup_le. intros. rewrite continuous.
   apply LPRsup_le. intros. apply LPRsup_ge2. exists a0.
-  apply LPRsup_ge2. exists a. apply LPRle_refl. assumption. assumption.
+  apply LPRsup_ge2. exists a. reflexivity. assumption. assumption.
   apply LPRsup_le. intros. apply LPRsup_le. intros.
   apply LPRsup_ge2. exists a0. apply monotonic.
   apply F.sup_ok.
@@ -320,7 +320,7 @@ Proof.
 unfold le. intros P. apply LPRsup_le. intros n. destruct n; simpl.
 - apply LPRzero_min.
 - apply fmono. unfold le; intros. simpl.
-  apply LPRsup_ge2. exists n. apply LPRle_refl.
+  apply LPRsup_ge2. exists n. reflexivity.
 Qed.
 
 (** Definition of when a functional is continuous. *)
@@ -343,7 +343,7 @@ apply eq_compat. unfold eq. intros. apply LPRle_antisym.
 -  unfold Continuous in H.
   unfold fixValuation at 1. rewrite H.
   apply LPRsup_le. intros n.
-  simpl. apply LPRsup_ge2. exists (S n). apply LPRle_refl. exact 0%nat.
+  simpl. apply LPRsup_ge2. exists (S n). reflexivity. exact 0%nat.
 - apply fixValuation_fixed_u.
 Qed.
 
@@ -358,9 +358,9 @@ Lemma union_bound2 {A OA} {X : F.t A OA} {mu : t X}
 Proof.
 rewrite modular. eapply LPRle_trans.
 Focus 2. eapply LPRplus_le_compat.
-apply LPRzero_min. apply LPRle_refl.
+apply LPRzero_min. reflexivity.
 rewrite (SRadd_0_l LPRsrt). 
-apply LPRle_refl.
+reflexivity.
 Qed.
 
 (** Finite version of the union bound. *)
@@ -370,11 +370,8 @@ Lemma union_bound {A OA} {X : F.t A OA} {mu : t X}
     List.fold_right LPRplus 0 (List.map (val mu) xs).
 Proof.
 induction xs; simpl.
-- rewrite strict. apply LPRle_refl.
-- eapply LPRle_trans. Focus 2. 
-  eapply LPRplus_le_compat.
-  Focus 2. apply IHxs. apply LPRle_refl.
-  apply union_bound2.
+- rewrite strict. reflexivity.
+- rewrite <- IHxs. apply union_bound2. 
 Qed.
 
 (** Finite distributions *)

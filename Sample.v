@@ -203,8 +203,8 @@ Lemma restrictToVecMonotonicN' {A : Type} :
  (product_n v m) (restrictToVec U m) <=
  (product_n v n) (restrictToVec U n).
 Proof. 
-intros. induction H0. apply LPRle_refl.
-eapply LPRle_trans. apply IHle. apply restrictToVecMonotonicN.
+intros. induction H0. reflexivity.
+rewrite IHle. apply restrictToVecMonotonicN.
 assumption.
 Qed.
 
@@ -295,7 +295,7 @@ apply LPRsup_ge2.
     rewrite (SRmul_comm LPRsrt).
     rewrite <- (LPRind_true True) by trivial.  reflexivity. 
     rewrite <- int_scales. rewrite int_indicator. unfold K in mu1.
-    rewrite mu1. ring_simplify. apply LPRle_refl.
+    rewrite mu1. ring_simplify. reflexivity.
 Qed.
 
 (** The truthiness of this axiom is very much up to debate.
@@ -522,7 +522,7 @@ Lemma rejectionFunc_mono {A : Type} (v : Valuation A)
 Proof. 
 intros. unfold Valle in *. intros P. simpl.
 apply int_monotonic. unfold pointwise. intros a.
-destruct (pred a). apply LPRle_refl. apply H.
+destruct (pred a). reflexivity. apply H.
 Qed.
 
 (** Modify a measure by rejection sampling. *)
@@ -596,7 +596,7 @@ induction n.
    apply Qnnlt_le_weak. assumption.
    eapply LPRmult_le_compat. apply IHn. simpl.
    rewrite (@val_iff _ _ _ (fun a => pred a = false)) by intuition.
-   apply LPRle_refl.
+   reflexivity.
    
 Admitted. 
 

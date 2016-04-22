@@ -35,12 +35,12 @@ Definition Valle {A : Type} (val1 val2 : Valuation A) : Prop :=
   forall (P : A -> Prop), val1 P <= val2 P.
 
 Lemma Valle_refl {A : Type} (val : Valuation A) : Valle val val.
-Proof. unfold Valle. intros. apply LPRle_refl. Qed.
+Proof. unfold Valle. intros. reflexivity. Qed.
 
 Lemma Valle_trans {A : Type} (x y z : Valuation A)
   : Valle x y -> Valle y z -> Valle x z.
-Proof. intros. unfold Valle in *. intros P.
-eapply LPRle_trans. apply H. apply H0.
+Proof. intros. unfold Valle in *. intros P. rewrite H, H0.
+reflexivity.
 Qed.
 
 Definition Valeq {A : Type} (val1 val2 : Valuation A) : Prop :=
@@ -76,10 +76,7 @@ Definition Valge {A : Type} (x y : Valuation A)
 Definition zeroVal {A : Type} : Valuation A.
 Proof. refine (
   {| val := fun P => 0 |}
-); intros.
-- reflexivity.
-- apply LPRle_refl.
-- reflexivity.
+); intros; try reflexivity.
 - abstract ring.
 Defined.
 
@@ -110,7 +107,7 @@ Proof. refine (
 ); intros.
 - abstract (rewrite strict; ring).
 - abstract (apply LPRmult_le_compat; 
-  [ apply LPRle_refl
+  [ reflexivity
   | apply monotonic; assumption]).
 - abstract (
   replace (c * Val U + c * Val V) with (c * (Val U + Val V)) by ring;
@@ -227,7 +224,7 @@ unfold ContinuousV. intros.
 simpl. symmetry. apply LPRle_antisym.
 - apply LPRsup_le. intros n. apply LPRind_imp.
   intros. exists n. assumption.
-- rewrite LPRind_exists. apply LPRle_refl.
+- rewrite LPRind_exists. reflexivity.
 Qed.
 
 Lemma add_ContinuousV {A : Type} : forall {mu nu : Valuation A},
@@ -306,8 +303,7 @@ intros.
 unfold integral. apply LPRsup_le.
 intros a. destruct a. simpl.
 apply int_simple_monotonic.
-unfold pointwise in *. intros. eapply LPRle_trans.
-apply p. apply H.
+unfold pointwise in *. intros. rewrite p. apply H.
 Qed.
 
 Lemma int_monotonic : forall {A : Type} {f g : A -> LPReal}
@@ -316,8 +312,8 @@ Lemma int_monotonic : forall {A : Type} {f g : A -> LPReal}
 Proof.
 intros. unfold integral. apply LPRsup_monotonic_gen.
 intros. destruct a. assert (pointwise LPRle (SimpleEval x) g).
-unfold pointwise in *. intros. eapply LPRle_trans. apply p. apply H.
-exists (exist _ x H0). simpl. apply LPRle_refl.
+unfold pointwise in *. intros. rewrite p. apply H. 
+exists (exist _ x H0). simpl. reflexivity.
 Qed.
 
 Lemma undo_proj1sig {A : Type} {B : A -> Prop} 
@@ -379,10 +375,10 @@ Proof.
 intros. unfold integral. rewrite LPRsup_scales.
 apply LPRsup_monotonic_gen; intros.
 destruct a. simpl. eexists. rewrite undo_proj1sig.
-rewrite int_simple_scales. apply LPRle_refl.
+rewrite int_simple_scales. reflexivity.
 Grab Existential Variables.
 simpl. unfold pointwise. intros. unfold SimpleEval.
-rewrite <- int_simple_scales. apply LPRmult_le_compat. apply LPRle_refl.
+rewrite <- int_simple_scales. apply LPRmult_le_compat. reflexivity.
 apply p.
 Qed.
 
@@ -399,7 +395,7 @@ Lemma simple_int_monotonic_val {A : Type} {f : Simple A}
   {mu mu' : Valuation A}
   : (mu <= mu')%Val -> SimpleIntegral mu f <= SimpleIntegral mu' f.
 Proof. intros. induction f; simpl.
-- apply LPRmult_le_compat. apply LPRle_refl. apply H.
+- apply LPRmult_le_compat. reflexivity. apply H.
 - simpl. apply LPRplus_le_compat; assumption.
 Qed.
 
@@ -456,10 +452,10 @@ forall {s : Simple A} {f : A -> LPReal} {mu : Valuation A},
     ->  SimpleIntegral mu s <= integral f mu.
 Proof. intros.
 pose (exist (fun s' => pointwise LPRle (SimpleEval s') f) s H).
-eapply LPRle_trans. Focus 2.
-simpl. eapply LPRsup_ge.
-instantiate (1 := s0). simpl.
-apply LPRle_refl.
+unfold integral.
+erewrite <- LPRsup_ge. 
+instantiate (1 := s0).
+reflexivity.
 Qed.
 
 Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
@@ -467,7 +463,7 @@ Lemma int_simple {A : Type} {s : Simple A} {mu : Valuation A}
 Proof.
 apply LPReq_compat.
 split; [apply int_simple_ge | apply int_simple_le]
-  ; unfold pointwise; intros a; apply LPRle_refl.
+  ; unfold pointwise; intros a; reflexivity.
 Qed.
 
 (** If two functions are equal at every point, then
@@ -539,11 +535,11 @@ pose (s := SStep (f a) (fun a' => a = a')).
   rewrite int_dirac_simple. unfold SimpleEval; simpl.
   rewrite LPRind_true by reflexivity.
   replace (f a * 1) with (f a) by ring.
-  apply LPRle_refl.
+  reflexivity.
   Grab Existential Variables.
   simpl. unfold pointwise. intros. unfold SimpleEval.
   simpl. rewrite (SRmul_comm LPRsrt). apply LPRind_scale_le.
-  intros H. induction H. apply LPRle_refl.
+  intros H. induction H. reflexivity.
 Qed.
 
 (** Fubini's theorem about iterated integrals. It's likely _wrong_ as stated
@@ -638,7 +634,7 @@ Lemma bind_modular {A B : Type} (v : Valuation A)
   assert (
 ((f a) U + (f a) V) =
 ((f a) (fun z : B => U z /\ V z) + (f a) (fun z : B => U z \/ V z))
-). apply modular. rewrite H. split; apply LPRle_refl.
+). apply modular. rewrite H. split; reflexivity.
   Qed.
 
 Definition bind {A B : Type}
@@ -909,8 +905,8 @@ Lemma MeasurableR_Simple {A : Type} (s : Simple A)
   : MeasurableR (SimpleEval s).
 Proof.
 unfold MeasurableR. intros. exists s. split; unfold pointwise; intros a.
-apply LPRle_refl. replace (SimpleEval s a) with (SimpleEval s a + 0)
-  at 1 by ring. apply LPRplus_le_compat. apply LPRle_refl.
+reflexivity. replace (SimpleEval s a) with (SimpleEval s a + 0)
+  at 1 by ring. apply LPRplus_le_compat. reflexivity.
   apply LPRzero_min.
 Qed.
 
@@ -1088,7 +1084,7 @@ Proof.
 unfold Valle. intros P. apply LPRsup_le. intros n. destruct n; simpl.
 - apply LPRzero_min.
 - apply fmono. unfold Valle; intros. simpl.
-  apply LPRsup_ge2. exists n. apply LPRle_refl.
+  apply LPRsup_ge2. exists n. reflexivity.
 Qed.
 
 (** Definition of when a functional is continuous. *)
@@ -1111,7 +1107,7 @@ apply Valle_antisym.
 - unfold Valle. intros P. unfold Continuous in H.
   unfold fixValuation at 1. rewrite H.
   apply LPRsup_le. intros n.
-  simpl. apply LPRsup_ge2. exists (S n). apply LPRle_refl. exact 0%nat.
+  simpl. apply LPRsup_ge2. exists (S n). reflexivity. exact 0%nat.
 - apply fixValuation_fixed_u.
 Qed.
 
@@ -1130,9 +1126,9 @@ Lemma union_bound2 {A : Type} {mu : Valuation A}
 Proof.
 rewrite modular. eapply LPRle_trans.
 Focus 2. eapply LPRplus_le_compat.
-apply LPRzero_min. apply LPRle_refl.
-rewrite (SRadd_0_l LPRsrt). 
-apply LPRle_refl.
+apply LPRzero_min. reflexivity.
+ring_simplify. 
+reflexivity.
 Qed.
 
 (** Finite version of the union bound. *)
@@ -1142,11 +1138,8 @@ Lemma union_bound {A : Type} {mu : Valuation A}
     List.fold_right LPRplus 0 (List.map (val mu) xs).
 Proof.
 induction xs; simpl.
-- rewrite strict. apply LPRle_refl.
-- eapply LPRle_trans. Focus 2. 
-  eapply LPRplus_le_compat.
-  Focus 2. apply IHxs. apply LPRle_refl.
-  apply union_bound2.
+- rewrite strict. reflexivity.
+- rewrite <- IHxs. apply union_bound2.
 Qed.
 
 Definition val_destruct {A : Type} (mu : Valuation A)
@@ -1164,8 +1157,7 @@ unfold Valeq. intros Q. simpl. apply LPReq_compat. split.
   with 0. rewrite (SRadd_0_l LPRsrt). apply monotonic.
   intuition.
   erewrite val_iff. symmetry. apply strict. unfold K; intros; intuition.
-- eapply LPRle_trans. 2:apply union_bound2. simpl.
-  apply monotonic. intros. 
+- rewrite <- union_bound2. apply monotonic. intros. 
   destruct (dec_P z); [left | right]; intuition.
 Qed.
 
@@ -1413,7 +1405,7 @@ Proof.
 intros. simpl. unfold Valle. intros. simpl.
 replace ((build_nat_fin f n) P) with ((build_nat_fin f n) P + 0) at 1
   by ring.
-apply LPRplus_le_compat. apply LPRle_refl. apply LPRzero_min.
+apply LPRplus_le_compat. reflexivity. apply LPRzero_min.
 Qed.
 
 Lemma build_nat_fin_mono {f : nat -> LPReal} : forall n m : nat, (n <= m)%nat ->
@@ -1680,7 +1672,7 @@ Proof. intros.
        unfold Valle. intros P. simpl.
        unfold bernoulli, pchoice. simplVal.
        apply LPRplus_le_compat;
-         (apply LPRmult_le_compat; (apply LPRle_refl || apply H)).
+         (apply LPRmult_le_compat; (reflexivity || apply H)).
 Qed.
 
 Definition geometric (p : Qnn) : Valuation nat :=
@@ -1692,8 +1684,8 @@ intros p. unfold Continuous. intros.
 simpl. rewrite (LPRsup_sum_jlat I).
 repeat (rewrite <- LPRsup_scales).
 rewrite LPRsup_constant. ring. assumption. intros.
-apply LPRmult_le_compat. apply LPRle_refl. apply gmono. assumption.
-intros. apply LPRle_refl.
+apply LPRmult_le_compat. reflexivity. apply gmono. assumption.
+intros. reflexivity.
 Qed.
 
 Lemma geometricInvariant (p : Qnn) :

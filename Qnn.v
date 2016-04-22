@@ -146,6 +146,13 @@ Lemma Qnnle_trans {x y z : Qnn}
   : x <= y -> y <= z -> x <= z.
 Proof. intros. eapply Qcle_trans; eassumption. Qed.
 
+Instance Qnnle_preorder : PreOrder Qnnle.
+Proof.
+constructor.
+- unfold Reflexive. apply Qnnle_refl.
+- unfold Transitive. apply @Qnnle_trans.
+Qed.
+
 Lemma Qnnle_antisym {x y : Qnn}
   : x <= y -> y <= x -> x = y.
 Proof. intros. apply Qnneq_prop. eapply Qcle_antisym; eassumption. Qed.
@@ -183,10 +190,15 @@ Lemma Qnnmult_le_compat {x y x' y' : Qnn}
 Proof. intros.
 assert (x * y <= x' * y).
 apply Qcmult_le_compat_r. assumption. apply nonneg.
-eapply Qnnle_trans. eassumption.
+rewrite H1.
 replace (x' * y) with (y * x') by ring.
 replace (x' * y') with (y' * x') by ring.
 apply Qcmult_le_compat_r. assumption. apply nonneg.
+Qed.
+
+Instance Qnnmult_le_compatI : Proper (Qnnle ==> Qnnle ==> Qnnle) Qnnmult.
+Proof.
+unfold Proper, respectful. intros. apply Qnnmult_le_compat; assumption.
 Qed.
 
 Lemma Qnnlt_zero_prop {q : Qnn} : ~(q < 0).
@@ -219,24 +231,24 @@ pattern y, z, (Qnnmax y z). apply Qnnmax_induction; intros.
 - pattern (x * y), (x * z), (Qnnmax (x * y) (x * z)). 
   apply Qnnmax_induction; intros. reflexivity.
   apply Qnnle_antisym. assumption. apply Qnnmult_le_compat.
-  apply Qnnle_refl. assumption.
+  reflexivity. assumption.
 - pattern (x * y), (x * z), (Qnnmax (x * y) (x * z)). 
   apply Qnnmax_induction; intros.
   apply Qnnle_antisym. assumption. apply Qnnmult_le_compat.
-  apply Qnnle_refl. assumption. reflexivity.
+  reflexivity. assumption. reflexivity.
 Qed.
 
 Lemma Qnnmax_l {x y} : x <= Qnnmax x y.
 Proof. unfold Qnnmax; simpl. destruct (x ?= y) eqn:compare; simpl. 
-- apply Qnnle_refl.
+- reflexivity.
 - apply Qclt_le_weak. apply Qnnlt_alt. assumption.
-- apply Qnnle_refl.
+- reflexivity.
 Qed.
 
 Lemma Qnnmax_r {x y} : y <= Qnnmax x y.
 Proof. unfold Qnnmax; simpl. destruct (x ?= y) eqn:compare; simpl. 
-- apply Qnneq_alt in compare. induction compare. apply Qnnle_refl.
-- apply Qnnle_refl. 
+- apply Qnneq_alt in compare. induction compare. reflexivity.
+- reflexivity. 
 - apply Qclt_le_weak. apply Qnngt_alt. assumption.
 Qed.
 
@@ -385,6 +397,13 @@ Lemma Qnnlt_le_weak {x y : Qnn}
   : x < y -> x <= y.
 Proof. apply Qclt_le_weak. Qed.
 
+Instance Qnnlt_le_subrelation : subrelation Qnnlt Qnnle.
+Proof.
+unfold subrelation, predicate_implication, pointwise_lifting,
+  Basics.impl.
+apply @Qnnlt_le_weak.
+Qed.
+
 Lemma Qnnmult_lt_compat_r {x y z : Qnn}
   : 0 < z -> x < y -> x * z < y * z.
 Proof. apply Qcmult_lt_compat_r. Qed.
@@ -397,6 +416,12 @@ Lemma Qnnplus_le_compat {x x' y y' : Qnn}
   : x <= x' -> y <= y' -> x + y <= x' + y'.
 Proof. apply Qcplus_le_compat. Qed.
 
+Instance Qnnplus_le_compatI : Proper (Qnnle ==> Qnnle ==> Qnnle) Qnnplus.
+Proof.
+unfold Proper, respectful.
+intros. apply Qnnplus_le_compat; assumption.
+Qed.
+
 Definition Qnnmin (x y : Qnn) : Qnn := match (x ?= y) with 
    | Lt => x
    | Eq => x
@@ -405,16 +430,16 @@ Definition Qnnmin (x y : Qnn) : Qnn := match (x ?= y) with
 
 Lemma Qnnmin_l {x y} : (Qnnmin x y <= x)%Qnn.
 Proof. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare; simpl. 
-- apply Qnnle_refl.
-- apply Qnnle_refl. 
+- reflexivity.
+- reflexivity. 
 - apply Qclt_le_weak. apply Qnngt_alt. assumption.
 Qed.
 
 Lemma Qnnmin_r {x y} : Qnnmin x y <= y.
 Proof. unfold Qnnmin; simpl. destruct (x ?= y) eqn:compare; simpl. 
-- apply Qnneq_alt in compare. induction compare. apply Qnnle_refl.
+- apply Qnneq_alt in compare. induction compare. reflexivity.
 - apply Qclt_le_weak. apply Qnnlt_alt. assumption.
-- apply Qnnle_refl.
+- reflexivity.
 Qed.
 
 Lemma Qnnmin_le_both {z x y} : 
@@ -503,7 +528,7 @@ Qed.
 Lemma Qnnpow_le {x : Qnn} {n : nat} :
   x <= 1 -> x ^ n <= 1.
 Proof.
-intros. induction n; simpl. apply Qnnle_refl.
+intros. induction n; simpl. reflexivity.
 replace 1 with (1 * 1) by ring.
 apply Qnnmult_le_compat; assumption.
 Qed.
@@ -570,7 +595,7 @@ destruct (c * x ?= c * y)%Qnn eqn:cxcy;
 try ring.
 rewrite Qnneq_alt in xy. subst. rewrite Qnngt_alt in cxcy.
 apply Qnnlt_not_le in cxcy. apply False_rect. apply cxcy.
-apply Qnnle_refl.
+reflexivity.
 apply Qnnlt_alt in xy. apply Qnnlt_not_le in xy.
 specialize (xy H). contradiction.
 apply Qnneq_alt in cxcy.
@@ -583,7 +608,7 @@ unfold Qnngt in xy. assumption.
 apply Qnnlt_not_le in H0. apply False_rect. apply H0.
 replace (x * c) with (c * x) by ring.
 replace (y * c) with (c * y) by ring.
-rewrite cxcy. apply Qnnle_refl.
+rewrite cxcy. reflexivity.
 subst. simpl. ring. apply Qnnlt_alt in cxcy. 
 assert (x < y)%Qnn. replace x with (x * 1) by ring.
 replace y with (y * 1)%Qnn by ring.
@@ -595,14 +620,14 @@ apply Qnninv_zero2.
 destruct (Qnn_dec c 0). destruct s.
 apply Qnnlt_not_le in q. apply False_rect. apply q. apply nonneg.
 assumption. subst. apply Qnnlt_not_le in cxcy.
-apply False_rect. apply cxcy. ring_simplify. apply Qnnle_refl.
+apply False_rect. apply cxcy. ring_simplify. reflexivity.
 rewrite (SRmul_comm Qnnsrt x). 
 rewrite (SRmul_comm Qnnsrt y). 
 apply Qnnlt_alt in cxcy. apply cxcy.
 destruct (Qnn_dec c 0).
 destruct s. apply Qnnlt_zero_prop in q. contradiction.
 assumption. subst. apply Qnnlt_not_le in cxcy.
-apply False_rect. apply cxcy. ring_simplify. apply Qnnle_refl.
+apply False_rect. apply cxcy. ring_simplify. reflexivity.
 apply Qnnlt_not_le in H0. specialize (H0 H). contradiction.
 Qed.
 
@@ -612,7 +637,7 @@ Proof.
 apply Qnneq_prop. unfold Qnneq.
 rewrite Qnnminus_Qc. simpl. ring.
 replace y with (0 + y)%Qnn at 1 by ring.
-apply Qnnplus_le_compat. apply nonneg. apply Qnnle_refl.
+apply Qnnplus_le_compat. apply nonneg. reflexivity.
 Qed.
 
 
@@ -704,21 +729,19 @@ reflexivity. apply Qnnminus_lt_r. apply Qnnlt_le_weak.
 assumption. ring_simplify. assumption.
 assert (0 < eps')%Qnn.
 apply Qnnmin_lt_both. assumption. apply Qnnmin_lt_both; assumption.
-assert (eps' <= x)%Qnn. eapply Qnnle_trans.
-apply Qnnmin_r. apply Qnnmin_l.
-assert (eps' <= y)%Qnn. eapply Qnnle_trans.
-apply Qnnmin_r. apply Qnnmin_r.
+assert (eps' <= x)%Qnn. unfold eps'. rewrite Qnnmin_r. apply Qnnmin_l.
+assert (eps' <= y)%Qnn. unfold eps'. rewrite Qnnmin_r. apply Qnnmin_r. 
 split.
   simpl. apply Qnnminus_lt_l. assumption.
   replace x with (x + 0)%Qnn at 1 by ring.
   replace (eps' + x)%Qnn with (x + eps')%Qnn by ring.
-  apply Qnnplus_le_lt_compat. apply Qnnle_refl.
+  apply Qnnplus_le_lt_compat. reflexivity.
   assumption.
 split. 
   simpl. apply Qnnminus_lt_l. assumption.
   replace y with (y + 0)%Qnn at 1 by ring.
   replace (eps' + y)%Qnn with (y + eps')%Qnn by ring.
-  apply Qnnplus_le_lt_compat. apply Qnnle_refl.
+  apply Qnnplus_le_lt_compat. reflexivity.
   assumption.
 rewrite (@Qnnonehalf_split q).
 replace ((q + q) * Qnnonehalf)%Qnn
@@ -745,7 +768,7 @@ Definition ops : MeetLat.Ops Qnn :=
 Instance UML : MeetLat.t Qnn opsU.
 Proof.
 constructor. constructor. constructor. 
-- intros; apply Qnnle_refl.
+- intros; reflexivity.
 - intros. eapply Qnnle_trans; eassumption.
 - solve_proper.
 - intros; apply Qnnle_antisym; assumption.
@@ -759,7 +782,7 @@ Qed.
 Instance ML : MeetLat.t Qnn ops.
 Proof.
 constructor. constructor. constructor. 
-- intros; apply Qnnle_refl.
+- intros; simpl; unfold Qnnge; reflexivity.
 - intros. simpl in *. eapply Qnnle_trans; eassumption.
 - solve_proper.
 - intros; apply Qnnle_antisym; assumption.
@@ -785,11 +808,10 @@ constructor; intros.
 - apply Qnnle_antisym; apply Qnnmin_le_both;
     (apply Qnnmin_r || apply Qnnmin_l).
 - apply Qnnle_antisym. apply Qnnmin_le_both.
-  apply Qnnmin_le_both. apply Qnnmin_l. eapply Qnnle_trans.
-  apply Qnnmin_r. apply Qnnmin_l. eapply Qnnle_trans. apply Qnnmin_r.
+  apply Qnnmin_le_both. apply Qnnmin_l. rewrite Qnnmin_r.
+  apply Qnnmin_l. rewrite Qnnmin_r. apply Qnnmin_r.
+  apply Qnnmin_le_both. rewrite Qnnmin_l. apply Qnnmin_l.
+  apply Qnnmin_le_both. rewrite Qnnmin_l. apply Qnnmin_r.
   apply Qnnmin_r.
-  apply Qnnmin_le_both. eapply Qnnle_trans. apply Qnnmin_l.
-  apply Qnnmin_l. apply Qnnmin_le_both. eapply Qnnle_trans.
-  apply Qnnmin_l. apply Qnnmin_r. apply Qnnmin_r.
 Qed.
 End Instances.
