@@ -48,7 +48,7 @@ Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
 
 Let Cov := Discrete.Cov A.
 
-Instance POA : PO.t A Logic.eq Logic.eq := PO.discrete A.
+Instance POA : PO.t Logic.eq Logic.eq := PO.discrete A.
 
 Instance opsA : Frame.Ops (A -> Prop) := FormTop.FOps Logic.eq Cov.
 Instance frameA : Frame.t (A -> Prop) opsA := FormTop.Frame Logic.eq Cov _
@@ -72,7 +72,7 @@ End OTPExample.
 
 Definition CovB := Discrete.Cov bool.
 Instance OB : Frame.Ops (bool -> Prop) := FormTop.FOps Logic.eq CovB.
-Instance PreOB : PreO.t bool Logic.eq := PreO.discrete bool.
+Instance PreOB : PreO.t Logic.eq := PreO.discrete bool.
 Instance FB : Frame.t (bool -> Prop) OB := FormTop.Frame Logic.eq CovB (PreO.discrete bool) (Discrete.isCov bool).
 Instance FTB : FormTop.t Logic.eq CovB := Discrete.isCov bool.
 
@@ -332,7 +332,7 @@ Require Finite.
 
 Instance DOps A : Frame.Ops (A -> Prop) := FormTop.FOps Logic.eq (Discrete.Cov A).
 
-Instance DiscretePreO (A : Type) :  PreO.t A eq := PreO.discrete A.
+Instance DiscretePreO (A : Type) :  @PreO.t A eq := PreO.discrete A.
 Instance DiscreteFrame (A : Type) : F.t (A -> Prop) (opsA A) := frameA A.
 
 

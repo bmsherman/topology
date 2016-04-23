@@ -52,12 +52,19 @@ Definition pointwise_op {A} {B : A -> Type} (P : forall a, B a -> B a -> Prop)
 Module PreO.
   (** The relation [le] (read: Less than or Equal) is a preorder when
       it is reflexive [le_refl] and transitive [le_trans]. *)
-  Class t {A : Type} {le : A -> A -> Prop} : Prop :=
-  { le_refl : forall x, le x x
-  ; le_trans : forall x y z, le x y -> le y z -> le x z
-  }.
+  Class t {A : Type} {le : A -> A -> Prop} : Prop := 
+    { le_refl : forall x, le x x
+    ; le_trans : forall x y z, le x y -> le y z -> le x z
+    }.
 
-  Arguments t : clear implicits.
+  Arguments t {A} le : clear implicits.
+
+  Instance PreOrder_I `{tle : t A leA} : PreOrder leA.
+  Proof.
+  constructor.
+  - unfold Reflexive. apply le_refl.
+  - unfold Transitive. apply le_trans.
+  Qed.
   
   (** A morphism of preorders is just a monotonic function. That is,
       it preserves ordering. *)
@@ -67,7 +74,7 @@ Module PreO.
   Section Facts.
 
   Context `{le : A -> A -> Prop}.
-  Context `(tA : t A le).
+  Context (tA : t le).
   Infix "<=" := le.
 
   Lemma morph_id : morph le le (fun x => x).
@@ -135,36 +142,28 @@ Module PreO.
   - constructor. 
     + apply (min_greatest AB).
       * apply (min_l ABC). 
-      * eapply PreO.le_trans. 
-        apply (min_r ABC). apply (min_l BC).
-    + eapply PreO.le_trans. apply (min_r ABC).
-      apply (min_r BC).
+      * rewrite (min_r ABC). apply (min_l BC). 
+    + rewrite (min_r ABC). apply (min_r BC).
     + intros. apply (min_greatest ABC).
-      * eapply PreO.le_trans. apply H. 
-        apply (min_l AB).
-      * apply (min_greatest BC). 
-        eapply PreO.le_trans. apply H. apply (min_r AB).
+      * rewrite H. apply (min_l AB).
+      * apply (min_greatest BC).  rewrite H. apply (min_r AB).
         assumption.
   - constructor. 
-    + eapply PreO.le_trans. apply (min_l ABC).
-      apply (min_l AB).
+    + rewrite (min_l ABC). apply (min_l AB).
     + apply (min_greatest BC).
-      * eapply PreO.le_trans. 
-        apply (min_l ABC). apply (min_r AB).
+      * rewrite (min_l ABC). apply (min_r AB).
       * apply (min_r ABC). 
     + intros. apply (min_greatest ABC).
       * apply (min_greatest AB). 
-        assumption.
-        eapply PreO.le_trans. apply H0. apply (min_l BC).
-      * eapply PreO.le_trans. apply H0. 
-        apply (min_r BC).
+        assumption. rewrite H0. apply (min_l BC).
+      * rewrite H0. apply (min_r BC).
   Qed.
 
   Lemma min_idempotent : forall a, min a a a.
   Proof.
   intros. constructor.
-  - apply le_refl.
-  - apply le_refl.
+  - reflexivity.
+  - reflexivity.
   - intros. assumption.
   Qed.
 
@@ -196,27 +195,27 @@ Module PreO.
   -> @sup _ leB _ (fun i => f (g i)) (f m).
 
   (** [True], the one-element type, has a trivial preorder *)
-  Definition one : t True (fun _ _ => True).
+  Definition one : t (fun (_ : True) _ => True).
   Proof. constructor; auto.
   Qed.
 
   (** The preorder on booleans given by False < True *)
-  Definition two : t bool Bool.leb.
+  Definition two : t Bool.leb.
   Proof. constructor. 
   - intros; auto. destruct x; simpl; trivial.
   - destruct x, y, z; auto. simpl in *. congruence.
   Qed.
 
-  Definition Nat : t nat le.
+  Definition Nat : t le.
   Proof. constructor; [ apply Le.le_refl | apply Le.le_trans ].
   Qed.
 
-  Definition discrete (A : Type) : t A Logic.eq.
+  Definition discrete (A : Type) : t (@Logic.eq A).
   Proof. constructor; auto. intros; subst; auto. Qed.
 
   (** Product preorders *)
   Definition product `(tA : t A leA) `(tB : t B leB) 
-   : t (A * B) (prod_op leA leB).
+   : t (prod_op leA leB).
   Proof. constructor.
    - destruct x. split; apply le_refl.
    - unfold prod_op; intros. 
@@ -229,7 +228,7 @@ Module PreO.
       we form a preorder on [A] by asking about their order
       when mapped into [B] by [f]. *)
   Definition map `(f : A -> B) `(tB : t B leB) 
-    : t A (fun x y => leB (f x) (f y)).
+    : t (fun x y => leB (f x) (f y)).
   Proof. constructor; intros.
   - apply le_refl.
   - eapply le_trans; eauto.
@@ -243,8 +242,8 @@ Module PreO.
       we have [f a <= g a]. *)
   Definition pointwise {A} {B : A -> Type} 
     {leB : forall a, B a -> B a -> Prop}
-    (tB : forall a, t (B a) (leB a)) 
-    : t (forall a, B a) (pointwise_op leB).
+    (tB : forall a, t (leB a)) 
+    : @t (forall a, B a) (pointwise_op leB).
   Proof. 
     unfold pointwise_op; constructor; intros. 
     - apply le_refl.
@@ -260,7 +259,7 @@ Module PreO.
 
   (** The type of propositions forms a preorder, where "<=" is
       implication. *)
-  Instance prop : t Prop (fun P Q => P -> Q).
+  Instance prop : t (fun (P Q : Prop) => P -> Q).
   Proof. 
     constructor; auto.
   Qed.
@@ -269,7 +268,7 @@ Module PreO.
       i.e., subsets on [A] are functions of type [f : A -> Prop],
       form a preorder ordered by subset inclusion. This is actually just
       the preorder on propositions applied pointwise to functions. *)
-  Instance subset (A : Type) : t (A -> Prop) _ := pointwise (fun _ => prop).
+  Instance subset (A : Type) : @t (A -> Prop) _ := pointwise (fun _ => prop).
 
 End PreO.
 
@@ -279,12 +278,12 @@ Arguments PreO.max {A} {le} _ _ _ : clear implicits.
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
 Module PO.
   Class t {A : Type} {le : A -> A -> Prop} {eq : A -> A -> Prop} : Prop :=
-  { PreO :> PreO.t A le
+  { PreO :> PreO.t le
   ; le_proper : Proper (eq ==> eq ==> iff) le
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
   }.
 
-  Arguments t : clear implicits.
+  Arguments t {A} le eq : clear implicits.
 
   Section Morph.
   Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
@@ -384,14 +383,14 @@ Module PO.
       in the obvious ways. There's really nothing interesting
       here. *)
 
-  Definition one : t True (fun _ _ => True) (fun _ _ => True).
+  Definition one : t (fun (_ : True) _ => True) (fun _ _ => True).
   Proof. 
     constructor; intros; auto.
     - apply PreO.one.
     - unfold Proper, respectful. intuition.
   Qed.
 
-  Definition two : t bool Bool.leb Logic.eq.
+  Definition two : t Bool.leb Logic.eq.
   Proof. 
     constructor; intros. 
     - apply PreO.two. 
@@ -399,7 +398,7 @@ Module PO.
     - destruct x, y; auto.
   Qed.
 
-  Definition Nat : t nat le Logic.eq.
+  Definition Nat : t le Logic.eq.
   Proof.
   constructor; intros.
   - apply PreO.Nat.
@@ -407,7 +406,7 @@ Module PO.
   - apply Le.le_antisym; assumption.
   Qed.
 
-  Definition discrete (A : Type) : t A Logic.eq Logic.eq.
+  Definition discrete (A : Type) : t (@Logic.eq A) Logic.eq.
   Proof.
   constructor; intros.
   - apply PreO.discrete.
@@ -416,7 +415,7 @@ Module PO.
   Qed.
 
   Definition product `(tA : t A leA eqA) `(tB : t B leB eqB) 
-    : t (A * B) (prod_op leA leB) (prod_op eqA eqB).
+    : t (prod_op leA leB) (prod_op eqA eqB).
   Proof. constructor; intros.
    - apply PreO.product; apply PreO.
    - unfold prod_op, Proper, respectful. intros. intuition;
@@ -427,7 +426,7 @@ Module PO.
    - unfold prod_op. destruct H, H0. split; apply le_antisym; intuition.
   Qed.
 
-  Definition map `(f : A -> B) `(tB : t B leB eqB) : t A
+  Definition map `(f : A -> B) `(tB : t B leB eqB) : t
     (map_op f leB) (map_op f eqB).
   Proof. constructor; intros.
   - apply (PreO.map f PreO).
@@ -440,7 +439,7 @@ Module PO.
 
   Definition pointwise {A} {B : A -> Type}
     {leB eqB : forall a, B a -> B a -> Prop}
-    (tB : forall a, t (B a) (leB a) (eqB a)) : t (forall a, B a) (pointwise_op leB)
+    (tB : forall a, t (leB a) (eqB a)) : @t (forall a, B a) (pointwise_op leB)
      (pointwise_op eqB).
   Proof. 
   constructor; intros.
@@ -461,13 +460,13 @@ Module PO.
   - unfold pointwise_op in *. solve_proper.
   Qed. 
 
-  Instance prop : t Prop (fun P Q => P -> Q) (fun P Q => P <-> Q).
+  Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof. 
   constructor; intuition.
   split; simpl in *; intros; intuition.
   Qed.
 
-  Instance subset (A : Type) : t (A -> Prop) _ _ := pointwise (fun _ => prop).
+  Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).
  
 End PO.
 
@@ -490,7 +489,7 @@ Module JoinLat.
       a join semi-lattice? We need [le] and [eq] to be a partial order,
       and we need our [max] operation to actually implement a maximum. *)
   Class t {A : Type} {O : Ops A} : Prop :=
-  { PO :> PO.t A le eq
+  { PO :> PO.t le eq
   ; max_proper : Proper (eq ==> eq ==> eq) max
   ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
   }.
@@ -665,7 +664,7 @@ Module MeetLat.
   Arguments Ops : clear implicits.
 
   Class t {A : Type} {O : Ops A} : Prop :=
-  { PO :> PO.t A le eq
+  { PO :> PO.t le eq
   ; min_proper : Proper (eq ==> eq ==> eq) min
   ; min_ok : forall l r, PreO.min (le := le) l r (min l r)
   }.
@@ -859,7 +858,7 @@ Module Lattice.
   Arguments Ops : clear implicits.
 
   Class t {A : Type} {O : Ops A} : Prop :=
-  { PO :> PO.t A le eq
+  { PO :> PO.t le eq
   ; max_proper : Proper (eq ==> eq ==> eq) max
   ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
   ; min_proper : Proper (eq ==> eq ==> eq) min
@@ -1303,7 +1302,7 @@ Instance ops' : MeetLat.Ops A := ops.
 (** Next, we prove successively, that these definitions using
     the [dot] operator indeed define a preorder, a partial order,
     and finally a meet semi-lattice. *)
-Theorem asPreO : PreO.t A MeetLat.le.
+Theorem asPreO : PreO.t MeetLat.le.
 Proof.
 constructor; simpl; intros.
 - apply dot_idempotent.
@@ -1311,7 +1310,7 @@ constructor; simpl; intros.
   rewrite dot_assoc. reflexivity.
 Qed.
 
-Theorem asPO : PO.t A MeetLat.le eql.
+Theorem asPO : PO.t MeetLat.le eql.
 Proof.
 constructor.
 - apply asPreO.

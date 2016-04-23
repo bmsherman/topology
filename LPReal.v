@@ -159,11 +159,7 @@ assert (lbound r = lbound s).
 apply Extensionality_Ensembles. intuition.
 destruct r, s.
 simpl in *. induction H1.
-pose proof (proof_irrelevance _ dclosed0 dclosed1).
-induction H1.
-pose proof (proof_irrelevance _ uopen0 uopen1).
-induction H1.
-reflexivity.
+f_equal; apply proof_irrelevance.
 Qed.
 
 Ltac LPRsrttac := 

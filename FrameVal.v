@@ -76,7 +76,7 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
   Infix "==" := eq : Val_scope.
 
   (** Lower reals have a partial order. *)
-  Definition POLPR : PO.t LPReal LPRle Logic.eq.
+  Definition POLPR : PO.t LPRle Logic.eq.
   Proof. constructor; intros.
   - constructor; intros. reflexivity. eapply LPRle_trans; eassumption.
   - unfold Proper, respectful. intros. subst. reflexivity.
@@ -84,13 +84,14 @@ Definition ContinuousV {A OA} (X : F.t A OA) (mu : (A -> LPReal))
   Qed.
 
   (** Our definition of "<=" on valuations induces a partial order structure. *)
-  Instance PO `{X : F.t A} : PO.t (t X) le eq 
+  Instance PO `{X : F.t A} : @PO.t (t X) le eq 
     := PO.map val (PO.pointwise (fun _ : A => POLPR)).
 
   Lemma le_trans `{X : F.t A} (x y z : t X) : (x <= y -> y <= z -> x <= z)%Val.
   Proof.
     apply PreO.le_trans.
   Qed.
+
 
 Require Import FunctionalExtensionality ProofIrrelevance.
 Lemma eq_compat : forall `{X : F.t A} (mu nu : t X), (mu == nu)%Val -> mu = nu. 
@@ -101,15 +102,7 @@ destruct mu, nu. simpl in *.
 assert (val0 = val1).
 apply functional_extensionality. assumption.
 induction H0.
-pose proof (proof_irrelevance _ strict0 strict1).
-induction H0.
-pose proof (proof_irrelevance _ monotonic0 monotonic1).
-induction H0.
-pose proof (proof_irrelevance _ modular0 modular1).
-induction H0.
-pose proof (proof_irrelevance _ continuous0 continuous1).
-induction H0.
-reflexivity.
+f_equal; apply proof_irrelevance.
 Qed.
 
 (** The valuation which assigns zero measure to every open. This is the

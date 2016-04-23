@@ -27,7 +27,7 @@ Section Defn.
 
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Context {S} {le : S -> S -> Prop} {PO : PreO.t S le}.
+Context {S} {le : S -> S -> Prop} {PO : PreO.t le}.
 
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
@@ -237,7 +237,7 @@ Admitted.
 Section Localize.
 
 Context {S : Type} {le : S -> S -> Prop}.
-Variable (PO : PreO.t S le).
+Variable (PO : PreO.t le).
 Variable (Ix : S -> Type) (C : forall s, Ix s -> (S -> Prop)).
 
 Definition IxL (a : S) := 
@@ -323,10 +323,10 @@ Definition FOps : Frame.Ops (S -> Prop) :=
 
 Instance FOps' : Frame.Ops (S -> Prop) := FOps.
 
-Hypothesis PO : PreO.t S le.
+Hypothesis PO : PreO.t le.
 Hypothesis tS : @t S le Cov. 
 
-Theorem FramePreO : PreO.t (S -> Prop) leA.
+Theorem FramePreO : @PreO.t (S -> Prop) leA.
 Proof.
 constructor; unfold leA, Sat; intros.
 - assumption.
@@ -335,7 +335,7 @@ Qed.
 
 Require Import Morphisms SetoidClass.
 
-Theorem FramePO : PO.t (S -> Prop) leA eqA.
+Theorem FramePO : @PO.t (S -> Prop) leA eqA.
 Proof.
 constructor; unfold eqA, Sat; intros.
 - apply FramePreO.
@@ -436,7 +436,7 @@ Module Subspace.
 
 Section Defn.
 Context {S : Type} {leS : S -> S -> Prop}.
-Hypothesis POS : PreO.t S leS.
+Hypothesis POS : PreO.t leS.
 Variable CovS : S -> (S -> Prop) -> Prop.
 
 Definition Cov (V : S -> Prop) (a : S)
@@ -468,7 +468,7 @@ Arguments Cov {S} CovS V a U : clear implicits.
 
 Section IGDefn.
 Context {S} {leS : S -> S -> Prop}.
-Hypothesis POS : PreO.t S leS.
+Hypothesis POS : PreO.t leS.
 Context {Ix : S -> Type}.
 Variable C : forall a, Ix a -> (S -> Prop).
 
@@ -960,7 +960,7 @@ Variable In : X -> S -> Prop.
 Definition le := (map_op (fun (s : S) (x : X) => In x s)
             (pointwise_op (fun (_ : X) (P Q : Prop) => P -> Q))).
 
-Instance SPO : PO.t S le _ := PO.map (fun s x => In x s) (PO.subset X).
+Instance SPO : @PO.t S le _ := PO.map (fun s x => In x s) (PO.subset X).
 
 Instance SubsetFrameOps : Frame.Ops (X -> Prop) := Frame.subset_ops X.
 
@@ -1023,7 +1023,7 @@ Definition C (s : S) (_ : True) (s' : S) : Prop := exists b,
 Definition LE {A} (xs ys : list A) : Prop := exists zs,
   xs = ys ++ zs.
 
-Lemma LE_PO {A : Type} : PO.t (list A) LE eq.
+Lemma LE_PO {A : Type} : @PO.t (list A) LE eq.
 Proof.
 constructor; intros.
 - constructor; unfold LE; intros.
@@ -1246,12 +1246,12 @@ Let FrameT := FormTop.Frame leT CovT POT FTT.
 Variable F : S -> T -> Prop.
 Hypothesis cont : t F.
 
-Instance POFS : PO.t (S -> Prop) (FormTop.leA CovS) (FormTop.eqA CovS).
+Instance POFS : @PO.t (S -> Prop) (FormTop.leA CovS) (FormTop.eqA CovS).
 Proof.
 eapply FormTop.FramePO. eassumption.
 Qed.
 
-Instance POFT : PO.t (T -> Prop) (FormTop.leA CovT) (FormTop.eqA CovT).
+Instance POFT : @PO.t (T -> Prop) (FormTop.leA CovT) (FormTop.eqA CovT).
 Proof.
 eapply FormTop.FramePO. eassumption.
 Qed.
@@ -1601,7 +1601,7 @@ intros. unfold Cov, InfoBase.Cov. split; intros.
 Qed.
 
 Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
-Instance POOne : PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
+Instance POOne : @PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
 
 Instance FTOne : FormTop.t (@MeetLat.le _ MeetLat.one_ops) Cov.
 Proof.
@@ -1631,7 +1631,7 @@ constructor.
   exists True. constructor. exists (fun _ => True). constructor.
 Qed.
 
-Context {S leS eqS} {POS : PO.t S leS eqS}.
+Context {S} {leS eqS : S -> S -> Prop} {POS : PO.t leS eqS}.
 Variable CovS : S -> (S -> Prop) -> Prop.
 
 Definition Point (f : S -> Prop) := Cont.t MeetLat.le leS Cov CovS (fun _ => f).
@@ -1898,7 +1898,7 @@ split; intros.
 Qed.
 
 Instance FTproper : Proper _ FormTop.t := @FormTop.t_proper A.
-Instance discretePO : PO.t A Logic.eq Logic.eq := PO.discrete A.
+Instance discretePO : PO.t Logic.eq Logic.eq := PO.discrete A.
 
 Instance isCov : FormTop.t Logic.eq Cov.
 Proof.
@@ -1916,7 +1916,7 @@ Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
 
 Definition discrF (f : A -> B) (x : A) (y : B) : Prop := f x = y.
 
-Instance POB : PO.t B Logic.eq Logic.eq := PO.discrete B.
+Instance POB : PO.t Logic.eq Logic.eq := PO.discrete B.
 
 Ltac inv H := inversion H; clear H; subst.
 
@@ -2101,6 +2101,22 @@ constructor; intros.
 Qed.
 
 Definition CovNN := Subspace.Cov LowerR.Cov (fun q => q < 0).
+Definition C'NN := Subspace.SC LowerR.C' (fun q => q < 0).
+
+Definition mult_cont : Cont.t (prod_op (fun x y => x >= y) (fun x y => x >= y))
+  (fun x y => x >= y) 
+  (FormTop.GCov (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ C'NN C'NN))
+  CovNN
+  (lift_binop Qmult).
+Proof.
+constructor; intros.
+- apply FormTop.grefl. unfold lift_binop. simpl.
+  destruct a as (l & r).
+  exists (l * r - 1). rewrite Qlt_minus_iff. ring_simplify. reflexivity.
+- unfold lift_binop in *. destruct a, c.
+  destruct H. simpl in *. eapply Qlt_trans. eassumption.
+  (* I need the positivity predicate here??? *)
+Abort.
 
 End LPRFuncs.
 
@@ -2112,7 +2128,7 @@ Open Scope loc.
 (* Inductively-generated formal topology *)
 Class IGT {S : Type} : Type :=
   { le : S -> S -> Prop
-  ; PO :> PreO.t S le
+  ; PO :> PreO.t le
   ; Ix : S -> Type
   ; C : forall s, Ix s -> (S -> Prop)
   ; localized : FormTop.localized le C
@@ -2136,7 +2152,6 @@ Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
 Definition One : IGT _ := InfoBase MeetLat.one.
 
 Definition times `(LA : IGT A) `(LB : IGT B) : IGT _ :=
- let POA : PreO.t A _ := PO in let POB : PreO.t B _ := PO in
   {| PO := Product.PO A B
   ; localized := Product.loc _ _ _ _ _ _ localized localized
   |}.
@@ -2206,7 +2221,7 @@ End JoinTop.
 *)
 Require Import Coq.Lists.List.
 Section Joinify.
-Context {S} {le : S -> S -> Prop} {PO : PreO.t S le}.
+Context {S} {le : S -> S -> Prop} {PO : PreO.t le}.
 
 Definition leL (xs ys : list S) : Prop := forall x,
   List.In x xs -> exists y, le x y /\ List.In y ys.
@@ -2225,7 +2240,7 @@ Instance ops : JoinLat.Ops (list S) := ops'.
 
 Require Import Morphisms.
 
-Instance joinPreO : PreO.t (list S) JoinLat.le.
+Instance joinPreO : @PreO.t (list S) JoinLat.le.
 Proof.
 constructor; intros.
 - simpl. unfold leL. intros. exists x0.
@@ -2237,7 +2252,7 @@ constructor; intros.
   assumption.
 Qed.
 
-Instance joinPO : PO.t (list S) JoinLat.le JoinLat.eq.
+Instance joinPO : @PO.t (list S) JoinLat.le JoinLat.eq.
 Proof.
 constructor.
 - apply joinPreO.
