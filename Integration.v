@@ -46,7 +46,7 @@ Definition le `{X : F.t A} (x y : t X) :=
 Definition eq `{X : F.t A} (x y : t X) := 
   forall (mu : Val.t X), Integral x mu = Integral y mu.
 
-Instance PO `{X : F.t A} : PO.t (t X) le eq
+Instance PO `{X : F.t A} : PO.t le eq
   := PO.map Integral 
      (PO.pointwise (fun _ : Val.t X => Val.POLPR)).
 
@@ -208,7 +208,7 @@ Module RealFunc.
   Definition eq `{X : F.t A} (f g : t X) := forall (mu : Val.t X),
     integral f mu = integral g mu.
 
-  Instance PO `{X : F.t A} : PO.t (t X) le eq
+  Instance PO `{X : F.t A} : PO.t le eq
     := PO.map (fun f => (fun mu => integral f mu)) 
        (PO.pointwise (fun _ : Val.t X => Val.POLPR)).
 

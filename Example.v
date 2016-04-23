@@ -384,9 +384,9 @@ Theorem sum_finite_subset_le {A} fin : forall (P Q : A -> Prop) f, (forall a, P 
   -> sum_finite_subset fin P f <= sum_finite_subset fin Q f.
 Proof.
 induction fin; unfold sum_finite_subset; intros; simpl.
-- apply LPRle_refl.
+- reflexivity.
 - apply LPRplus_le_compat. apply LPRmult_le_compat. apply LPRind_imp. apply H.
-  apply LPRle_refl. apply IHfin. intros. apply H. assumption.
+  reflexivity. apply IHfin. intros. apply H. assumption.
 - apply IHfin. intros. apply H. assumption.
 Qed.
 

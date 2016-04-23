@@ -21,6 +21,9 @@ Definition compose {S T U} (F : S -> T -> Prop)
 
 Module FormTop.
 
+Notation "U ⊆ V" := (forall a, U a -> V a) (at level 60) : FT_scope.
+Local Open Scope FT_scope.
+
 Generalizable All Variables.
 
 Section Defn.
@@ -28,6 +31,12 @@ Section Defn.
 (** We assume we have some type [S] equipped
     with a partial order. *)
 Context {S} {le : S -> S -> Prop} {PO : PreO.t le}.
+Context {Cov : S -> (S -> Prop) -> Prop}.
+
+Infix "<|" := Cov (at level 60) : FT_scope.
+Local Infix "<=" := le.
+
+Notation "U <<| V" := (forall a, U a -> Cov a V) (at level 60) : FT_scope.
 
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
@@ -38,61 +47,67 @@ Definition down (a b c : S) : Prop :=
     Definition of when the [Cov] relation is indeed a formal cover.
     Here, the [Cov] relation means the little triangle that is
     seen in the literature. *)
-Class t { Cov : S -> (S -> Prop) -> Prop } :=
-  { refl : forall (a : S) (U : S -> Prop), U a -> Cov a U
+Class t :=
+  { refl : forall (a : S) (U : S -> Prop), U a -> a <| U
   ; trans : forall (a : S) (U V : S -> Prop), 
-       Cov a U 
-     -> (forall (a' : S), U a' -> Cov a' V)
-     -> Cov a V
+       a <| U 
+     -> U <<| V
+     -> a <| V
   ; le_left : forall (a b : S) (U : S -> Prop)
-     , le a b -> Cov b U -> Cov a U
+     , a <= b -> b <| U -> a <| U
   ; le_right : forall (a : S) (U V : S -> Prop)
-    , Cov a U -> Cov a V
-    -> Cov a (fun c => exists u v, U u /\ V v /\ down u v c)
+    , a <| U -> a <| V
+    -> a <| (fun c => exists u v, U u /\ V v /\ down u v c)
   }.
 
 Arguments t : clear implicits.
 
 (** Definition of a formal cover that also has a positivity predicate. *)
-Record tPos { Cov : S -> (S -> Prop) -> Prop } {Pos : S -> Prop} :=
-  { cov :> t Cov
-  ; mono : forall a U, Pos a -> Cov a U -> exists b, U b /\ Pos b
-  ; positive : forall a U, (Pos a -> Cov a U) -> Cov a U
+Record tPos {Pos : S -> Prop} :=
+  { cov :> t
+  ; mono : forall a U, Pos a -> a <| U -> exists b, U b /\ Pos b
+  ; positive : forall a U, (Pos a -> a <| U) -> a <| U
   }.
 
 Arguments tPos : clear implicits.
 
-Lemma monotone {Cov} : t Cov
+Lemma monotone : t
   -> forall (U V : S -> Prop)
-  , (forall a : S, U a -> V a)
-  -> forall a, Cov a U -> Cov a V.
+  , U ⊆ V
+  -> forall a : S, a <| U -> a <| V.
 Proof.
 intros. eauto using trans, refl.
 Qed.
 
-Lemma subset_equiv {Cov} : t Cov
+Lemma subset_equiv : t
   -> forall (U V : S -> Prop)
   , (forall a : S, U a <-> V a)
-  -> forall a, Cov a U <-> Cov a V.
+  -> forall a, a <| U <-> a <| V.
 Proof.
 intros. split; apply monotone; firstorder.
 Qed.
+
+Definition stable :=
+  forall a b U V, a <| U -> b <| V
+  -> forall c, c <= a -> c <= b ->
+    c <| (fun s => exists u v, U u /\ V v /\ down u v s).
+
+End Defn.
+
+Arguments t {S} le Cov : clear implicits.
+Arguments down {S} le a b c : clear implicits.
+Arguments stable {S} le Cov : clear implicits.
+
+Section IGDefn.
+
+Context {S} {le : S -> S -> Prop}.
+Hypothesis PO : PreO.t le.
 
 (** Inductively generated formal topologies. See section
     3 of [1]. *)
 
 Variable I : S -> Type.
 Variable C : forall (s : S), I s -> (S -> Prop).
-
-Definition stable (Cov : S -> (S -> Prop) -> Prop) :=
-  forall a b U V, Cov a U -> Cov b V
-  -> forall c, le c a -> le c b ->
-    Cov c (fun s => exists u v, U u /\ V v /\ down u v s).
-
-Definition localized := forall (a c : S),
-  le a c -> forall (i : I c),
-  exists (j : I a),
-  (forall s, C a j s -> exists u, C c i u /\ down a u s).
 
 (** Given the axiom set [I] and [C], this generates the
     formal cover corresponding to that axiom set. *)
@@ -108,7 +123,7 @@ Inductive GCovL : S -> (S -> Prop) -> Prop :=
   | glle_left : forall (a b : S) (U : S -> Prop)
     , le a b -> GCovL b U -> GCovL a U
   | gle_infinity : forall (a b : S) (i : I b) (U : S -> Prop)
-    , le a b -> (forall u, (exists u', C b i u' /\ down a u' u) -> GCovL u U)
+    , le a b -> (forall u, (exists u', C b i u' /\ down le a u' u) -> GCovL u U)
     -> GCovL a U.
 
 Lemma Lmore : forall a U, GCov a U -> GCovL a U.
@@ -123,7 +138,7 @@ intros. induction H.
 Qed.
 
 Lemma gmonotone : forall (a : S) (U V : S -> Prop),
-  (forall u, U u -> V u) -> GCov a U -> GCov a V.
+  U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros. induction H0.
 - apply grefl. apply H. assumption.
@@ -134,7 +149,7 @@ intros. induction H0.
 Qed.
 
 Lemma gmonotoneL : forall a (U V : S -> Prop),
-  (forall u , U u -> V u) -> GCovL a U -> GCovL a V.
+  U ⊆ V -> GCovL a U -> GCovL a V.
 Proof.
 intros. induction H0.
 - apply glrefl. apply H. assumption.
@@ -150,12 +165,17 @@ Proof.
 intros. split; apply gmonotone; intro; apply H; assumption.
 Qed.
 
+Definition localized := forall (a c : S),
+  le a c -> forall (i : I c),
+  exists (j : I a),
+  (forall s, C a j s -> exists u, C c i u /\ down le a u s).
+
 Hypothesis loc : localized. 
 
 (** Proposition 3.5 of [1] *)
 Lemma le_infinity : forall (a c : S), le a c ->
   forall (i : I c) (U : S -> Prop), 
-  (forall u v, C c i v -> down a v u -> GCov u U)
+  (forall u v, C c i v -> down le a v u -> GCov u U)
   -> GCov a U.
 Proof.
 unfold localized in loc.
@@ -164,10 +184,10 @@ apply (ginfinity _ x).
 intros.
 specialize (H1 u H2).
 destruct H1. destruct H1.
-eapply H0. 2:eassumption. assumption.
+eapply H0; eassumption.
 Qed.
 
-Lemma GCov_stable : stable GCov.
+Lemma GCov_stable : stable le GCov.
 Proof.
 unfold localized in loc.
 unfold stable. intros. generalize dependent c.
@@ -201,7 +221,7 @@ Qed.
 (** Theorem 3.6 of [1].
     In fact, the formal cover that we defined based on the axiom set 
     indeed satistifes the requirements of being a formal topology. *)
-Instance GCov_formtop : t GCov.
+Instance GCov_formtop : t le GCov.
 Proof.
 unfold localized in loc.
 constructor.
@@ -220,9 +240,8 @@ constructor.
 Qed.
 
 
-End Defn.
+End IGDefn.
 
-Arguments t {S} _ _ : clear implicits.
 Arguments localized {S} le {I} C : clear implicits.
 Arguments GCov {S} le {I} C _ _ : clear implicits.
 Arguments GCovL {S} le {I} C _ _ : clear implicits.
@@ -237,8 +256,9 @@ Admitted.
 Section Localize.
 
 Context {S : Type} {le : S -> S -> Prop}.
-Variable (PO : PreO.t le).
-Variable (Ix : S -> Type) (C : forall s, Ix s -> (S -> Prop)).
+Context {PO : PreO.t le}.
+Context {Ix : S -> Type}.
+Variable (C : forall s, Ix s -> (S -> Prop)).
 
 Definition IxL (a : S) := 
   { i : sigT Ix | match i with
@@ -246,7 +266,7 @@ Definition IxL (a : S) :=
 
 Definition CL (a : S) : IxL a -> S -> Prop := 
   fun i => match i with
-  | exist (existT c k) _ => fun z => exists u, C c k u /\ @down _ le a u z
+  | exist (existT c k) _ => fun z => exists u, C c k u /\ down le a u z
   end.
 
 Theorem Llocalized : localized le CL.
@@ -301,7 +321,7 @@ Definition leA (U V : S -> Prop) : Prop := forall s, Sat U s -> Sat V s.
 Definition eqA (U V : S -> Prop) : Prop := forall s, Sat U s <-> Sat V s.
 
 Definition minA (U V : S -> Prop) (s : S) : Prop :=
-  exists u v, U u /\ V v /\ @down _ le u v s.
+  exists u v, U u /\ V v /\ down le u v s.
 
 Definition maxA (U V : S -> Prop) (s : S) : Prop := U s \/ V s.
 
@@ -416,7 +436,7 @@ constructor; intros.
   + apply trans with (f i). assumption.
     intros. apply refl. exists i. assumption.
   + eapply trans. eassumption. simpl. intros.
-    destruct H1. apply (H x a'). apply refl. assumption.
+    destruct H1. apply (H x a). apply refl. assumption.
 - simpl. unfold minA, supA, eqA, Sat. intros.
   split; intros. 
   + eapply trans. eassumption. simpl. intros.
@@ -826,7 +846,7 @@ Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
 Instance isCovG : FormTop.t leS GCov := 
-  FormTop.GCov_formtop Ix C loc.
+  FormTop.GCov_formtop _ Ix C loc.
 
 Require Import Morphisms.
 Instance isCov : FormTop.t leS Cov.
@@ -967,7 +987,7 @@ Instance SubsetFrameOps : Frame.Ops (X -> Prop) := Frame.subset_ops X.
 Record t : Type :=
   { here : forall x, { s | In x s }
   ; local : forall (a b : S) x, In x a -> In x b 
-          -> { c | In x c /\ @FormTop.down S (map_op (fun s x => In x s) L.le) a b c }
+          -> { c | In x c /\ FormTop.down (map_op (fun s x => In x s) L.le) a b c }
   }.
 
 (** Every concrete topological space can be presented as an
@@ -1217,7 +1237,7 @@ Record t {F : S -> T -> Prop} : Prop :=
   { here : forall a, CovS a (fun s => exists t, F s t)
   ; le_left : forall a b c, leS a c -> F c b -> F a b
   ; local : forall {a b c}, F a b -> F a c
-    -> CovS a (fun s => exists bc, @FormTop.down _ leT b c bc /\ F s bc)
+    -> CovS a (fun s => exists bc, FormTop.down leT b c bc /\ F s bc)
   ; cov : forall {a b} V, F a b -> CovT b V
     -> CovS a (fun s => exists t, V t /\ F s t)
   }.
@@ -1226,7 +1246,7 @@ Arguments t F : clear implicits.
 
 Record pt {F : T -> Prop} :=
   { pt_here : exists t, F t
-  ; pt_local : forall {b c}, F b -> F c -> exists d, @FormTop.down _ leT b c d /\ F d
+  ; pt_local : forall {b c}, F b -> F c -> exists d, FormTop.down leT b c d /\ F d
   ; pt_cov : forall {b V}, F b -> CovT b V -> exists v, F v /\ V v
   }.
 
@@ -1361,7 +1381,7 @@ constructor; intros; unfold id in *.
   eapply FormTop.le_left. eassumption.
   apply FormTop.refl. reflexivity. 
   intros. subst. eapply FormTop.monotone. eassumption.
-  2:eassumption. intros. exists a0. split. assumption.
+  2:eassumption. intros. exists a1. split. assumption.
   apply PreO.le_refl.
 Qed.
 
@@ -1405,7 +1425,7 @@ intros. constructor; intros.
   destruct H2 as (tt & downtt & Fatt).
   apply (FormTop.monotone _)
   with (fun s => exists t' : T,
-    (fun t'' => exists bc : U, @FormTop.down _ leU b c bc /\ G t'' bc) t' 
+    (fun t'' => exists bc : U, FormTop.down leU b c bc /\ G t'' bc) t' 
     /\ F s t'). firstorder.
   eapply (cov H). eassumption.
   destruct downtt.
@@ -1435,7 +1455,7 @@ Definition diagonal (p : S) (out : S * S) : Prop :=
 Lemma t_diagonal : t leS (prod_op leS leS)
   CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
 Proof.
-pose proof (FormTop.GCov_formtop IS CS locS) as FTS.
+pose proof (FormTop.GCov_formtop _ IS CS locS) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
 - apply FormTop.refl. exists (a, a). split; apply PreO.le_refl.
 - destruct b. destruct H0.
@@ -1567,7 +1587,7 @@ constructor; intros; unfold parallel in *.
 - apply FormTop.gmonotone with
   (fun s : S * T => let (s', t') := s in 
   (fun s'' => exists a, F s'' a) s' /\ (fun t'' => exists b, G t'' b) t').
-  intros. destruct a, u. 
+  intros. destruct a, a0. 
   destruct H as ((? & ?) & (? & ?)). exists (x, x0).
   intuition. destruct a. apply Product.factors; try assumption.
   apply (here ContF). apply (here ContG).
@@ -1834,7 +1854,7 @@ Let CovT := FormTop.GCov leT CT.
 Record t {F : S -> T -> Prop} :=
   { here : forall s, exists t, F s t
   ; local : forall a b c, F a b -> F a c ->
-       CovS a (fun s => exists d, @FormTop.down _ leT b c d /\ F s d)
+       CovS a (fun s => exists d, FormTop.down leT b c d /\ F s d)
   ; le_left : forall a b c, leS a c -> F c b -> F a b
   ; le_right :  forall a b c,  F a b -> leT b c -> F a c
   ; ax_right : forall a b (j : IT b), F a b -> 
@@ -1845,7 +1865,7 @@ Arguments t : clear implicits.
 
 Theorem cont : forall F, t F -> Cont.t leS leT CovS CovT F.
 Proof.
-pose proof (FormTop.GCov_formtop IS CS locS) as FTS.
+pose proof (FormTop.GCov_formtop _ IS CS locS) as FTS.
 intros. constructor; intros.
 - apply FormTop.grefl. apply (here H).
 - eapply le_left; eassumption.

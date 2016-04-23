@@ -4,4 +4,4 @@
 ((coq-mode
   (coq-indent-proofstart . 0)
   (coq-smie-after-bolp-indentation . 0)
-  (company-coq-dir-local-symbols . (("~>" . ?↝)))))
+  (company-coq-dir-local-symbols . (("~>" . ?↝) ("<|" . ?◁))))
