@@ -484,147 +484,19 @@ This will allow people to describe probability distributions in the familiar mon
 
 \end{enumerate}
 
+\section{Comparison to computable measure theory}
+
+There are interesting connections between computable measures.
+
+\subsection{References}
+
+\cite{schroder2007} describes the equivalence between measures described by samplers and measures which are functions from subsets to real numbers.
+
+In \cite{weihrauch2014}, definition 4.2 describes what, if I understand correctly, looks like it corresponds to maps names for the generating ring (like the base for formal topology) to lower, upper, and plain-old real numbers. This paper is really difficult to read. Though, in the conclusion they say, "From all the representations of measurable sets mentioned in this article only for the representation ?+ intersection and countable union are computable. Therefore, we claim that ?+ is the most useful one for studying computability of measurable functions." That seems to be related to the idea that valuations on formal topologies should map to lower real numbers.
+
+I found \cite{collins2014} to be one of the more understandable papers on computable measure theory. It relates things closely to valuations.
+
 \bibliographystyle{alpha}
 \bibliography{Overview}
 
 \end{document}
-
-
-
-
-
-
-
-
-
-\section{Trash dump}
-We first extend $\mu$ to an operation on finite covers $\mu_\omega : \List{S} \to \R$ according to the recursive definition
-\begin{align*}
-\mu_\omega([]) &= 0
-\\
-\mu_\omega(a :: as) &= \mu(a) - \mu_\omega(a \bullet as) + \mu_\omega(as),
-\end{align*}
-where $a \bullet as$ is written as shorthand for $\map{(\fun{x}{x \bullet a})}{as}$. We note that the definition of $\mu_\omega$ can be proved well-founded by induction on the length of the list. 
-
-We then extend $\mu$ to an operation over infinite covers $\mu_\infty : (S \to \Prop) \to \lowerT{\R}^+$ by
-\[
-\mu_\infty(U) = \sup \{ \mu_\omega(as) \suchthat \forall a \in as, U a \}.
-\]
-We note that $\mu_\infty(U)$ must be non-negative, since it is a supremum over quantities including $\mu_\omega([]) = 0$.
-
-\begin{lemma}
-For all $a : S$, $\mu_\omega([a]) = \mu(a)$.
-\end{lemma}
-
-\begin{lemma}
-For all $a : S$ and $xs : \List{S}$, if $a \in xs$, then $\mu_\omega(a :: xs) = \mu_\omega(xs)$.
-\end{lemma}
-
-\begin{lemma}
-For all $xs, ys : \List{S}$, $\mu_\omega(xs \concat ys) \le \mu_\omega(xs) + \mu_\omega(ys)$.
-\end{lemma}
-
-\begin{lemma}
-For all $a : S$ and $xs : \List{S}$, if $a \in xs$, then $\mu_\infty(\fun{z}{z \in (a :: xs)}) = \mu_\infty(\fun{z}{z \in xs})$.
-\end{lemma}
-\begin{proof}
-The two subsets have the same extent.
-\end{proof}
-
-\begin{lemma}
-If $\mu$ is a basic valuation, for all $z : S$ and $zs : \List{S}$, $\mu_\omega(z \bullet zs) \le \mu_\omega(zs)$.
-\end{lemma}
-\begin{proof}
-By induction on the maximum length of $zs$. Base case is obvious. In the inductive case, we know 
-\[ \mu_\omega(z \bullet zs) \le \mu_\omega(zs) \]
-for every $z$ and every $zs$ of length no greater than $n$
-and must prove the following for $xs$ of length $n$:
-\begin{align*}
-\mu_\omega(a \bullet x :: a \bullet xs) &\le \mu_\omega(x :: xs)
-\\
-\mu(a \bullet x) - \mu_\omega(x \bullet (a \bullet xs)) + \mu_\omega(a \bullet xs) 
-  &\le \mu(x) - \mu_\omega (x \bullet xs) + \mu_\omega(xs)
-\\
-\mu(a \bullet x) &\le \mu(x).
-\end{align*}
-We stepped from the second to third line from two applications of the inductive hypothesis (with $z = x, zs = a \bullet xs$ and $z = x, zs = xs$). Finally, we know $\mu(a \bullet x) \le \mu(x)$ by the previous lemma.
-\end{proof}
-
-\begin{lemma}
-If $\mu$ is a basic valuation, for all $z : S$ and $zs : \List{S}$, $\mu_\omega(z \bullet zs) \le \mu(z)$.
-\end{lemma}
-\begin{proof}
-By induction on the maximum length of $zs$. Base case is obvious. In the inductive case, we know 
-\[ \mu_\omega(z \bullet zs) \le \mu(z) \]
-for every $z$ and every $zs$ of length no greater than $n$
-and must prove the following for $xs$ of length $n$:
-\begin{align*}
-\mu_\omega(a \bullet x :: a \bullet xs) &\le \mu(a)
-\\
-\mu(a \bullet x) - \mu_\omega((a \bullet x) \bullet xs) + \mu_\omega(a \bullet xs) 
-  &\le \mu(a)
-\\
-\mu(a \bullet x) &\le \mu(a).
-\end{align*}
-We stepped from the second to third line using the inductive hypothesis (with $z = a \bullet x, zs = xs$). Finally, we know $\mu(a \bullet x) \le \mu(a)$ by a previous lemma.
-\end{proof}
-
-\begin{corrolary}
-If $\mu$ is a basic valuation, for all $z : S$ and $zs : \List{S}$, $\mu_\omega(zs) \le \mu_\omega(z :: zs)$. Generalizing this, for any $xs, ys : \List{S}$, $\mu_\omega(xs) \le \mu_\omega(xs \concat ys)$. Additionally, this implies $0 \le \mu_\omega(ys)$.
-\end{corrolary}
-
-\begin{theorem}
-If $\mu$ is a basic valuation, then for all $xs : \List{S}$, $\mu_\omega(xs) = \mu_\infty(\fun{z}{z \in xs})$.
-\end{theorem}
-\begin{proof}
-The definition of $\mu_\omega$, and the fact that $\bullet$ is a commutative monoid, implies that if $xs$ and $ys$ have the same elements, then $\mu_\omega(xs) = \mu_\omega(ys)$. This, combined with the corrolary above which tells us that $\mu_\omega$ is monotonic with respect to list concatenation, tells us that $\mu_\omega$ is monotonic with respect to list membership, i.e., if $\forall z, z \in xs \to z \in ys$, then $\mu_\omega(xs) \le \mu_\omega(ys)$.
-\end{proof}
-
-\begin{lemma}
-If $\mu$ is a basic valuation, then $\mu_\omega$ is modular; that is, for every $xs, ys : \List{S}$, we have
-\[
-\mu_\omega(xs) + \mu_\omega(ys) = \mu_\omega(xs \bullet ys) + \mu_\omega(xs \concat ys),
-\]
-using the recursive definition
-\begin{align*}
-[] \bullet ys &= []
-\\ (x :: xs) \bullet ys &= x \bullet ys \concat xs \bullet ys
-\end{align*}
-\end{lemma}
-\begin{proof}
-By induction on the structure of $xs$. The base case is obvious. In the inductive case, we must prove
-\begin{align*}
-\mu(x) - \mu_\omega(x \bullet xs) + \mu_\omega(xs) + \mu_\omega(ys)
-  &= \mu_\omega((x :: xs) \bullet ys) 
-  + \mu(x) - \mu_\omega(x \bullet (xs \concat ys)) + \mu_\omega(xs \concat ys)
-\\
-     \mu_\omega(xs \bullet ys) - \mu_\omega(x \bullet xs)
-  &= \mu_\omega((x :: xs) \bullet ys) - \mu_\omega(x \bullet (xs \concat ys))
-\end{align*}
-We now do structural induction on $ys$. The base case is again, obvious, and in the inductive case we get
-\begin{align*}
-     \mu_\omega(xs \bullet (y :: ys)) - \mu_\omega(x \bullet xs)
-  &= \mu_\omega((x :: xs) \bullet (y :: ys)) - \mu_\omega(x \bullet (xs \concat y :: ys))
-\\
-     \mu_\omega(xs \bullet (y :: ys)) - \mu_\omega(x \bullet xs)
-  &= \mu_\omega(x \bullet y :: xs \bullet y \concat x \bullet ys \concat xs \bullet ys) - \mu_\omega(x \bullet y :: x \bullet (xs \concat ys))
-\\
-     \mu_\omega(xs \bullet (y :: ys)) - \mu_\omega(x \bullet xs)
-  &= - \mu_\omega((x \bullet y) \bullet (xs \concat ys \concat xs \bullet ys)) 
-     + \mu_\omega(xs \bullet y \concat x \bullet ys \concat xs \bullet ys) 
-  \\  &+ \mu_\omega(x \bullet y \bullet (xs \concat ys))
-    - \mu_\omega(x \bullet (xs \concat ys))
-\\
-     \mu_\omega(xs \bullet (y :: ys)) - \mu_\omega(xs \bullet ys)
-  &= - \mu_\omega((x \bullet y) \bullet (xs \concat ys \concat xs \bullet ys)) 
-     + \mu_\omega(xs \bullet y \concat x \bullet ys \concat xs \bullet ys) 
-  \\  &+ \mu_\omega(x \bullet y \bullet (xs \concat ys))
-    - \mu_\omega((x :: xs) \bullet ys)
-\\
-     \mu_\omega(xs \bullet (y :: ys)) - \mu_\omega(xs \bullet ys)
-  &= \mu_\omega(xs \bullet y \concat x \bullet ys \concat xs \bullet ys) 
-    - \mu_\omega((x :: xs) \bullet ys)
-\end{align*}
-
-I am lost and give up. It shouldn't have been this hard...
-\end{proof}
