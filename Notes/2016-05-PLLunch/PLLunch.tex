@@ -12,6 +12,12 @@
 \usepackage{lmodern}
 \usepackage[utf8]{inputenc}
 
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+
+\usepackage{caption}
+\usepackage{subcaption}
+
 \usepackage{../tex/mathpartir}
 
 \newcommand{\concat}{\ensuremath{+\!\!\!\!+\,}}
@@ -50,9 +56,9 @@ Given an ``arbitrary'' $f : [0,1] \to \R$, find the maximum value that it attain
 
 The real numbers, $\R$, are one of the most interesting topological spaces, and many computer programs operate on data which are meant to represent real numbers. A common solution is to use floating point numbers rather than $\R$, but programming languages provide few guarantees as to how faithfully programs written using floating point numbers represent the idealized programs that operate on $\R$. Designing floating point computations which do provide such guarantees is a daunting task, and reasoning about the difference between the floating point and the idealized computations is challenging.
 
-Mathematically, the real numbers are defined as sequences of rational approximations, $x : \nat \to \rat$, which are coherent and ever-narrowing.\footnote{Formally, they satisfy a condition such as: for all $m, n : \nat$, $|x(m) - x(n)| \le 1/m + 1/n$.} It is possible to use this encoding to faithfully represent real numbers in a programming language. Note that different sequences might actually represent the same number. Then a function $f : \R \to \R$ in fact is a transformer of sequences, $f : (\nat \to \rat) \to (\nat \to \rat)$.
+Mathematically, the real numbers are defined as sequences of rational approximations, $x : \nat \to \rat$, which are coherent and ever-narrowing; for instance, the $x(n)$ may approximate $x$ to within a distance $1/n$. \footnote{Formally, they satisfy a condition such as: for all $m, n : \nat$, $|x(m) - x(n)| \le 1/m + 1/n$.} It is possible to use this encoding to faithfully represent real numbers in a programming language. Note that different sequences might actually represent the same real number. Then a function $f : \R \to \R$ in fact is a transformer of sequences, $f : (\nat \to \rat) \to (\nat \to \rat)$.
 
-It is a remarkable fact that, as long as real numbers $x : \nat \to \rat$ may be black boxes where one can only learn about them by querying for approximations $x(n)$, then any computable function $f$ must be continuous. Given some $x : \R$ and some desired precision $1/n$, $f$ must compute $f(x)(n)$ in finite time. Therefore, it must only look at finitely many entries of the sequence $x$, and so it can only determine $x$ to some finite degree of precision, and therefore it must map any other point $y$ which looks the same as $x$ so far to that same approximate output.
+It is a remarkable fact that, as long as real numbers $x : \nat \to \rat$ may be black boxes where one can only learn about them by querying for approximations $x(n)$, then any computable function $f$ must be continuous. Given some $x : \R$ and some desired precision $\varepsilon = 1 / n$, $f$ must compute $f(x)(n)$ in finite time. Therefore, it must only look at finitely many entries of the sequence $x$, so if the maximum index it looks at is $m$, it can only determine $x$ to within $\delta = 1 / m$, and therefore for any other $x'$ whose distance from $x$ is less than $\delta$, the $f(x)$ and $f(x')$ must differ by no more than $\varepsilon$.
 \footnote{LEJ Brouwer made this observation and postulated the existence of ``free choice sequences,'' lawless sequences whose values are unconstrained other than at the entries where they have already been observed. As a consequence, he derived \emph{Brouwer's continuity principle}, which states that for every property of sequences $P : (\nat \to \nat) \to \bool$ and every sequence $\alpha : \nat \to \nat$, there is some point at which $P$ stopped inspecting $\alpha$. That is, for some $n : \nat$, it only look at the first $n$ entries of the sequences, such that for every $\beta : \nat \to \nat$ which shares the same length-$n$ prefix as $\alpha$, the result $P(\alpha) = P(\beta)$. As a result, he found that all functions on $\R \to \R$ are continuous, and refuted the law of the excluded middle, which says that every logical proposition is either true or false. The concept of ``formal topology'' explained in this article gives a way to give computational meaning to Brouwer's concepts of choice sequences.}
 
 Let's return to the task in the introduction. It's quite difficult using the floating point representation: notice that a function $f : [0,1] \to \R$ might not even \emph{have} a maximum if it is not continuous. Despite the general appeal of providing functionality which would find a maximum over black box functions, not even MATLAB offers a tool to do so; the closest MATLAB comes is in its \texttt{fminbnd} function, which uses advanced numerical techniques to find a \emph{local} maximum of a ``continuous'' floating point function.
@@ -85,7 +91,7 @@ $P : X \to \bool$ & decidable property & clopen subset
 
 An ``affirmable'' property is a property that can be verified by a semidecision procedure: if the property holds, then the procedure will halt and return $\mathsf{true}$, whereas if the property does not hold, the program may never terminate. A ``refutable'' property is a property that can be refuted by a semidecision procedure: if the property doesn't hold, the procedure halts and returns $\mathsf{true}$, whereas if the property does hold, the program may never terminate.
 
-We can intuit some of the fundamental theorems of topology by simply translating across the dictionary. For instance,
+We can intuit some of the fundamental facts of topology by simply translating across the dictionary. For instance,
 \begin{theorem}
 If $f : X \to Y$ is continuous, and $U \subseteq X$ is open, then $f^{-1}(U) \subseteq X$ (the set of points which $f$ maps to $U$) is open.
 \end{theorem}
@@ -120,29 +126,82 @@ In this section, we will describe such a framework, which is known as \emph{form
 \footnote{Formal topology is a theory that was invented in the 1980s to try to give a constructive and predicative account of topology.}
 The key idea is to view points in a continuous space as interaction structures: one can iteratively refine one's state of knowledge about a point by asking certain questions and receiving answers. So the interaction involved in determining information about a point is explicit, whereas it is implicit when, say, modeling $\R$ as sequences $\nat \to \rat$ in a functional programming language. Rather than starting with points, and building a topology on top, we will directly formalize the interactions for a given topological space in terms of two notions: \emph{basic opens} and \emph{open covers}. By taking open sets as primitives rather than points, we can force continuous functions to ``explain their work'', which will allow us to maximize a function $f : [0,1 \to \R$.
 
-The \emph{basic opens} of a space are formal objects which are ``rich enough'' to describe the space. For defining the real numbers $\R$ in topology, it suffices to take pairs of rational numbers, $\rat \times \rat$, where a formal open $(a, b)$ (we will additionally require $a < b$) is meant to represent the open interval $(a, b)$.
+The \emph{basic opens} of a space are formal objects which are ``rich enough'' to describe the space. 
+\footnote{The basic opens should represent a \emph{base} of open sets for the space, which means that any open set can be represented as a union of basic opens.}
+For defining the real numbers $\R$ in topology, it suffices to take pairs of rational numbers, $\rat \times \rat$, where a formal open $(a, b)$ (we will additionally require $a < b$) is meant to represent the open interval $(a, b)$.
 \footnote{The notational collision of open intervals and pairs is unfortunately confusing in this case, as the pair $(a, b) : \rat \times \rat$ is meant to represent the interval $(a, b) : \R \to \Prop$, but recognizing the distinction between the types is important.}
 We can think of basic opens as representing different possible states of knowledge about a point.
 
-In the point-set based topology we previously considered, an open cover $\mathcal{U}$ of an open set $V$ is a collection of open subsets which cover $V$; that is, $V \subseteq \bigcup_{U \in \mathcal{U}} U$. So an open cover is a collection of possible refinements. Intuitively, we can think of an open cover $\mathcal{U}$ of $V$ as a question to ask of a point $x \in V$ that will certainly succeed: since $x$ lies in $V$, if we run the collection of semi-deciders $\mathcal{U}$ in parallel, one will eventually halt, and therefore we will know that for some $U \in \mathcal{U}$, we have $x \in U$. So open covers represent ``safe'' questions to ask of a point to refine our state of knowledge about a point.
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+\draw [thick] (2,2) circle (0.8cm);
+\draw [thick, gray] (2,2) circle (0.5cm);
+\draw [thick, gray] (2.7,2) circle (0.5cm);
+\draw [thick, gray] (1.3,2) circle (0.5cm);
+\draw [thick, gray] (1.6,2.6) circle (0.5cm);
+\draw [thick, gray] (2.4,2.6) circle (0.5cm);
+\draw [thick, gray] (1.6,1.4) circle (0.5cm);
+\draw [thick, gray] (2.4,1.4) circle (0.5cm);
+\end{tikzpicture}
+\end{center}
+\caption{An open cover}
+\end{figure}
+
+In the point-set based topology we previously considered, an open cover $\mathcal{U}$ of an open set $V$ is a collection of open subsets which cover $V$; that is, $V \subseteq \bigcup_{U \in \mathcal{U}} U$. So an open cover is a collection of possible refinements. Intuitively, we can think of an open cover $\mathcal{U}$ of $V$ as a question to ask of a point $x \in V$ that will certainly succeed: since $x$ lies in $V$, if we run the collection of semi-deciders $\mathcal{U}$ in parallel, one will eventually halt, and therefore we will know that for some $U \in \mathcal{U}$, we have $x \in U$. So open covers represent ``safe'' questions to ask of a point to refine our state of knowledge about a point.\footnote{A point may lie in many open sets of an open cover, in which case several responses are possible, and equivalent points may make different choices in their response.}
 
 In formal topology, we \emph{directly axiomatize} the open covers as an inductive type. Given some basic open $a : S$ and a subset $U \subseteq S$, the proposition $a \cov U$ indicates whether $U$ covers $a$, that is, whether $U$ is a ``legitimate question'' to ask of points in $a$.
 
  For the real numbers, we inductively generate the covering relation by the following rules:
- \footnote{Note the hypothesis $U \cov V$ in the \irule{transitivity} rule has a subset on the left-hand side; this notation is simply shorthand for $\forall (p, q) \in U, (p, q) \cov V$. Still, the \irule{transitivity} rule looks like it is potentially not well-founded, so one should not interpret these rules directly as the constructors of an inductive type. However, it is possible to inductively generate a cover relation (where the constructors look slightly different) which satisfies all of these rules.}
- \begin{mathpar}
+ \footnote{The hypothesis $U \cov V$ in the \irule{transitivity} rule has a subset on the left-hand side; this notation is simply shorthand for $\forall (p, q) \in U, (p, q) \cov V$. Still, the \irule{transitivity} rule looks like it is potentially not well-founded, so one should not interpret these rules directly as the constructors of an inductive type. However, it is possible to inductively generate a cover relation (where the constructors look slightly different) which satisfies all of these rules.}
+
+\begin{figure}[h]
+\begin{center}
+\begin{subfigure}[t]{0.4\textwidth}
+ \begin{tikzpicture}
+ \draw [<->, thick] (-2, 0) -- (2, 0);
+ \draw [(-), ultra thick, blue] (-1, -0.2) -- (1, -0.2);
+ \draw [(-), ultra thick, red] (-1.5, 0.2) -- (1.5, 0.2);
+ \end{tikzpicture}
+\begin{mathpar}
 \inferrule* [right=narrow]
   {a' \le a < b \le b' }
   {(a, b) \cov \{(a', b')\}}
- 
+\end{mathpar}
+\end{subfigure}
+~
+\begin{subfigure}[t]{0.4\textwidth}
+ \begin{tikzpicture}
+ \draw [<->, thick] (-2, 0) -- (2, 0);
+ \draw [(-), ultra thick, blue] (-1, -0.2) -- (1, -0.2);
+ \draw [(-), ultra thick, red] (-1.5, 0.2) -- (0.5, 0.2);
+  \draw [(-), ultra thick, red] (-0.5, 0.4) -- (1.5, 0.4);
+ \end{tikzpicture}
+\begin{mathpar}
 \inferrule* [right=split]
   {p < a < r < q < b < s}
   {(a, b) \cov \{ (p, q), (r, s) \}}
-  
+\end{mathpar}
+\end{subfigure}
+
+\vspace{1em}
+
+\begin{subfigure}[t]{0.4\textwidth}
+ \begin{tikzpicture}
+ \draw [<->, thick] (-2, 0) -- (2, 0);
+ \draw [(-), ultra thick, blue] (-1.5, -0.2) -- (1.5, -0.2);
+ \draw [ultra thick, dashed, red] (-1.5, 0.2) -- (1.5, 0.2);
+  \fill[fill=red, opacity=0.2]  (-1.5, 0)--(-1.5,0.4)--(1.5,0.4)--(1.5,0)--(-1.5,0);
+ \end{tikzpicture}
+\begin{mathpar}
 \inferrule* [right=inside]
   { }
   {(a, b) \cov \{ (p, q) \suchthat a < p < q < b \}}
-  
+\end{mathpar}
+\end{subfigure}
+
+\begin{subfigure}[t]{\textwidth}
+\begin{mathpar}
 \inferrule* [right=reflexivity]
   { }
   {(a, b) \cov \{(a, b)\}}
@@ -151,17 +210,23 @@ In formal topology, we \emph{directly axiomatize} the open covers as an inductiv
   {(a, b) \cov U \\ U \cov V}
   {(a, b) \cov V}
  \end{mathpar}
+\end{subfigure}
+
+\end{center}
+\end{figure}
  
  The rules \irule{narrow}, \irule{split}, and \irule{inside} describe the structure of the real line, while the rules \irule{reflexivity} and \irule{transitivity} describe the composition structure of valid questions: we can ask a trivially answerable question, and we can chain together questions to form ``plans of investigation'' of a point.
 
 \subsection{Points}
-We then define the points of our space as those structures which are able to respond to valid questions. For a space with basic opens $S$, a point $x$ is defined a subset of the basic opens $S$ satisfying certain properties. Intuitively, $x$ is defined as the subset of basic opens which it lies in. We will use the notation $x \models a$ (read ``$x$ lies in a'') for a basic open $a : S$ if $a \in x$. Then a point satisfies the following rules:
-\footnote{
+We then define the points of our space as those structures which are able to respond to valid questions. For a space with basic opens $S$, a point $x$ is defined a subset of the basic opens $S$ satisfying certain properties. Intuitively, $x$ is defined as the subset of basic opens which it lies in. We will use the notation $x \models a$ (read ``$x$ lies in a'')\footnote{
 The choice of the symbol $\models$ is not accidental. We can read the rules of open covers as a logical sequent calculus, where the basic opens represent propositional variables, and the open cover $a \cov \{u_1, u_2, \ldots\}$ represents
 \[
 a \vdash u_1, u_2, \ldots
 \]
 That is, the truth of $a$ implies the truth of either $u_1$, or $u_2$, and so on. Then \irule{reflexivity} corresponds to the identity sequent $a \vdash a$ and transitivity represents a sort of infinitary cut rule. Then a point in the space is, by its definition, a model of this logic, assigning consistent truth values to all of the propositional variables.
+} for a basic open $a : S$ if $a \in x$. Then a point satisfies the following rules:
+\footnote{
+A point must satisfy additional properties as well, but this is beyond the scope of this article.
 }
 \begin{mathpar}
 \inferrule* [right=start]
@@ -183,7 +248,7 @@ In point-set topology, continuous functions $f : X \to Y$ were those such that f
 Since opens are now the primitive objects, we will simply directly define the continuous functions by their inverse images. For formal spaces with basic opens $S$ and $T$, a continuous function $f$ from the space on $S$ to the space on $T$ is a relation $f^{-1}$ where, for a basic open $t : T$, $f^{-1}(t) \subseteq S$ represents the basic opens which map to $t$ under $f$.
 
 The computational meat of continuous functions is that they are question/response transformers, satisfying the following rule:
-\footnote{For a subset $U$, we define $f^{-1}(U) = \bigcup_{b \in U} f^{-1}(b)$.}
+\footnote{For a subset $U$, we define $f^{-1}(U) = \{ f^{-1}(b) \suchthat b \in U \}$.}
 \begin{mathpar}
 \frac{a \cov_T U}
        {f^{-1}(a) \cov_S f^{-1}(U)}
@@ -198,9 +263,9 @@ Using formal topology, we are now able to solve the initially posed task: to max
 We shall be bold, and try to implement the maximum point $y = \max_{x \in [0, 1]} f(x)$ by implementing its two rules, \irule{start} and \irule{respond}. To simplify the problem, we can assume that we have allowed a basic open $\top_\R$ which represents the whole space, so that our point implements the \irule{start} with this basic open.
 
 Now, suppose that $y$ is issued a question $\top_\R \cov U$, so $y$ must respond with which interval $(a, b) \in U$ it lies in. For concreteness, we might imagine that $U$ is a covering of the real line using infinitely many intervals of the small width $\varepsilon$. Which interval should $y$ pick? Intuitively, it should pick the highest one possible, i.e., the highest interval that $f$ actually reaches. Using the fact that $f$ is a question transformer, we transform this cover into $f^{-1}(\top_R) \cov f^{-1}(U)$, i.e., $[0, 1] \cov f^{-1}(U)$.
-\footnote{Note that here we have what appears to be a closed set on the left-hand side of the basic cover. Given that the complement of $[0,1]$ is the open set $\bigcup \{(-\infty, 0), (0, \infty)\}$, The notation $[0,1] \cov f^{-1}(U)$ in fact means
+\footnote{Note that here we have what appears to be a closed set on the left-hand side of the basic cover. Given that the complement of $[0,1]$ is the open set $\bigcup \{(-\infty, 0), (0, \infty)\}$, the notation $[0,1] \cov f^{-1}(U)$ in fact means
 \[
-\top_\R \cov \{(-\infty, 0), (0, \infty)\} \cup U.
+\top_\R \cov \{(-\infty, 0), (0, \infty)\} \cup f^{-1}(U).
 \]
 }
 The Heine-Borel property states that any open cover of the closed interval must have finite subcover. In formal topology, we can actually \emph{compute} this finite subcover by induction on the derivation of the cover. In this specific case, we can compute some finite $V$ such that $f^{-1}(V) \subseteq f^{-1}(U)$ (we can also choose $V$ such that for all $v \in V$, $f^{-1}(v)$ is inhabited).
