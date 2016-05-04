@@ -45,7 +45,7 @@
 
 Space, time, magnitude, and infinite streams of data are well-modeled by continuous spaces. We may wish to write computer programs which manipulate these concepts, and so desire a programming language which faithfully represents these concepts. Such a language would make it easier to understand the (extensional) behavior of such programs, which is particularly useful in the context of theorem proving.
 
-I am building a programming language embedded in Coq in which data types correspond to topological spaces, and functions correspond to continuous maps. I am also extending this to a probabilistic programming language, in which probability distributions are functions which compute the probability of certain subsets. It is then possible to use Coq to reason about these programs. For instance, one may wish to prove that a probabilistic program satisfies a specification with at least some probability.
+I am building a Coq framework for reasoning about probability, whose concepts are most naturally expressed in the language of topology. Accordingly, I am also formalizing a theory of topology called \emph{formal topology}; its constructive nature means that formal topology can also be viewed as a programming language embedded in Coq in which data types correspond to topological spaces, and functions correspond to continuous maps.
 
 These notes explain how this programming language for topology works, and how we can use it to solve the following task: \footnote{What does ``arbitrary'' mean? For now I will leave its interpretation open. In general, this article seems to make a habit of being unclear, hand-wavy, or sometimes just plain false, in support of the larger purpose of conveying the general idea of formal topology without getting bogged in the details. Some of these copious footnotes try to clarify the unclear and correct the errors, at the cost of perhaps getting mired in the details.}
 \begin{quote}
@@ -56,10 +56,10 @@ Given an ``arbitrary'' $f : [0,1] \to \R$, find the maximum value that it attain
 
 The real numbers, $\R$, are one of the most interesting topological spaces, and many computer programs operate on data which are meant to represent real numbers. A common solution is to use floating point numbers rather than $\R$, but programming languages provide few guarantees as to how faithfully programs written using floating point numbers represent the idealized programs that operate on $\R$. Designing floating point computations which do provide such guarantees is a daunting task, and reasoning about the difference between the floating point and the idealized computations is challenging.
 
-Mathematically, the real numbers are defined as sequences of rational approximations, $x : \nat \to \rat$, which are coherent and ever-narrowing; for instance, the $x(n)$ may approximate $x$ to within a distance $1/n$. \footnote{Formally, they satisfy a condition such as: for all $m, n : \nat$, $|x(m) - x(n)| \le 1/m + 1/n$.} It is possible to use this encoding to faithfully represent real numbers in a programming language. Note that different sequences might actually represent the same real number. Then a function $f : \R \to \R$ in fact is a transformer of sequences, $f : (\nat \to \rat) \to (\nat \to \rat)$.
+Mathematically, the real numbers are defined as sequences of rational approximations, $x : \nat \to \rat$, which are coherent and ever-narrowing; for instance, the $x(n)$ may approximate $x$ to within a distance $1/n$. \footnote{Formally, they satisfy a condition such as: for all $m, n : \nat$, $|x(m) - x(n)| \le 1/m + 1/n$.} It is possible to use this encoding to faithfully represent real numbers as higher-order functions in a programming language. Note that different sequences may represent the same real number. Then a function $f : \R \to \R$ in fact is a transformer of sequences, $f : (\nat \to \rat) \to (\nat \to \rat)$.
 
 It is a remarkable fact that, as long as real numbers $x : \nat \to \rat$ may be black boxes where one can only learn about them by querying for approximations $x(n)$, then any computable function $f$ must be continuous. Given some $x : \R$ and some desired precision $\varepsilon = 1 / n$, $f$ must compute $f(x)(n)$ in finite time. Therefore, it must only look at finitely many entries of the sequence $x$, so if the maximum index it looks at is $m$, it can only determine $x$ to within $\delta = 1 / m$, and therefore for any other $x'$ whose distance from $x$ is less than $\delta$, the $f(x)$ and $f(x')$ must differ by no more than $\varepsilon$.
-\footnote{LEJ Brouwer made this observation and postulated the existence of ``free choice sequences,'' lawless sequences whose values are unconstrained other than at the entries where they have already been observed. As a consequence, he derived \emph{Brouwer's continuity principle}, which states that for every property of sequences $P : (\nat \to \nat) \to \bool$ and every sequence $\alpha : \nat \to \nat$, there is some point at which $P$ stopped inspecting $\alpha$. That is, for some $n : \nat$, it only look at the first $n$ entries of the sequences, such that for every $\beta : \nat \to \nat$ which shares the same length-$n$ prefix as $\alpha$, the result $P(\alpha) = P(\beta)$. As a result, he found that all functions on $\R \to \R$ are continuous, and refuted the law of the excluded middle, which says that every logical proposition is either true or false. The concept of ``formal topology'' explained in this article gives a way to give computational meaning to Brouwer's concepts of choice sequences.}
+\footnote{LEJ Brouwer made this observation and postulated the existence of ``free choice sequences,'' lawless sequences whose values are unconstrained other than at the entries where they have already been observed. As a consequence, he derived \emph{Brouwer's continuity principle}, which states that for every property of sequences $P : (\nat \to \nat) \to \bool$ and every sequence $\alpha : \nat \to \nat$, there is some point at which $P$ stopped inspecting $\alpha$. That is, for some $n : \nat$, it only look at the first $n$ entries of the sequences, such that for every $\beta : \nat \to \nat$ which shares the same length-$n$ prefix as $\alpha$, the result $P(\alpha) = P(\beta)$. As a consequence, he found that all functions on $\R \to \R$ are continuous, and refuted the law of the excluded middle, which says that every logical proposition is either true or false. The concept of ``formal topology'' explained in this article gives a way to give computational meaning to Brouwer's concepts of choice sequences.}
 
 Let's return to the task in the introduction. It's quite difficult using the floating point representation: notice that a function $f : [0,1] \to \R$ might not even \emph{have} a maximum if it is not continuous. Despite the general appeal of providing functionality which would find a maximum over black box functions, not even MATLAB offers a tool to do so; the closest MATLAB comes is in its \texttt{fminbnd} function, which uses advanced numerical techniques to find a \emph{local} maximum of a ``continuous'' floating point function.
 
@@ -124,12 +124,12 @@ We still have yet to provide a framework provides a clear formulation of how to 
 
 In this section, we will describe such a framework, which is known as \emph{formal topology}.
 \footnote{Formal topology is a theory that was invented in the 1980s to try to give a constructive and predicative account of topology.}
-The key idea is to view points in a continuous space as interaction structures: one can iteratively refine one's state of knowledge about a point by asking certain questions and receiving answers. So the interaction involved in determining information about a point is explicit, whereas it is implicit when, say, modeling $\R$ as sequences $\nat \to \rat$ in a functional programming language. Rather than starting with points, and building a topology on top, we will directly formalize the interactions for a given topological space in terms of two notions: \emph{basic opens} and \emph{open covers}. By taking open sets as primitives rather than points, we can force continuous functions to ``explain their work'', which will allow us to maximize a function $f : [0,1 \to \R$.
+The key idea is to view points in a continuous space as interaction structures: one can iteratively refine one's state of knowledge about a point by asking certain questions and receiving answers. So the interaction involved in determining information about a point is explicit, whereas it is implicit when, say, modeling $\R$ as sequences $\nat \to \rat$ in a functional programming language. Rather than starting with points, and building a topology on top, we will directly formalize the interactions for a given topological space in terms of two notions: \emph{basic opens} and \emph{open covers}. By taking open sets as primitives rather than points, we can force continuous functions to ``explain their work'', which will allow us to maximize a function $f : [0,1] \to \R$.
 
 The \emph{basic opens} of a space are formal objects which are ``rich enough'' to describe the space. 
 \footnote{The basic opens should represent a \emph{base} of open sets for the space, which means that any open set can be represented as a union of basic opens.}
-For defining the real numbers $\R$ in topology, it suffices to take pairs of rational numbers, $\rat \times \rat$, where a formal open $(a, b)$ (we will additionally require $a < b$) is meant to represent the open interval $(a, b)$.
-\footnote{The notational collision of open intervals and pairs is unfortunately confusing in this case, as the pair $(a, b) : \rat \times \rat$ is meant to represent the interval $(a, b) : \R \to \Prop$, but recognizing the distinction between the types is important.}
+For defining the real numbers $\R$ in topology, it suffices to take pairs of rational numbers, $\rat \times \rat$, where a formal open $(p, q)$ (we will additionally require $p < q$) is meant to represent the open interval $(p, q)$.
+\footnote{The notational collision of open intervals and pairs is unfortunately confusing in this case, as the pair $(p, q) : \rat \times \rat$ is meant to represent the interval $(p, q) : \R \to \Prop$, but recognizing the distinction between the types is important.}
 We can think of basic opens as representing different possible states of knowledge about a point.
 
 \begin{figure}[h]
@@ -165,8 +165,8 @@ In formal topology, we \emph{directly axiomatize} the open covers as an inductiv
  \end{tikzpicture}
 \begin{mathpar}
 \inferrule* [right=narrow]
-  {a' \le a < b \le b' }
-  {(a, b) \cov \{(a', b')\}}
+  {p' \le p < q \le q' }
+  {(p, q) \cov \{(p', q')\}}
 \end{mathpar}
 \end{subfigure}
 ~
@@ -179,8 +179,8 @@ In formal topology, we \emph{directly axiomatize} the open covers as an inductiv
  \end{tikzpicture}
 \begin{mathpar}
 \inferrule* [right=split]
-  {p < a < r < q < b < s}
-  {(a, b) \cov \{ (p, q), (r, s) \}}
+  {r < p < u < s < q < v}
+  {(p, q) \cov \{ (r, s), (u, v) \}}
 \end{mathpar}
 \end{subfigure}
 
@@ -196,7 +196,7 @@ In formal topology, we \emph{directly axiomatize} the open covers as an inductiv
 \begin{mathpar}
 \inferrule* [right=inside]
   { }
-  {(a, b) \cov \{ (p, q) \suchthat a < p < q < b \}}
+  {(p, q) \cov \{ (x, y) \suchthat p < x < y < q \}}
 \end{mathpar}
 \end{subfigure}
 
@@ -204,11 +204,11 @@ In formal topology, we \emph{directly axiomatize} the open covers as an inductiv
 \begin{mathpar}
 \inferrule* [right=reflexivity]
   { }
-  {(a, b) \cov \{(a, b)\}}
+  {(p, q) \cov \{(p, q)\}}
 
 \inferrule* [right=transitivity]
-  {(a, b) \cov U \\ U \cov V}
-  {(a, b) \cov V}
+  {(p, q) \cov U \\ U \cov V}
+  {(p, q) \cov V}
  \end{mathpar}
 \end{subfigure}
 
@@ -223,7 +223,7 @@ The choice of the symbol $\models$ is not accidental. We can read the rules of o
 \[
 a \vdash u_1, u_2, \ldots
 \]
-That is, the truth of $a$ implies the truth of either $u_1$, or $u_2$, and so on. Then \irule{reflexivity} corresponds to the identity sequent $a \vdash a$ and transitivity represents a sort of infinitary cut rule. Then a point in the space is, by its definition, a model of this logic, assigning consistent truth values to all of the propositional variables.
+That is, the truth of $a$ implies the truth of either $u_1$, or $u_2$, and so on. Then \irule{reflexivity} corresponds to the identity sequent $a \vdash a$ and \irule{transitivity} represents a sort of infinitary cut rule. Then a point in the space is, by its definition, a model of this logic, assigning consistent truth values to all of the propositional variables.
 } for a basic open $a : S$ if $a \in x$. Then a point satisfies the following rules:
 \footnote{
 A point must satisfy additional properties as well, but this is beyond the scope of this article.
@@ -243,12 +243,12 @@ For a point $x$ of $\R$, the \irule{start} rule says that $x$ will initially tel
 
 \subsection{Functions}
 
-In point-set topology, continuous functions $f : X \to Y$ were those such that for any open set $U \subseteq Y$, the set $f^{-1}(U)$ (the set of points which map to $U$ under $f$) is open.
+In point-set topology, continuous functions $f : \mathcal{X} \longrightarrow \mathcal{Y}$ were those such that for any open set $\mathcal{U} \subseteq \mathcal{Y}$, the set $f^{-1}(\mathcal{U})$ (the set of points which map to $\mathcal{U}$ under $f$) is open.
 
 Since opens are now the primitive objects, we will simply directly define the continuous functions by their inverse images. For formal spaces with basic opens $S$ and $T$, a continuous function $f$ from the space on $S$ to the space on $T$ is a relation $f^{-1}$ where, for a basic open $t : T$, $f^{-1}(t) \subseteq S$ represents the basic opens which map to $t$ under $f$.
 
-The computational meat of continuous functions is that they are question/response transformers, satisfying the following rule:
-\footnote{For a subset $U$, we define $f^{-1}(U) = \{ f^{-1}(b) \suchthat b \in U \}$.}
+The computational meat of continuous functions is that they are question/response transformers, satisfying the following rule, where $a : S$ and $U \subseteq S$:
+\footnote{For a subset $U$, we define $f^{-1}(U) = \{ c \suchthat b \in U, c \in f^{-1}(b) \}$.}
 \begin{mathpar}
 \frac{a \cov_T U}
        {f^{-1}(a) \cov_S f^{-1}(U)}
@@ -262,7 +262,7 @@ Using formal topology, we are now able to solve the initially posed task: to max
 
 We shall be bold, and try to implement the maximum point $y = \max_{x \in [0, 1]} f(x)$ by implementing its two rules, \irule{start} and \irule{respond}. To simplify the problem, we can assume that we have allowed a basic open $\top_\R$ which represents the whole space, so that our point implements the \irule{start} with this basic open.
 
-Now, suppose that $y$ is issued a question $\top_\R \cov U$, so $y$ must respond with which interval $(a, b) \in U$ it lies in. For concreteness, we might imagine that $U$ is a covering of the real line using infinitely many intervals of the small width $\varepsilon$. Which interval should $y$ pick? Intuitively, it should pick the highest one possible, i.e., the highest interval that $f$ actually reaches. Using the fact that $f$ is a question transformer, we transform this cover into $f^{-1}(\top_R) \cov f^{-1}(U)$, i.e., $[0, 1] \cov f^{-1}(U)$.
+Now, suppose that $y$ is issued a question $\top_\R \cov U$, so $y$ must respond with which interval $(p, q) \in U$ it lies in. For concreteness, we might imagine that $U$ is a covering of the real line using infinitely many intervals of the small width $\varepsilon$. Which interval should $y$ pick? Intuitively, it should pick the highest one possible, i.e., the highest interval that $f$ actually reaches. Using the fact that $f$ is a question transformer, we transform this cover into $f^{-1}(\top_R) \cov f^{-1}(U)$, i.e., $[0, 1] \cov f^{-1}(U)$.
 \footnote{Note that here we have what appears to be a closed set on the left-hand side of the basic cover. Given that the complement of $[0,1]$ is the open set $\bigcup \{(-\infty, 0), (0, \infty)\}$, the notation $[0,1] \cov f^{-1}(U)$ in fact means
 \[
 \top_\R \cov \{(-\infty, 0), (0, \infty)\} \cup f^{-1}(U).
