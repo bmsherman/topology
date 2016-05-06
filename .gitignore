@@ -4,6 +4,7 @@
 *.glob
 
 Makefile.coq
+Makefile.coq.bak
 html/
 
 *~
