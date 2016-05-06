@@ -600,6 +600,12 @@ induction n.
    
 Admitted. 
 
+Definition runPartial_step {A} (p : Partial A)
+  : p = match p with
+    | Now x => Now x
+    | Later px => Later px
+    end.
+Proof. destruct p; reflexivity. Qed.
 
 (** Rejection sampling gives a probability distribution if the
     predicate has a positive probability of occurence. *)
@@ -630,27 +636,136 @@ apply LPReq_compat. split.
   apply Qnnlt_le_weak. assumption. assumption.
 Qed.
 
-Record SemiDec {P : Prop} :=
-  { decide : nat -> option P
-  ; decide_ok : P -> exists n p, decide n = Some p }.
+Close Scope LPR.
+
+Inductive PEval {A} {a : A} : Partial A -> Prop :=
+  | PEvalNow : PEval (Now a)
+  | PEValLater : forall e', PEval e' -> PEval (Later e').
+
+Arguments PEval {A} a e : clear implicits.
+
+Record SemiDec {P : Type} :=
+  { decide : Partial P
+  ; decide_ok : P -> exists p, PEval p decide }.
 
 Arguments SemiDec : clear implicits.
 
-Definition SDeventually : forall s : nat -> bool,
-  SemiDec (exists k, s k = true).
+Record Collapsible {P : Type} :=
+  { coll : P -> P
+  ; coll_const : forall (p q : P), coll p = coll q
+  }.
+
+Arguments Collapsible : clear implicits.
+
+Definition Decision P := {P} + {~P}.
+
+Definition Collapsible_dec {P} (decP : Decision P) : Collapsible P.
 Proof.
+refine (
+  {| coll := fun p => match decP with
+    | left p' => p'
+    | right negp => False_rect _ (negp p)
+    end
+  |}).
+intros. destruct decP. reflexivity. contradiction.
+Defined.
+
+Definition bounded_dec {P Q : nat -> Prop} (each_dec : forall n, {P n} + {Q n})
+  (incompat : forall n, P n -> Q n -> False)
+  (n : nat)
+  : (forall k, k < n -> Q k) + {k | k <= n /\ P k /\ (forall m, P m -> k <= m)}.
+Proof.
+induction n. 
+- left. intros. apply Lt.lt_n_0 in H. contradiction.
+- destruct IHn.
+  + destruct (each_dec n).
+    * right. exists n. split. constructor. reflexivity. split. assumption.
+      intros. destruct (Compare_dec.le_lt_dec n m). assumption.
+      apply False_rect. apply (incompat m). assumption.
+      apply q. assumption.
+    * left. intros. unfold lt in H. rewrite Lt.le_lt_or_eq_iff in H.
+      destruct H. apply q. apply Lt.lt_S_n. assumption.
+      congruence.
+  + destruct s as (k & kn & negpk).
+    right. exists k. split. constructor. assumption. assumption.
+Defined.
+
+Definition minimal {P : nat -> Prop}
+  (each_dec : forall n, Decision (P n))
+  (someP : {n | P n})
+  : { m | P m /\ (forall i, i < m -> ~ (P i)) }.
+Proof.
+destruct someP.
+assert (forall n, P n -> ~ (P n) -> False) as incompat
+  by contradiction.
+pose proof (bounded_dec each_dec incompat x) as H'.
+destruct H'.
+- exists x. split; assumption.
+- destruct s as (k & kx & (Pk & minPk)).
+  exists k. split. assumption.
+  intros i ik. unfold not. intros Pi.
+  pose proof (minPk i Pi) as ki.
+  apply Lt.lt_not_le in ik. congruence.
+Defined.
+
+Definition Collapsible_exists {P : nat -> Prop} 
+  (proof_irrel : forall n (p q : P n), p = q)
+  (each_dec : forall n, Decision (P n)) : Collapsible {n | P n}.
+Proof.
+refine (
+  {| coll := fun prf => let (m, Pm1) := minimal each_dec prf
+      in let (Pm, _) := Pm1 in exist _ m Pm  |}).
+intros. simpl.
+destruct (minimal each_dec p) as (np & Pnp & smallp).
+destruct (minimal each_dec q) as (nq & Pnq & smallq).
+destruct (Compare_dec.lt_eq_lt_dec np nq) as [ [pqlt | pqeq] | pqgt].
+apply (smallq np) in pqlt. congruence.
+subst. f_equal. apply proof_irrel.
+apply (smallp nq) in pqgt. congruence.
+Defined.
+
+CoFixpoint decider (s : nat -> bool) (n : nat) : Partial { k | s k = true } :=
+  match Bool.bool_dec (s n) true with
+    | left p => Now (exist (fun x => s x = true) n p)
+    | right _ => Later (decider s (S n))
+  end.
+
+Definition frob {A} (m : Partial A) : Partial A :=
+  match m with
+    | Now x => Now x
+    | Later m' => Later m'
+  end.
+
+Theorem frob_eq : forall A (m : Partial A), frob m = m.
+  destruct m; reflexivity.
+Qed.
+
+Lemma eval_frob : forall A (c : Partial A) x,
+  PEval x (frob c)
+  -> PEval x c.
+Proof.
+intros. rewrite frob_eq in H. assumption.
+Qed.
+
+Require Import Eqdep_dec.
+
+Definition SDeventually : forall s : nat -> bool,
+  SemiDec { k | s k = true }.
+Proof.
+intros.
+refine ( {| decide := decider s 0 |}).
 intros. 
-refine ( {| decide := fun n =>
-  match s n as vl return s n = vl -> option (exists k, s k = true) with
-  | true => fun prf => Some (ex_intro (fun x => s x = true) n prf) 
-  | false => fun _ => None
-  end eq_refl |}).
-intros. destruct H.
-exists x. eexists. 
+pose proof (@Collapsible_exists).
+destruct H.
 Abort.
 
-Record CSemiDec {P : Prop} :=
-  { cdecide : nat -> option (~P)
-  ; cdecide_ok : (forall n, cdecide n = None) -> P }.
-
-Arguments CSemiDec : clear implicits.
+Definition SDdec : forall P, {P} + {~ P}
+  -> SemiDec P.
+Proof. intros. refine (
+  {| decide := match H with
+    | left p => Now p
+    | right negp => loop
+  end |}).
+intros. destruct H. exists p. constructor.
+contradiction.
+Qed.
