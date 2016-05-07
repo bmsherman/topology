@@ -924,7 +924,7 @@ Definition C' (a : Q) (p : Ix' a) : Q -> Prop := match p with
   | Some l => fun l' => l <= a -> l == l'
   end.
 
-Require Import Qnn.
+Require Import QFacts.
 Definition Cov'Equiv : forall a U,
   Cov' a U <-> @FormTop.GCov _ (fun x y => x >= y) Ix' C' a U.
 Proof.
@@ -2012,6 +2012,8 @@ end; simpl in *.
   ring_simplify. reflexivity.
 Qed.
 
+Require Import QFacts LReal.
+
 Theorem lift_binop_cont : forall op
   (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'),
   IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y)) 
@@ -2037,52 +2039,9 @@ constructor; intros.
   simpl; apply FormTop.grefl; destruct j; simpl in *.
   + exists (Qmin q b). split. symmetry. apply Q.min_l_iff. assumption.
     eapply Qle_lt_trans. apply Q.le_min_r. assumption.
-  + destruct (Qnn.Qbetween b (op a1 a2) H) as (mid & between).
+  + destruct (Qbetween b (op a1 a2) H) as (mid & between).
     exists mid. apply between.
 Qed.
-
-Record LReal :=
-  { lbound :> Q -> Prop
-  ; dclosed : forall q, lbound q -> forall q', q' <= q -> lbound q'
-  ; uopen : forall q, lbound q -> exists q', (q < q') /\ lbound q'
-  ; nonempty : exists q, lbound q
-  }.
-
-Definition LRle (x y : LReal) : Prop := forall q, x q -> y q.
-Definition LReq (x y : LReal) : Prop := LRle x y /\ LRle y x.
-
-Require Import Coq.Sets.Ensembles ProofIrrelevance.
-
-Definition LReal_eq_compat (x y : LReal) :
-  LReq x y -> x = y.
-Proof.
-intros H. unfold LReq, LRle in H. destruct H.
-destruct x, y; simpl in *.
-assert (lbound0 = lbound1).
-apply Extensionality_Ensembles. unfold Same_set, Included, In.
-split; assumption.
-induction H1.
-replace dclosed0 with dclosed1 by apply proof_irrelevance.
-replace uopen0 with uopen1 by apply proof_irrelevance.
-replace nonempty0 with nonempty1 by apply proof_irrelevance.
-reflexivity.
-Qed.
-
-Require Import Coq.Program.Basics.
-
-Instance LReal_proper (x : LReal) : Proper (Qle --> impl) (lbound x).
-Proof.
-unfold Proper, respectful, impl, flip. intros.
-eapply dclosed; eassumption.
-Qed.
-
-Instance LReal_proper2 (x : LReal) : Proper (Qeq ==> iff) (lbound x).
-Proof.
-unfold Proper, respectful. intros. split; intros; 
-  (eapply dclosed; [eassumption| rewrite H; apply Qle_refl]).
-Qed.
-
-Require Import Qnn.
 
 Instance FTR : FormTop.t (fun x y => x >= y) LowerR.Cov'
   := LowerR.isCov'.

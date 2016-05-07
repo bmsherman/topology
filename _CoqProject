@@ -3,8 +3,10 @@
 Iso.v
 Finite.v
 Valuation.v
-Qnn.v
-LPReal.v
+Numbers/Qnn.v
+Numbers/LPReal.v
+Numbers/QFacts.v
+Numbers/LReal.v
 Sample.v
 PDF.v
 Frame.v

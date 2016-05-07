@@ -1,4 +1,4 @@
-Require Import QArith Qcanon.
+Require Import QFacts QArith Qcanon.
 
 Require Import FunctionalExtensionality.
 
@@ -329,18 +329,6 @@ assumption.
 apply Qnnmult_inv_r. eapply Qnnle_lt_trans. apply (nonneg num). assumption.
 Qed. 
 
-Definition Qaverage (x z : Q) : (x < z)%Q
-  -> (let avg := ((x + z) / (1 + 1)) in x < avg /\ avg < z)%Q.
-Proof. split.
-- apply Qlt_shift_div_l. apply Qlt_alt. reflexivity.
-  setoid_replace (x * (1 + 1))%Q with (x + x)%Q by ring.
-  setoid_replace (x + z)%Q with (z + x)%Q by ring.
-  apply Qplus_lt_le_compat. assumption. apply Qle_refl.
-- apply Qlt_shift_div_r. apply Qlt_alt. reflexivity.
-  setoid_replace (z * (1 + 1))%Q with (z + z)%Q by ring.
-  apply Qplus_lt_le_compat. assumption. apply Qle_refl.
-Qed.
-
 Ltac reduceQ := repeat (unfold Qcplus, Qcdiv, Qcinv, Qcmult; 
 match goal with
 | [ |- context[this (Q2Qc ?x)%Qc] ] => 
@@ -363,11 +351,6 @@ pose proof (Qcaverage x z H).
 assert (qnn avg = ((x + z) / (1 + 1))%Qc).
 unfold avg. unfold Qcdiv. unfold Qnnmult. simpl. reflexivity.
 unfold Qnnlt; rewrite H1. assumption.
-Qed.
-
-Definition Qbetween (x z : Q) : (x < z)%Q
-  -> { y | (x < y /\ y < z)%Q }.
-Proof. intros. eexists. apply Qaverage. assumption.
 Qed.
 
 Definition Qcbetween (x z : Qc) : (x < z)%Qc
