@@ -46,3 +46,15 @@ Proof.
 unfold Proper, respectful.
 intros. apply Qplus_le_compat; assumption.
 Qed.
+
+Lemma Qopp_lt_compat: forall p q : Q, (p < q)%Q -> (- q < - p)%Q.
+Proof.
+Admitted.
+
+Lemma Qplus_open : forall q x y : Q, (q < x + y
+  -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y'))%Q.
+Proof.
+intros. 
+pose proof (Qbetween (q - y) x).
+pose proof (Qbetween (q - x) y).
+Admitted.

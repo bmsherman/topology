@@ -89,6 +89,11 @@ split; assumption.
 induction H1. f_equal; apply proof_irrelevance. 
 Qed.
 
+Theorem LRplus_comm_eq : forall x y, x + y = y + x.
+Proof.
+intros. apply LReal_eq_compat. apply LRplus_comm.
+Qed.
+
 Lemma LRle_refl : forall (x : LReal), x <= x.
 Proof.
 unfold LRle. auto.
@@ -107,6 +112,42 @@ Qed.
 Instance LRle_Transitive : Transitive LRle.
 Proof.
 unfold Transitive. apply LRle_trans.
+Qed.
+
+Lemma LReq_refl : forall (x : LReal), (x == x)%LR.
+Proof.
+intros; unfold LReq; split; apply LRle_refl.
+Qed.
+
+Lemma LReq_trans : forall x y z : LReal, (x == y)%LR -> (y == z)%LR -> (x == z)%LR.
+Proof.
+intros. destruct H, H0. split; eapply LRle_trans; eassumption.
+Qed.
+
+Lemma LReq_sym : forall x y : LReal, (x == y)%LR -> (y == x)%LR.
+Proof.
+intros. destruct H; split; auto.
+Qed.
+
+Instance LReq_Reflexive : Reflexive LReq.
+Proof.
+unfold Reflexive. apply LReq_refl.
+Qed.
+
+Instance LReq_Transitive : Transitive LReq.
+Proof.
+unfold Transitive. apply LReq_trans.
+Qed.
+
+Instance LReq_Symmetric : Symmetric LReq.
+Proof.
+unfold Symmetric. apply LReq_sym.
+Qed.
+
+Instance LReq_Equivalence : Equivalence LReq.
+Proof.
+constructor. apply LReq_Reflexive. apply LReq_Symmetric.
+apply LReq_Transitive.
 Qed.
 
 Require Import Coq.Program.Basics.
@@ -249,12 +290,68 @@ Definition unegate (u : UReal) : LReal := match u with
 
 Coercion ubound : UReal >-> Funclass.
 
+Delimit Scope RNL_scope with RNL.
+
 (** A non-located real number *)
 Record RealNL := 
   { lower : LReal
   ; upper : LReal
   ; disjoint : lower + upper <= 0
   }.
+
+Definition RNLopp (x : RealNL) : RealNL.
+Proof.
+refine (
+  {| lower := upper x
+   ; upper := lower x
+  |}).
+rewrite LRplus_comm. apply disjoint.
+Defined.
+
+Notation "- x" := (RNLopp x) : RNL_scope.
+
+Definition RNLle (x y : RealNL) : Prop :=
+  lower x <= lower y /\ upper y <= upper x.
+
+Infix "<=" := RNLle : RNL_scope.
+
+Theorem RNLle_refl : forall x : RealNL, (x <= x)%RNL.
+Proof.
+intros. unfold RNLle. split; reflexivity.
+Qed.
+
+Theorem RNLle_trans : forall x y z : RealNL, (x <= y -> y <= z -> x <= z)%RNL.
+Proof.
+intros. destruct H, H0.
+split; eapply LRle_trans; eassumption.
+Qed.
+
+Instance RNLle_Reflexive : Reflexive RNLle := RNLle_refl.
+Instance RNLle_Transitive : Transitive RNLle := RNLle_trans.
+
+Definition RNLeq (x y : RealNL) : Prop := (x <= y /\ y <= x)%RNL.
+
+Infix "==" := RNLeq : RNL_scope.
+
+Theorem RNLeq_refl : forall x : RealNL, (x == x)%RNL.
+Proof.
+intros. unfold RNLeq; split; apply RNLle_refl.
+Qed.
+
+Theorem RNLeq_sym : forall x y : RealNL, (x == y)%RNL -> (y == x)%RNL.
+Proof.
+intros. destruct H. split; assumption.
+Qed.
+
+Theorem RNLeq_trans : forall x y z : RealNL, 
+  (x == y)%RNL -> (y == z)%RNL -> (x == z)%RNL.
+Proof.
+intros. destruct H, H0. split; eapply RNLle_trans; eassumption.
+Qed.
+
+Instance RNLeq_Reflexive : Reflexive RNLeq := RNLeq_refl.
+Instance RNLeq_Symmetric : Symmetric RNLeq := RNLeq_sym.
+Instance RNLeq_Transitive : Transitive RNLeq := RNLeq_trans.
 
 Theorem LReal_reassoc : forall x y a b : LReal,
   ((x + y) + (a + b)  == (x + a) + (y + b))%LR.
@@ -264,17 +361,6 @@ intros.
     to handle this. *) 
 admit.
 Qed.
-
-Theorem LReal_reassoc_eq : forall x y a b : LReal,
-  (x + y) + (a + b) = (x + a) + (y + b).
-Proof.
-intros. apply LReal_eq_compat. apply LReal_reassoc.
-Qed.
-
-Lemma Qopp_lt_compat: forall p q : Q, (p < q)%Q -> (- q < - p)%Q.
-Proof.
-Admitted.
-
 
 Theorem LRzero_plus_id_l : forall x, (x + 0 == x)%LR.
 Proof.
@@ -289,28 +375,15 @@ intros. unfold LReq, LRle; simpl; split; intros.
   apply qp. ring_simplify. reflexivity.
 Qed.
 
-Theorem LRzero_plus_id_l_eq : forall x : LReal, x + 0 = x.
-Proof.
-intros. apply LReal_eq_compat. apply LRzero_plus_id_l.
-Qed.
-
 Definition RNLplus (x y : RealNL) : RealNL.
 Proof.
 refine ({| lower := lower x + lower y
   ; upper := upper x + upper y |}); intros.
-rewrite LReal_reassoc_eq.
+rewrite LReal_reassoc.
 rewrite (disjoint y), (disjoint x). 
-rewrite LRzero_plus_id_l_eq.
+rewrite LRzero_plus_id_l.
 reflexivity.
 Defined.
-
-Lemma Qnnplus_open : forall q x y : Q, (q < x + y
-  -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y'))%Q.
-Proof.
-intros. 
-pose proof (Qbetween (q - y) x).
-pose proof (Qbetween (q - x) y).
-Admitted.
 
 Lemma LRQ_plus : forall x y : Q,
   (LRQ x + LRQ y == LRQ (x + y)%Q)%LR.
@@ -320,16 +393,38 @@ intros. unfold LReq, LRle; split; simpl; intros.
   eapply Qle_lt_trans. eassumption.
   apply Qplus_lt_le_compat; auto.
   rewrite H0. reflexivity.
-- pose proof (Qnnplus_open q x y H).
+- pose proof (Qplus_open q x y H).
   destruct H0 as (x' & y' & x'x & y'y & qx'y'). 
   econstructor; simpl; eassumption.
 Qed.
 
-Lemma LRQ_plus_eq : forall x y : Q,
-  LRQ x + LRQ y = LRQ (x + y)%Q.
+Inductive RmultT {xl xu yl yu : LReal} : Q -> Prop :=
+  | RmultB : forall qxl qxu qyl qyu p
+    , xl qxl -> xu qxu -> yl qyl -> yu qyu
+    -> (p <= qxl * qyl
+    -> p <= - qxl * qyu
+    -> p <= - qxu * qyl
+    -> p <= qxu * qyu
+    -> RmultT p)%Q.
+
+Arguments RmultT : clear implicits.
+
+Definition RmultLbound (x y : RealNL) : LReal.
 Proof.
-intros. apply LReal_eq_compat.  apply LRQ_plus.
+refine ({| lbound := RmultT (lower x) (upper x) (lower y) (upper y) |}); intros.
+- induction H. econstructor; try eassumption; rewrite H0; assumption.
+- admit.
+- admit.
 Qed.
+
+(** I just wrote this down quickly. It is probably wrong! *)
+Definition RNLmult (x y : RealNL) : RealNL.
+Proof.
+refine (
+  {| lower := RmultLbound x y
+   ; upper := RmultLbound (RNLopp x) (RNLopp y)
+  |}).
+Abort.
 
 Instance LRQ_Proper : Proper (Qeq ==> eq) LRQ.
 Proof.
@@ -344,14 +439,14 @@ Proof.
 refine ({| lower := LRQ q
         ; upper := LRQ (- q)
         |}).
-rewrite LRQ_plus_eq. rewrite Qplus_opp_r.
+rewrite LRQ_plus. rewrite Qplus_opp_r.
 reflexivity.
 Defined.
 
 Record Real :=
   { L : LReal
   ; U : LReal
-  ; cut : L + U = 0
+  ; cut : (L + U == 0)%LR
   }.
 
 Definition Rzero : Real.
@@ -359,7 +454,7 @@ Proof.
 refine (
   {| L := LRQ 0
    ; U := LRQ 0 |}); intros.
-rewrite LRzero_plus_id_l_eq. reflexivity.
+rewrite LRzero_plus_id_l. reflexivity.
 Defined.
 
 Definition Rplus (x y : Real) : Real.
@@ -368,10 +463,17 @@ refine (
   {| L := L x + L y
    ; U := U x + U y
   |}).
-rewrite LReal_reassoc_eq.
+rewrite LReal_reassoc.
 rewrite (cut x), (cut y).
-rewrite LRzero_plus_id_l_eq. reflexivity.
+rewrite LRzero_plus_id_l. reflexivity.
 Defined.
 
-Inductive RmultT {x y : LReal} : Q -> Prop :=
-  | RmultLH : forall qx qy, x qx -> y qy -> RmultT (- qx * qy).
+Definition Ropp (x : Real) : Real.
+Proof.
+refine (
+  {| L := U x
+   ; U := L x
+  |}).
+rewrite LRplus_comm_eq.
+apply (cut x).
+Defined.
