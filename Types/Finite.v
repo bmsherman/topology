@@ -337,7 +337,7 @@ induction fa; intros b fb.
 Admitted.
 
 (** Sigma types are closed under finiteness. *)
-Theorem sig {A : Type} {B : A -> Type} 
+Theorem Sig {A : Type} {B : A -> Type} 
   : T A 
   -> (forall (x : A), T (B x))
   -> T (sigT B).
@@ -354,7 +354,7 @@ Theorem times {A B : Type} : T A -> T B -> T (A * B).
 Proof.
 intros fa fb.
 eapply FIso. Focus 2. eapply Iso.Sym. eapply Iso.sigTimes.
-apply sig. assumption. apply (fun _ => fb).
+apply Sig. assumption. apply (fun _ => fb).
 Defined.
 
 Lemma finiteMapped {A : Type} (fa : T A)
@@ -412,3 +412,34 @@ Fixpoint elementsV {A} (fin : T A) : Vector.t A (card fin) :=
   | FIso _ _ x iso => let xs := elementsV x in
      Vector.map (Iso.to iso) xs
   end.
+
+
+Theorem fin_dec_subset {A} (fin : T A) {P : A -> Prop}
+  : (forall a, {P a} + {~ P a}) -> T (sig P).
+Proof.
+generalize dependent P. induction fin; intros P decP.
+- eapply FIso. apply F0.
+  eapply Iso.Trans. apply Iso.iso_true_subset. 
+  apply Iso.subsetSelf; firstorder.
+- eapply FIso. 2: eapply Iso.Sym; apply Iso.subset_sum_distr.
+  destruct (decP (inl I)).
+  + eapply FIso. Focus 2.
+    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => True)); intros; auto.
+    destruct a. tauto. destruct p0, q. reflexivity.
+    apply proof_irrelevance. apply Iso.Refl.
+    eapply FIso. Focus 2. eapply Iso.PlusCong.
+    apply Iso.iso_true_subset. apply Iso.Refl.
+    apply FS. apply IHfin. intros. apply decP.  
+  + eapply FIso. Focus 2.
+    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => False)); intros; auto.
+    destruct a. tauto. contradiction. destruct b. congruence.
+    apply Iso.Refl. eapply FIso. Focus 2. eapply Iso.PlusCong.
+    apply Iso.iso_false_subset. apply Iso.Refl.
+    eapply FIso. Focus 2.
+    eapply Iso.Trans. Focus 2. apply Iso.PlusComm.
+    apply botNull. apply IHfin. intros; apply decP.
+- eapply FIso. apply (IHfin (fun a => P (Iso.to t a))). 
+  intros. apply decP. apply Iso.subset with t; firstorder.
+  rewrite Iso.to_from. assumption. apply proof_irrelevance.
+  apply proof_irrelevance.
+Defined.

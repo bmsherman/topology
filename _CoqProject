@@ -1,8 +1,10 @@
 -R /Users/Sherman/Documents/Projects/fiat-crypto/src Crypto
 -R . Prob
-Iso.v
-Finite.v
+Types/Iso.v
+Types/Finite.v
+FiniteSum.v
 Valuation.v
+Algebra/Sets.v
 Numbers/Qnn.v
 Numbers/LPReal.v
 Numbers/QFacts.v
@@ -16,5 +18,4 @@ clement/SmallPowers.v
 alea/BinCoeff.v
 FrameVal.v
 FTVal.v
-Example.v
 Classical.v

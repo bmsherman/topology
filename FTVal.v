@@ -43,25 +43,15 @@ Inductive JoinClose (U : S -> Prop) : S -> Prop :=
 
 Require Import FormTop.
 
-Definition JLS' : JoinLat.Ops S :=
-  {| JoinLat.le := Lattice.le
-  ; JoinLat.max := Lattice.max
-  ; JoinLat.eq := Lattice.eq
-  |}.
+Hypothesis Latt : Lattice.t S ops.
 
-Instance JLS : JoinLat.Ops S := JLS'.
+Instance JLS' : JoinLat.Ops S := Lattice.toJoinLatOps ops.
 
-Definition MLS' : MeetLat.Ops S :=
-  {| MeetLat.le := Lattice.le
-  ; MeetLat.min := Lattice.min
-  ; MeetLat.eq := Lattice.eq
-  |}.
+Instance JLS : JoinLat.t S JLS' := Lattice.toJoinLat Latt.
 
-Instance MLS : MeetLat.Ops S := MLS'.
+Instance MLS' : MeetLat.Ops S := Lattice.toMeetLatOps ops.
 
-Instance MLMLS : MeetLat.t S MLS.
-Proof.
-Admitted.
+Instance MLS : MeetLat.t S MLS' := Lattice.toMeetLat Latt.
 
 Hypothesis FTS : JoinTop.t bot Cov.
 

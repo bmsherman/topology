@@ -867,6 +867,40 @@ Module Lattice.
 
   Arguments t : clear implicits.
 
+  Definition toMeetLatOps' {A} (ops : Ops A) : MeetLat.Ops A :=
+    {| MeetLat.le := le
+     ; MeetLat.eq := eq
+     ; MeetLat.min := min
+    |}.
+
+  Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
+    := toMeetLatOps'.
+
+  Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
+  Proof.
+  intros. constructor.
+  - apply PO.
+  - apply min_proper.
+  - apply min_ok.
+  Qed.
+
+  Definition toJoinLatOps' {A} (ops : Ops A) : JoinLat.Ops A :=
+    {| JoinLat.le := le
+     ; JoinLat.eq := eq
+     ; JoinLat.max := max
+    |}.
+
+  Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
+    := toJoinLatOps'.
+
+  Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
+  Proof.
+  intros. constructor.
+  - apply PO.
+  - apply max_proper.
+  - apply max_ok.
+  Qed.
+
   Instance max_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) max.
   Proof. intros. apply max_proper. Qed.

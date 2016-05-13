@@ -4,7 +4,8 @@ Require Import Frame FormTop FrameVal.
     [unit_prop] is the unique probability distribution we can define for the 1-point 
     set; it puts all its mass (i.e., a measure of 1) on that single point. *)
 
-Require Import LPReal Ring.
+Require Import LPReal Ring Algebra.Sets.
+Local Open Scope Ensemble.
 
 Definition unit_prop : Val.t One.FrameOne.
 Proof.
@@ -15,16 +16,24 @@ refine (
   contradiction.
 - unfold L.le in H. simpl in H. apply LPRind_imp. 
   unfold FormTop.leA, FormTop.Sat, One.Cov in *. 
+  unfold Included, In in H.
   apply H. constructor.
-- unfold FormTop.maxA, FormTop.minA.
-  rewrite (LPRind_iff (exists u : True, _) (U I /\ V I)).
+- rewrite (LPRind_iff (FormTop.minA _ _ _ _) (U I /\ V I)). 
+  rewrite (LPRind_iff ((U ∪ V) I) (U I \/ V I)).
   rewrite (SRadd_comm LPRsrt (LPRindicator (U I \/ V I))).
   apply LPRind_modular.
   unfold FormTop.down. simpl. split; intros.
-  destruct H as ([] & [] & Uu & Vv & _). auto.
-  exists I. exists I. destruct H. auto.
-- unfold Val.ContinuousV. intros.
-  apply LPRind_exists. 
+  destruct H; auto. destruct H; [left | right]; auto.
+  unfold FormTop.minA. split; intros. destruct H. 
+  destruct H, H0. unfold Basics.flip in *. 
+  destruct a, a0, b. auto.
+  destruct H. repeat (econstructor; try eassumption).
+- unfold Val.ContinuousV. intros. simpl.
+  apply LPRle_antisym. unfold LPRle.
+  intros. simpl in *. destruct H. destruct H.
+  exists i; auto.
+  unfold LPRle. intros. simpl in *. destruct H.
+  destruct H. split. econstructor; eassumption. assumption.
 Defined.
 
 Definition point {A} (x : A) : F.point (FormTop.FOps Logic.eq (Discrete.Cov A)).
@@ -56,8 +65,6 @@ Instance frameA : Frame.t (A -> Prop) opsA := FormTop.Frame Logic.eq Cov _
 
 Require Fin.
 Import ValNotation.
-Definition permutation {A} (f : A -> A) :=
-  exists (g : A -> A), forall a, g (f a) = a.
 
 Fixpoint finToVec {A} {n} : (Fin.t n -> A) -> Vector.t A n := match n with
   | 0 => fun _ => Vector.nil A
@@ -349,6 +356,10 @@ Fixpoint build_finite {A : Type} (fin : Finite.T A) : (A -> LPReal) -> Val.t (fr
      Val.map (Ffunc (Iso.to t)) (build_finite fin' (fun x => f (Iso.to t x)))
   end.
 
+Definition build_finite_prod {A B} (fin : Finite.T (A * B))
+  (f : A -> LPReal) (g : B -> LPReal) :=
+  build_finite fin (fun z => let (x, y) := z in (f x * g y)%LPR).
+
 Lemma discrete_inj {A B} (f : A -> B) (inj_f : forall x y, f x = f y -> x = y) (x : A) : 
   L.eq (eq x) (Cont.frame (Discrete.discrF f) (eq (f x))).
 Proof.
@@ -358,147 +369,6 @@ simpl. unfold FormTop.eqA, FormTop.Sat, Discrete.Cov, Cont.frame,
   apply inj_f. congruence.
 Qed.
 
-Local Open Scope LPR.
-
-Fixpoint sum_finite {A} (fin : Finite.T A) : (A -> LPReal) -> LPReal
-  := match fin with
-  | Finite.F0 => fun _ => 0
-  | Finite.FS _ fin' => fun f => f (inl I) + sum_finite fin' (fun x => f (inr x))
-  | Finite.FIso _ _ fin' i => fun f => sum_finite fin' (fun x => f (Iso.to i x))
-  end.
-
-Theorem sum_finite_equiv {A} (fin : Finite.T A) : forall f g,
-  (forall a, f a = g a) -> sum_finite fin f = sum_finite fin g.
-Proof.
-induction fin; intros; simpl.
-- reflexivity.
-- rewrite (IHfin (fun x => f (inr x)) (fun x => g (inr x))). rewrite H. reflexivity.
-  intros. apply H.
-- erewrite IHfin. reflexivity. simpl. intros. apply H.
-Qed.
-
-Definition sum_finite_subset {A} (fin : Finite.T A) (P : A -> Prop) (f : A -> LPReal)
-  := sum_finite fin (fun x => LPRindicator (P x) * f x)%LPR.
-
-Theorem sum_finite_subset_le {A} fin : forall (P Q : A -> Prop) f, (forall a, P a -> Q a)
-  -> sum_finite_subset fin P f <= sum_finite_subset fin Q f.
-Proof.
-induction fin; unfold sum_finite_subset; intros; simpl.
-- reflexivity.
-- apply LPRplus_le_compat. apply LPRmult_le_compat. apply LPRind_imp. apply H.
-  reflexivity. apply IHfin. intros. apply H. assumption.
-- apply IHfin. intros. apply H. assumption.
-Qed.
-
-Theorem iso_true_subset {A} : Iso.T A (sig (fun _ : A => True)).
-Proof. refine (
-  {| Iso.to := fun a => exist _ a I
-   ; Iso.from := fun ea => let (a, _) := ea in a |}
-); intros.
-reflexivity. destruct b. destruct t. reflexivity.
-Defined.
-
-Theorem iso_false_subset {A} : Iso.T False (sig (fun _ : A => False)).
-Proof. refine (
-  {| Iso.to := False_rect _
-  ; Iso.from := fun p : sig (fun _ => False) => let (x, px) := p in False_rect _ px
-  |}); intros.
-- contradiction.
-- destruct b. contradiction.
-Defined.
-
-Definition subset_sum_distr {A B} {P : A + B -> Prop} :
-  Iso.T (sig P) (sig (fun a => P (inl a)) + sig (fun b => P (inr b))).
-Proof.
-refine (
-  {| Iso.to := fun (p : sig P) => let (x, px) := p in match x as x'
-  return P x' -> sig (fun a => P (inl a)) + sig (fun b => P (inr b)) with
-  | inl a => fun px' => inl (exist (fun a' => P (inl a')) a px')
-  | inr b => fun px' => inr (exist (fun b' => P (inr b')) b px')
-  end px
-  ; Iso.from := fun p => match p with
-  | inl (exist a pa) => exist _ (inl a) pa
-  | inr (exist b pb) => exist _ (inr b) pb
-  end
-  |}
-); intros.
-- destruct a as (x & px). destruct x; reflexivity.
-- destruct b as [s | s]; destruct s; reflexivity.
-Defined.
-
-Require Import ProofIrrelevance.
-Theorem fin_dec_subset {A} (fin : Finite.T A) {P : A -> Prop}
-  : (forall a, {P a} + {~ P a}) -> Finite.T (sig P).
-Proof.
-generalize dependent P. induction fin; intros P decP.
-- eapply Finite.FIso. apply Finite.F0.
-  eapply Iso.Trans. apply iso_true_subset. 
-  apply Iso.subsetSelf; firstorder.
-- eapply Finite.FIso. 2: eapply Iso.Sym; apply subset_sum_distr.
-  destruct (decP (inl I)).
-  + eapply Finite.FIso. Focus 2.
-    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => True)); intros; auto.
-    destruct a. tauto. destruct p0, q. reflexivity.
-    apply proof_irrelevance. apply Iso.Refl.
-    eapply Finite.FIso. Focus 2. eapply Iso.PlusCong.
-    apply iso_true_subset. apply Iso.Refl.
-    apply Finite.FS. apply IHfin. intros. apply decP.  
-  + eapply Finite.FIso. Focus 2.
-    eapply Iso.PlusCong. apply (Iso.subsetSelf (fun _ => False)); intros; auto.
-    destruct a. tauto. contradiction. destruct b. congruence.
-    apply Iso.Refl. eapply Finite.FIso. Focus 2. eapply Iso.PlusCong.
-    apply iso_false_subset. apply Iso.Refl.
-    eapply Finite.FIso. Focus 2.
-    eapply Iso.Trans. Focus 2. apply Iso.PlusComm.
-    apply Finite.botNull. apply IHfin. intros; apply decP.
-- eapply Finite.FIso. apply (IHfin (fun a => P (Iso.to t a))). 
-  intros. apply decP. apply Iso.subset with t; firstorder.
-  rewrite Iso.to_from. assumption. apply proof_irrelevance.
-  apply proof_irrelevance.
-Defined.
-
-Theorem sum_finite_subset_dec_equiv {A} (fin : Finite.T A)
-  (P : A -> Prop) (decP : forall a, {P a} + {~ P a}) (f : A -> LPReal)
-  : sum_finite_subset fin P f =
-    sum_finite (fin_dec_subset fin decP) (fun x => f (projT1 x)).
-Proof.
-unfold sum_finite_subset.
-induction fin.
-- simpl. reflexivity.
-- simpl. destruct (decP (inl I)); simpl.
-  + rewrite LPRind_true by assumption. ring_simplify.
-    apply LPRplus_eq_compat. reflexivity.
-    erewrite IHfin. apply sum_finite_equiv.
-    intros. destruct a. simpl. reflexivity.
-  + rewrite LPRind_false by assumption. ring_simplify.
-    erewrite IHfin. apply sum_finite_equiv.
-    intros.  destruct a. simpl. reflexivity. 
-- simpl. erewrite IHfin. apply sum_finite_equiv.
-  intros. destruct a. simpl. reflexivity.
-Qed.
-
-Theorem sum_finite_iso {A B} (fin : Finite.T A) (f : A -> LPReal)
- (i : Iso.T A B) : sum_finite fin f = sum_finite 
-  (Finite.FIso fin i) (fun y => f (Iso.from i y)).
-Proof.
-simpl. apply sum_finite_equiv.
-intros. rewrite Iso.from_to. reflexivity.
-Qed.
-
-Theorem sum_finite_subset_iso {A B} (fin : Finite.T A) (P : A -> Prop) (f : A -> LPReal)
- (i : Iso.T A B) : sum_finite_subset fin P f = sum_finite_subset 
-  (Finite.FIso fin i) (fun y => P (Iso.from i y)) (fun y => f (Iso.from i y)).
-Proof.
-unfold sum_finite_subset. simpl. apply sum_finite_equiv.
-intros. rewrite Iso.from_to. reflexivity.
-Qed.
-
-Lemma LPRpluseq3 : forall (p a a' b b' : LPReal),
-  a = a' -> b = b' ->
-  (a * p + b = a' * p + b')%LPR.
-Proof.
-intros. subst. ring.
-Qed.
 
 Lemma discrete_subset : forall {A B} (f : A -> B) a b,
   Cont.frame (Discrete.discrF f) (eq b) a <-> f a = b.
@@ -568,6 +438,21 @@ intros. induction fin; apply Val.eq_compat; unfold Val.eq; simpl; intros P.
   unfold FormTop.eqA, FormTop.supA, FormTop.Sat, Discrete.Cov.
   intros s. contradiction.
 Admitted.
+
+Lemma build_finite_extensional_f:
+  forall (A : Type) (fin : Finite.T A) (f g : A -> LPReal) (P : A -> Prop),
+  (forall x, f x = g x) ->
+  (build_finite fin f) P = (build_finite fin g) P.
+Proof.
+intros. induction fin.
+- simpl. reflexivity.
+- simpl. erewrite IHfin.
+  apply LPRplus_eq_compat. rewrite H. reflexivity.
+  reflexivity. simpl. intros. apply H.
+- simpl. specialize (IHfin (fun x => f (Iso.to t x))
+   (fun x => g (Iso.to t x))).
+  apply IHfin. intros. apply H.
+Qed.
 
 Lemma fin_dec {A : Type} : forall (fin : Finite.T A)
   (mu nu : Val.t (frameA A))
@@ -640,19 +525,6 @@ intros. apply (iso_uniform _ _ (fun y => y - x)%F);
   intros; ring.
 Qed.
 
-Definition build_finite_prod {A B} (fin : Finite.T (A * B))
-  (f : A -> LPReal) (g : B -> LPReal) :=
-  build_finite fin (fun z => let (x, y) := z in (f x * g y)%LPR).
-
-Lemma sum_finite_const {A} {fin : Finite.T A} {c : LPReal} :
-  sum_finite fin (fun _ => c) = (LPRQnn (Qnnnat (Finite.card fin)) * c)%LPR.
-Proof.
-induction fin; simpl.
-- ring.
-- rewrite IHfin. rewrite <- LPRQnn_plus. ring.
-- assumption.
-Qed.
-
 Lemma map_build_finite {A B} {finA : Finite.T A} {finB : Finite.T B}
   : forall (f : A -> B) (mu : Val.t (frameA A)) y
   , let _ : F.t (B -> Prop) (DOps B) := frameA B in
@@ -686,106 +558,6 @@ intros. unfold plus2. ring.
   f_equal; ring.
 - intros. simpl. ring.
 Defined.
-
-Theorem sum_finite_subset_eq :
-  forall (A : Type) (fin : Finite.T A) (P Q : A -> Prop) (f : A -> LPReal),
-  (forall a : A, P a <-> Q a) ->
-  sum_finite_subset fin P f = sum_finite_subset fin Q f.
-Proof.
-intros. apply LPRle_antisym; apply sum_finite_subset_le; firstorder.
-Qed.
-
-Local Open Scope LPR.
-
-Theorem sum_finite_scales : forall A (fin : Finite.T A) f c, 
-    sum_finite fin (fun x => c * f x)
-  = c * sum_finite fin f.
-Proof.
-intros A fin. induction fin; simpl; intros.
-- ring.
-- rewrite IHfin. ring.
-- apply IHfin.
-Qed.
-
-Lemma sum_finite_pt {A} (fin : Finite.T A) :
-  forall (x : A),
-  sum_finite fin (fun y => LPRindicator (x = y)) = 1.
-Proof.
-induction fin; intros.
-- contradiction.
-- simpl. destruct x.
-  + destruct t. rewrite LPRind_true by reflexivity.
-    rewrite (sum_finite_equiv _ _ (fun _ => 0)).
-    rewrite sum_finite_const. ring. intros.
-    rewrite LPRind_false by congruence. reflexivity.
-  + rewrite LPRind_false by congruence.
-    rewrite (sum_finite_equiv _ _ (fun x => LPRindicator (a = x))).
-    rewrite IHfin. ring.
-    intros. apply LPRind_iff. split; congruence.
-- simpl. rewrite <- (IHfin (Iso.from t x)).
-  apply sum_finite_equiv. intros.
-  apply LPRind_iff. split; intros; subst.
-  apply Iso.from_to. symmetry. apply Iso.to_from.
-Qed.
-
-Lemma sum_finite_char {A} (fin : Finite.T A) :
-  forall (f : A -> LPReal) x,
-  f x = sum_finite fin (fun y => LPRindicator (x = y) * f y).
-Proof.
-intros.
-assert (forall y, LPRindicator (x = y) * f y = f x * LPRindicator (x = y)).
-intros. rewrite (SRmul_comm LPRsrt (f x)).
-apply LPRle_antisym; apply LPRind_scale_le; intros; subst;
-  rewrite LPRind_true by trivial; ring_simplify; apply LPRle_refl.
-erewrite sum_finite_equiv.
-2: apply H.
-rewrite sum_finite_scales. rewrite sum_finite_pt.
-ring.
-Qed.
-
-Theorem sum_finite_adds {A} (fin : Finite.T A) :
-  forall (f g : A -> LPReal),
-  sum_finite fin (fun x => f x + g x) 
-  = sum_finite fin f + sum_finite fin g.
-Proof.
-induction fin; intros; simpl.
-- ring.
-- rewrite IHfin. ring.
-- rewrite IHfin. ring.
-Qed.
-
-Theorem sum_finite_fin_equiv : forall A (fin1 fin2 : Finite.T A) f,
-  sum_finite fin1 f = sum_finite fin2 f.
-Proof.
-intros.
-erewrite sum_finite_equiv. Focus 2. intros.
-rewrite (sum_finite_char fin2). reflexivity.
-induction fin2; simpl.
-- rewrite sum_finite_const. ring.
-- rewrite sum_finite_adds. erewrite sum_finite_equiv.
-  Focus 2. intros. rewrite (SRmul_comm LPRsrt).
-  rewrite (LPRind_iff _ (inl I = a)) by (split; auto). 
-  reflexivity.
-  rewrite sum_finite_scales. rewrite sum_finite_pt.
-  apply LPRplus_eq_compat. ring.
-  admit.
-- admit.
-Admitted.
-
-Lemma build_finite_extensional_f:
-  forall (A : Type) (fin : Finite.T A) (f g : A -> LPReal) (P : A -> Prop),
-  (forall x, f x = g x) ->
-  (build_finite fin f) P = (build_finite fin g) P.
-Proof.
-intros. induction fin.
-- simpl. reflexivity.
-- simpl. erewrite IHfin.
-  apply LPRplus_eq_compat. rewrite H. reflexivity.
-  reflexivity. simpl. intros. apply H.
-- simpl. specialize (IHfin (fun x => f (Iso.to t x))
-   (fun x => g (Iso.to t x))).
-  apply IHfin. intros. apply H.
-Qed.
 
 Lemma discrF_identity {A} : forall U (f : A -> A), (forall a, f a = a)
  -> @L.eq _ (@F.LOps _ (DOps A)) (Cont.frame (Discrete.discrF f) U) U.

@@ -342,6 +342,42 @@ intros. apply (subset _ _ (Refl A)); try assumption;
 Defined.
 
 
+Theorem iso_true_subset {A} : T A (sig (fun _ : A => True)).
+Proof. refine (
+  {| to := fun a => exist _ a I
+   ; from := fun ea => let (a, _) := ea in a |}
+); intros.
+reflexivity. destruct b. destruct t. reflexivity.
+Defined.
+
+Theorem iso_false_subset {A} : T False (sig (fun _ : A => False)).
+Proof. refine (
+  {| to := False_rect _
+  ; from := fun p : sig (fun _ => False) => let (x, px) := p in False_rect _ px
+  |}); intros.
+- contradiction.
+- destruct b. contradiction.
+Defined.
+
+Definition subset_sum_distr {A B} {P : A + B -> Prop} :
+  T (sig P) (sig (fun a => P (inl a)) + sig (fun b => P (inr b))).
+Proof.
+refine (
+  {| to := fun (p : sig P) => let (x, px) := p in match x as x'
+  return P x' -> sig (fun a => P (inl a)) + sig (fun b => P (inr b)) with
+  | inl a => fun px' => inl (exist (fun a' => P (inl a')) a px')
+  | inr b => fun px' => inr (exist (fun b' => P (inr b')) b px')
+  end px
+  ; Iso.from := fun p => match p with
+  | inl (exist a pa) => exist _ (inl a) pa
+  | inr (exist b pb) => exist _ (inr b) pb
+  end
+  |}
+); intros.
+- destruct a as (x & px). destruct x; reflexivity.
+- destruct b as [s | s]; destruct s; reflexivity.
+Defined.
+
 (** Proof irrelevant-things *)
 
 Inductive inhabited {A : Type} : Prop :=
