@@ -1,4 +1,4 @@
-Require Iso.
+Require Types.Iso.
 Require Fin.
 
 Set Asymmetric Patterns.

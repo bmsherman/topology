@@ -1111,7 +1111,7 @@ apply Valle_antisym.
 - apply fixValuation_fixed_u.
 Qed.
 
-Require Finite.
+Require Types.Finite.
 
 Module F := Finite.
 
