@@ -903,7 +903,7 @@ eapply PreO.le_trans. eapply H. eassumption.
 Qed.
 
 Definition Cov (s : S) (U : Ensemble S) : Prop :=
-  exists t, U t /\ leS s t.
+  In (FormTop.downset leS U) s.
 
 (** The covering relation for information bases,
     which we derive from the axiom set above. *)
@@ -913,21 +913,21 @@ Require Import Morphisms SetoidClass.
 Theorem CovEquiv : forall s U, Cov s U <-> GCov s U.
 Proof.
 intros. unfold Cov, GCov. split; intros.
-- destruct H as (t & Ut & st).
+- destruct H as [t s Ut st].
   apply FormTop.ginfinity with (existT _ t st).
   unfold C. simpl. intros.
   apply FormTop.gle_left with t.
   rewrite H. apply PreO.le_refl.
   apply FormTop.grefl. assumption.
 - induction H. 
-  + exists a. split. assumption. apply PreO.le_refl.
-  + destruct IHGCov as (t & Ut & bt).
-    exists t. split. assumption. eapply PreO.le_trans; eassumption.
+  + exists a. assumption. unfold flip. apply PreO.le_refl.
+  + destruct IHGCov as [t b Ut bt].
+    exists t. assumption. unfold flip. eapply PreO.le_trans; eassumption.
   + destruct i. unfold C in *. simpl in *.
     assert (eqS x x) as eqx. reflexivity.
     specialize (H x eqx).
-    specialize (H0 x eqx). destruct H0 as (t & Ut & xt).
-    exists t. split. assumption. eapply PreO.le_trans; eassumption.
+    specialize (H0 x eqx). destruct H0 as [t x Ut xt].
+    exists t. assumption. unfold flip in *. eapply PreO.le_trans; eassumption.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
@@ -1022,7 +1022,7 @@ intros. unfold Cov'. split; intros.
   apply FormTop.grefl. assumption.
 - generalize dependent u. 
   induction H; intros.
-  + exists a. split. assumption. apply Qlt_le_weak. assumption.
+  + exists a. assumption. apply Qlt_le_weak. assumption.
   + apply IHGCov. eapply Qle_lt_trans; eassumption.
   + destruct i; simpl in *. 
     * apply (H0 (Qmin a q)). intros. symmetry.
@@ -1042,7 +1042,8 @@ constructor; unfold Cov'; intros.
   assumption.
 - destruct (Qbetween a u H1) as (mid & mida & midu).
   unfold Cov, InfoBase.Cov in *.
-  specialize (H mid mida). destruct H as (t & Ut & lt).
+  specialize (H mid mida). 
+  destruct H as [t l Ut lt].
   eapply H0.
   apply Ut. eapply Qle_lt_trans. apply lt. assumption.
 - apply H0. eapply Qle_lt_trans; eassumption.
@@ -1712,8 +1713,8 @@ Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov (@InfoBase.Cov _ (fun _ _ =
 Proof.
 simpl_relation.
 intros. unfold Cov, InfoBase.Cov. split; intros.
-- exists I. tauto.
-- destruct H as ([] & Ut & _). assumption.
+- exists I; unfold flip; tauto.
+- destruct H as [[] y Ut _]. assumption.
 Qed.
 
 Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
@@ -1845,16 +1846,17 @@ Theorem cont : forall (F : S -> T -> Prop),
 Proof.
 intros. constructor; intros.
 - unfold CovS, InfoBase.Cov. exists a. 
-  split. apply (here H). apply PreO.le_refl.
+  apply (here H). unfold flip. apply PreO.le_refl.
 - eapply (le_left H); eassumption. 
 - unfold CovS, InfoBase.Cov. exists a. 
-  split. exists (MeetLat.min b c). split. 
+  exists (MeetLat.min b c). split. 
   split; apply MeetLat.min_ok. apply local; assumption.
-  apply PreO.le_refl.
+  unfold flip. apply PreO.le_refl.
 - unfold CovT, CovS, InfoBase.Cov in *. 
-  destruct H1 as (t0 & Vt0 & bt0).
-  exists a. split. exists t0. split. assumption.
+  destruct H1 as [t0 b Vt0 bt0].
+  exists a. exists t0. split. assumption.
   apply (le_right H) with b; assumption.
+  unfold flip.
   apply PreO.le_refl.
 Qed.
 
@@ -2016,8 +2018,8 @@ Theorem CovEquiv : (eq ==> eq ==> iff)%signature CovI Cov.
 Proof.
 simpl_relation. unfold Cov, CovI, InfoBase.Cov.
 split; intros.
-- destruct H as (t & xt & leat). subst.  assumption. 
--  exists y. auto.
+- destruct H as [x t xt leat]. unfold flip in *. subst. assumption. 
+-  exists y; unfold flip; auto.
 Qed.
 
 Instance FTproper : Proper _ FormTop.t := @FormTop.t_proper A.
@@ -2159,7 +2161,7 @@ refine ({| lbound := fun q => exists u, q <= u /\ x u |}); intros.
   assert (LowerR.Cov' u (fun q' => q < q')).
   unfold LowerR.Cov'.
   intros. unfold LowerR.Cov, InfoBase.Cov.
-  exists u0. split. eapply Qle_lt_trans; eassumption. apply Qle_refl.
+  exists u0. eapply Qle_lt_trans; eassumption. apply Qle_refl.
   pose proof (Cont.pt_cov ptx xu H).
   simpl in H0. destruct H0 as (q' & xq' & qq').
   exists q'. split. assumption. exists q'. split. apply Qle_refl.
@@ -2178,7 +2180,7 @@ constructor; intros.
 - unfold LowerR.Cov', LowerR.Cov, InfoBase.Cov in H0.
   destruct (uopen x _ H) as (x0 & bx0 & xx0).
   specialize (H0 x0 bx0).
-  destruct H0 as (t & Vt & tl).
+  destruct H0 as [t x0 Vt tl].
   exists t. split. apply dclosed with x0; assumption. assumption.
 Qed.
 
