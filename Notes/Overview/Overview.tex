@@ -44,13 +44,6 @@ My goal is to develop a framework for reasoning about probability in Coq. I beli
 \item To allow a new sort of probabilistic programming language, where a user first specifies the distribution they wish to understand in a simple way, and then uses a theorem prover to derive efficient (verified) algorithms to sample, compute a PDF, or compute an expectation of the distribution (by composing lemmas of known algorithms/tactics)
 \end{itemize}
 
-E.T. Jaynes states \cite{jaynes2003},
-\begin{quote}
-Probability theory as it is needed in current applications --- the principles for assigning probabilities by logical analysis of incomplete information --- is not present at all in the Kolmogorov system.
-\end{quote}
-
-By developing a probability framework in theorem provers, we can close this gap, by connecting the logic to the probability.
-
 \subsection{Foundations}
 
 Reasoning about probability in Coq requires developing the theory of probability within Coq. While one could in principle admit the law of the excluded middle as an axiom, and then more-or-less follow measure theory, I don't think this is the right way to go. First of all, most Coq libraries do not admit the law of the excluded middle, and it is potentially possible that some admit axioms which refute the excluded middle. But more importantly, what isn't constructive ends up being useless anyway; if we used measure theory, we would still need to add many computational principles alongside it just to make it useful. By staying constructive, we eliminate the unnecessary distinction between mathematical proofs and computer programs.
@@ -445,13 +438,20 @@ Recall that we can define a point $x$ in the formal topology $S$ as a continuous
 Here I outline what still must be done, both in terms of what is not yet formalized in Coq, and what is not yet clear to me even outside of Coq:
 
 \begin{enumerate}
-\item Show that every continuous function from $A \to \underline{\mathbb{R}}^+$ is equivalent to the supremum of simple functions. This is done in \cite{jones1990}, and the argument there should work here as well.
+\item Get suitable definitions of the lower real numbers and non-negative lower real numbers in the framework of formal topology:
+\begin{enumerate}
+  \item I'm still not sure what the best way is to do define the non-negative lower reals. Perhaps just define the space as the lower reals, where the function $\max(0, \cdot)$ is pre-composed onto all functions and points.
+  \item Define simple functions and integration.
+  \item Show that every continuous function from $A \to \underline{\mathbb{R}}^+$ is equivalent to the supremum of simple functions.
+  \item Show that every continuous function from $A \to \underline{\mathbb{R}}^+$ is equivalent to the supremum of simple functions. This is done in \cite{jones1990}, and the argument there should work here as well.
+\end{enumerate}
+
 \item Make it easier to deal with formal topologies in Coq and define an embedded programming language that allows us to deal with them. I'm pretty sure that they're effectively a pure programming language that lacks higher-order functions. The topologies we have should have the following structure:
-  \begin{itemize}
+  \begin{enumerate}
   \item All finite products, including the 0-ary product, which is the 1-point space, which are associative
   \item The diagonal function, i.e., the continuous map $A \to A \times A$ for every topological space $A$
   \item There's an operation, I don't know what it's called, but if we have $f : A \to X$ and $g : B \to Y$, we get $f \times g : A \times B \to X \times Y$
-  \end{itemize}
+  \end{enumerate}
   As an example, consider the topological statement that if $X$ is compact and $F \subset X$ is closed, then $F$ is compact\cite{escardo2004}. This is realized by the function $\forall_F : \Sigma^X \to \Sigma$ defined by
 \[
 \forall_F(p) = \forall_X(\lambda x. \chi_{X \setminus F}(x) \vee p(x)).
@@ -481,7 +481,6 @@ This will allow people to describe probability distributions in the familiar mon
 \item Having to work with join-closed formal topologies is quite onerous, because the join-closed formal topologies are much larger than standard formal topologies. Particular, one might wish that they could prove the modularity condition for elements of a formal topology, and have that imply the modularity of the join-closure of that formal topology. It intuitively makes sense that this might be the case.
 
 \item Embed metric spaces into formal topologies using the method in \cite{palmgren2007}, and connect these definitions to the definitions of metric completions and metric spaces in CoRN\cite{oconnor2008}. This will allow us to define the familiar distributions on real numbers, such as the normal distribution, using the results already available in CoRN. 
-
 \end{enumerate}
 
 \section{Comparison to computable measure theory}
