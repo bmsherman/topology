@@ -336,7 +336,7 @@ Axiom all_cont_point : forall A (f : A -> LPReal) (a : A),
 Axiom RF_pointwise : forall A (f g : RF.t (O A)),
   (forall a, RF.eval f (point a) <= RF.eval g (point a)) -> RF.le f g.
 
-Require Finite.
+Require Types.Finite.
 
 Definition inject {A B}
   (f : A -> B) : Simple.t (O A) -> Simple.t (O B)

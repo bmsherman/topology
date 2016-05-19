@@ -1318,7 +1318,18 @@ Context {S} `{POS : PreO.t S leS}.
 Context {T} `{POT : PreO.t T leT}.
 
 Context {CovS : S -> (Ensemble S) -> Prop}.
-Context {CovT : T -> (T -> Prop) -> Prop}.
+Context {CovT : T -> Ensemble T -> Prop}.
+
+Record tNew {F : S -> T -> Prop} : Prop :=
+  { hereNew : forall a, CovS a (fun s => exists t, F s t)
+  ; le_leftNew : forall a b U, CovS a U -> (forall x, In U x -> F x b) -> F a b
+  ; localNew : forall {a b c}, F a b -> F a c
+    -> CovS a (fun s => exists bc, FormTop.down leT b c bc /\ F s bc)
+  ; covNew : forall {a b} V, F a b -> CovT b V
+    -> CovS a (fun s => exists t, V t /\ F s t)
+  }.
+
+Arguments tNew F : clear implicits.
 
 Record t {F : S -> T -> Prop} : Prop :=
   { here : forall a, CovS a (fun s => exists t, F s t)
@@ -1347,6 +1358,16 @@ Definition frame (F : S -> T -> Prop) (U : T -> Prop) (s : S) : Prop :=
 
 Hypothesis FTS : FormTop.t leS CovS. 
 Hypothesis FTT : FormTop.t leT CovT.
+
+Theorem tOldtot : forall F, tNew F -> t F .
+Proof.
+intros. destruct H; constructor; eauto.
+intros. apply le_leftNew0 with (eq c). eapply FormTop.le_left. 
+eassumption. apply FormTop.refl. reflexivity.
+unfold In. intros. destruct H1. assumption.
+Qed.
+
+
 Let FrameS := FormTop.Frame leS CovS POS FTS.
 Let FrameT := FormTop.Frame leT CovT POT FTT.
 
@@ -1945,10 +1966,8 @@ Module IGCont.
 Section IGCont.
 Generalizable All Variables.
 Context {S} `{POS : PreO.t S leS}.
-Context {IS : S -> Type}.
-Variable CS : forall (s : S), IS s -> (Ensemble S).
-Variable locS : FormTop.localized leS CS.
-Let CovS := FormTop.GCov leS CS.
+Context {CovS : S -> Ensemble S -> Prop}.
+Variable FTS : FormTop.t leS CovS.
 
 Context {T} `{POT : PreO.t T leT}.
 Context {IT : T -> Type}.
@@ -1970,13 +1989,12 @@ Arguments t : clear implicits.
 
 Theorem cont : forall F, t F -> Cont.t leS leT CovS CovT F.
 Proof.
-pose proof (FormTop.GCov_formtop _ IS CS locS) as FTS.
 intros. constructor; intros.
-- apply FormTop.grefl. apply (here H).
+- apply FormTop.refl. apply (here H).
 - eapply le_left; eassumption.
 - apply local; assumption.
 - generalize dependent a. induction H1; intros.
-  + apply FormTop.grefl. exists a. split; assumption.
+  + apply FormTop.refl. exists a. split; assumption.
   + apply IHGCov. eapply le_right; eassumption.
   + pose proof (ax_right H _ _ i H2).
     apply (@FormTop.trans S leS CovS FTS _ _ _ H3).  
@@ -1993,7 +2011,7 @@ Abort.
 End IGCont.
 End IGCont.
 
-Arguments IGCont.t {S} leS {IS} CS
+Arguments IGCont.t {S} leS CovS
                    {T} leT {IT} CT F : clear implicits.
 
 Module Discrete.
@@ -2119,10 +2137,12 @@ Qed.
 
 Require Import QFacts LReal.
 
+Definition ProdCov := FormTop.GCov (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ LowerR.C' LowerR.C').
+
 Theorem lift_binop_cont : forall op
   (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'),
   IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y)) 
-           (Product.C _ _ _ _ LowerR.C' LowerR.C')
+           ProdCov
            (fun x y => x >= y) LowerR.C'
            (lift_binop op).
 Proof.
@@ -2184,22 +2204,79 @@ constructor; intros.
   exists t. split. apply dclosed with x0; assumption. assumption.
 Qed.
 
-Definition CovNN := Subspace.Cov LowerR.Cov (fun q => q < 0).
+Definition CovNN := Subspace.Cov LowerR.Cov' (fun q => q < 0).
 Definition C'NN := Subspace.SC LowerR.C' (fun q => q < 0).
 
-Definition mult_cont : Cont.t (prod_op (fun x y => x >= y) (fun x y => x >= y))
-  (fun x y => x >= y) 
+Require Import Qnn.
+
+Definition lift_binop_nn (op : Qnn -> Qnn -> Qnn) (args : Q * Q) (result : Q) : Prop :=
+  let (l, r) := args in (Qnn_truncate result <= op (Qnn_truncate l) (Qnn_truncate r))%Qnn.
+
+Require Import Qcanon. 
+Local Close Scope Qc.
+
+Definition Qnn_truncate_mult : forall x y,
+   (Qnn_truncate x * Qnn_truncate y)%Qnn = Qnn_truncate (x * y).
+Proof.
+intros. apply Qnneq_prop. unfold Qnneq. simpl.
+apply Qc_is_canon.
+Admitted.
+
+Lemma Qnn_truncate_mono : forall x y,
+  x <= y -> (Qnn_truncate x <= Qnn_truncate y)%Qnn.
+Proof.
+intros. unfold Qnnle. simpl. 
+Admitted.
+
+Lemma Qnn_truncate_co_mono : forall x y, 
+  0 <= Qmax x y -> (Qnn_truncate x <= Qnn_truncate y)%Qnn
+  -> x <= y.
+Proof.
+intros. Admitted.
+
+Lemma Qnn_truncate_max : forall x y,
+   Qnn_truncate (Qmax x y) = Qnnmax (Qnn_truncate x) (Qnn_truncate y).
+Proof.
+Admitted.
+
+Definition mult_cont : IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y))
   (FormTop.GCov (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ C'NN C'NN))
-  CovNN
-  (lift_binop Qmult).
+  (fun x y => x >= y) C'NN
+  (lift_binop_nn Qnnmult).
 Proof.
 constructor; intros.
-- apply FormTop.grefl. unfold lift_binop. simpl.
-  destruct a as (l & r).
-  exists (l * r - 1). rewrite Qlt_minus_iff. ring_simplify. reflexivity.
-- unfold lift_binop in *. destruct a, c.
-  destruct H. simpl in *. eapply Qlt_trans. eassumption.
-  (* I need the positivity predicate here??? *)
+- unfold lift_binop_nn. simpl.
+  destruct s as (l & r).
+  exists (l * r - 1). intros.
+  rewrite Qnn_truncate_mult.
+  apply Qnn_truncate_mono. 
+  rewrite Qle_minus_iff. ring_simplify. firstorder.
+- unfold lift_binop_nn in *.
+  destruct a.  simpl. 
+  apply FormTop.grefl. exists (Qmax b c).
+  split. split. apply Q.le_max_l. apply Q.le_max_r.
+  
+  rewrite Qnn_truncate_mult in *. intros.
+  rewrite Qnn_truncate_max. apply Qnnmax_induction; intros; assumption. 
+- unfold lift_binop_nn in *. destruct a, c.
+  destruct H. simpl in *. intros.  
+  rewrite H0 by assumption. 
+  apply Qnnmult_le_compat; apply Qnn_truncate_mono; assumption.
+- unfold lift_binop_nn in *. destruct a. rewrite <- H.
+  apply Qnn_truncate_mono. assumption.
+- unfold lift_binop_nn in *. destruct a.
+  destruct (Qlt_le_dec q0 0) as [q0gt0 | q0gt0].
+  apply FormTop.ginfinity with (inr (q, inr (exist (fun _ => _ _) I q0gt0))).
+  simpl. intros. destruct u. destruct H0. contradiction.
+  (* similarly, we can take 0 <= q . *)
+  assert (0 <= q) as qgt0 by admit.
+  destruct j.
+  + destruct i; simpl. 
+    * admit.
+    * (* This one I can do by using two rounds of "openness" on each dimension *)
+      admit.
+  + destruct s. simpl. apply FormTop.grefl.
+
 Abort.
 
 End LPRFuncs.

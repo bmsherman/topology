@@ -118,6 +118,15 @@ Delimit Scope Qnn_scope with Qnn.
 
 Local Open Scope Qnn.
 
+Require Import QArith.Qminmax.
+
+Definition Qnn_truncate (q : Q) : Qnn.
+Proof.
+refine {| qnn := !! (Qmax 0 q) |}.
+unfold Qcle. simpl. rewrite Qred_correct.
+apply Q.le_max_l.
+Defined.
+
 (** Non-negative rational numbers form a semiring *)
 Theorem Qnnsrt : semi_ring_theory 0 1
   Qnnplus Qnnmult eq.
