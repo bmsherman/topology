@@ -1321,7 +1321,7 @@ Context {CovS : S -> (Ensemble S) -> Prop}.
 Context {CovT : T -> Ensemble T -> Prop}.
 
 Record t {F : S -> T -> Prop} : Prop :=
-  { here : forall a, CovS a (fun s => exists t, F s t)
+  { here : forall a, CovS a (fun s => Inhabited (F s))
   ; le_left : forall a b c, leS a c -> F c b -> F a b
   ; local : forall {a b c}, F a b -> F a c
     -> CovS a (fun s => exists bc, FormTop.down leT b c bc /\ F s bc)
@@ -1481,7 +1481,7 @@ Definition id (s t : S) := leS s t.
 Theorem t_id : t leS leS CovS CovS id.
 Proof.
 constructor; intros; unfold id in *.
-- eapply FormTop.refl. exists a. apply PreO.le_refl.
+- eapply FormTop.refl. exists a. unfold In. reflexivity.
 - eapply PreO.le_trans; eassumption.
 - apply FormTop.refl. exists a. split.
   split; eassumption. apply PreO.le_refl.
@@ -1613,7 +1613,7 @@ Lemma t_proj_L : t (prod_op leS leT) leS
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_L in *.
-- apply FormTop.refl. destruct a. exists s. apply PreO.le_refl.
+- apply FormTop.refl. destruct a. exists s. unfold In. reflexivity.
 - destruct c, a.  destruct H. simpl in H, H1. 
   eapply PreO.le_trans; eassumption.
 - destruct a. apply FormTop.refl. 
@@ -1643,7 +1643,7 @@ Lemma t_proj_R : t (prod_op leS leT) leT
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_R in *.
-- apply FormTop.refl. destruct a. exists t0. apply PreO.le_refl.
+- apply FormTop.refl. destruct a. exists t0. unfold In. reflexivity.
 - destruct c, a.  destruct H. simpl in H, H1. 
   eauto using PreO.le_trans.
 - destruct a. apply FormTop.refl. 
@@ -1780,13 +1780,11 @@ Instance FrameS : Frame.t (Ensemble S) (FormTop.FOps leS CovS)
 Instance FrameOne : Frame.t (True -> Prop) (FormTop.FOps MeetLat.le Cov)
   := FormTop.Frame MeetLat.le Cov _ FTOne.
 
-(*
 Definition toFPoint (f : Ensemble S) (pointf : Point f) :
   Frame.cmap Frame.prop_ops (FormTop.FOps leS CovS) :=
   {| Frame.finv := fun x => Cont.frame (fun _ => f) x I 
   ; Frame.cont := Frame.morph_compose _ _
     (Cont.toFrame FTOne FTS (fun _ => f) pointf) FTtoFrame |}.
-*)
 
 End One.
 End One.
@@ -1801,10 +1799,10 @@ Require Import Morphisms.
 Context {S} `{MLS : MeetLat.t S}.
 Context {T} `{MLT : MeetLat.t T}.
 
-Record pt {F : T -> Prop} : Prop :=
+Record pt {F : Ensemble T} : Prop :=
   { pt_local : forall {a b}, F a -> F b -> F (MeetLat.min a b)
   ; pt_le_right : forall a b, MeetLat.le a b -> F a -> F b
-  ; pt_here : exists c, F c
+  ; pt_here : Inhabited F
   }.
 
 Arguments pt : clear implicits.
@@ -1845,7 +1843,7 @@ Record t {F : S -> T -> Prop} :=
   { le_left : forall a b c, MeetLat.le a b -> F b c -> F a c
   ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
   ; local : forall {a b c}, F a b -> F a c -> F a (MeetLat.min b c)
-  ; here : forall s, exists t, F s t
+  ; here : forall s, Inhabited (F s)
   }.
 
 Arguments t : clear implicits.
@@ -1968,7 +1966,7 @@ Variable locT : FormTop.localized leT CT.
 Let CovT := FormTop.GCov leT CT.
 
 Record t {F : S -> T -> Prop} :=
-  { here : forall s, exists t, F s t
+  { here : forall s, Inhabited (F s)
   ; local : forall a b c, F a b -> F a c ->
        CovS a (fun s => exists d, FormTop.down leT b c d /\ F s d)
   ; le_left : forall a b c, leS a c -> F c b -> F a b
@@ -2196,9 +2194,6 @@ constructor; intros.
   exists t. split. apply dclosed with x0; assumption. assumption.
 Qed.
 
-Definition CovNN := Subspace.Cov LowerR.Cov' (fun q => q < 0).
-Definition C'NN := Subspace.SC LowerR.C' (fun q => q < 0).
-
 Require Import Qnn.
 
 Definition lift_binop_nn (op : Qnn -> Qnn -> Qnn) (args : Q * Q) (result : Q) : Prop :=
@@ -2231,9 +2226,14 @@ Lemma Qnn_truncate_max : forall x y,
 Proof.
 Admitted.
 
+Definition Qnn_truncate_0 : forall x, (x <= 0) -> Qnn_truncate x = 0%Qnn.
+Proof.
+intros. apply Qnn_zero_prop. unfold Qnnle. simpl.
+Admitted. 
+
 Definition mult_cont : IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y))
-  (FormTop.GCov (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ C'NN C'NN))
-  (fun x y => x >= y) C'NN
+  (FormTop.GCov (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ LowerR.C' LowerR.C'))
+  (fun x y => x >= y) LowerR.C'
   (lift_binop_nn Qnnmult).
 Proof.
 constructor; intros.
@@ -2257,18 +2257,23 @@ constructor; intros.
 - unfold lift_binop_nn in *. destruct a. rewrite <- H.
   apply Qnn_truncate_mono. assumption.
 - unfold lift_binop_nn in *. destruct a.
-  destruct (Qlt_le_dec q0 0) as [q0gt0 | q0gt0].
-  apply FormTop.ginfinity with (inr (q, inr (exist (fun _ => _ _) I q0gt0))).
-  simpl. intros. destruct u. destruct H0. contradiction.
-  (* similarly, we can take 0 <= q . *)
-  assert (0 <= q) as qgt0 by admit.
-  destruct j.
-  + destruct i; simpl. 
-    * admit.
-    * (* This one I can do by using two rounds of "openness" on each dimension *)
-      admit.
-  + destruct s. simpl. apply FormTop.grefl.
-
+  destruct j; simpl.
+  + apply FormTop.grefl. exists (Qmin q1 b). split; intros. 
+    symmetry. apply Q.min_l_iff. assumption. rewrite <- H. 
+    apply Qnn_truncate_mono. apply Q.le_min_r.
+  + apply FormTop.ginfinity with (inr (q, None)). simpl. intros.
+    destruct u. destruct H0. subst. 
+    apply FormTop.ginfinity with (inl (None, q2)). simpl. intros.
+    destruct u. destruct H0. subst.
+    apply FormTop.grefl.
+    destruct (Qlt_le_dec b 0).
+    * destruct (Qbetween b 0 q3) as (mid & (midl & midh)).
+      exists mid. split. assumption. rewrite Qnn_truncate_0. 
+      rewrite <- Qnn_truncate_0 with b. rewrite H. 
+      apply Qnnmult_le_compat; apply Qnn_truncate_mono; apply Qlt_le_weak; assumption.
+      apply Qlt_le_weak; assumption. apply Qlt_le_weak; assumption.
+    * (** Perhaps I need to use a strict inequality? I think that caused
+          problems in other places? *)
 Abort.
 
 End LPRFuncs.
