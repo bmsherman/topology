@@ -1324,7 +1324,6 @@ Definition parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
   let (s, t) := p in let (a, b) := out in
    F s a /\ G t b.
 
-(** Broken
 Theorem t_parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
   : t leS leA CovS CovA F
   -> t leT leB CovT CovB G
@@ -1337,8 +1336,9 @@ intros ContF ContG.
 constructor; intros; unfold parallel in *.
 - apply FormTop.gmonotone with
   (fun s : S * T => let (s', t') := s in 
-  (fun s'' => exists a, F s'' a) s' /\ (fun t'' => exists b, G t'' b) t').
-  intros. destruct a, a0. 
+  Inhabited (F s') /\ Inhabited (G t')).
+  unfold Included, In; intros.
+  destruct a, x. 
   destruct H as ((? & ?) & (? & ?)). exists (x, x0).
   intuition. destruct a. apply Product.factors; try assumption.
   apply (here ContF). apply (here ContG).
@@ -1351,7 +1351,7 @@ constructor; intros; unfold parallel in *.
   pose proof (local ContF H H0).
   pose proof (local ContG H1 H2).
 Admitted.
-*)
+
 
 End Products.
 End Cont.
