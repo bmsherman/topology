@@ -185,7 +185,6 @@ Proof.
 refine (
   {| val := fun x => mu (F.finv f x) |}
 ).
-Proof. 
 - pose proof (F.f_bottom (F.cont f)).
   rewrite H. apply strict.
 - intros. apply monotonic.
