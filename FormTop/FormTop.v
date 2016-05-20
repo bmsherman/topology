@@ -662,7 +662,7 @@ Require Import Morphisms SetoidClass.
 Theorem CovEquiv : forall s U, Cov s U <-> GCov s U.
 Proof.
 intros. unfold Cov, GCov. split; intros.
-- destruct H as [t s Ut st].
+- destruct H as [t Ut st].
   apply FormTop.ginfinity with (existT _ t st).
   unfold C. simpl. intros.
   apply FormTop.gle_left with t.
@@ -670,12 +670,12 @@ intros. unfold Cov, GCov. split; intros.
   apply FormTop.grefl. assumption.
 - induction H. 
   + exists a. assumption. unfold flip. apply PreO.le_refl.
-  + destruct IHGCov as [t b Ut bt].
+  + destruct IHGCov as [t Ut bt].
     exists t. assumption. unfold flip. eapply PreO.le_trans; eassumption.
   + destruct i. unfold C in *. simpl in *.
     assert (eqS x x) as eqx. reflexivity.
     specialize (H x eqx).
-    specialize (H0 x eqx). destruct H0 as [t x Ut xt].
+    specialize (H0 x eqx). destruct H0 as [t Ut xt].
     exists t. assumption. unfold flip in *. eapply PreO.le_trans; eassumption.
 Qed.
 
@@ -1015,7 +1015,7 @@ simpl. unfold FormTop.leA, FormTop.Sat.
 unfold Included, In.
 intros. simpl in H. unfold FormTop.leA, FormTop.Sat in H.
 apply (FormTop.trans _ _ _ H0). intros.
-destruct H1 as [t' s at' Fa't'].
+destruct H1 as [t' at' Fa't'].
 apply (cov cont _ Fa't'). apply H. unfold In. apply FormTop.refl.
 assumption.
 Qed.
@@ -1062,9 +1062,9 @@ constructor.
       unfold FormTop.minA.
       apply FormTop.le_right;
       apply (cov cont _ H0).
-      apply FormTop.le_left with a0. assumption.
-      apply FormTop.refl. assumption.
       apply FormTop.le_left with a1. assumption.
+      apply FormTop.refl. assumption.
+      apply FormTop.le_left with a2. assumption.
       apply FormTop.refl. assumption.
     * apply (FormTop.trans _ _ _ H). clear x H.
       intros. unfold FormTop.minA in *.
@@ -1079,10 +1079,6 @@ constructor.
       exists bc. split; econstructor; eassumption. assumption.
 Qed.
 
-(*
-Broken by my change, and I need to change my definition
-    of continuous functions anyway.
-*)
 Theorem toFrame : Frame.morph 
   (FormTop.FOps leT CovT) (FormTop.FOps leS CovS) (frame F).
 Proof.
@@ -1147,7 +1143,6 @@ iff there is some subset T such that
   everything in T maps to u
 *)
 
-(** Also broken now 
 Theorem t_compose : forall (F : S -> T -> Prop) (G : T -> U -> Prop),
     t leS leT CovS CovT F
   -> t leT leU CovT CovU G
@@ -1160,8 +1155,9 @@ intros. constructor; intros.
   pose proof (here H0 x).
   pose proof (cov H _ H2 H3).
   refine (FormTop.monotone _ _ _ _ H4).
-  intros. destruct H4 as [t1 [[u Gt1u] Fa0t1]].
-  exists u. unfold compose. exists t1. split; assumption.
+  unfold Included, In.
+  intros. destruct H5. destruct H5. 
+  exists x1. unfold In.  unfold compose. exists a1. split; assumption.
 - unfold compose in *.
   intros. 
   destruct H2 as [t1 [Fat1 Gt1b]]. 
@@ -1174,10 +1170,8 @@ intros. constructor; intros.
   eapply FormTop.trans.
   eassumption. simpl. intros.
   destruct H2 as (tt & downtt & Fatt).
-  apply (FormTop.monotone _)
-  with (fun s => exists t' : T,
-    (fun t'' => exists bc : U, FormTop.down leU b c bc /\ G t'' bc) t' 
-    /\ F s t'). firstorder.
+  apply (FormTop.monotone)
+  with (union (fun t'' => exists bc : U, FormTop.down leU b c bc /\ G t'' bc) (fun t s => F s t)). unfold Included, In; intros. destruct H2. firstorder.
   eapply (cov H). eassumption.
   destruct downtt.
   apply (local H0).
@@ -1185,13 +1179,18 @@ intros. constructor; intros.
   eapply (le_left H0). eapply H3. eassumption.
 - unfold compose. intros.
   destruct H1 as [t [Fat Gtb]].
-  apply (FormTop.monotone _)
-    with (fun s => exists t1 : T, (exists u : U, V u /\ G t1 u) /\ F s t1).
-  firstorder.
+  apply (FormTop.monotone)
+    with (union (fun t => exists u, V u /\ G t u) (fun t s => F s t)).
+  unfold Included, In; intros. destruct H1. 
+  destruct H1.  destruct H1. econstructor. apply H1.
+  exists a0; eauto.
   apply (cov H _ Fat).
+  apply FormTop.monotone with
+     (union V (fun u t => G t u)).
+  unfold Included, In; intros. destruct H1. unfold In in *.
+  exists a0; eauto.
   apply (cov H0 _ Gtb). assumption.
 Qed.
-*)
 
 End Morph.
 
@@ -1370,7 +1369,7 @@ Proof.
 simpl_relation.
 intros. unfold Cov, InfoBase.Cov. split; intros.
 - exists I; unfold flip; tauto.
-- destruct H as [[] y Ut _]. assumption.
+- destruct H as [[] Ut _]. assumption.
 Qed.
 
 Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
@@ -1401,7 +1400,7 @@ constructor.
     intros. destruct H. left. assumption. right. assumption.
   + simpl. unfold FormTop.minA. unfold FormTop.downset, flip. intros.
     split; intros. destruct H. destruct H, H0.
-    destruct b0, a0, a1. auto.
+    destruct x, a0, a1. auto.
     destruct H. constructor; econstructor; eauto. 
 - simpl. intros. split; intros. destruct H. destruct s. 
   exists i. assumption. destruct H. econstructor; eauto.
@@ -1482,7 +1481,7 @@ intros. constructor; intros.
   split; apply MeetLat.min_ok. apply local; assumption.
   unfold flip. reflexivity.
 - unfold CovT, CovS, InfoBase.Cov in *. 
-  destruct H1 as [t0 b Vt0 bt0].
+  destruct H1 as [t0 Vt0 bt0].
   exists a. exists t0. assumption.
   apply (le_right H) with b; assumption.
   unfold flip. reflexivity.
@@ -1763,169 +1762,10 @@ Definition id `{LA : IGT A} : LA ~> LA :=
   {| mp := Cont.id
   ; mp_ok := Cont.t_id |}.
 
-(* broken
 Definition comp `{LA : IGT A} 
   `{LB : IGT B} `{LD : IGT D} (f : LA ~> LB) (g : LB ~> LD) : LA ~> LD :=
   {| mp := compose (mp f) (mp g)
   ; mp_ok := Cont.t_compose (mp f) (mp g) (mp_ok f) (mp_ok g)
   |}.
-*)
 
 End Bundled.
-
-Module JoinTop.
-
-Section JoinTop.
-(** We assume we have some type [S] equipped
-    with a partial order. *)
-Context {S} {ops : JoinLat.Ops S} {JL : JoinLat.t S ops}.
-
-Variable bot : S.
-Variable Cov : S -> (Ensemble S) -> Prop.
-
-
-Class t : Prop :=
-  { FT :> FormTop.t JoinLat.le Cov
-  ; bot_ok : @PreO.bottom _ JoinLat.le bot
-  ; bot_Cov : forall U, Cov bot U
-  ; join_left : forall a b U, Cov a U -> Cov b U -> Cov (JoinLat.max a b) U
-  }.
-
-Hypothesis FTS : t.
-(** Check properties we expect to hold *)
-
-Definition singleton (s s' : S) : Prop := s = s'.
-
-Lemma join_right : forall a b c, Cov a (singleton b)
-  -> Cov a (singleton (JoinLat.max b c)).
-Proof.
-intros. eapply FormTop.trans. apply H. clear H. clear a.
-intros a sba. unfold singleton in sba. subst.
-apply FormTop.le_left with (JoinLat.max a c).
-apply JoinLat.max_ok.
-apply FormTop.refl. unfold In in *. subst. reflexivity.
-Qed.
-
-End JoinTop.
-
-
-(** Given a formal topology, we can always produce a join-closed formal
-    topology by taking "free join" elements (i.e., the free monoid, a list)
-    and interpreting the cover relation accordingly.
-*)
-Require Import Coq.Lists.List.
-Section Joinify.
-Context {S} {le : S -> Ensemble S} {PO : PreO.t le}.
-
-Definition leL (xs ys : list S) : Prop := forall x,
-  List.In x xs -> exists y, le x y /\ List.In y ys.
-
-Definition eqL (xs ys : list S) : Prop := leL xs ys /\ leL ys xs.
-
-Definition joinL (xs ys : list S) : list S := xs ++ ys.
-
-Definition ops' : JoinLat.Ops (list S) :=
-  {| JoinLat.le := leL
-  ;  JoinLat.eq := eqL
-  ;  JoinLat.max := joinL
-  |}.
-
-Instance ops : JoinLat.Ops (list S) := ops'.
-
-Require Import Morphisms.
-
-Instance joinPreO : @PreO.t (list S) JoinLat.le.
-Proof.
-constructor; intros.
-- simpl. unfold leL. intros. exists x0.
-  split. apply PreO.le_refl. assumption.
-- simpl in *. unfold leL in *. intros. 
-  destruct (H x0 H1). destruct H2. 
-  destruct (H0 x1 H3). destruct H4. 
-  exists x2. split. eapply PreO.le_trans; eassumption.
-  assumption.
-Qed.
-
-Instance joinPO : @PO.t (list S) JoinLat.le JoinLat.eq.
-Proof.
-constructor.
-- apply joinPreO.
-- repeat intro. simpl in *.
-  destruct H, H0. split;
-  replace leL with JoinLat.le in * by reflexivity;
-  eauto using (PreO.le_trans).
-- intros. split; assumption.
-Qed. 
-
-Lemma joinLE : forall (xs ys xs' ys' : list S), leL xs xs' -> leL ys ys'
-  -> leL (xs ++ ys) (xs' ++ ys').
-Proof.
-unfold leL in *.
-intros.
-apply in_app_iff in H1.
-destruct H1 as [In1 | In2].
-- destruct (H x In1). exists x0. rewrite in_app_iff. destruct H1. auto.
-- destruct (H0 x In2). exists x0. rewrite in_app_iff. destruct H1. auto.
-Qed.
-
-
-Theorem JL : JoinLat.t (list S) ops.
-Proof.
-constructor.
-- apply joinPO.
-- repeat intro. simpl in *. unfold joinL.
-  unfold eqL in *. destruct H, H0.
-  auto using joinLE.
-- intros. simpl. unfold joinL. constructor; unfold leL; intros.
-  + exists x. split. apply PreO.le_refl. apply in_app_iff. auto.
-  + exists x. split. apply PreO.le_refl. apply in_app_iff. auto.
-  + apply in_app_iff in H1. destruct H1; [apply H | apply H0]; assumption.
-Qed.
-
-Variable Cov : S -> (Ensemble S) -> Prop.
-
-Definition LCov (a : list S) (U : Ensemble (list S)) : Prop :=
-  forall s : S, In s a -> Cov s (fun s' => exists xs, In s' xs /\ U xs).
-
-Instance joinify : FormTop.t le Cov -> t nil LCov.
-Proof.
-intros FTS.
-constructor.
-- constructor.
-  + unfold LCov. intros. apply FormTop.refl.
-    exists a. split; assumption.
-  + unfold LCov. intros. eapply FormTop.trans.
-    eapply H. assumption. simpl.
-    clear s H1. intros.
-    destruct H1 as (xs & Inxs & Uxs).
-    eapply H0. eassumption. assumption.
-  + simpl. unfold LCov. intros. unfold leL in *.
-    specialize (H s H1). destruct H as (y & sy & Inyb).
-    apply FormTop.le_left with y. assumption.
-    apply H0. assumption.
-  + unfold LCov. intros.
-    pose proof (fun (s' : S) (insa : In s' a) =>
-      FormTop.le_right s' _ _ (H s' insa) (H0 s' insa)).
-    eapply FormTop.monotone. 2: apply (H2 s H1). simpl.
-    unfold Included, Ensembles.In; intros.
-    destruct H3. destruct H3, H4. unfold flip, Ensembles.In in *.
-    destruct H3 as (xs & Inxs & Uxs).
-    destruct H4 as (ys & Inys & Vys).
-    exists (cons b nil). split. unfold In. left. reflexivity.
-    constructor; (econstructor; [eassumption|]);
-    unfold flip, leL; intros x inx; simpl in inx; destruct inx; subst;
-    match goal with
-    | [ H: In ?x ?xs  |- exists y, _ /\ In y ?xs ] => exists x; tauto
-    end.
-- unfold PreO.bottom. simpl. unfold leL. intros.
-  apply in_nil in H. contradiction.
-- unfold LCov. intros. apply in_nil in H. contradiction.
-- unfold LCov. simpl. unfold joinL. intros.
-  apply in_app_iff in H1. destruct H1.
-  + apply H; assumption.
-  + apply H0; assumption.
-Qed.
-
-End Joinify.
-
-End JoinTop.

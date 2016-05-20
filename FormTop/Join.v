@@ -137,9 +137,9 @@ constructor.
     destruct H3. destruct H3, H4. unfold flip, Ensembles.In in *.
     destruct H3 as (xs & Inxs & Uxs).
     destruct H4 as (ys & Inys & Vys).
-    exists (cons b nil). split. unfold In. left. reflexivity.
+    exists (cons x nil). split. unfold In. left. reflexivity.
     constructor; (econstructor; [eassumption|]);
-    unfold flip, leL; intros x inx; simpl in inx; destruct inx; subst;
+    unfold flip, leL; intros x' inx; simpl in inx; destruct inx; subst;
     match goal with
     | [ H: In ?x ?xs  |- exists y, _ /\ In y ?xs ] => exists x; tauto
     end.

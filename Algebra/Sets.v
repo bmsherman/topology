@@ -16,8 +16,8 @@ Infix "===" := Same_set (at level 70) : Ensemble_scope.
 Delimit Scope Ensemble_scope with Ensemble.
 Local Open Scope Ensemble.
 
-Inductive union {S T} (U : Ensemble S) (f : S -> Ensemble T) : Ensemble T :=
-  union_intro : forall a b, In U a -> f a b -> In (union U f) b.
+Inductive union {S T} (U : Ensemble S) (f : S -> Ensemble T) (b : T) : Prop :=
+  union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
 Theorem Union_union : forall A B (a b : Ensemble A) (f : A -> Ensemble B),
   union a f ∪ union b f === union (a ∪ b) f.

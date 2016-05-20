@@ -1,4 +1,4 @@
-Require Import FormTop.FormTop Frame.
+Require Import FormTop.FormTop Frame Algebra.Sets Basics.
 
 (** Here we intend to define the formal topology for the lower real
     numbers, realizing that the lower real numbers can be made into 
@@ -72,7 +72,8 @@ Proof.
 intros. unfold Cov'. split; intros.
 - apply FormTop.ginfinity with None. simpl.
   intros. unfold Cov, InfoBase.Cov in H.
-  specialize (H u H0). destruct H as (t & Ut & ut).
+  specialize (H u H0). destruct H as (t & Ut).
+  unfold flip in *.
   apply FormTop.gle_left with t. assumption.
   apply FormTop.grefl. assumption.
 - generalize dependent u. 
@@ -98,7 +99,7 @@ constructor; unfold Cov'; intros.
 - destruct (Qbetween a u H1) as (mid & mida & midu).
   unfold Cov, InfoBase.Cov in *.
   specialize (H mid mida). 
-  destruct H as [t l Ut lt].
+  destruct H as [t Ut lt].
   eapply H0.
   apply Ut. eapply Qle_lt_trans. apply lt. assumption.
 - apply H0. eapply Qle_lt_trans; eassumption.
@@ -209,7 +210,7 @@ constructor; intros.
 - unfold LowerR.Cov', LowerR.Cov, InfoBase.Cov in H0.
   destruct (uopen x _ H) as (x0 & bx0 & xx0).
   specialize (H0 x0 bx0).
-  destruct H0 as [t x0 Vt tl].
+  destruct H0 as [t Vt tl].
   exists t. split. apply dclosed with x0; assumption. assumption.
 Qed.
 
