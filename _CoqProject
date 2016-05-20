@@ -9,6 +9,9 @@ FormTop/FormTopM.v
 FormTop/FTVal.v
 FormTop/Real.v
 FormTop/Join.v
+FormTop/Product.v
+FormTop/InfoBase.v
+FormTop/Bundled.v
 
 Algebra/Sets.v
 
