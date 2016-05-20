@@ -1320,24 +1320,13 @@ Context {T} `{POT : PreO.t T leT}.
 Context {CovS : S -> (Ensemble S) -> Prop}.
 Context {CovT : T -> Ensemble T -> Prop}.
 
-Record tNew {F : S -> T -> Prop} : Prop :=
-  { hereNew : forall a, CovS a (fun s => exists t, F s t)
-  ; le_leftNew : forall a b U, CovS a U -> (forall x, In U x -> F x b) -> F a b
-  ; localNew : forall {a b c}, F a b -> F a c
-    -> CovS a (fun s => exists bc, FormTop.down leT b c bc /\ F s bc)
-  ; covNew : forall {a b} V, F a b -> CovT b V
-    -> CovS a (fun s => exists t, V t /\ F s t)
-  }.
-
-Arguments tNew F : clear implicits.
-
 Record t {F : S -> T -> Prop} : Prop :=
   { here : forall a, CovS a (fun s => exists t, F s t)
   ; le_left : forall a b c, leS a c -> F c b -> F a b
   ; local : forall {a b c}, F a b -> F a c
     -> CovS a (fun s => exists bc, FormTop.down leT b c bc /\ F s bc)
   ; cov : forall {a b} V, F a b -> CovT b V
-    -> CovS a (fun s => exists t, V t /\ F s t)
+    -> CovS a (union V (fun t s => F s t))
   }.
 
 Arguments t F : clear implicits.
@@ -1345,7 +1334,7 @@ Arguments t F : clear implicits.
 Record pt {F : T -> Prop} :=
   { pt_here : exists t, F t
   ; pt_local : forall {b c}, F b -> F c -> exists d, FormTop.down leT b c d /\ F d
-  ; pt_cov : forall {b V}, F b -> CovT b V -> exists v, F v /\ V v
+  ; pt_cov : forall {b V}, F b -> CovT b V -> Inhabited (F ∩ V)
   }.
 
 Arguments pt F : clear implicits.
@@ -1353,19 +1342,11 @@ Arguments pt F : clear implicits.
 (** Convert a continuous map for formal topologies to a 
     frame homomorphism (i.e., continuous map on locales)
   *)
-Definition frame (F : S -> T -> Prop) (U : T -> Prop) (s : S) : Prop :=
-  exists t', U t' /\ F s t'.
+Definition frame (F : S -> T -> Prop) (U : Ensemble T) : Ensemble S :=
+  union U (fun t s => F s t).
 
 Hypothesis FTS : FormTop.t leS CovS. 
 Hypothesis FTT : FormTop.t leT CovT.
-
-Theorem tOldtot : forall F, tNew F -> t F .
-Proof.
-intros. destruct H; constructor; eauto.
-intros. apply le_leftNew0 with (eq c). eapply FormTop.le_left. 
-eassumption. apply FormTop.refl. reflexivity.
-unfold In. intros. destruct H1. assumption.
-Qed.
 
 
 Let FrameS := FormTop.Frame leS CovS POS FTS.
@@ -1392,15 +1373,33 @@ simpl. unfold FormTop.leA, FormTop.Sat.
 unfold Included, In.
 intros. simpl in H. unfold FormTop.leA, FormTop.Sat in H.
 apply (FormTop.trans _ _ _ H0). intros.
-destruct H1 as [t' [at' Fa't']].
+destruct H1 as [t' s at' Fa't'].
 apply (cov cont _ Fa't'). apply H. unfold In. apply FormTop.refl.
 assumption.
 Qed.
 
 Require Import Morphisms SetoidClass.
 
-(** Broken by my change, and I need to change my definition
-    of continuous functions anyway.
+Instance Cov_Proper : Proper (leS --> Included ==> impl) CovS.
+Proof.
+ apply FormTop.Cov_Proper. assumption.
+Qed.
+
+Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iff) CovS.
+Proof.
+ eapply FormTop.Cov_Proper2; eassumption.
+Qed.
+
+Theorem Sat_Proper : forall A `{PreO.t A leA} (Cov : A -> Ensemble A -> Prop)
+  `{FormTop.t _ leA Cov},
+  Proper (Same_set ==> Same_set) (FormTop.Sat Cov).
+Proof.
+intros. unfold Proper, respectful. intros. unfold FormTop.Sat.
+apply Same_set_iff. intros. apply FormTop.subset_equiv.
+assumption.
+Qed.
+
+
 Theorem toLattice : 
    L.morph (FormTop.LOps leT CovT) (FormTop.LOps leS CovS) (frame F).
 Proof.
@@ -1409,67 +1408,63 @@ constructor.
      * apply monotone.
      * repeat intro. split; apply monotone; simpl in H;
        rewrite H; apply PreO.le_refl.
-  + intros. unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
-    unfold Same_set, Included, In; split;
-    intros. apply (FormTop.subset_equiv). clear s.
-    intros. unfold FormTop.maxA. split; intros.
-    * destruct H as [t' [abt' Fa't']].
-      destruct abt'; [left | right]; exists t'; tauto.
-    * firstorder.
+  + intros. unfold frame. simpl. unfold FormTop.eqA.
+    eapply Sat_Proper; try eassumption.
+    symmetry. apply Union_union.
   + intros. unfold frame. simpl. apply PO.le_antisym;
-    unfold FormTop.leA, FormTop.Sat; intros.
-    * apply (FormTop.trans _ _ _ H). clear s H.
+    unfold FormTop.leA, FormTop.Sat, Included, In; intros.
+    * apply (FormTop.trans _ _ _ H). clear x H.
       intros. unfold FormTop.minA in H.
-      destruct H as (t' & (u & v & au & bv & downuv) & Fat).
-      destruct downuv as (ut' & vt').
+      destruct H. destruct H. destruct H, H1.
+      unfold flip in *. 
       unfold FormTop.minA.
       apply FormTop.le_right;
-      apply (cov cont _ Fat).
-      apply FormTop.le_left with u. assumption.
+      apply (cov cont _ H0).
+      apply FormTop.le_left with a0. assumption.
       apply FormTop.refl. assumption.
-      apply FormTop.le_left with v. assumption.
+      apply FormTop.le_left with a1. assumption.
       apply FormTop.refl. assumption.
-    * apply (FormTop.trans _ _ _ H). clear s H.
+    * apply (FormTop.trans _ _ _ H). clear x H.
       intros. unfold FormTop.minA in *.
-      destruct H as (u & v & (t1 & at1 & Fut1)
-        & (t2 & bt2 & Fvt2) & (ua' & va')).
-      pose proof (le_left cont _ _ _ ua' Fut1) as Fat1.
-      pose proof (le_left cont _ _ _ va' Fvt2) as Fat2.
+      destruct H. destruct H, H0. destruct H, H0.
+      unfold flip in *.
+      pose proof (le_left cont _ _ _ H1 H3) as Fat1.
+      pose proof (le_left cont _ _ _ H2 H4) as Fat2.
       pose proof (local cont Fat1 Fat2).
-      refine (FormTop.monotone _ _ _ _ _ H).
-      intros.
-      destruct H0 as (bc & downbc & fabc).
-      exists bc. split. exists t1. exists t2. auto. assumption.
+      refine (FormTop.monotone _ _ _ _ H5).
+      unfold Included; intros.
+      destruct H6 as (bc & (a0bc & a1bc) & fabc).
+      exists bc. split; econstructor; eassumption. assumption.
 Qed.
 
+(*
+Broken by my change, and I need to change my definition
+    of continuous functions anyway.
+*)
 Theorem toFrame : Frame.morph 
   (FormTop.FOps leT CovT) (FormTop.FOps leS CovS) (frame F).
 Proof.
 constructor.
 - apply toLattice.
 - unfold frame. simpl. intros.
-  unfold FormTop.eqA, FormTop.Sat.
-  apply (FormTop.subset_equiv FTS).
-  intros; split; intros.
-  + destruct H as (t' & (i & git) & Fat).
-    exists i. exists t'. auto.
-  + destruct H as (i & t' & git' & Fat').
-    exists t'. split. exists i. assumption. assumption.
+  unfold FormTop.eqA. eapply Sat_Proper; try eassumption.
+  intros; split; unfold Included, In; intros.
+  + destruct H. destruct H. repeat econstructor; eauto.
+  + destruct H. destruct H. repeat econstructor; eauto. 
 - unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
-  intros. split; intros. unfold FormTop.supA.
-  apply FormTop.refl. exists (fun _ => True). constructor.
-  unfold FormTop.supA.
-  pose proof (here cont s).
-  eapply FormTop.trans. apply H0. clear H0. simpl.
-  intros. destruct H0. apply FormTop.refl.
-  exists x. split. exists (fun _ => True). constructor. assumption.
+  intros. split; unfold Included, In; intros.
+  + apply FormTop.refl. exists (fun _ => True). constructor.
+  + pose proof (here cont x).
+    eapply FormTop.trans. apply H0. clear H0. intros. 
+    destruct H0. apply FormTop.refl. 
+    repeat (econstructor; try eassumption).
 Qed.
 
 Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
   (FormTop.FOps leT CovT) :=
   {| Frame.finv := frame F
    ; Frame.cont := toFrame |}.
-*)
+
 
 End Cont.
 
@@ -1495,8 +1490,7 @@ constructor; intros; unfold id in *.
   apply FormTop.refl. reflexivity. unfold In.  
   intros. subst. eapply FormTop.monotone.
   2:eassumption. intros. unfold Included, In; intros. 
-  exists x. split. assumption.
-  apply PreO.le_refl.
+  exists x. assumption. apply PreO.le_refl.
 Qed.
 
 Context {T} `{POT : PreO.t T leT}.
@@ -1581,8 +1575,7 @@ constructor; intros; unfold diagonal, CovS in *.
   split. split; unfold prod_op; simpl; split; assumption.
   split; apply PreO.le_refl.
 - generalize dependent a. induction H0; intros.
-  + apply FormTop.refl. exists a. 
-    split. assumption. assumption. 
+  + apply FormTop.refl. exists a. assumption. assumption. 
   + apply IHGCov. destruct a, b, H. simpl in *. 
     destruct H1. split; eauto using PreO.le_trans.
   + destruct a. simpl in *. destruct H1. destruct i.
@@ -1626,7 +1619,7 @@ constructor; intros; unfold proj_L in *.
 - destruct a. apply FormTop.refl. 
   exists s. split. split; assumption. apply PreO.le_refl. 
 - destruct a. generalize dependent s. induction H0; intros.
-  + apply FormTop.refl. exists a. firstorder.
+  + apply FormTop.refl. exists a; assumption.
   + apply FormTop.le_left with (b, t0).
     split; simpl. eapply PreO.le_trans; eassumption. 
     apply PreO.le_refl.
@@ -1656,7 +1649,7 @@ constructor; intros; unfold proj_R in *.
 - destruct a. apply FormTop.refl. 
   exists t0. split. split; assumption. apply PreO.le_refl. 
 - destruct a. generalize dependent t0. induction H0; intros.
-  + apply FormTop.refl. exists a. firstorder.
+  + apply FormTop.refl. exists a; assumption.
   + apply FormTop.le_left with (s, b).
     (** We would like
         eauto using (PreO.le_refl, PreO.le_trans)
@@ -1872,13 +1865,12 @@ intros. constructor; intros.
 - unfold CovS, InfoBase.Cov. exists a. 
   exists (MeetLat.min b c). split. 
   split; apply MeetLat.min_ok. apply local; assumption.
-  unfold flip. apply PreO.le_refl.
+  unfold flip. reflexivity.
 - unfold CovT, CovS, InfoBase.Cov in *. 
   destruct H1 as [t0 b Vt0 bt0].
-  exists a. exists t0. split. assumption.
+  exists a. exists t0. assumption.
   apply (le_right H) with b; assumption.
-  unfold flip.
-  apply PreO.le_refl.
+  unfold flip. reflexivity.
 Qed.
 
 End InfoBaseCont.
@@ -1994,7 +1986,7 @@ intros. constructor; intros.
 - eapply le_left; eassumption.
 - apply local; assumption.
 - generalize dependent a. induction H1; intros.
-  + apply FormTop.refl. exists a. split; assumption.
+  + apply FormTop.refl. exists a; assumption.
   + apply IHGCov. eapply le_right; eassumption.
   + pose proof (ax_right H _ _ i H2).
     apply (@FormTop.trans S leS CovS FTS _ _ _ H3).  
@@ -2071,7 +2063,7 @@ constructor; unfold Cov; intros.
 - subst. assumption.
 - inv H. inv H0. exists (f a). split.
   split; reflexivity. constructor.
-- exists b. auto.
+- exists b; unfold In; auto.
 Qed.
 
 End FinFunc.
@@ -2183,8 +2175,8 @@ refine ({| lbound := fun q => exists u, q <= u /\ x u |}); intros.
   intros. unfold LowerR.Cov, InfoBase.Cov.
   exists u0. eapply Qle_lt_trans; eassumption. apply Qle_refl.
   pose proof (Cont.pt_cov ptx xu H).
-  simpl in H0. destruct H0 as (q' & xq' & qq').
-  exists q'. split. assumption. exists q'. split. apply Qle_refl.
+  simpl in H0. destruct H0 as (q' & xq' & qq'); unfold In in *.
+  exists xq'. split. assumption. exists xq'. split. apply Qle_refl.
   assumption.
 - destruct (Cont.pt_here ptx) as (l & xl).
   exists l. exists l. split. apply Qle_refl. assumption.
