@@ -659,7 +659,10 @@ Module MeetLat.
   { le : A -> A -> Prop
   ; eq : A -> A -> Prop
   ; min : A -> A -> A
-  }. 
+  }.
+
+  Local Infix "<=" := le.
+  Local Infix "===" := eq (at level 70).
 
   Arguments Ops : clear implicits.
 
@@ -678,7 +681,7 @@ Module MeetLat.
   Record morph `{OA : Ops A} `{OB : Ops B}
     {f : A -> B} : Prop :=
    { f_PO : PO.morph le eq le eq f
-   ; f_min : forall a b, eq (f (min a b)) (min (f a) (f b))
+   ; f_min : forall a b, f (min a b) === min (f a) (f b)
    }.
 
   Arguments morph {A} OA {B} OB f.
@@ -713,17 +716,17 @@ Module MeetLat.
   Section Props.
   Context `{tA : t A}.
 
-  Lemma min_l : forall l r, le (min l r) l.
+  Lemma min_l : forall l r, min l r <= l.
   Proof. 
   intros. eapply PreO.min_l. apply min_ok.
   Qed.
 
-  Lemma min_r : forall l r, le (min l r) r.
+  Lemma min_r : forall l r, min l r <= r.
   Proof. 
   intros. eapply PreO.min_r. apply min_ok.
   Qed.
 
-  Lemma min_comm : forall l r, eq (min l r) (min r l).
+  Lemma min_comm : forall l r, min l r === min r l.
   Proof.
   intros.
   apply PO.min_unique with l r.
@@ -732,7 +735,7 @@ Module MeetLat.
   Qed.
 
   Lemma min_assoc : forall a b c, 
-    eq (min a (min b c)) (min (min a b) c).
+    min a (min b c) === min (min a b) c.
   Proof. 
   intros.
   apply PO.min_unique with a (min b c).
@@ -740,7 +743,7 @@ Module MeetLat.
   - apply <- (PreO.min_assoc _ a b c); apply min_ok.
   Qed.
 
-  Lemma min_idempotent : forall a, eq (min a a) a.
+  Lemma min_idempotent : forall a, min a a === a.
   Proof.
   intros. apply PO.min_unique with a a.
   apply min_ok. apply PreO.min_idempotent. apply PO.PreO.
@@ -840,8 +843,34 @@ Module MeetLat.
    eapply PreO.min_greatest. apply min_ok. assumption. assumption.
    eapply PreO.min_greatest. apply min_ok. assumption. assumption.
    Qed. 
+
+  Lemma sc_monotone {A OA B OB} (tA : t A OA) (tB : t B OB) : forall (f : A -> B),
+      PreO.scott_cont f ->
+      forall x y : A, x <= y -> f x <= f y.
+  Proof.
+    intros. 
+    unfold PreO.scott_cont in H.
+    pose (g := fun b : bool => if b then x else y).
+    specialize (H _ g).
+    assert (@PreO.directed _ MeetLat.le _ g).
+    unfold PreO.directed.
+    intros.
+    exists y. destruct i, j; simpl; split; 
+         assumption || apply PreO.le_refl.
+    specialize (H H1 y).
+    assert (@PreO.sup _ MeetLat.le _ g y).
+    constructor.
+    intros. destruct i; simpl. assumption. apply PreO.le_refl.
+    intros. specialize (H2 false). simpl in H2.
+    assumption.
+    specialize (H H2).
+    destruct H.
+    specialize (sup_ge true). simpl in sup_ge.
+    apply sup_ge.
+  Qed.
    
 End MeetLat.
+
 
 (** A lattice is both a join semi-lattice and a meet semi-lattice;
     it has both a [max] operation and a [min] operation. Again,

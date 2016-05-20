@@ -5,8 +5,10 @@ Types/Iso.v
 Types/Finite.v
 
 FormTop/FormTop.v
+FormTop/FormTopM.v
 FormTop/FTVal.v
 FormTop/Real.v
+FormTop/Join.v
 
 Algebra/Sets.v
 

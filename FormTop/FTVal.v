@@ -41,7 +41,7 @@ Inductive JoinClose (U : S -> Prop) : S -> Prop :=
   | Join : forall a b, JoinClose U a -> JoinClose U b
     -> JoinClose U (Lattice.max a b).
 
-Require Import FormTop.
+Require Import FormTop.FormTop.
 
 Hypothesis Latt : Lattice.t S ops.
 

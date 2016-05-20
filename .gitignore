@@ -8,6 +8,7 @@ Makefile.coq.bak
 html/
 
 *~
+\#*#
 
 #Latex
 *.bbl
