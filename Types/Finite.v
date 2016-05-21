@@ -330,11 +330,8 @@ induction fa; intros b fb.
   destruct X. destruct p.
   exists x. split. assumption.
   eapply Iso.Trans. Focus 2. apply t2.
-  admit.
-  (* Here we need Iso.sigmaProp, which we have yet to prove,
-     so we cannot finish the proof here. *)
-  (*apply Iso.sigmaProp.*)
-Admitted.
+  apply Iso.sigmaProp.
+Defined.
 
 (** Sigma types are closed under finiteness. *)
 Theorem Sig {A : Type} {B : A -> Type} 

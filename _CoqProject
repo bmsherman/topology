@@ -3,6 +3,7 @@
 
 Types/Iso.v
 Types/Finite.v
+Types/Equiv.v
 
 FormTop/FormTop.v
 FormTop/FormTopM.v
