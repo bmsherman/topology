@@ -97,40 +97,46 @@ intros. induction H.
   subst. apply H1. assumption.
 Qed.
 
-Lemma unfactors1 : forall ab U, Cov ab U
-  -> CovS (fst ab) (fun s => exists b', U (s, b')).
+(** The other space has to be nonempty *)
+Lemma unfactors1 : forall a b U, Cov (a, b) U
+  -> (forall (t : T) (i : IT t), Inhabited (CT t i))
+  -> CovS a (fun s => exists b', U (s, b')).
 Proof.
-intros. induction H.
+intros. remember (a, b) as ab.
+replace (a) with (fst ab) by (rewrite Heqab; auto).
+clear a b Heqab. induction H.
 - apply FormTop.grefl. destruct a. exists t. assumption.
 - destruct a, b, H. simpl in *. 
   apply FormTop.gle_left with s0. assumption.
   assumption.
 - destruct a. destruct i.
   + destruct p. apply FormTop.ginfinity with i.
-    intros. apply (H0 (u, t)). simpl. simpl in H1.
+    intros. apply (H1 (u, t)). simpl. simpl in H1.
     intuition.
-  + destruct p. simpl.
+  + destruct p. simpl in *.
+    specialize (H0 t i). destruct H0.
+    apply (H1 (s, x)). split. reflexivity. assumption.
+Qed.
 
-pose proof locS. pose proof locT.
-Admitted.
-
-Lemma unfactors2 : forall ab U, Cov ab U
-  -> CovT (snd ab) (fun t' => exists a', U (a', t')).
+Lemma unfactors2 : forall a b U, Cov (a, b) U
+  -> (forall (s : S) (i : IS s), Inhabited (CS s i))
+  -> CovT b (fun t' => exists a', U (a', t')).
 Proof.
-intros. induction H.
+intros. remember (a, b) as ab.
+replace b with (snd ab) by (rewrite Heqab; auto).
+clear a b Heqab. induction H.
 - apply FormTop.grefl. destruct a. exists s. assumption.
 - destruct a, b, H. simpl in *. 
   apply FormTop.gle_left with t0. assumption.
   assumption.
 - destruct a. destruct i.
-  + destruct p. simpl. 
-    pose proof locS. pose proof locT.
-    admit.
+  + destruct p. simpl in *.
+    specialize (H0 s i). destruct H0.
+    apply (H1 (x, t)). split. assumption. reflexivity.
   + destruct p. apply FormTop.ginfinity with i.
-    intros. apply (H0 (s, u)). simpl. simpl in H1.
+    intros. apply (H1 (s, u)). simpl. simpl in H1.
     intuition.
-Admitted.
-
+Qed.
 
 End Product.
 End Product.
@@ -267,6 +273,13 @@ Definition parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
   let (s, t) := p in let (a, b) := out in
    F s a /\ G t b.
 
+Instance product_cov :
+  FormTop.t (prod_op leS leT) (@Product.Cov S T leS leT IS IT CS CT).
+Proof.
+apply FormTop.GCov_formtop. apply Product.PO; assumption. 
+apply Product.loc; assumption.
+Qed.
+
 Theorem t_parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
   : Cont.t leS leA CovS CovA F
   -> Cont.t leT leB CovT CovB G
@@ -293,7 +306,31 @@ constructor; intros; unfold parallel in *.
   destruct H, H0.
   pose proof (Cont.local ContF H H0).
   pose proof (Cont.local ContG H1 H2).
-  admit.
+  eapply FormTop.monotone. Focus 2.
+  eapply Product.factors; eassumption.
+  unfold Included, In; intros.
+  destruct x.
+  destruct H5 as ((a' & (a1 & a2) & Fsa) & (b' & (b1 & b2) & Gtb)).
+  exists (a', b'). unfold FormTop.down, prod_op; auto.
+- destruct a, b. destruct H. 
+  pose proof (fun VA => Cont.cov ContF VA H).
+  pose proof (fun VB => Cont.cov ContG VB H1).
+  (* I think I can do it if the spaces A and B are both
+     nonempty (as topological spaces). But if not, I
+     learn nothing from the fact that (a, b) <| V.
+
+     Actually, I'm not sure. I don't think the following
+     strategy works.
+  *)
+  eapply FormTop.gmonotone. 
+  Focus 2. eapply Product.factors; try eassumption.
+  eapply H2. eapply Product.unfactors1; try eassumption.
+  admit. eapply H3. eapply Product.unfactors2. 
+  3:eassumption. assumption. assumption. admit.
+  unfold Included, In; intros.
+  destruct x. destruct H4. destruct H4, H5.
+  destruct H4, H5. econstructor.
+  
 Admitted.
 
 End Products.
