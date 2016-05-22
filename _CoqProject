@@ -27,6 +27,7 @@ alea/BinCoeff.v
 
 Examples/Crypto/Iso.v
 
+ContPL.v
 Sample.v
 FiniteSum.v
 Valuation.v
