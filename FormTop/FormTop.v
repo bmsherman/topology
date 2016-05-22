@@ -29,7 +29,6 @@ Generalizable All Variables.
 
 Section Defn.
 
-
 (** We assume we have some type [S] equipped
     with a partial order. *)
 Context {S} {le : S -> S -> Prop} {PO : PreO.t le}.
@@ -41,14 +40,13 @@ Local Infix "<=" := le.
 Notation "U <<| V" := (forall a, In U a -> Cov a V) (at level 60) : FT_scope.
 Local Open Scope FT_scope.
 
-
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
 Definition down (a b c : S) : Prop :=
   le c a /\ le c b.
 
 Definition downset (U : Ensemble S) : Ensemble S :=
-  union U (flip le).
+  union U (fun x y => y <= x).
 
 (** Definition 2.1 of [1].
     Definition of when the [Cov] relation is indeed a formal cover.
@@ -312,6 +310,13 @@ intros. split; intros.
     simpl in *.
     apply (gle_infinity _ _ a c i). assumption.
     intros. apply H0. apply H1.
+Qed.
+
+Theorem GCovL_formtop : t le (GCovL le C).
+Proof.
+eapply t_proper. reflexivity.
+unfold Proper, respectful; intros. subst. apply cov_equiv.
+apply GCov_formtop. assumption. apply Llocalized.
 Qed.
 
 End Localize.
@@ -1062,3 +1067,84 @@ Abort.
 
 End ConcFunc.
 End ConcFunc.
+
+
+Module ImageSpace.
+Section Defn.
+Context {S : Type} {leS : S -> S -> Prop} {POS : PreO.t leS}.
+Context {IxS : S -> Type}.
+Context {CS : forall a, IxS a -> Ensemble S}.
+
+Definition CovS := FormTop.GCovL leS CS.
+Instance FTS : FormTop.t leS CovS := 
+  FormTop.GCovL_formtop CS.
+
+Context {T : Type} {leT : T -> T -> Prop} {POT : PreO.t leT}.
+Context {CovT : T -> Ensemble T -> Prop}.
+Context {FTT : FormTop.t leT CovT}.
+
+Section Defn2.
+Context {F : S -> T -> Prop} {contF : Cont.t leS leT CovS CovT F}.
+
+(** From Palmgren's
+  [Predicativity problems in point-free topology]
+*)
+Inductive Ix {a : S} : Type :=
+  | Orig : IxS a -> Ix
+  | Img : forall t, F a t -> Ix.
+
+Arguments Ix : clear implicits.
+
+Definition C (a : S) (i : Ix a) : Ensemble S := match i with
+  | Orig i' => CS a i'
+  | Img t Fat => fun s => F s t
+  end.
+
+Definition Cov := FormTop.GCovL leS C.
+
+Theorem union_Intersection : 
+  forall (A B : Type) (a b : Ensemble A) (f : A -> Ensemble B),
+  union (a ∩ b) f ⊆ union a f ∩ union b f.
+Proof.
+intros. unfold Included, In; intros. 
+destruct H. destruct H. constructor; econstructor (eauto). 
+Qed.
+
+Instance Cov_isCov : FormTop.t leS Cov.
+Proof.
+apply FormTop.GCovL_formtop.
+Qed.
+
+End Defn2.
+
+End Defn.
+
+Section ExampleDef.
+
+Context {S : Type} {leS : S -> S -> Prop} {POS : PreO.t leS}.
+Context {IxS : S -> Type}.
+Context {CS : forall a, IxS a -> Ensemble S}.
+
+Theorem id_same : forall a U, CovS (leS := leS) (CS := CS) a U <-> 
+  Cov (leS := leS) (CS := CS)
+  (F := Cont.id (leS := leS)) a U.
+Proof.
+unfold CovS, Cov, Cont.id; intros; split; intros.
+- induction H.
+  + apply FormTop.glrefl. assumption.
+  + apply FormTop.glle_left with b; assumption.
+  + apply FormTop.gle_infinity with b (Orig i).
+    assumption. assumption.
+- induction H.
+  + apply FormTop.glrefl. assumption.
+  + apply FormTop.glle_left with b; assumption.
+  + destruct i; simpl in *.
+    * apply FormTop.gle_infinity with b i; assumption.
+    * eapply H1. exists b. unfold FormTop.down.
+      repeat (split || reflexivity || assumption).
+Qed.
+
+
+End ExampleDef.
+
+End ImageSpace.
