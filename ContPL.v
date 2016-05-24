@@ -14,7 +14,8 @@ Infix "*" := product : contTy_scope.
 
 (** Cartesian monoidal categories *)
 Class CMC {U : Type} `{CCat U} : Type :=
-  { compose : forall {A B C}, B ~~> C -> A ~~> B -> A ~~> C
+  { identity : forall {A}, A ~~> A
+  ; compose : forall {A B C}, B ~~> C -> A ~~> B -> A ~~> C
  
   ; top : U
   ; top_intro : forall A : U, A ~~> top
@@ -27,8 +28,15 @@ Class CMC {U : Type} `{CCat U} : Type :=
 
   }.
 
-Infix "∘" := compose (at level 40) : contTy_scope.
+Infix "∘" := compose (at level 30) : contTy_scope.
 
+
+Class MonadCat {U : Type} `{CMC U} {M : U -> U} : Type :=
+  { ret  : forall {A}, A ~~> M A
+  ; map : forall {A B}, (A ~~> B) -> M A ~~> M B
+  ; strong : forall {A B}, A * M B ~~> M (A * B)
+  ; join : forall {A}, M (M A) ~~> M A
+  }.
 
 Import ListNotations.
 Section ContPL.
@@ -119,8 +127,6 @@ Definition makeFun (args : list U) {ret : U}
   := unsplay args (f (nprod args)) (instantiateContext args).
 
 
-
-
 Definition undefined A : A.
 Admitted.
 
@@ -140,7 +146,7 @@ Definition andB : [B; B] ~> B := undefined _.
 Infix "&&" := (Call andB) : contExp_scope.
 Definition if_then_else {A} : [B; A; A] ~> A := undefined _.
 Notation "'If' cond 'Then' thenExp 'Else' elseExp" :=
-  (Call if_then_else (cond) (thenExp) (elseExp)) (at level 120) : contExp_scope.
+  (Call if_then_else (cond) (thenExp) (elseExp)) (at level 160) : contExp_scope.
 
 
 
@@ -153,16 +159,68 @@ Notation "'FUN' x .. y => t " :=
         (x binder, y binder, at level 200, right associativity)
         : contExp_scope.
 
-Notation "'Var' b " := (_ ~~> b) (at level 30) : contExp_scope.
-
 Definition exampleFun : [B; R; R] ~> R :=
-  makeFun [B; R; R] (FUN b x y => 
+  makeFun [B; R; R] (fun _ b x y => 
    let z := x * x in 
    If b && b
      Then z + constR 3
      Else x + (x * y) + z).
 
 Definition example2 : [R] ~> R :=
-  makeFun [R] (FUN x => constR 5 + Call exampleFun (constB true) x x).
+  makeFun [R] (FUN x => let f := Call exampleFun (constB true) x in
+      f (constR 5) + f x).
+
+Definition makeFun1 {arg ret : U} (f : forall Γ, Γ ~~> arg -> Γ ~~> ret) : arg ~~> ret
+  := f arg identity.
+
+Definition squareAndAdd : R ~~> R := makeFun1 (FUN x => x * x + x).
+
+Context {M : U -> U} {MC : MonadCat (M := M)}.
+
+Definition bind {Γ} {A B} (m : Γ ~~> M A) (f : A ~~> M B) : Γ ~~> M B :=
+  join ∘ map f ∘ m.
+
+Definition Bind {Γ} {A B} (m : Γ ~~> M A) (f : (Γ * A)%cTy ~~> M B) : Γ ~~> M B :=
+ bind (strong ∘ parallel identity m ∘ diagonal) f.
+
+Definition Ret {Γ A} (x : Γ ~~> A) : Γ ~~> M A := ret ∘ x.
+
+Definition addContext {Γ ret : U} (f : Γ ~~> M ret)
+  : (Γ ~~> M (Γ * ret))%cTy 
+  := strong ∘ parallel identity f ∘ diagonal.
+
+Definition coinflip : forall {Γ}, Γ ~~> M B := undefined _.
+Definition normal : forall {Γ}, Γ ~~> M R := undefined _.
+
+
+Class Extend {Γ Δ : U} : Type := extend : Δ ~~> Γ .
+
+Arguments Extend : clear implicits.
+
+Instance Extend_Refl {Γ : U} : Extend Γ Γ := identity.
+
+Instance Extend_Prod {Γ Δ A : U} `{f : Extend Γ Δ}
+  : Extend Γ (Δ * A)%cTy := f ∘ proj1.
+
+Definition Lift {Γ Δ A} `{f : Extend Γ Δ} (x : Γ ~~> A) 
+  : Δ ~~> A := x ∘ f.
+
+Definition makeFun1E {Γ arg ret : U} 
+  (f : (Γ * arg)%cTy ~~> arg -> (Γ * arg)%cTy ~~> ret)
+  : (Γ * arg)%cTy ~~> ret := f proj2.
+
+Notation "! x" := (Lift x) (at level 20) : contExp_scope.
+
+Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f))) 
+  (at level 120, right associativity) : contExp_scope.
+
+Definition exampleProgram {Γ} : Γ ~~> M R :=
+  x <- normal;
+  b <- coinflip;
+  If b
+    Then Ret (! x)
+    Else
+      y <- normal;
+      Ret (! x + ! y).
 
 End ContPL.
