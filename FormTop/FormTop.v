@@ -1102,14 +1102,6 @@ Definition C (a : S) (i : Ix a) : Ensemble S := match i with
 
 Definition Cov := FormTop.GCovL leS C.
 
-Theorem union_Intersection : 
-  forall (A B : Type) (a b : Ensemble A) (f : A -> Ensemble B),
-  union (a ∩ b) f ⊆ union a f ∩ union b f.
-Proof.
-intros. unfold Included, In; intros. 
-destruct H. destruct H. constructor; econstructor (eauto). 
-Qed.
-
 Instance Cov_isCov : FormTop.t leS Cov.
 Proof.
 apply FormTop.GCovL_formtop.
