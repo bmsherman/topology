@@ -254,15 +254,10 @@ Qed.
 
 (** A type for evidence that a type is finite: a type is finite if
     any of the following hold:
-    a) it is True
-    b) it is False
-    c) it is a sum of finite types
-    d) it is isomorphic to a finite type
-
-    This is not minimal. We could have replaced b) and c) with the condition
-    e) it is the sum of True with a finite type
+    a) it is False
+    b) it is the sum of True with a finite type
        (this is the analog of Successor)
-    But this definition is simple so I like it.
+    c) it is isomorphic to a finite type
 *)
 
 Inductive T : Type -> Type :=
@@ -410,6 +405,86 @@ Fixpoint elementsV {A} (fin : T A) : Vector.t A (card fin) :=
      Vector.map (Iso.to iso) xs
   end.
 
+Require Import Coq.Lists.List.
+
+Import ListNotations.
+
+Fixpoint elements {A} (fin : T A) : list A 
+  := match fin in T A'  with
+  | F0 => []
+  | FS _ n => inl I :: List.map inr (elements n)
+  | FIso _ _ x iso => let xs := elements x in
+     List.map (Iso.to iso) xs
+  end.
+
+Require Import Coq.Lists.List Coq.Sorting.Permutation.
+Require Vector.
+
+Lemma Vto_list_cons : forall A (x : A) n (xs : Vector.t A n),
+  Vector.to_list (Vector.cons _ x _ xs)
+  = x :: Vector.to_list xs.
+Proof.
+intros. reflexivity.
+Qed.
+
+Lemma Vto_list_map : forall A B n (xs : Vector.t A n) (f : A -> B),
+  Vector.to_list (Vector.map f xs) = List.map f (Vector.to_list xs).
+Proof.
+intros. induction xs; auto.
+rewrite Vto_list_cons. simpl. 
+rewrite <- IHxs. reflexivity.
+Qed.
+
+Lemma injective_NoDup : forall A B xs (f : A -> B),
+  (forall x y, f x = f y -> x = y) -> NoDup xs -> NoDup (map f xs).
+Proof.
+intros. induction xs; simpl.
+- constructor.
+- inversion H0; clear H0; subst.
+  constructor. unfold not; intros contra.
+  rewrite in_map_iff in contra.
+  destruct contra as (x & fxa & inxxs).
+  apply H in fxa. subst.
+  contradiction.
+  apply IHxs. assumption.
+Qed.
+
+Lemma elements_NoDup : forall A (x : T A),
+  NoDup (elements x).
+Proof.
+intros. induction x; simpl; intros.
+- constructor.
+- constructor. unfold not. intros contra. 
+  apply in_map_iff in contra.
+  destruct contra as (x0 & contra & _).
+  congruence. 
+  apply injective_NoDup. intros; congruence.
+  unfold elements in IHx.
+  apply IHx.
+- apply injective_NoDup. intros. 
+  rewrite <- (Iso.from_to t x0), <- (Iso.from_to t y).
+  rewrite H. reflexivity.
+  apply IHx.
+Qed.
+
+Lemma elements_Full : forall A (x : T A) (a : A),
+  In a (elements x).
+Proof.
+intros. induction x.
+- contradiction.
+- destruct a.
+  + destruct t. left. reflexivity.
+  + right. apply in_map. apply IHx.
+- simpl. rewrite <- (Iso.to_from t a). apply in_map.
+  apply IHx.
+Qed.
+
+Lemma elements_Permutation : forall A (x1 x2 : T A),
+  Permutation (elements x1) (elements x2).
+Proof.
+intros. apply NoDup_Permutation; try apply elements_NoDup.
+intros; split; intros; apply elements_Full.
+Qed.
 
 Theorem fin_dec_subset {A} (fin : T A) {P : A -> Prop}
   : (forall a, {P a} + {~ P a}) -> T (sig P).
@@ -440,3 +515,16 @@ generalize dependent P. induction fin; intros P decP.
   rewrite Iso.to_from. assumption. apply proof_irrelevance.
   apply proof_irrelevance.
 Defined.
+
+(* An alternative characterization of finite types *)
+Inductive T' {A : Type} : Type := 
+  FI : forall n, Iso.T A (Fin.t n) -> T'.
+
+Arguments T' : clear implicits.
+
+Definition toAlt {A} (fin : T A) : T' A
+  := FI (card fin) (iso fin).
+
+Definition fromAlt {A} (fn : T' A) : T A := match fn with
+  FI n i => FIso (fin n) (Iso.Sym i)
+  end.

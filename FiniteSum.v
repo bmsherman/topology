@@ -4,12 +4,40 @@ Require Types.Finite Types.Iso.
 
 Local Open Scope LPR.
 
+Require Import Coq.Lists.List Coq.Sorting.Permutation.
+  
 Fixpoint sum_finite {A} (fin : Finite.T A) : (A -> LPReal) -> LPReal
   := match fin with
   | Finite.F0 => fun _ => 0
   | Finite.FS _ fin' => fun f => f (inl I) + sum_finite fin' (fun x => f (inr x))
   | Finite.FIso _ _ fin' i => fun f => sum_finite fin' (fun x => f (Iso.to i x))
   end.
+
+Definition sum_finiteE {A} (fin : Finite.T A) (f : A -> LPReal) : LPReal := 
+  fold_right LPRplus 0 (List.map f (Finite.elements fin)).
+
+Lemma sum_finiteE_same : forall A (fin : Finite.T A) f,
+  sum_finite fin f = sum_finiteE fin f.
+Proof.
+intros. induction fin; simpl.
+- unfold sum_finiteE. simpl. reflexivity.
+- unfold sum_finiteE. simpl. apply LPRplus_eq_compat.
+  reflexivity. rewrite map_map. rewrite IHfin. reflexivity.
+- unfold sum_finiteE. simpl. rewrite map_map. rewrite IHfin.
+  reflexivity.
+Qed.
+
+Require Import Ring.
+
+Lemma sum_list_perm_invariant : forall (xs ys : list LPReal),
+  Permutation xs ys -> fold_right LPRplus 0 xs = fold_right LPRplus 0 ys.
+Proof.
+intros. induction H; simpl.
+- reflexivity.
+- rewrite IHPermutation; reflexivity.
+- ring.
+- etransitivity; eassumption.
+Qed.
 
 Theorem sum_finite_equiv {A} (fin : Finite.T A) : forall f g,
   (forall a, f a = g a) -> sum_finite fin f = sum_finite fin g.
@@ -159,17 +187,7 @@ Qed.
 Theorem sum_finite_fin_equiv : forall A (fin1 fin2 : Finite.T A) f,
   sum_finite fin1 f = sum_finite fin2 f.
 Proof.
-intros.
-erewrite sum_finite_equiv. Focus 2. intros.
-rewrite (sum_finite_char fin2). reflexivity.
-induction fin2; simpl.
-- rewrite sum_finite_const. ring.
-- rewrite sum_finite_adds. erewrite sum_finite_equiv.
-  Focus 2. intros. rewrite (SRmul_comm LPRsrt).
-  rewrite (LPRind_iff _ (inl I = a)) by (split; auto). 
-  reflexivity.
-  rewrite sum_finite_scales. rewrite sum_finite_pt.
-  apply LPRplus_eq_compat. ring.
-  admit.
-- admit.
-Admitted.
+intros. rewrite !sum_finiteE_same.
+apply sum_list_perm_invariant. 
+apply Permutation_map. apply Finite.elements_Permutation.
+Qed.
