@@ -282,6 +282,8 @@ Instance FrameS : Frame.t (Ensemble S) (FormTop.FOps leS CovS)
 Instance FrameOne : Frame.t (True -> Prop) (FormTop.FOps MeetLat.le Cov)
   := FormTop.Frame MeetLat.le Cov _ FTOne.
 
+Existing Instance Frame.prop.
+
 Definition toFPoint (f : Ensemble S) (pointf : Point f) :
   Frame.cmap Frame.prop_ops (FormTop.FOps leS CovS) :=
   {| Frame.finv := fun x => Cont.frame (fun _ => f) x I 

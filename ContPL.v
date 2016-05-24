@@ -30,7 +30,7 @@ Class CMC {U : Type} `{CCat U} : Type :=
 
 Infix "∘" := compose (at level 30) : contTy_scope.
 
-
+(** Strong monads for cartesian monoidal categories *)
 Class MonadCat {U : Type} `{CMC U} {M : U -> U} : Type :=
   { ret  : forall {A}, A ~~> M A
   ; map : forall {A B}, (A ~~> B) -> M A ~~> M B

@@ -379,6 +379,8 @@ Proof. intros. unfold inject. induction v; simpl.
 - rewrite IHv1. rewrite IHv2. ring.
 Qed.
 
+Existing Instances F.prop_ops F.prop.
+
 Lemma map_point {A B OA OB} (X : F.t A OA) (Y : F.t B OB) :
   forall (f : F.cmap OA OB) (x : F.point OA),
   Val.eq (Val.map f (Val.unit x))

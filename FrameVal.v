@@ -277,6 +277,8 @@ simpl. unfold le; intros. simpl. apply LPRzero_min.
 simpl. apply fmono. assumption.
 Qed.
 
+Existing Instances JoinLat.Nat_ops JoinLat.Nat.
+
 Lemma fixnmono2 {A OA} {X : F.t A OA}
   (f : t X -> t X)
   (fmono : forall u v, (u <= v -> f u <= f v)%Val)
