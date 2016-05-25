@@ -1,4 +1,3 @@
--R /Users/Sherman/Documents/Projects/fiat-crypto/src Crypto
 -R . Prob
 
 Types/Iso.v
@@ -21,7 +20,6 @@ clement/SmallPowers.v
 
 alea/BinCoeff.v
 
-Examples/Crypto/Iso.v
 
 Sample.v
 FiniteSum.v
