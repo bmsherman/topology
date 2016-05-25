@@ -24,7 +24,6 @@ clement/SmallPowers.v
 
 alea/BinCoeff.v
 
-
 ContPL.v
 Sample.v
 FiniteSum.v
