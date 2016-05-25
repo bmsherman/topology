@@ -1,3 +1,5 @@
+Add Rec LoadPath "/Users/Sherman/Documents/Projects/fiat-crypto/src/" as Crypto.
+
 Require Import BinNums Crypto.Spec.ModularArithmetic
   Crypto.ModularArithmetic.ModularArithmeticTheorems
   BinNat BinInt
