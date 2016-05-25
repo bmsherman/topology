@@ -6,6 +6,8 @@ Class CCat {U : Type} : Type :=
   ; product : U -> U -> U
   }.
 
+Arguments CCat : clear implicits.
+
 Delimit Scope contTy_scope with cTy.
 Local Open Scope cTy.
 Infix "~~>" := CMap (at level 75) : contTy_scope.
@@ -27,6 +29,8 @@ Class CMC {U : Type} `{CCat U} : Type :=
   ; parallel : forall {A B X Y}, A ~~> X -> B ~~> Y -> A * B ~~> X * Y
 
   }.
+
+Arguments CMC U {_} : clear implicits.
 
 Infix "∘" := compose (at level 30) : contTy_scope.
 

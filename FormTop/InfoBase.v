@@ -242,6 +242,28 @@ rewrite CovEquiv.
 apply InfoBase.isCov.
 Qed.
 
+Section One_intro.
+
+Context {S : Type} {leS : S -> S -> Prop}
+  {CovS : S -> Ensemble S -> Prop}
+  {FTS : FormTop.t leS CovS}.
+
+Definition One_intro (s : S) (_ : True) : Prop := True.
+
+Theorem One_intro_cont : 
+  Cont.t leS (fun _ _ => True) CovS Cov One_intro.
+Proof.
+constructor; unfold One_intro; intros; simpl; try auto.
+- apply FormTop.refl. unfold In; simpl. constructor 1 with I.
+  unfold In; simpl. exact I.
+- apply FormTop.refl. unfold In; simpl. 
+  exists I. unfold FormTop.down; auto.
+- unfold Cov in H0. apply FormTop.refl. constructor 1 with I.
+  assumption. auto.
+Qed.
+
+End One_intro.
+
 Instance one_ops : MeetLat.Ops True := MeetLat.one_ops.
 
 Require Import Morphisms.
@@ -269,7 +291,7 @@ constructor.
   exists True. constructor. constructor 1 with (fun _ => True). constructor.
 Qed.
 
-Context {S} {leS eqS : S -> Ensemble S} {POS : PO.t leS eqS}.
+Context {S} {leS : S -> Ensemble S} {POS : PreO.t leS}.
 Variable CovS : S -> (Ensemble S) -> Prop.
 
 Definition Point (f : Ensemble S) := Cont.t MeetLat.le leS Cov CovS (fun _ => f).
