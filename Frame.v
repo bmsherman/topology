@@ -259,7 +259,7 @@ Module PreO.
 
   (** The type of propositions forms a preorder, where "<=" is
       implication. *)
-  Instance prop : t (fun (P Q : Prop) => P -> Q).
+  Local Instance prop : t (fun (P Q : Prop) => P -> Q).
   Proof. 
     constructor; auto.
   Qed.
@@ -268,7 +268,7 @@ Module PreO.
       i.e., subsets on [A] are functions of type [f : A -> Prop],
       form a preorder ordered by subset inclusion. This is actually just
       the preorder on propositions applied pointwise to functions. *)
-  Instance subset (A : Type) : @t (A -> Prop) _ := pointwise (fun _ => prop).
+  Local Instance subset (A : Type) : @t (A -> Prop) _ := pointwise (fun _ => prop).
 
 End PreO.
 
@@ -460,13 +460,13 @@ Module PO.
   - unfold pointwise_op in *. solve_proper.
   Qed. 
 
-  Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
+  Local Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof. 
   constructor; intuition.
   split; simpl in *; intros; intuition.
   Qed.
 
-  Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).
+  Local Instance subset (A : Type) : @t (A -> Prop) _ _ := pointwise (fun _ => prop).
  
 End PO.
 
@@ -568,14 +568,14 @@ Module JoinLat.
   end; simpl; auto)).
   Qed. 
 
-  Instance Nat_ops : Ops nat :=
+  Local Instance Nat_ops : Ops nat :=
     {| le := Peano.le
      ; eq := Logic.eq
      ; max := Peano.max
     |}.
 
   Require Max.
-  Instance Nat : t nat Nat_ops.
+  Local Instance Nat : t nat Nat_ops.
   Proof. constructor; intros.
   - apply PO.Nat.
   - solve_proper.
@@ -584,13 +584,13 @@ Module JoinLat.
   Qed.
 
   (** Max for propositions is the propositional OR, i.e., disjunction *)
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
      ; eq := fun P Q : Prop => P <-> Q
      ; max := fun P Q : Prop => P \/ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof. 
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -621,7 +621,7 @@ Module JoinLat.
   - unfold pointwise_op. intros. apply PO.eq_refl. 
   Qed. 
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -780,13 +780,13 @@ Module MeetLat.
   end; simpl; auto)).
   Qed. 
 
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
      ; eq := fun P Q : Prop => P <-> Q
      ; min := fun P Q : Prop => P /\ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof. 
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -817,7 +817,7 @@ Module MeetLat.
   - unfold pointwise_op. intros. apply PO.eq_refl. 
   Qed. 
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -1009,14 +1009,14 @@ Module Lattice.
   end; simpl; auto)).
   Qed. 
 
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| le := fun P Q : Prop => P -> Q
      ; eq := fun P Q : Prop => P <-> Q
      ; max := fun P Q : Prop => P \/ Q
      ; min := fun P Q : Prop => P /\ Q
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof. 
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
@@ -1053,7 +1053,7 @@ Module Lattice.
   - unfold pointwise_op. intros. apply PO.eq_refl.
   Qed. 
 
-  Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
+  Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
     := pointwise (fun _ => prop).
 
   Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
@@ -1227,12 +1227,12 @@ Module Frame.
 
   (** Propositions form a frame, where supremum is given by the
       existential quantifier. *)
-  Instance prop_ops : Ops Prop :=
+  Local Instance prop_ops : Ops Prop :=
     {| LOps := L.prop_ops
      ; sup := (fun _ f => exists i, f i)
     |}.
 
-  Instance prop : t Prop prop_ops.
+  Local Instance prop : t Prop prop_ops.
   Proof. constructor; simpl; intros.
   - apply L.prop.
   - constructor; unfold pointwise_relation in H; simpl in H;

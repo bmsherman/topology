@@ -2,12 +2,16 @@
 
 Types/Iso.v
 Types/Finite.v
+Types/Equiv.v
 
 FormTop/FormTop.v
 FormTop/FormTopM.v
 FormTop/FTVal.v
 FormTop/Real.v
 FormTop/Join.v
+FormTop/Product.v
+FormTop/InfoBase.v
+FormTop/Bundled.v
 
 Algebra/Sets.v
 
@@ -21,6 +25,7 @@ clement/SmallPowers.v
 alea/BinCoeff.v
 
 
+ContPL.v
 Sample.v
 FiniteSum.v
 Valuation.v

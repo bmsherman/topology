@@ -1,4 +1,6 @@
-Require Import FormTop.FormTop Frame Algebra.Sets Basics.
+Require Import Coq.Program.Basics 
+  FormTop.FormTop FormTop.InfoBase FormTop.Product
+  Frame Algebra.Sets.
 
 (** Here we intend to define the formal topology for the lower real
     numbers, realizing that the lower real numbers can be made into 
@@ -226,7 +228,7 @@ Definition Qnn_truncate_mult : forall x y,
    (Qnn_truncate x * Qnn_truncate y)%Qnn = Qnn_truncate (x * y).
 Proof.
 intros. apply Qnneq_prop. unfold Qnneq. simpl.
-apply Qc_is_canon.
+apply Qc_is_canon. simpl.
 Admitted.
 
 Lemma Qnn_truncate_mono : forall x y,

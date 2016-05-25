@@ -96,15 +96,6 @@ destruct (from iso2 b) eqn:beqn.
 rewrite <- beqn. rewrite to_from; reflexivity.
 Defined.
 
-(* This is in fact "true" but, without Axiom K, the construction is a little
-   bit convoluted. It is proved in the HoTT library by transferring
-   isomorphisms to equivalences. *)
-Lemma sigmaProp {A A' : Type} {B : A -> Type}
-  (iso : T A A') 
-  : T (sigT B) (sigT (fun a' => B (from iso a'))).
-Proof.
-Abort.
-
 Lemma sigTimes {A B : Type} : T (A * B) (sigT (fun _ : A => B)).
 Proof.
 refine (
@@ -368,7 +359,7 @@ refine (
   | inl a => fun px' => inl (exist (fun a' => P (inl a')) a px')
   | inr b => fun px' => inr (exist (fun b' => P (inr b')) b px')
   end px
-  ; Iso.from := fun p => match p with
+  ; from := fun p => match p with
   | inl (exist a pa) => exist _ (inl a) pa
   | inr (exist b pb) => exist _ (inr b) pb
   end
@@ -399,4 +390,110 @@ refine (
 - intros. destruct b. simpl.
   replace (elem a) with i by apply proof_irrelevance.
   reflexivity.
+Defined.
+
+
+Require Import Types.Equiv.
+
+Import EqualNotations.
+
+Local Open Scope equal. 
+
+Definition toEquiv' {A B : Type} (x : T A B) :
+(forall a : A, to x # from_to x a = to_from x (to x a)) -> Equiv.T A B :=
+  Equiv.Build_T A B (to x) (from x) (from_to x) (to_from x).
+
+Require Import Setoid.
+Lemma toEquiv {A B} (x : T A B) : Equiv.T A B.
+Proof.
+destruct x as [f g eta eps].
+refine (
+  {| Equiv.to := f
+   ; Equiv.from := g
+   ; Equiv.from_to := eta
+   ; Equiv.to_from := fun b =>
+      eq_sym (eps (f (g b)))
+    @ f # eta (g b)
+    @ eps b
+  |}).
+intros.
+pose proof (Equiv.f_equal_homotopy_commutes eta a).
+simpl in H.
+pose proof (Equiv.f_equal_natural (f := fun x => f (g x)) (g := fun x => x) eps
+  (f # eta a)).
+rewrite <- (Equiv.f_equal_compose _ _ _ f g) in H0.
+rewrite (Equiv.f_equal_compose _ _ _ g f) in H0.
+rewrite <- H in H0.
+rewrite !Equiv.f_equal_id in H0.
+rewrite <- Equiv.eq_trans_assoc.
+rewrite <- H0. 
+rewrite Equiv.eq_trans_assoc.
+rewrite Equiv.eq_sym_l.
+rewrite Equiv.eq_trans_id_l. reflexivity.
+Defined.
+
+Definition fromEquiv {A B} (x : Equiv.T A B) : T A B :=
+  {| to := Equiv.to x
+   ; from := Equiv.from x
+   ; to_from := Equiv.to_from x
+   ; from_to := Equiv.from_to x
+  |}.
+
+
+Lemma sigmaProj1_eq : forall {A A' B} {to : A -> A'} {from : A' -> A}
+  {a : A}
+  (from_to : from (to a) = a),
+  forall b,
+         existT B (from (to a)) (Equiv.transport B (eq_sym from_to) b) =
+         existT B a b.
+Proof.
+intros. rewrite from_to0.  simpl. reflexivity.
+Defined.
+
+
+Lemma sigmaProj1_eq2 : forall {A A' B} (i : Equiv.T A A')
+  (a' : A') b,
+       existT (fun a'0 : A' => B (Equiv.from i a'0)) (Equiv.to i (Equiv.from i a'))
+         (Equiv.transport B (eq_sym (Equiv.from_to i (Equiv.from i a'))) b) =
+       existT (fun a'0 : A' => B (Equiv.from i a'0)) a' b. 
+Proof.
+intros. apply EqdepFacts.eq_sigT_iff_eq_dep.
+pose proof (Equiv.lemma422 i) as eps.
+simpl in eps.
+rewrite <- eps. 
+remember (Equiv.to_from i a') as x.
+induction Heqx. rewrite x. reflexivity.
+Qed.
+
+(* This is in fact "true" but, without Axiom K, the construction is a little
+   bit convoluted. It is proved in the HoTT library by transferring
+   isomorphisms to equivalences. *)
+Lemma sigmaPropEquiv {A A' : Type} {B : A -> Type}
+  (iso : Equiv.T A A') 
+  : T (sigT B) (sigT (fun a' => B (Equiv.from iso a'))).
+Proof.
+pose iso as iso'.
+destruct iso.
+refine (
+  {| to := fun p : sigT B => let (a, b) := p in 
+      existT (fun a' => B (from0 a')) (to0 a) (Equiv.transport B (eq_sym (from_to0 a)) b)
+  ; from := fun p : sigT (fun a' => B (from0 a')) => let (a', b) := p in
+      existT B (from0 a') b
+  ; from_to := fun p : sigT B => match p with
+     existT a b => sigmaProj1_eq (from_to0 a) b
+     end
+  ; to_from := fun p : sigT (fun a' => B (from0 a')) => match p with
+     existT a' b => sigmaProj1_eq2 iso' a' b
+     end
+  |}
+).
+Defined.
+
+Definition sigmaProp {A A' : Type} {B : A -> Type}
+  (iso : T A A')
+  : T (sigT B) (sigT (fun a' => B (from iso a'))).
+Proof.
+pose (@sigmaPropEquiv A A' B (toEquiv iso)).
+simpl in t.
+destruct iso. apply t.
 Defined.

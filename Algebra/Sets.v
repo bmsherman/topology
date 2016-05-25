@@ -28,6 +28,14 @@ intros. constructor; unfold Included; intros.
 - destruct H. destruct H; [ left | right]; econstructor; eauto.
 Qed.
 
+Theorem union_Intersection : 
+  forall (A B : Type) (a b : Ensemble A) (f : A -> Ensemble B),
+  union (a ∩ b) f ⊆ union a f ∩ union b f.
+Proof.
+intros. unfold Included, In; intros. 
+destruct H. destruct H. constructor; econstructor (eauto). 
+Qed.
+
 Theorem Intersection_Included_l : forall A (U V : Ensemble A),
   U ∩ V ⊆ U.
 Proof.
