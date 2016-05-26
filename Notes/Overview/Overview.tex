@@ -1,15 +1,21 @@
+% !TEX encoding = UTF-8 Unicode
 \documentclass{article}           % use "amsart" instead of "article" for AMSLaTeX format
 \usepackage{geometry}                           % See geometry.pdf to learn the layout options. There are lots.
 \geometry{letterpaper}                          % ... or a4paper or a5paper or ... 
 %\geometry{landscape}                           % Activate for for rotated page geometry
 %\usepackage[parfill]{parskip}                  % Activate to begin paragraphs with an empty line rather than an indent
-\usepackage{graphicx}                           % Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+\usepackage{graphicx}                           % Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
                                                 % TeX will automatically convert eps --> pdf in pdflatex                
+
+\usepackage[utf8]{inputenc}
 
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
 
+\usepackage{url}
+
+\newtheorem{definition}{Definition}
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
 \newtheorem{corrolary}{Corrolary}
@@ -27,6 +33,13 @@
 \newcommand{\suchthat}{\ |\ }
 \newcommand{\concat}{\ensuremath{+\!\!\!\!+\,}}
 \newcommand{\One}{\mathsf{One}}
+\newcommand{\Dist}[1]{\mathcal{M}({#1})}
+\newcommand{\Open}[1]{\mathcal{O}({#1})}
+\newcommand{\coinflip}{\mathsf{coinflip}}
+\newcommand{\Sampler}{\mathsf{Sampler}}
+\newcommand{\bool}{\mathbb{B}}
+\newcommand{\cons}{::}
+\newcommand{\un}[1]{\ \mathrm{#1}}
 
 \title{Overview of Probability in Coq}
 \author{Ben Sherman}
@@ -446,13 +459,8 @@ Here I outline what still must be done, both in terms of what is not yet formali
   \item Show that every continuous function from $A \to \underline{\mathbb{R}}^+$ is equivalent to the supremum of simple functions. This is done in \cite{jones1990}, and the argument there should work here as well.
 \end{enumerate}
 
-\item Make it easier to deal with formal topologies in Coq and define an embedded programming language that allows us to deal with them. I'm pretty sure that they're effectively a pure programming language that lacks higher-order functions. The topologies we have should have the following structure:
-  \begin{enumerate}
-  \item All finite products, including the 0-ary product, which is the 1-point space, which are associative
-  \item The diagonal function, i.e., the continuous map $A \to A \times A$ for every topological space $A$
-  \item There's an operation, I don't know what it's called, but if we have $f : A \to X$ and $g : B \to Y$, we get $f \times g : A \times B \to X \times Y$
-  \end{enumerate}
-  As an example, consider the topological statement that if $X$ is compact and $F \subset X$ is closed, then $F$ is compact\cite{escardo2004}. This is realized by the function $\forall_F : \Sigma^X \to \Sigma$ defined by
+\item Extend the language of Cartesian monoidal categories to have support for operations talking about open sets (i.e., continuous maps $X \leadsto \Sigma$ for the Sierpinski space $\Sigma$). This requires lambda abstractions, where the space of the term being abstracted must be locally compact.
+As an example, consider the topological statement that if $X$ is compact and $F \subset X$ is closed, then $F$ is compact\cite{escardo2004}. This is realized by the function $\forall_F : \Sigma^X \to \Sigma$ defined by
 \[
 \forall_F(p) = \forall_X(\lambda x. \chi_{X \setminus F}(x) \vee p(x)).
 \]
@@ -494,6 +502,192 @@ There are interesting connections between computable measures.
 In \cite{weihrauch2014}, definition 4.2 describes what, if I understand correctly, looks like it corresponds to maps names for the generating ring (like the base for formal topology) to lower, upper, and plain-old real numbers. This paper is really difficult to read. Though, in the conclusion they say, "From all the representations of measurable sets mentioned in this article only for the representation ?+ intersection and countable union are computable. Therefore, we claim that ?+ is the most useful one for studying computability of measurable functions." That seems to be related to the idea that valuations on formal topologies should map to lower real numbers.
 
 I found \cite{collins2014} to be one of the more understandable papers on computable measure theory. It relates things closely to valuations.
+
+\section{Verified samplers}
+
+A library for topology and probability in Coq allows for the description of probabilistic programs and for reasoning about them. By using formal topology, there will be a strong notion of \emph{executing} continuous functions. However, what notions of execution do we have for probabilistic programs?
+
+One such notion is the evaluation of probabilistic programs on subsets. Given a measure $\mu : \Dist{A}$ and an open set $U : \Open{A}$, we get a lower real number indicating the likelihood of that open set. If $\mu$ is a probability distribution and $U$ is clopen, then we get a bona fide real number as a result.
+
+But another notion of execution of a probabilistic program is sampling. It seems that \cite{schroder2007} indicates that it is possible to convert a probability distribution described in my representation to a sampler, but it is necessarily a kind of metatheoretical result (in the sense that the type $A$ is required to be a quotient of a countably based (QCB) space), and I'm not entirely sure of its applicability, and I doubt the resulting samplers would be efficient.
+
+In practice, probabilistic programs may use random generators that pretend to represent a certain source of randomness, or they may in fact use a physical source of randomness that provides a random stream of some sort. Then \emph{deterministic} programs process this randomness to transform it into the desired probability distribution, and sampling is achieved in this manner.
+
+These are the sorts of programs that are \emph{actually} written and can actually be sampled, so it makes sense to give a semantics to these sampling-based programs and provide tools for synthesizing and verifying programs of this sort.
+
+We can model the source of randomness a probability distribution $\mu_R : \Dist{R}$ over a space $R$, so that these programs are functions $f : R \leadsto A$ (for some space $A$) which sample from the distribution $\map{f}{\mu_R} : \Dist{A}$.
+
+However, this class of functions is not convenient in terms of its compositional properties. For instance, it is possible to have functions $f : R \leadsto A$ and $g : R \leadsto B$ which sample the distributions $\mu_f = \map{f}{\mu_R}$ and $\mu_g = \map{g}{\mu_R}$, and yet there may be no $h : R \leadsto A \times B$ such that $h$ samples $\mu_f \times \mu_g$ (for instance, consider $\mu_R = \mu_f = \mu_g = \coinflip$; we can't generate two coinflips from one).
+
+We can define a preorder on the set of probability distributions by defining $\mu \le \nu$ if there is a function $f$ such that $\mu = \map{f}{\nu}$. The entropy $H(\cdot)$ of a probability distribution is then monotone with respect to this preorder. That is,
+\begin{theorem}[Data processing inequality (DPI)]
+If $\mu = \map{f}{\nu}$, then $H(\mu) \le H(\nu)$.
+\end{theorem}
+This suggests that if we want to be able to write samplers for distributions with arbitrarily large (or infinite) entropy, we require that $\mu_R$ has infinite entropy.
+
+The following definition of samplers has better compositionality properties.
+\begin{definition}
+A \emph{sampler} for a distribution $\mu$ on the space $A$ using a random source distribution $\mu_R$ on the space of random seeds $R$ is a function $ f : R \leadsto R \times A$ such that
+\[
+  \mathsf{map}\ f \ \mu_R = \mu_R \times \mu.
+\]
+\end{definition}
+
+Samplers form a monad, in the sense that we can make the definitions
+\begin{align*}
+\mathsf{unit} &: A \times R \leadsto R \times A
+\\ \mathsf{unit}(x, r) &= (r, x)
+\\ \mathsf{bind} &: R \leadsto R \times A \to A \times R \leadsto R \times B
+  \to R \leadsto R \times B
+\\ \mathsf{bind}(f)(g)(r) &= \mathsf{let}\ (r', x) = f(r)\ \mathsf{in}\ g(x, r')
+\end{align*}
+where $\mathsf{unit}$ samples the Dirac distribution $\delta : A \leadsto \Dist{A}$,
+and if $f$ samples $\mu_f : \Dist{A}$ and $g$ samples $\mu_g : A \leadsto \Dist{B}$, then $\mathsf{bind}(f)(g)$ samples $\mathsf{bind}(\mu_f)(\mu_g)$. This means that we can sample deterministic values, and we can compose samplers together. In a sense, this is the familiar ``state'' monad with some extra properties. In particular, if we can sample $\mu$ and also sample $\nu$, we can sample $\mu \times \nu$.
+
+Recalling that the entropy of a product distribution is the sum of the entropies, i.e.,
+\[
+H(\mu \times \nu) = H(\mu) + H(\nu),
+\]
+we can conclude that if we have a sampler for some distribution $\mu$ using the random source $\mu_R$, then using the DPI we discover that
+\[
+H(\mu_R) + H(\mu) \le H(\mu_R),
+\]
+meaning that if $\mu$ has non-zero entropy (i.e., any randomness at all), then $\mu_R$ must have infinite entropy.
+
+Notice that if we can sample $\nu$ from $\mu_R$ and if $\mu = \map{f}{\nu}$ for some $f$, then we can also sample $\mu$ from $\mu_R$. This is a useful principle for constructing new samplers. For instance, we have these constructions using this principle:
+\begin{enumerate}
+\item If we can sample $\prod_\omega \coinflip$ (the distribution of infinite sequences of unbiased coinflips), then we c sample uniformly from the real numbers over the unit interval $\mathcal{U}[0,1]$ by exhibiting a continuous map $f : \bool^\omega \leadsto \R$ such that $\map{f}{\prod_\omega \coinflip} = \mathcal{U}[0,1]$. The map $f$ would compute a real number from its binary expansion.
+\item Using the Box-Muller transform, if we can sample $\mathcal{U}[0,1]$, we can sample from a Gaussian distribution. I expect this to be a nightmare to prove.
+\end{enumerate}
+
+One particularly nice class random sources to consider is, for any $\mu_R : \Dist{R}$, the distribution $\prod_\omega \mu_R : \Dist{A^\omega}$, the distribution of infinite i.i.d. sequences drawn from $\mu_R$ (and within this, it is particularly nice to consider $\mu_R = \coinflip$). There are some interesting samplers that we can create with this source:
+\begin{enumerate}
+\item Sample a single $\mu_R$, or sample the product distribution $\prod_{k=1}^n \mu_R$ for any $n : \nat$.
+\item Sample $\prod_\omega \mu_R$ by splitting the stream of randomness into two.
+\end{enumerate}
+
+\subsection{Digression: optimally efficient samplers}
+
+As the saying goes, ``waste not, want not.'' Not all samplers are as good as others. For instance consider the random seed distribution $\prod_\omega \coinflip$ on the space $\bool^\omega$ and suppose we want to sample a random coinflip. Here are two possible implementations:
+
+\begin{align*}
+\mathsf{flip}_1 &: \bool^\omega \leadsto \bool^\omega \times \bool
+\\ \mathsf{flip}_1 (x \cons xs) &= (xs, x)
+\\ \mathsf{flip}_2 &: \bool^\omega \leadsto \bool^\omega \times \bool
+\\ \mathsf{flip}_2 (x \cons \_ \cons \_ \cons \_ \cons \_ \cons xs) &= (xs, x)
+\end{align*}
+
+We prefer $\mathsf{flip}_1$ over $\mathsf{flip}_2$, because $\mathsf{flip}_2$ wastes precious randomness, whereas $\mathsf{flip}_1$ uses only what it needs. We can quantify this notion of efficiency, and say that $\mathsf{flip}_1$ is optimally efficient in a precise sense.
+
+We will need to introduce some new language. If we have a measure $\mu : \Dist{A}$ and a function $f : A \leadsto A$ such that $\map{f}{\mu} = \mu$, we say that $f$ is a measure-preserving transformation. If $\alpha$ is a finite set of sets in the $\sigma$-algebra generated by the $A$'s topology which is pairwise disjoint and whose union is the whole space, we say that $\alpha$ is a finite partition of $A$. For two finite partitions $\alpha$ and $\beta$, we can define their common refinement $\alpha \vee \beta$ as the intersections of subsets from $\alpha$ and $\beta$. We can define the entropy of a partition $\alpha = \{\alpha_1, \ldots, \alpha_n\}$ by
+\[
+H(\mu, \alpha) = \sum_{i = 1}^n \mu(\alpha_i) \lg \frac{1}{\mu(\alpha_i)}.
+\]
+Then we define
+\[
+h_\mu(f, \alpha) = \lim_{n \to \infty} \frac{1}{n} H\left(\mu, \bigvee_{k = 1}^n f^{-k}\alpha  \right).
+\]
+With this in place, we can define the Kolmogorov-Sinai entropy of a measure-preserving map $f$ of $\mu$:
+
+\begin{definition}
+The \emph{Kolmogorov-Sinai entropy} of a measure-preserving map $f$ of $\mu$ is
+\[
+H_\mu(f) = \sup \{ h_\mu(f, \alpha) \suchthat \text{$\alpha$ is a finite partition of $A$} \}.
+\]
+\end{definition}
+
+I'd like to formulate an equivalent definition. Note every finite partition $\alpha$ is in bijective correspondence with a measurable function $g_\alpha : A \leadsto F_n$ for some finite space $F_n = \{1, \ldots, n \}$ such that $g_\alpha^{-1}(k) = \alpha_k$, meaning that $H(\mu, \alpha) = H(\map{g_\alpha}{\mu})$. We then have
+\[
+h_\mu(f, \alpha) = h_\mu(f, g_\alpha) = \lim_{n \to \infty} \frac{1}{n} H\left( \map{\left(\prod_{k = 1}^n g_\alpha \circ f^k\right)} \mu \right),
+\]
+where the product of measurable maps $f \times g$ is defined by $(f \times g)(x) = (f(x), g(x))$.
+
+This gives an alternative definition of the Kolmogorov Sinai entropy which uses measurable functions instead of partitions, and entropy of probability distributions rather than entropy of partitions:
+\[
+H_\mu(f) = \sup \left\{ h_\mu(f, g) \suchthat \text{$F$ is a finite space, $g : A \leadsto F$ is measurable} \right\}.
+\]
+
+Now, suppose that we have some $g$ such that $\map{g}{\mu}$ is independent from $\map{f}{\mu}$. By induction, it is clear that for all $k \ne \ell$, $\map{(g \circ f^k)}{\mu}$ is independent from $\map{(g \circ f^\ell)}{\mu}$, and therefore,
+\begin{align*}
+h_\mu(f, g) 
+&= \lim_{n \to \infty} \frac{1}{n} H\left( \map{\left(\prod_{k = 1}^n g \circ f^k\right)} \mu \right)
+\\ &= \lim_{n \to \infty} \frac{1}{n} H\left( \prod_{k = 1}^n \map{(g \circ f^k)}{\mu} \right)
+\\ &= \lim_{n \to \infty} \frac{1}{n} \sum_{k = 1}^n H\left( \map{(g \circ f^k)}{\mu} \right)
+\\ &= \lim_{n \to \infty} \frac{1}{n} \sum_{k = 1}^n H\left( \map{g}{\mu} \right)
+\\ &= H(\map{g}{\mu}).
+\end{align*}
+
+Note that whenever we have a sampler $f : R \leadsto R \times A$ of a distribution $\mu : \Dist{A}$ using randomness $\mu_R : \Dist{R}$, we have that $\pi_1 \circ f$ is a measure-preserving transformation of $\mu_R$, and $\map{(\pi_2 \circ f)}{\mu}$ is independent from $\map{(\pi_1 \circ f)}{\mu}$, so if $A$ is finite, we are in precisely this situation.
+\begin{theorem}
+If $f : R \leadsto R \times A$ is sampler of a distribution $\mu : \Dist{A}$ using randomness $\mu_R : \Dist{R}$, then
+\[
+H_{\mu_R}(\pi_1 \circ f) \ge H(\mu).
+\]
+\end{theorem}
+\begin{proof}
+If $A$ is finite, then 
+\[
+h_{\mu_R}(\pi_1 \circ f, \pi_2 \circ f) = H(\map{(\pi_2 \circ f)}{\mu_R}) = H(\mu),
+\]
+so
+\[
+H_{\mu_R}(f) \ge h_{\mu_R}(\pi_1 \circ f, \pi_2 \circ f) = H(\mu).
+\]
+The proof can be extended in a straightforward way if $A$ is not finite (using the fact that entropy can be continuously approximated by finite partitions).
+\end{proof}
+
+This theorem says that if we want to produce a distribution with a certain amount of randomness, the function we apply to the random source must be at least that random/chaotic. It suggests a definition of optimally efficient samplers:
+
+\begin{definition}
+A sampler $f : R \leadsto R \times A$ of a distribution $\mu : \Dist{A}$ using randomness $\mu_R : \Dist{R}$ is \emph{optimally efficient} if
+\[
+H_{\mu_R}(\pi_1 \circ f) = H(\mu).
+\]
+\end{definition}
+
+Returning to the original example, we have that $H(\coinflip) = 1\un{bit}$, $H_{\prod_\omega \coinflip}(\pi_1 \circ \mathsf{flip_1}) = 1 \un{bit}$ and $H_{\prod_\omega \coinflip}(\pi_1 \circ \mathsf{flip_2}) = 5 \un{bits}$, so $\mathsf{flip_1}$ is an optimally efficient sampler, while $\mathsf{flip_2}$ is not.
+
+Kolmogorov-Sinai entropy is a fairly sophisticated concept, so I'm not sure that we will be able to do much in the way of formal proof regarding these definitions. However, I think this notion of sampler efficiency enriches the theory of random samplers.
+
+\subsection{Partial samplers}
+
+Unfortunately, many interesting samplers are not total. For instance, consider the sampler of a biased coinflip with a bias with the binary expansion $0.b_1 b_2 \ldots$ from a stream of unbiased coinflips. We would like to define the sampler as follows:
+\begin{align*}
+\mathsf{bias} &: \bool^\omega \times \bool^\omega \leadsto \bool^\omega \times \bool
+\\ \mathsf{bias}(b \cons bs, r \cons rs) &= \mathsf{if}\ b < r\ \mathsf{then}\ (rs, \mathsf{false})
+  \ \mathsf{else}\ \mathsf{if}\ b > r\ \mathsf{then}\ (rs, \mathsf{true})\ \mathsf{else}\ \mathsf{bias}(bs, rs)
+\end{align*}
+
+But in the case that $b \cons bs = r \cons rs$, this function does not terminate! The recursion in the above definition is not well-founded. Fortunately, this event occurs with measure 0, because the randomness ($\prod_\omega \coinflip$) is distributed uniformly at random.
+
+The solution is to use the topological construction of \emph{one-point compactification} to allow general fixpoints. Given any space $A$, we can adjoin a bottom element $\bot_A$ and modify the topology, so that the compactified space $A_\bot$ has least fixed points. We think of $\bot_A$ as indicating nontermination. This construction is just the generalization of lifted domains in domain theory. So the correct type of $\mathsf{bias}$ is
+\[
+\mathsf{bias} : \bool^\omega \times \bool^\omega \leadsto \left( \bool^\omega \times \bool \right)_\bot.
+\]
+
+Since $\Open{A} \subseteq \Open{A_\bot}$\footnote{Maybe it is more correct to say $\Open{A} \hookrightarrow \Open{A_\bot}$.}, it is straightforward to define $\mathsf{unlift} : \Dist{A_\bot} \to \Dist{A}$. For a partial measure $\mu : \Dist{A_\bot}$, we will have
+\[
+\mu(A_\bot) = \mathsf{unlift}(\mu)(A)
+\]
+if $\mu$ ``terminates'' with probability 1. Now we can define a relaxed notion of samplers which are allowed to be partial:
+
+\begin{definition}
+A \emph{partial sampler} for a distribution $\mu$ on the space $A$ using a random source distribution $\mu_R$ on the space of random seeds $R$ is a function $ f : R \leadsto \left(R \times A \right)_\bot$ such that
+\[
+ \mathsf{unlift}\left(\mathsf{map}\ f \ \mu_R\right) = \mu_R \times \mu.
+\]
+\end{definition}
+
+The definition of a partial sampler necessarily implies that $f$ must terminate with probability 1. With partial samplers, we can construct many more interesting classes of samplers:
+
+\begin{enumerate}
+\item Sample the geometric distribution from $\prod_\omega \coinflip$ by drawing coinflips until we get a ``heads'' value.
+\item We can sample a biased coinflip from a stream of unbiased coinflips using the example construction discussed above.
+\item If we can sample a real number from $\mathcal{U}[0,1]$, then we can sample a biased coinflip (Bernoulli distribution) with weight $p \in [0,1]$. This is achieved by doing an order comparison on the real number that we draw with the bias $p$. This doesn't terminate, but it does terminate with probability 1! Note that this construction is very wasteful in its randomness compared to $\mathsf{bias}$.
+\item We can generate a Poisson distribution according to the algorithm in \url{https://en.wikipedia.org/wiki/Poisson_distribution#Generating_Poisson-distributed_random_variables}. Note that a straightforward translation of this algorithm would be wasteful in its usage of randomness, generating entire real numbers, while in reality we only need a finite amount of randomness.
+\item We can formulate the general principle of rejection sampling.
+\item We can formulate the general principle of inverse transform sampling. Again, it would be interesting to see how we can design an inverse transform sampling so that it is not wasteful in its use of randomness.
+\end{enumerate}
 
 \bibliographystyle{alpha}
 \bibliography{Overview}
