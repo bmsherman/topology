@@ -631,7 +631,7 @@ h_{\mu_R}(\pi_1 \circ f, \pi_2 \circ f) = H(\map{(\pi_2 \circ f)}{\mu_R}) = H(\m
 \]
 so
 \[
-H_{\mu_R}(f) \ge h_{\mu_R}(\pi_1 \circ f, \pi_2 \circ f) = H(\mu).
+H_{\mu_R}(\pi_1 \circ f) \ge h_{\mu_R}(\pi_1 \circ f, \pi_2 \circ f) = H(\mu).
 \]
 The proof can be extended in a straightforward way if $A$ is not finite (using the fact that entropy can be continuously approximated by finite partitions).
 \end{proof}
@@ -678,7 +678,9 @@ A \emph{partial sampler} for a distribution $\mu$ on the space $A$ using a rando
 \]
 \end{definition}
 
-The definition of a partial sampler necessarily implies that $f$ must terminate with probability 1. With partial samplers, we can construct many more interesting classes of samplers:
+The definition of a partial sampler necessarily implies that $f$ must terminate with probability 1. Note that every total sampler can be turned into a partial sampler, and that partial samplers enjoy the same compositionality properties as total samplers.
+
+With partial samplers, we can construct many more interesting classes of samplers:
 
 \begin{enumerate}
 \item Sample the geometric distribution from $\prod_\omega \coinflip$ by drawing coinflips until we get a ``heads'' value.
