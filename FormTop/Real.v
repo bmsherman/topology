@@ -119,6 +119,8 @@ Require Import Algebra.Sets.
 Module LPRFuncs.
 Require Import QArith.
 
+Definition lift_op (op : Q -> Q) (arg result : Q) : Prop := result < op arg.
+
 Definition lift_binop (op : Q -> Q -> Q) (args : Q * Q) (result : Q) : Prop :=
   let (l, r) := args in (result < op l r).
 
@@ -129,9 +131,12 @@ Definition plusU (addends : Q * Q) (sum : Q) :  Prop :=
 
 Require Import QArith.Qminmax.
 
+Local Instance prod_ops : MeetLat.Ops (Q * Q) := 
+  MeetLat.product_ops LowerR.ops LowerR.ops.
+
 Theorem lift_binop_cont_ib : forall op
   (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'), 
-  InfoBaseCont.t (MeetLat.product_ops LowerR.ops LowerR.ops)
+  InfoBaseCont.t MeetLat.le
   LowerR.ops (lift_binop op).
 Proof.
 intros. constructor; unfold lift_binop; intros;
@@ -219,7 +224,7 @@ Qed.
 Require Import Qnn.
 
 Definition lift_binop_nn (op : Qnn -> Qnn -> Qnn) (args : Q * Q) (result : Q) : Prop :=
-  let (l, r) := args in (Qnn_truncate result <= op (Qnn_truncate l) (Qnn_truncate r))%Qnn.
+  let (l, r) := args in result >= 0 -> (Qnn_truncate result < op (Qnn_truncate l) (Qnn_truncate r))%Qnn.
 
 Require Import Qcanon. 
 Local Close Scope Qc.
@@ -235,6 +240,16 @@ Lemma Qnn_truncate_mono : forall x y,
   x <= y -> (Qnn_truncate x <= Qnn_truncate y)%Qnn.
 Proof.
 intros. unfold Qnnle. simpl. 
+Admitted.
+
+Lemma Qnn_truncate_inc : forall x y,
+  x >= 0 -> x < y -> Qnn_truncate x < Qnn_truncate y.
+Proof.
+Admitted.
+
+Lemma Qnn_truncate_co_inc : forall x y,
+  Qnn_truncate x < Qnn_truncate y -> x < y.
+Proof.
 Admitted.
 
 Lemma Qnn_truncate_co_mono : forall x y, 
@@ -261,28 +276,35 @@ Proof.
 constructor; intros.
 - unfold lift_binop_nn. simpl.
   destruct s as (l & r).
-  exists (l * r - 1). intros.
+  exists (l * r - 1). unfold In. intros.
   rewrite Qnn_truncate_mult.
-  apply Qnn_truncate_mono. 
-  rewrite Qle_minus_iff. ring_simplify. firstorder.
+  apply Qnn_truncate_inc. assumption.
+  rewrite Qlt_minus_iff. ring_simplify. firstorder.
 - unfold lift_binop_nn in *.
   destruct a.  simpl. 
   apply FormTop.grefl. exists (Qmax b c).
   split. split. apply Q.le_max_l. apply Q.le_max_r.
   
   rewrite Qnn_truncate_mult in *. intros.
-  rewrite Qnn_truncate_max. apply Qnnmax_induction; intros; assumption. 
+  apply Qnn_truncate_inc. assumption.
+  destruct (Q.max_dec b c) as [bc | bc]; rewrite bc in *;
+  apply Qnn_truncate_co_inc.
+  + apply H. assumption.
+  + apply H0. assumption.
 - unfold lift_binop_nn in *. destruct a, c.
   destruct H. simpl in *. intros.  
-  rewrite H0 by assumption. 
+  eapply Qlt_le_trans. apply H0. assumption.
   apply Qnnmult_le_compat; apply Qnn_truncate_mono; assumption.
-- unfold lift_binop_nn in *. destruct a. rewrite <- H.
-  apply Qnn_truncate_mono. assumption.
+- unfold lift_binop_nn in *. destruct a. intros. 
+  eapply Qle_lt_trans. 2: apply H. apply Qnn_truncate_mono.
+  assumption. rewrite <- H0. assumption.
 - unfold lift_binop_nn in *. destruct a.
   destruct j; simpl.
   + apply FormTop.grefl. exists (Qmin q1 b). split; intros. 
-    symmetry. apply Q.min_l_iff. assumption. rewrite <- H. 
+    symmetry. apply Q.min_l_iff. assumption. 
+    eapply Qle_lt_trans. 2: apply H.
     apply Qnn_truncate_mono. apply Q.le_min_r.
+    etransitivity. apply H0. apply Q.le_min_r.
   + apply FormTop.ginfinity with (inr (q, None)). simpl. intros.
     destruct u. destruct H0. subst. 
     apply FormTop.ginfinity with (inl (None, q2)). simpl. intros.
@@ -291,11 +313,19 @@ constructor; intros.
     destruct (Qlt_le_dec b 0).
     * destruct (Qbetween b 0 q3) as (mid & (midl & midh)).
       exists mid. split. assumption. rewrite Qnn_truncate_0. 
-      rewrite <- Qnn_truncate_0 with b. rewrite H. 
-      apply Qnnmult_le_compat; apply Qnn_truncate_mono; apply Qlt_le_weak; assumption.
+      rewrite <- Qnn_truncate_0 with b. intros.
+      apply Qle_not_lt in H2. contradiction.
       apply Qlt_le_weak; assumption. apply Qlt_le_weak; assumption.
-    * (** Perhaps I need to use a strict inequality? I think that caused
-          problems in other places? *)
-Abort.
+    * specialize (H q3). 
+      destruct (Qbetween b (q * q0)) as (mid & (midl & midh)). 
+      apply Qnn_truncate_co_inc. rewrite <- Qnn_truncate_mult. apply H.
+      exists mid. split. assumption. intros. 
+      eapply Qlt_le_trans. apply Qnn_truncate_inc. assumption.
+      apply midh. rewrite <- Qnn_truncate_mult.
+      apply Qnnmult_le_compat; apply Qnn_truncate_mono; 
+      apply Qlt_le_weak; assumption.
+Qed.
+
+Definition LPRC := ImageSpace.C LowerR.C' (lift_op (Qmax 0)).
 
 End LPRFuncs.

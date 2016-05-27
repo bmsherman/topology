@@ -1075,15 +1075,13 @@ Context {S : Type} {leS : S -> S -> Prop} {POS : PreO.t leS}.
 Context {IxS : S -> Type}.
 Context {CS : forall a, IxS a -> Ensemble S}.
 
-Definition CovS := FormTop.GCovL leS CS.
+Let CovS := FormTop.GCovL leS CS.
 Instance FTS : FormTop.t leS CovS := 
   FormTop.GCovL_formtop CS.
 
 Context {T : Type} {leT : T -> T -> Prop} {POT : PreO.t leT}.
 Context {CovT : T -> Ensemble T -> Prop}.
 Context {FTT : FormTop.t leT CovT}.
-
-Section Defn2.
 Context {F : S -> T -> Prop} {contF : Cont.t leS leT CovS CovT F}.
 
 (** From Palmgren's
@@ -1107,9 +1105,25 @@ Proof.
 apply FormTop.GCovL_formtop.
 Qed.
 
-End Defn2.
+Context {U : Type} {leU : U -> U -> Prop} {POU : PreO.t leU}.
+Context {CovU : U -> Ensemble U -> Prop}.
+Context {FTU : FormTop.t leU CovU}.
+
+(** Should make a general theorem that says that if I have two covering
+    axiom sets C and C', and in the correct sense C ⊆ C', then
+    a <|_C U -> a <|_C' U.
+*)
+Theorem cont_preserved : forall (G : S -> U -> Prop),
+  Cont.t leS leU CovS CovU G ->
+  Cont.t leS leU Cov  CovU G.
+Proof.
+Admitted.
 
 End Defn.
+
+Arguments Ix {S} IxS {T} F a : clear implicits.
+Arguments Cov {S} leS {IxS} CS {T} F _ _ : clear implicits.
+Arguments C {S} {IxS} CS {T} F _ _ _ : clear implicits.
 
 Section ExampleDef.
 
@@ -1117,11 +1131,10 @@ Context {S : Type} {leS : S -> S -> Prop} {POS : PreO.t leS}.
 Context {IxS : S -> Type}.
 Context {CS : forall a, IxS a -> Ensemble S}.
 
-Theorem id_same : forall a U, CovS (leS := leS) (CS := CS) a U <-> 
-  Cov (leS := leS) (CS := CS)
-  (F := Cont.id (leS := leS)) a U.
+Theorem id_same : forall a U, FormTop.GCovL leS CS a U <-> 
+  Cov leS CS (Cont.id (leS := leS)) a U.
 Proof.
-unfold CovS, Cov, Cont.id; intros; split; intros.
+unfold Cov, Cont.id; intros; split; intros.
 - induction H.
   + apply FormTop.glrefl. assumption.
   + apply FormTop.glle_left with b; assumption.

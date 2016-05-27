@@ -88,7 +88,7 @@ Generalizable All Variables.
 
 Require Import Morphisms.
 
-Context {S} `{MLS : MeetLat.t S}.
+Context {S} {leS : S -> S -> Prop} {PreO : PreO.t leS}.
 Context {T} `{MLT : MeetLat.t T}.
 
 Record pt {F : Ensemble T} : Prop :=
@@ -107,7 +107,7 @@ Admitted.
 (** I have no idea whether this is in fact
     a good definition *)
 Record t {F : S -> T -> Prop} :=
-  { le_left : forall a b c, MeetLat.le a b -> F b c -> F a c
+  { le_left : forall a b c, leS a b -> F b c -> F a c
   ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
   ; local : forall {a b c}, F a b -> F a c -> F a (MeetLat.min b c)
   ; here : forall s, Inhabited (F s)
@@ -115,27 +115,39 @@ Record t {F : S -> T -> Prop} :=
 
 Arguments t : clear implicits.
 
-
-Let CovS : S -> (Ensemble S) -> Prop := @InfoBase.Cov _ MeetLat.le.
+Variable CovS : S -> Ensemble S -> Prop.
+Hypothesis FTS : FormTop.t leS CovS.
 Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
 
 Theorem cont : forall (F : S -> T -> Prop),
   t F
-  -> Cont.t MeetLat.le MeetLat.le CovS CovT F.
+  -> Cont.t leS MeetLat.le CovS CovT F.
 Proof.
 intros. constructor; intros.
-- unfold CovS, InfoBase.Cov. exists a. 
-  apply (here H). unfold flip. apply PreO.le_refl.
+- unfold InfoBase.Cov. apply FormTop.refl.
+  apply (here H).
 - eapply (le_left H); eassumption. 
-- unfold CovS, InfoBase.Cov. exists a. 
+- unfold InfoBase.Cov. apply FormTop.refl. unfold In. 
   exists (MeetLat.min b c). split. 
   split; apply MeetLat.min_ok. apply local; assumption.
-  unfold flip. reflexivity.
-- unfold CovT, CovS, InfoBase.Cov in *. 
+- unfold CovT, InfoBase.Cov in *. 
   destruct H1 as [t0 Vt0 bt0].
-  exists a. exists t0. assumption.
+  apply FormTop.refl. exists t0. assumption.
   apply (le_right H) with b; assumption.
-  unfold flip. reflexivity.
+Qed.
+
+Definition lift_op (f : S -> T) (x : S) (y : T) : Prop :=
+  MeetLat.le (f x) y.
+
+Definition lift_monotone (f : S -> T)
+  (fmono : forall x y, leS x y -> MeetLat.le (f x) (f y))
+  : t (lift_op f).
+Proof.
+constructor; unfold lift_op; intros.
+- etransitivity. apply fmono. eassumption. assumption. 
+- etransitivity; eassumption.
+- apply MeetLat.min_ok; assumption.
+- econstructor. unfold In. reflexivity.
 Qed.
 
 End InfoBaseCont.
@@ -149,7 +161,7 @@ Context {S : Type} {SOps} {MLS : MeetLat.t S SOps}.
 
 Instance OneOps : MeetLat.Ops True := MeetLat.one_ops.
 
-Theorem to_pt : forall (F : True -> Ensemble S), t F ->
+Theorem to_pt : forall (F : True -> Ensemble S), t (leS := MeetLat.le) F ->
   pt (F I).
 Proof.
 intros. constructor; intros.
@@ -158,7 +170,7 @@ intros. constructor; intros.
 - apply (here H).
 Qed.
 
-Theorem from_pt : forall (F : Ensemble S), pt F -> t (fun _ => F).
+Theorem from_pt : forall (F : Ensemble S), pt F -> t (leS := MeetLat.le) (fun _ => F).
 Proof.
 intros. constructor; intros.
 - assumption.
@@ -171,8 +183,8 @@ Context {T TOps} {MLT : MeetLat.t T TOps}.
 Context {U UOps} {MLU : MeetLat.t U UOps}.
 
 Theorem t_compose (F : S -> T -> Prop) (G : T -> U -> Prop)
-  : t F -> t G
-  -> t (compose F G).
+  : t (leS := MeetLat.le) F -> t (leS := MeetLat.le) G
+  -> t (leS := MeetLat.le) (compose F G).
 Proof.
 intros HF HG.
 constructor; unfold compose; intros.
@@ -205,7 +217,7 @@ Definition eval (F : S -> T -> Prop) (x : Ensemble S) (t : T) : Prop :=
 
 Require Import Morphisms.
 Theorem eval_pt (F : S -> T -> Prop) (x : Ensemble S)
-  : pt x -> t F -> pt (eval F x).
+  : pt x -> t (leS := MeetLat.le) F -> pt (eval F x).
 Proof.
 intros Hx HF.
 pose proof (t_compose (fun _ => x) F (from_pt _ Hx) HF).
