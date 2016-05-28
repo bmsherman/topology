@@ -1,5 +1,7 @@
 Require Import Coq.Program.Basics 
-  FormTop.FormTop FormTop.InfoBase FormTop.Product
+  FormTop.FormTop 
+  FormTop.Cont
+  FormTop.InfoBase FormTop.Product
   Frame Algebra.Sets.
 
 (** Here we intend to define the formal topology for the lower real
@@ -121,7 +123,7 @@ Require Import QArith.
 
 Definition lift_op (op : Q -> Q) (arg result : Q) : Prop := result < op arg.
 
-Definition lift_binop (op : Q -> Q -> Q) (args : Q * Q) (result : Q) : Prop :=
+Definition lift_binop (op : Q -> Q -> Q) (result : Q) (args : Q * Q) : Prop :=
   let (l, r) := args in (result < op l r).
 
 Definition plusL := lift_binop Qplus.
@@ -148,7 +150,7 @@ end; simpl in *.
   apply le_compat; assumption.
 - eapply Qle_lt_trans; eassumption.
 - apply Q.max_lub_lt; assumption.
-- exists (op q q0 - 1). apply Qlt_minus_iff.
+- exists (op q q0 - 1). constructor. apply Qlt_minus_iff.
   ring_simplify. reflexivity.
 Qed.
 
@@ -165,12 +167,13 @@ Theorem lift_binop_cont : forall op
 Proof.
 intros.
 constructor; intros.
-- destruct s as (a & b). exists (op a b - 1).
+- apply FormTop.grefl. destruct a as (a & b). exists (op a b - 1).
+  constructor.
   apply Qlt_minus_iff. ring_simplify.
   reflexivity.
 - destruct a as (a1 & a2). simpl in *.
   apply FormTop.grefl. exists (Qmax b c).
-  split. split; [apply Q.le_max_l | apply Q.le_max_r ].
+  split; [apply Q.le_max_l | apply Q.le_max_r ].
   simpl. apply Q.max_lub_lt; assumption.
 - destruct a, c. simpl in *. unfold prod_op in *.
   destruct H as (pr1 & pr2). simpl in *.
@@ -179,10 +182,10 @@ constructor; intros.
   eapply Qle_lt_trans; eassumption.
 - destruct a as (a1 & a2). 
   simpl; apply FormTop.grefl; destruct j; simpl in *.
-  + exists (Qmin q b). split. symmetry. apply Q.min_l_iff. assumption.
+  + exists (Qmin q b). unfold In. symmetry. apply Q.min_l_iff. assumption.
     eapply Qle_lt_trans. apply Q.le_min_r. assumption.
   + destruct (Qbetween b (op a1 a2) H) as (mid & between).
-    exists mid. apply between.
+    exists mid. apply between. apply between.
 Qed.
 
 Instance FTR : FormTop.t (fun x y => x >= y) LowerR.Cov'
@@ -212,7 +215,8 @@ Definition LReal_to_pt (x : LReal) : Cont.pt (fun x y => x >= y) LowerR.Cov' (lb
 Proof.
 constructor; intros.
 - apply nonempty.
-- exists (Qmax b c). split. split. apply Q.le_max_l. apply Q.le_max_r.
+- exists (Qmax b c). split. constructor. apply Q.le_max_l. apply Q.le_max_r.
+  unfold In;
   destruct (Q.max_dec b c); setoid_rewrite q; assumption.
 - unfold LowerR.Cov', LowerR.Cov, InfoBase.Cov in H0.
   destruct (uopen x _ H) as (x0 & bx0 & xx0).
@@ -223,7 +227,7 @@ Qed.
 
 Require Import Qnn.
 
-Definition lift_binop_nn (op : Qnn -> Qnn -> Qnn) (args : Q * Q) (result : Q) : Prop :=
+Definition lift_binop_nn (op : Qnn -> Qnn -> Qnn) (result : Q) (args : Q * Q) : Prop :=
   let (l, r) := args in result >= 0 -> (Qnn_truncate result < op (Qnn_truncate l) (Qnn_truncate r))%Qnn.
 
 Require Import Qcanon. 
@@ -274,18 +278,18 @@ Definition mult_cont : IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y)
   (lift_binop_nn Qnnmult).
 Proof.
 constructor; intros.
-- unfold lift_binop_nn. simpl.
-  destruct s as (l & r).
-  exists (l * r - 1). unfold In. intros.
+- apply FormTop.grefl. unfold lift_binop_nn. simpl.
+  destruct a as (l & r).
+  exists (l * r - 1). unfold In. constructor. intros.
   rewrite Qnn_truncate_mult.
   apply Qnn_truncate_inc. assumption.
   rewrite Qlt_minus_iff. ring_simplify. firstorder.
 - unfold lift_binop_nn in *.
   destruct a.  simpl. 
   apply FormTop.grefl. exists (Qmax b c).
-  split. split. apply Q.le_max_l. apply Q.le_max_r.
+  split. apply Q.le_max_l. apply Q.le_max_r.
   
-  rewrite Qnn_truncate_mult in *. intros.
+  intros. rewrite Qnn_truncate_mult in *. intros.
   apply Qnn_truncate_inc. assumption.
   destruct (Q.max_dec b c) as [bc | bc]; rewrite bc in *;
   apply Qnn_truncate_co_inc.
@@ -300,8 +304,9 @@ constructor; intros.
   assumption. rewrite <- H0. assumption.
 - unfold lift_binop_nn in *. destruct a.
   destruct j; simpl.
-  + apply FormTop.grefl. exists (Qmin q1 b). split; intros. 
+  + apply FormTop.grefl. exists (Qmin q1 b). unfold In; intros. 
     symmetry. apply Q.min_l_iff. assumption. 
+    intros. 
     eapply Qle_lt_trans. 2: apply H.
     apply Qnn_truncate_mono. apply Q.le_min_r.
     etransitivity. apply H0. apply Q.le_min_r.
@@ -312,14 +317,14 @@ constructor; intros.
     apply FormTop.grefl.
     destruct (Qlt_le_dec b 0).
     * destruct (Qbetween b 0 q3) as (mid & (midl & midh)).
-      exists mid. split. assumption. rewrite Qnn_truncate_0. 
-      rewrite <- Qnn_truncate_0 with b. intros.
+      exists mid. assumption. intros. rewrite Qnn_truncate_0. 
+      rewrite <- Qnn_truncate_0 with b.
       apply Qle_not_lt in H2. contradiction.
       apply Qlt_le_weak; assumption. apply Qlt_le_weak; assumption.
     * specialize (H q3). 
       destruct (Qbetween b (q * q0)) as (mid & (midl & midh)). 
       apply Qnn_truncate_co_inc. rewrite <- Qnn_truncate_mult. apply H.
-      exists mid. split. assumption. intros. 
+      exists mid. assumption. intros. 
       eapply Qlt_le_trans. apply Qnn_truncate_inc. assumption.
       apply midh. rewrite <- Qnn_truncate_mult.
       apply Qnnmult_le_compat; apply Qnn_truncate_mono; 
@@ -327,5 +332,26 @@ constructor; intros.
 Qed.
 
 Definition LPRC := ImageSpace.C LowerR.C' (lift_op (Qmax 0)).
+
+Definition LPRIx := ImageSpace.Ix LowerR.Ix' (lift_op (Qmax 0)).
+
+Existing Instance LowerR.ML.
+
+Local Instance preOQ : PreO.t (fun x y : Q => y <= x). 
+apply LowerR.ML. 
+Qed.
+
+Local Instance prodPreO : PreO.t (prod_op (fun x y : Q => y <= x)
+                                     (fun x y : Q => y <= x)).
+Proof.
+apply PreO.product; typeclasses eauto.
+Qed.
+
+Definition mult_cont_LPR : IGCont.t (prod_op (fun x y => x >= y) (fun x y => x >= y))
+  (FormTop.GCovL (prod_op (fun x y => x >= y) (fun x y => x >= y)) (Product.C _ _ _ _ LPRC LPRC))
+  (fun x y => x >= y) LPRC
+  (lift_binop_nn Qnnmult).
+Proof.
+Abort.
 
 End LPRFuncs.

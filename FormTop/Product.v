@@ -1,4 +1,4 @@
-Require Import FormTop.FormTop Frame Algebra.Sets.
+Require Import FormTop.FormTop Frame Algebra.Sets FormTop.Cont.
 
 (** Product spaces for inductively generated formal topologies.
     See Section 4.3 of [1]. *)
@@ -86,13 +86,13 @@ intros. induction H.
   + apply FormTop.grefl. split; assumption.
   + eapply FormTop.gle_left. 2:apply IHGCov.
     split; simpl. apply PreO.le_refl. assumption.
-  + apply FormTop.ginfinity with (inr (a, i)).
+  + apply FormTop.ginfinity with (inr (IS a * T) (a, i)).
     intros. simpl in H2. destruct u. destruct H2. 
     subst. apply H1. assumption.
 - apply FormTop.gle_left with (b0, b). split; simpl.
   assumption. apply PreO.le_refl.
   apply IHGCov.
-- apply FormTop.ginfinity with (inl (i, b)).
+- apply FormTop.ginfinity with (inl (S * IT b) (i, b)).
   intros. simpl in H2. destruct u. destruct H2. 
   subst. apply H1. assumption.
 Qed.
@@ -149,21 +149,22 @@ Context {IS} {CS : forall (s : S), IS s -> (Ensemble S)}.
 Variable locS : FormTop.localized leS CS.
 Let CovS := FormTop.GCov leS CS.
 
-Definition diagonal (p : S) (out : S * S) : Prop :=
+Definition diagonal (out : S * S) (p : S) : Prop :=
   let (out1, out2) := out in leS p out1 /\ leS p out2.
 
 Lemma t_diagonal : Cont.t leS (prod_op leS leS)
   CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
 Proof.
-pose proof (FormTop.GCov_formtop _ IS CS locS) as FTS.
+pose proof (FormTop.GCov_formtop _ _ locS) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
-- apply FormTop.refl. exists (a, a). split; apply PreO.le_refl.
+- apply FormTop.refl. exists (a, a). split.
+  split; reflexivity. 
 - destruct b. destruct H0.
   split; eauto using PreO.le_trans. 
 - destruct b, c. destruct H, H0.
   apply FormTop.refl. exists (a, a).
-  split. split; unfold prod_op; simpl; split; assumption.
-  split; apply PreO.le_refl.
+  split. split; unfold prod_op; simpl; eauto.
+  split; eauto. split; reflexivity.
 - generalize dependent a. induction H0; intros.
   + apply FormTop.refl. exists a. assumption. assumption. 
   + apply IHGCov. destruct a, b, H. simpl in *. 
@@ -195,7 +196,7 @@ Context {IT} {CT : forall (t : T), IT t -> (T -> Prop)}.
 Variable locT : FormTop.localized leT CT.
 Let CovT := FormTop.GCov leT CT.
 
-Definition proj_L (p : S * T) (out : S) : Prop :=
+Definition proj_L (out : S) (p : S * T) : Prop :=
   let (s1, t1) := p in leS s1 out.
 
 Lemma t_proj_L : Cont.t (prod_op leS leT) leS 
@@ -203,11 +204,12 @@ Lemma t_proj_L : Cont.t (prod_op leS leT) leS
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_L in *.
-- apply FormTop.refl. destruct a. exists s. unfold In. reflexivity.
+- apply FormTop.refl. destruct a. exists s. unfold In.
+  constructor. reflexivity.
 - destruct c, a.  destruct H. simpl in H, H1. 
   eapply PreO.le_trans; eassumption.
 - destruct a. apply FormTop.refl. 
-  exists s. split. split; assumption. apply PreO.le_refl. 
+  exists s. split; assumption. reflexivity. 
 - destruct a. generalize dependent s. induction H0; intros.
   + apply FormTop.refl. exists a; assumption.
   + apply FormTop.le_left with (b, t).
@@ -225,7 +227,7 @@ constructor; intros; unfold proj_L in *.
     destruct downu. assumption.
 Qed.
 
-Definition proj_R (p : S * T) (out : T) : Prop :=
+Definition proj_R (out : T) (p : S * T) : Prop :=
   let (s1, t1) := p in leT t1 out.
 
 Lemma t_proj_R : Cont.t (prod_op leS leT) leT 
@@ -233,11 +235,12 @@ Lemma t_proj_R : Cont.t (prod_op leS leT) leT
 Proof.
 pose proof (Product.isCov _ _ _ _ _ _ locS locT) as FTST.
 constructor; intros; unfold proj_R in *.
-- apply FormTop.refl. destruct a. exists t. unfold In. reflexivity.
+- apply FormTop.refl. destruct a. exists t. unfold In.
+  constructor. reflexivity.
 - destruct c, a.  destruct H. simpl in H, H1. 
   eauto using PreO.le_trans.
 - destruct a. apply FormTop.refl. 
-  exists t. split. split; assumption. apply PreO.le_refl. 
+  exists t. split; eauto. reflexivity. 
 - destruct a. generalize dependent t. induction H0; intros.
   + apply FormTop.refl. exists a; assumption.
   + apply FormTop.le_left with (s, b).
@@ -268,19 +271,21 @@ Context {IB} {CB : forall (t : B), IB t -> (B -> Prop)}.
 Variable locB : FormTop.localized leB CB.
 Let CovB := FormTop.GCov leB CB.
 
-Definition parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
-  (p : S * T) (out : A * B) : Prop :=
+Definition parallel (F : Cont.map S A) (G : Cont.map T B)
+  (out : A * B) (p : S * T)  : Prop :=
   let (s, t) := p in let (a, b) := out in
-   F s a /\ G t b.
+   F a s /\ G b t.
+
+Existing Instance Product.PO.
 
 Instance product_cov :
   FormTop.t (prod_op leS leT) (@Product.Cov S T leS leT IS IT CS CT).
 Proof.
-apply FormTop.GCov_formtop. apply Product.PO; assumption. 
+apply FormTop.GCov_formtop.
 apply Product.loc; assumption.
 Qed.
 
-Theorem t_parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
+Theorem t_parallel (F : Cont.map S A) (G : Cont.map T B)
   : Cont.t leS leA CovS CovA F
   -> Cont.t leT leB CovT CovB G
   -> Cont.t (prod_op leS leT) (prod_op leA leB)
@@ -290,13 +295,15 @@ Theorem t_parallel (F : S -> A -> Prop) (G : T -> B -> Prop)
 Proof.
 intros ContF ContG.
 constructor; intros; unfold parallel in *.
-- apply FormTop.gmonotone with
-  (fun s : S * T => let (s', t') := s in 
-  Inhabited (F s') /\ Inhabited (G t')).
+- eapply FormTop.gmonotone with
+  (fun s : S * T => let (s', t') := s in
+  union (fun _ => True) F s' /\ union (fun _ => True) G t').
   unfold Included, In; intros.
   destruct a, x. 
-  destruct H as ((? & ?) & (? & ?)). exists (x, x0).
-  intuition. destruct a. apply Product.factors; try assumption.
+  destruct H. destruct H, H0.
+  constructor 1 with (a, a0). 
+  constructor. econstructor; eassumption.
+  destruct a. apply Product.factors; try assumption.
   apply (Cont.here ContF). apply (Cont.here ContG).
 - destruct c, b, a. destruct H; simpl in *.
   destruct H0. split.
@@ -309,9 +316,10 @@ constructor; intros; unfold parallel in *.
   eapply FormTop.monotone. Focus 2.
   eapply Product.factors; eassumption.
   unfold Included, In; intros.
-  destruct x.
-  destruct H5 as ((a' & (a1 & a2) & Fsa) & (b' & (b1 & b2) & Gtb)).
-  exists (a', b'). unfold FormTop.down, prod_op; auto.
+  destruct x. destruct H5. destruct H5, H6.
+  destruct H5, H6.
+  exists (a1, a2). unfold FormTop.down, In, prod_op; auto.
+  split; assumption.
 - destruct a, b. destruct H. 
   pose proof (fun VA => Cont.cov ContF VA H).
   pose proof (fun VB => Cont.cov ContG VB H1).

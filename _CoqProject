@@ -12,6 +12,8 @@ FormTop/Join.v
 FormTop/Product.v
 FormTop/InfoBase.v
 FormTop/Bundled.v
+FormTop/Cont.v
+FormTop/Concrete.v
 
 Algebra/Sets.v
 

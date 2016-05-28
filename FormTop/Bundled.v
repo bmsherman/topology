@@ -1,4 +1,6 @@
-Require Import FormTop.FormTop Frame FormTop.Product FormTop.InfoBase 
+Require Import FormTop.FormTop 
+  FormTop.Cont
+  Frame FormTop.Product FormTop.InfoBase 
   Algebra.Sets.
 
 Module Bundled.
@@ -16,13 +18,15 @@ Record IGT : Type :=
   ; localized : FormTop.localized le C
   }.
 
+Instance IGT_PreO : forall (X : IGT), PreO.t (le X) := PO.
+
 
 Generalizable All Variables.
 
 Definition Cov (X : IGT) := FormTop.GCov (le X) (C X).
 
 Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
-  FormTop.GCov_formtop (PO X) _ _ (localized X).
+  FormTop.GCov_formtop _ _ (localized X).
 
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   (ML : MeetLat.t A ops) : IGT :=
@@ -42,7 +46,7 @@ Definition times `(LA : IGT) `(LB : IGT) : IGT :=
 Infix "*" := times : loc_scope.
 
 Record cmap `{LA : IGT} `{LB : IGT} : Type :=
-  { mp : S LA -> S LB -> Prop
+  { mp : Cont.map (S LA) (S LB)
   ; mp_ok : Cont.t (le LA) (le LB) (Cov LA) (Cov LB) mp
   }.
 
@@ -59,11 +63,11 @@ Definition comp `{LA : IGT}
   `{LB : IGT} `{LD : IGT} (f : LB ~~> LD) (g : LA ~~> LB) : LA ~~> LD :=
   let POA := PO LA in let POB := PO LB in
   let POD := PO LD in
-  {| mp := compose (mp g) (mp f)
+  {| mp := compose (mp f) (mp g) 
   ; mp_ok := Cont.t_compose (mp g) (mp f) (mp_ok g) (mp_ok f)
   |}.
 
-Definition One_intro_mp {A : IGT} : S A -> S One -> Prop
+Definition One_intro_mp {A : IGT} : Cont.map (S A) (S One)
   := One.One_intro.
 
 Require Import Ensembles FunctionalExtensionality.
@@ -90,8 +94,8 @@ Definition One_intro `{A : IGT} : A ~~> One :=
    ; mp_ok := One_intro_mp_ok
   |}.
 
-Definition proj1_mp {A B : IGT} :
-  S (A * B) -> S A -> Prop := ProductMaps.proj_L (leS := le A).
+Definition proj1_mp {A B : IGT} : Cont.map (S (A * B)) (S A)
+   := ProductMaps.proj_L (leS := le A).
 
 Lemma proj1_mp_ok {A B : IGT} :
   Cont.t (le (A * B)) (le A) (Cov (A * B)) (Cov A)
@@ -108,8 +112,8 @@ Definition proj1 {A B : IGT} : A * B ~~> A :=
   ; mp_ok := proj1_mp_ok
   |}.
 
-Definition proj2_mp {A B : IGT} :
-  S (A * B) -> S B -> Prop := ProductMaps.proj_R (leT := le B).
+Definition proj2_mp {A B : IGT} : Cont.map (S (A * B)) (S B)
+  := ProductMaps.proj_R (leT := le B).
 
 Lemma proj2_mp_ok {A B : IGT} :
   Cont.t (le (A * B)) (le B) (Cov (A * B)) (Cov B)
@@ -126,8 +130,8 @@ Definition proj2 {A B : IGT} : A * B ~~> B :=
   ; mp_ok := proj2_mp_ok
   |}.
 
-Definition diagonal_mp {A : IGT} :
-  S A -> S (A * A) -> Prop := ProductMaps.diagonal (leS := le A).
+Definition diagonal_mp {A : IGT} : Cont.map (S A) (S (A * A))
+  := ProductMaps.diagonal (leS := le A).
 
 Definition diagonal_mp_ok {A : IGT} :
   Cont.t (le A) (le (A * A)) (Cov A) (Cov (A * A)) diagonal_mp.
@@ -142,8 +146,8 @@ Definition diagonal {A : IGT} : A ~~> A * A :=
   |}.
 
 Definition parallel_mp {A B X Y : IGT} 
-  (f : A ~~> X) (g : B ~~> Y) :
-  S (A * B) -> S (X * Y) -> Prop := ProductMaps.parallel (mp f) (mp g).
+  (f : A ~~> X) (g : B ~~> Y) : Cont.map (S (A * B)) (S (X * Y))
+  := ProductMaps.parallel (mp f) (mp g).
 
 Definition parallel_mp_ok {A B X Y : IGT}
   (f : A ~~> X) (g : B ~~> Y) :

@@ -1,5 +1,7 @@
 Require Import Coq.Program.Basics
-  FormTop.FormTop Frame Algebra.Sets.
+  FormTop.FormTop FormTop.Cont Frame Algebra.Sets.
+
+Local Open Scope Ensemble.
 
 (** Information bases, which are the predicative versions of
     Scott domains. Perhaps, see Definition 1.9 of [2].
@@ -68,7 +70,7 @@ Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
 Instance isCovG : FormTop.t leS GCov := 
-  FormTop.GCov_formtop _ Ix C loc.
+  FormTop.GCov_formtop _ C loc.
 
 Require Import Morphisms.
 Instance isCov : FormTop.t leS Cov.
@@ -106,11 +108,11 @@ Admitted.
 
 (** I have no idea whether this is in fact
     a good definition *)
-Record t {F : S -> T -> Prop} :=
-  { le_left : forall a b c, leS a b -> F b c -> F a c
-  ; le_right :  forall a b c,  F a b -> MeetLat.le b c -> F a c
-  ; local : forall {a b c}, F a b -> F a c -> F a (MeetLat.min b c)
-  ; here : forall s, Inhabited (F s)
+Record t {F_ : Cont.map S T} :=
+  { le_left : forall a b c, leS a b -> F_ c b -> F_ c a
+  ; le_right :  forall a b c, F_ b a -> MeetLat.le b c -> F_ c a
+  ; local : forall {a b c}, F_ b a -> F_ c a -> F_ (MeetLat.min b c) a
+  ; here : forall s : S, In (union (fun _ => True) F_) s
   }.
 
 Arguments t : clear implicits.
@@ -119,7 +121,7 @@ Variable CovS : S -> Ensemble S -> Prop.
 Hypothesis FTS : FormTop.t leS CovS.
 Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
 
-Theorem cont : forall (F : S -> T -> Prop),
+Theorem cont : forall (F : Cont.map S T),
   t F
   -> Cont.t leS MeetLat.le CovS CovT F.
 Proof.
@@ -128,15 +130,15 @@ intros. constructor; intros.
   apply (here H).
 - eapply (le_left H); eassumption. 
 - unfold InfoBase.Cov. apply FormTop.refl. unfold In. 
-  exists (MeetLat.min b c). split. 
-  split; apply MeetLat.min_ok. apply local; assumption.
+  exists (MeetLat.min b c). split; apply MeetLat.min_ok. 
+  apply local; assumption.
 - unfold CovT, InfoBase.Cov in *. 
   destruct H1 as [t0 Vt0 bt0].
   apply FormTop.refl. exists t0. assumption.
   apply (le_right H) with b; assumption.
 Qed.
 
-Definition lift_op (f : S -> T) (x : S) (y : T) : Prop :=
+Definition lift_op (f : S -> T) (y : T) (x : S) : Prop :=
   MeetLat.le (f x) y.
 
 Definition lift_monotone (f : S -> T)
@@ -147,12 +149,12 @@ constructor; unfold lift_op; intros.
 - etransitivity. apply fmono. eassumption. assumption. 
 - etransitivity; eassumption.
 - apply MeetLat.min_ok; assumption.
-- econstructor. unfold In. reflexivity.
+- econstructor. unfold In. constructor. reflexivity.
 Qed.
 
 End InfoBaseCont.
 
-Arguments t {_} {_} {_} {_} F.
+Arguments t {_} {_} {_} {_} F_.
 Arguments pt {_} {_} F.
 
 Section Compose.
@@ -161,48 +163,51 @@ Context {S : Type} {SOps} {MLS : MeetLat.t S SOps}.
 
 Instance OneOps : MeetLat.Ops True := MeetLat.one_ops.
 
-Theorem to_pt : forall (F : True -> Ensemble S), t (leS := MeetLat.le) F ->
-  pt (F I).
+Theorem to_pt : forall (F : Cont.map True S), t (leS := MeetLat.le) F ->
+  pt (fun s => F s I).
 Proof.
 intros. constructor; intros.
 - apply (local H); assumption. 
 - eapply (le_right H); eassumption. 
-- apply (here H).
+- pose proof (here H I). destruct H0.
+  econstructor; eauto.
 Qed.
 
-Theorem from_pt : forall (F : Ensemble S), pt F -> t (leS := MeetLat.le) (fun _ => F).
+Theorem from_pt : forall (F : Ensemble S), pt F -> t (leS := MeetLat.le) (fun t' _ => F t').
 Proof.
 intros. constructor; intros.
 - assumption.
 - eapply (pt_le_right H); eassumption.
 - apply (pt_local H); assumption.
-- apply (pt_here H).
+- pose proof (pt_here H). destruct H0. 
+  repeat (econstructor || eauto).
 Qed.
 
 Context {T TOps} {MLT : MeetLat.t T TOps}.
 Context {U UOps} {MLU : MeetLat.t U UOps}.
 
-Theorem t_compose (F : S -> T -> Prop) (G : T -> U -> Prop)
+Theorem t_compose (F : Cont.map S T) (G : Cont.map T U)
   : t (leS := MeetLat.le) F -> t (leS := MeetLat.le) G
-  -> t (leS := MeetLat.le) (compose F G).
+  -> t (leS := MeetLat.le) (compose G F).
 Proof.
 intros HF HG.
 constructor; unfold compose; intros.
 - destruct H0 as (t & Fbt & Gtc).
   exists t. split. 
+  + assumption. 
   + eapply (le_left HF); eassumption.
-  + assumption.
 - destruct H as (t & Fat & Gtb).
-  exists t. split. assumption. eapply (le_right HG); eassumption.
+  exists t. split. eapply (le_right HG); eassumption.
+  assumption.
 - destruct H as (t & Fat & Gtb).
   destruct H0 as (t' & Fat' & Gt'c).
   exists (MeetLat.min t t'). split. 
-  + apply (local HF); assumption.
   + apply (local HG); eapply (le_left HG). 
     apply MeetLat.min_l. assumption. 
     apply MeetLat.min_r. assumption. 
-- destruct (here HF s). destruct (here HG x).
-  exists x0. exists x. auto.
+  + apply (local HF); assumption.
+- destruct (here HF s). destruct (here HG a).
+  exists a0. constructor. exists a. auto.
 Qed.
 
 End Compose.
@@ -212,17 +217,20 @@ Section EvalPt.
 Context {S SOps} {MLS : MeetLat.t S SOps}.
 Context {T TOps} {MLT : MeetLat.t T TOps}.
 
-Definition eval (F : S -> T -> Prop) (x : Ensemble S) (t : T) : Prop :=
-  exists s, x s /\ F s t.
+Definition eval (F : Cont.map S T) (x : Ensemble S) (t : T) : Prop :=
+  Inhabited (x ∩ F t).
 
 Require Import Morphisms.
-Theorem eval_pt (F : S -> T -> Prop) (x : Ensemble S)
+Theorem eval_pt (F : Cont.map S T) (x : Ensemble S)
   : pt x -> t (leS := MeetLat.le) F -> pt (eval F x).
 Proof.
 intros Hx HF.
-pose proof (t_compose (fun _ => x) F (from_pt _ Hx) HF).
+pose proof (t_compose (fun t _ => x t) F (from_pt _ Hx) HF).
 apply to_pt in H. 
 eapply pt_proper. 2: eassumption. simpl_relation.
+unfold eval. split; intros.
+- destruct H0. destruct H0. econstructor; eauto.
+- destruct H0. destruct H0. repeat (econstructor || eauto).
 Qed.
 
 End EvalPt.
@@ -260,16 +268,16 @@ Context {S : Type} {leS : S -> S -> Prop}
   {CovS : S -> Ensemble S -> Prop}
   {FTS : FormTop.t leS CovS}.
 
-Definition One_intro (s : S) (_ : True) : Prop := True.
+Definition One_intro (_ : True) (s : S)  : Prop := True.
 
 Theorem One_intro_cont : 
   Cont.t leS (fun _ _ => True) CovS Cov One_intro.
 Proof.
 constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
-  unfold In; simpl. exact I.
+  unfold In; simpl; constructor. constructor.
 - apply FormTop.refl. unfold In; simpl. 
-  exists I. unfold FormTop.down; auto.
+  exists I. unfold FormTop.down, In; auto. constructor.
 - unfold Cov in H0. apply FormTop.refl. constructor 1 with I.
   assumption. auto.
 Qed.
@@ -306,7 +314,7 @@ Qed.
 Context {S} {leS : S -> Ensemble S} {POS : PreO.t leS}.
 Variable CovS : S -> (Ensemble S) -> Prop.
 
-Definition Point (f : Ensemble S) := Cont.t MeetLat.le leS Cov CovS (fun _ => f).
+Definition Point (f : Ensemble S) := Cont.t MeetLat.le leS Cov CovS (fun t _ => f t).
 
 Hypothesis FTS : FormTop.t leS CovS.
 
@@ -320,9 +328,9 @@ Existing Instance Frame.prop.
 
 Definition toFPoint (f : Ensemble S) (pointf : Point f) :
   Frame.cmap Frame.prop_ops (FormTop.FOps leS CovS) :=
-  {| Frame.finv := fun x => Cont.frame (fun _ => f) x I 
+  {| Frame.finv := fun x => Cont.frame (fun t _ => f t) x I 
   ; Frame.cont := Frame.morph_compose _ _
-    (Cont.toFrame FTOne FTS (fun _ => f) pointf) FTtoFrame |}.
+    (Cont.toFrame FTOne FTS (fun t _ => f t) pointf) FTtoFrame |}.
 
 End One.
 End One.
@@ -370,7 +378,7 @@ Context {A B : Type}.
 Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
 Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
 
-Definition discrF (f : A -> B) (x : A) (y : B) : Prop := f x = y.
+Definition discrF (f : A -> B) (y : B) (x : A) : Prop := f x = y.
 
 Instance POB : PO.t Logic.eq Logic.eq := PO.discrete B.
 
@@ -380,10 +388,10 @@ Theorem fCont (f : A -> B) :
   Cont.t Logic.eq Logic.eq (Cov A) (Cov B) (discrF f).
 Proof.
 constructor; unfold Cov; intros.
-- exists (f a). constructor.
+- exists (f a); constructor.
 - subst. assumption.
-- inv H. inv H0. exists (f a). split.
-  split; reflexivity. constructor.
+- inv H. inv H0. exists (f a). split; reflexivity.
+  reflexivity.
 - exists b; unfold In; auto.
 Qed.
 
