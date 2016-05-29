@@ -16,6 +16,10 @@ Infix "===" := Same_set (at level 70) : Ensemble_scope.
 Delimit Scope Ensemble_scope with Ensemble.
 Local Open Scope Ensemble.
 
+Definition compose {S T U} (F : S -> T -> Prop)
+  (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
+    exists t, F s t /\ G t u.
+
 Inductive union {S T} (U : Ensemble S) (f : S -> Ensemble T) (b : T) : Prop :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
@@ -127,4 +131,28 @@ Proof. intros. unfold Same_set. constructor.
 - unfold Symmetric. intros; tauto.
 - unfold Transitive. intros. destruct H, H0. 
   split; etransitivity; eassumption.
+Qed.
+
+Lemma union_compose : forall A B C (H : Ensemble A) (G : A -> Ensemble B) 
+  (F : B -> Ensemble C),
+  union (union H G) F === union H (compose G F).
+Proof.
+intros. apply Same_set_iff. intros; split; intros.
+- destruct H0. destruct H0. repeat (econstructor || eauto).
+- destruct H0. destruct H1. destruct H1.
+  repeat (econstructor || eauto).
+Qed.
+
+Lemma union_idx_monotone : forall A B (U V : Ensemble A) (F : A -> Ensemble B),
+  U ⊆ V -> union U F ⊆ union V F.
+Proof.
+intros. unfold Included, In.
+intros. destruct H0. econstructor; eauto.
+Qed.
+
+Local Instance union_Proper : forall A B, 
+  Proper (Included ==> eq ==> Included) (@union A B).
+Proof.
+intros. unfold Proper, respectful.
+intros. subst. apply union_idx_monotone. assumption.
 Qed.

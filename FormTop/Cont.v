@@ -30,7 +30,7 @@ Arguments t F_ : clear implicits.
 
 
 Record pt {F : T -> Prop} :=
-  { pt_here : exists t, F t
+  { pt_here : Inhabited F
   ; pt_local : forall {b c}, F b -> F c -> Inhabited (FormTop.down leT b c ∩ F)
   ; pt_cov : forall {b V}, F b -> CovT b V -> Inhabited (F ∩ V)
   }.
@@ -96,28 +96,7 @@ apply Same_set_iff. intros. apply FormTop.subset_equiv.
 assumption.
 Qed.
 
-Lemma union_idx_monotone : forall A B (U V : Ensemble A) (F : A -> Ensemble B),
-  U ⊆ V -> union U F ⊆ union V F.
-Proof.
-intros. unfold Included, In.
-intros. destruct H0. econstructor; eauto.
-Qed.
-
-Local Instance union_Proper : forall A B, 
-  Proper (Included ==> eq ==> Included) (@union A B).
-Proof.
-intros. unfold Proper, respectful.
-intros. subst. apply union_idx_monotone. assumption.
-Qed.
-
-Lemma down_downset : forall A (le : A -> A -> Prop)
-  (x y : A) (U V : Ensemble A),
-  In U x -> In V y -> 
-  FormTop.down le x y ⊆ FormTop.downset le U ∩ FormTop.downset le V.
-Proof.
-intros. unfold Included, In; intros.
-destruct H1. econstructor; econstructor; eauto.
-Qed.
+Existing Instance union_Proper.
 
 Theorem toLattice : 
    L.morph (FormTop.LOps leT CovT) (FormTop.LOps leS CovS) (frame F_).
@@ -146,7 +125,7 @@ constructor.
     * apply (FormTop.trans _ _ _ H). clear x H.
       intros. unfold FormTop.minA in *.
       destruct H. destruct H, H0. destruct H, H0.
-      rewrite <- down_downset; try eassumption.
+      rewrite <- FormTop.down_downset; try eassumption.
       apply local. assumption. 
       eapply le_left with a0; eassumption.
       eapply le_left with a1; eassumption.
@@ -189,13 +168,6 @@ Context {CovS} `{FTS : FormTop.t S leS CovS}.
 
 Definition id (x y : S) := leS y x.
 
-Lemma downset_included : forall V,
-   V ⊆ FormTop.downset leS V.
-Proof.
-intros. unfold Included, In; intros.
-econstructor. eassumption. reflexivity.
-Qed.
-
 Theorem t_id : t leS leS CovS CovS id.
 Proof.
 constructor; intros; unfold id in *.
@@ -208,7 +180,7 @@ constructor; intros; unfold id in *.
   eapply FormTop.le_left. eassumption.
   apply FormTop.refl. reflexivity. unfold In.  
   intros. subst. eapply FormTop.monotone.
-  2:eassumption. apply downset_included.
+  2:eassumption. apply FormTop.downset_included.
 Qed.
 
 Context {T leT} `{POT : PreO.t T leT}.
@@ -239,16 +211,6 @@ iff there is some subset T such that
   everything in s maps to T and
   everything in T maps to u
 *)
-
-Lemma union_compose : forall A B C (H : Ensemble A) (G : A -> Ensemble B) 
-  (F : B -> Ensemble C),
-  union (union H G) F === union H (compose G F).
-Proof.
-intros. apply Same_set_iff. intros; split; intros.
-- destruct H0. destruct H0. repeat (econstructor || eauto).
-- destruct H0. destruct H1. destruct H1.
-  repeat (econstructor || eauto).
-Qed.
 
 Theorem t_compose : forall (F : map S T) (G : map T U),
     t leS leT CovS CovT F

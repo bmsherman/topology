@@ -16,10 +16,6 @@ Require Import Basics.
     I will refer to it as [1].
 *)
 
-Definition compose {S T U} (F : S -> T -> Prop)
-  (G : T -> U -> Prop) (s : S) (u : U) : Prop :=
-    exists t, F s t /\ G t u.
-
 Local Open Scope Ensemble.
 
 Module FormTop.
@@ -47,6 +43,22 @@ Definition down (a b c : S) : Prop :=
 
 Definition downset (U : Ensemble S) : Ensemble S :=
   union U (fun x y => y <= x).
+
+Lemma down_downset : forall (x y : S) (U V : Ensemble S),
+  In U x -> In V y -> 
+  down x y ⊆ downset U ∩ downset V.
+Proof.
+intros. unfold Included, In; intros.
+destruct H1. econstructor; econstructor; eauto.
+Qed.
+
+Lemma downset_included : forall V,
+   V ⊆ downset V.
+Proof.
+intros. unfold Included, In; intros.
+econstructor. eassumption. reflexivity.
+Qed.
+
 
 (** Definition 2.1 of [1].
     Definition of when the [Cov] relation is indeed a formal cover.

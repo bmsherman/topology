@@ -1,11 +1,21 @@
-Require Import QArith QFacts Morphisms SetoidClass.
+Require Import Coq.Program.Basics
+  QArith QFacts Morphisms SetoidClass
+  Algebra.Sets.
+
+Local Open Scope Ensemble.
 
 Record LReal :=
   { lbound :> Q -> Prop
   ; dclosed : forall q, lbound q -> forall q', q' <= q -> lbound q'
   ; uopen : forall q, lbound q -> exists q', (q < q') /\ lbound q'
-  ; nonempty : exists q, lbound q
+  ; nonempty : Inhabited lbound
   }.
+
+Local Instance lbound_monotone : forall x, Proper (Qle --> impl) (lbound x).
+Proof.
+intros. unfold Proper, respectful, impl.
+intros. eapply dclosed. eassumption. eassumption.
+Qed.
 
 Definition LRle (x y : LReal) : Prop := forall q, x q -> y q.
 Definition LReq (x y : LReal) : Prop := LRle x y /\ LRle y x.
@@ -224,11 +234,11 @@ Definition LRmax (x y : LReal) : LReal.
 Proof. refine (
   {| lbound := fun q => x q \/ y q |}
 ); intros.
-- destruct H; [left | right]; eapply dclosed; eassumption.
+- rewrite H0. assumption.
 - destruct H; 
   pose proof (uopen _ _ H) as H'; 
   destruct H' as [q' [qq' pq']]; exists q'; intuition.
-- destruct (nonempty x) as (q & qx). exists q. auto.
+- destruct (nonempty x) as (q & qx). exists q. unfold In. auto.
 Defined.
 
 Lemma LRmax_le_and : forall x y z : LReal
@@ -265,7 +275,7 @@ Definition LRmin (x y : LReal) : LReal.
 Proof. refine (
   {| lbound := fun q => x q /\ y q |}
 ).
-- intros. destruct H; split; eapply dclosed; eassumption.
+- intros. rewrite H0. assumption.
 - intros. destruct H. 
   destruct (uopen _ _ H) as [q'x [qq'x pq'x]].
   destruct (uopen _ _ H0) as [q'y [qq'y pq'y]].
