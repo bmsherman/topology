@@ -16,3 +16,7 @@ html/
 *.blg
 *.log
 *.synctex.gz
+*.toc
+*.out
+*.nav
+*.snm
