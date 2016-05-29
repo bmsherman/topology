@@ -350,41 +350,35 @@ Context {F : Cont.map S T} {contF : Cont.t leS leT CovS CovT F}.
 (** From Palmgren's
   [Predicativity problems in point-free topology]
 *)
-Inductive Ix {a : S} : Type :=
-  | Orig : IxS a -> Ix
-  | Img : forall t, F t a -> Ix.
+Inductive Ix1 {a : S} : Type :=
+  | Orig : IxS a -> Ix1
+  | Img : forall t, F t a -> Ix1.
 
-Arguments Ix : clear implicits.
+Arguments Ix1 : clear implicits.
 
-Definition C (a : S) (i : Ix a) : Ensemble S := match i with
+Definition C1 (a : S) (i : Ix1 a) : Ensemble S := match i with
   | Orig i' => CS a i'
-  | Img t Fat => F t
+  | Img t Fat => FormTop.downset leS (F t)
   end.
 
-Lemma preserves_loc : FormTop.localized leS CS 
-  -> FormTop.localized leS C.
-Proof.
-intros loc. unfold FormTop.localized in *.
-intros. specialize (loc a c H).
-destruct i. 
-- destruct (loc i). exists (Orig x). assumption.
-- pose proof (Cont.le_left contF _ _ _ H f).
-  exists (Img _ H0). simpl. intros. 
-  exists s. split. assumption.
-Abort.
+Definition Ix := FormTop.IxL (le := leS) (Ix := Ix1).
+Definition C := FormTop.CL (le := leS) (Ix := Ix1) C1.
 
-Definition Cov := FormTop.GCovL leS C.
+Definition loc : FormTop.localized leS C
+  := FormTop.Llocalized C1.
+
+Definition Cov := FormTop.GCov leS C.
 
 Instance Cov_isCov : FormTop.t leS Cov.
 Proof.
-apply FormTop.GCovL_formtop.
+apply FormTop.GCov_formtop. apply loc.
 Qed.
 
 Context {U : Type} {leU : U -> U -> Prop} {POU : PreO.t leU}.
 Context {CovU : U -> Ensemble U -> Prop}.
 Context {FTU : FormTop.t leU CovU}.
 
-Lemma AxRefine : FormTop.AxiomSetRefine CS C.
+Lemma AxRefine : FormTop.AxiomSetRefine CS C1.
 Proof.
 unfold FormTop.AxiomSetRefine. intros. 
 exists (Orig i). simpl. reflexivity.
@@ -395,7 +389,9 @@ Theorem cont_preserved : forall (G : U -> Ensemble S),
   Cont.t leS leU Cov  CovU G.
 Proof.
 intros. apply (Cont.refine_Cont (CovS := CovS) (CovT := CovU)).
-- apply FormTop.AxRefineCov. apply AxRefine.
+- intros. unfold Cov, C. rewrite <- FormTop.cov_equiv.
+  eapply FormTop.AxRefineCovL. apply AxRefine.
+  apply H0. 
 - auto.
 - assumption.
 Qed.
@@ -415,9 +411,9 @@ Qed.
 
 End Defn.
 
-Arguments Ix {S} IxS {T} F a : clear implicits.
+Arguments Ix {S} leS IxS {T} F a : clear implicits.
 Arguments Cov {S} leS {IxS} CS {T} F _ _ : clear implicits.
-Arguments C {S} {IxS} CS {T} F _ _ _ : clear implicits.
+Arguments C {S} leS {IxS} CS {T} F _ _ _ : clear implicits.
 
 Section ExampleDef.
 
@@ -428,19 +424,22 @@ Context {CS : forall a, IxS a -> Ensemble S}.
 Theorem id_same : forall a U, FormTop.GCovL leS CS a U <-> 
   Cov leS CS (Cont.id (leS := leS)) a U.
 Proof.
-unfold Cov, Cont.id; intros; split; intros.
+unfold Cov, C. 
+intros. rewrite <- FormTop.cov_equiv.
+unfold Cont.id; intros; split; intros.
 - induction H.
   + apply FormTop.glrefl. assumption.
   + apply FormTop.glle_left with b; assumption.
   + apply FormTop.gle_infinity with b (Orig i).
     assumption. assumption.
-- induction H.
+-  induction H.
   + apply FormTop.glrefl. assumption.
   + apply FormTop.glle_left with b; assumption.
   + destruct i; simpl in *.
     * apply FormTop.gle_infinity with b i; assumption.
     * eapply H1. exists b. unfold FormTop.down.
-      repeat (split || reflexivity || assumption).
+      repeat (unfold In || econstructor 
+            || reflexivity || assumption).
 Qed.
 
 

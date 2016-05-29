@@ -331,9 +331,9 @@ constructor; intros.
       apply Qlt_le_weak; assumption.
 Qed.
 
-Definition LPRC := ImageSpace.C LowerR.C' (lift_op (Qmax 0)).
+Definition LPRC := ImageSpace.C (fun x y => x >= y) LowerR.C' (lift_op (Qmax 0)).
 
-Definition LPRIx := ImageSpace.Ix LowerR.Ix' (lift_op (Qmax 0)).
+Definition LPRIx := ImageSpace.Ix (fun x y => x >= y) LowerR.Ix' (lift_op (Qmax 0)).
 
 Existing Instance LowerR.ML.
 

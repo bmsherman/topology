@@ -272,7 +272,7 @@ Definition AxiomSetRefine {I I' : S -> Type}
   (C : forall s, I s -> Ensemble S) (C' : forall s, I' s -> Ensemble S) :=
   forall s (i : I s), exists (j : I' s), C s i === C' s j.
 
-Lemma AxRefineCov {I I'} (C : forall s, I s -> Ensemble S) 
+Lemma AxRefineCovL {I I'} (C : forall s, I s -> Ensemble S) 
   (C' : forall s, I' s -> Ensemble S) :
   AxiomSetRefine C C' -> forall a U, GCovL le C a U -> GCovL le C' a U.
 Proof.
@@ -285,6 +285,19 @@ induction H0.
   intros.  destruct H4 as (u' & Gbxu' & downau'u).
   apply H2. exists u'. split. unfold Included, In in H3.
   eapply H3. apply Gbxu'. assumption.
+Qed.
+
+Lemma AxRefineCov {I I'} (C : forall s, I s -> Ensemble S) 
+  (C' : forall s, I' s -> Ensemble S) :
+  AxiomSetRefine C C' -> forall a U, GCov le C a U -> GCov le C' a U.
+Proof.
+intros. unfold AxiomSetRefine in H.
+induction H0.
+- apply grefl. assumption.
+- apply gle_left with b; assumption.
+- destruct (H a i).
+  apply ginfinity with x.
+  intros.  apply H1.  apply H2. assumption. 
 Qed.
 
 End AxiomSetRefine.
