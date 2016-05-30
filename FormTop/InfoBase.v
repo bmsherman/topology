@@ -1,5 +1,6 @@
 Require Import Coq.Program.Basics
-  FormTop.FormTop FormTop.Cont Frame Algebra.Sets.
+  FormTop.FormTop FormTop.Cont Frame Algebra.Sets
+  Morphisms.
 
 Local Open Scope Ensemble.
 
@@ -13,14 +14,14 @@ Local Open Scope Ensemble.
 Module InfoBase. 
 Section InfoBase.
 
-Generalizable All Variables.
+Generalizable Variables leS eqS. 
 
 Context {S : Type} `{PO : PO.t S leS eqS}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
 Definition Ix (s : S) : Type := { t : S & leS s t }.
-Definition C (s : S) (s' : Ix s) s'' : Prop := eqS (projT1 s') s''.
+Definition C (s : S) (s' : Ix s) : Ensemble S := eqS (projT1 s').
 
 (** This axiom set is localized. *)
 Definition loc : FormTop.localized leS C.
@@ -72,7 +73,6 @@ Qed.
 Instance isCovG : FormTop.t leS GCov := 
   FormTop.GCov_formtop _ C loc.
 
-Require Import Morphisms.
 Instance isCov : FormTop.t leS Cov.
 Proof.
 assert ((eq ==> eq ==> iff)%signature Cov GCov).
@@ -88,10 +88,66 @@ Section InfoBaseCont.
 
 Generalizable All Variables.
 
-Require Import Morphisms.
+Context {S} {leS : S -> S -> Prop} {POS : PreO.t leS}.
+Context {T} {leT eqT : T -> T -> Prop} {POT : PO.t leT eqT}.
 
-Context {S} {leS : S -> S -> Prop} {PreO : PreO.t leS}.
-Context {T} `{MLT : MeetLat.t T}.
+Record ptNM {F : Ensemble T} : Prop :=
+  { ptNM_local : forall {a b}, F a -> F b -> 
+     Inhabited (F ∩ FormTop.down leT a b)
+  ; ptNM_le_right : forall a b, leT a b -> F a -> F b
+  ; ptNM_here : Inhabited F
+  }.
+
+Arguments ptNM : clear implicits.
+
+Instance ptNM_proper : Proper ((eq ==> iff) ==> iff) ptNM.
+Proof.
+Admitted.
+
+
+(** I have no idea whether this is in fact
+    a good definition *)
+Record tNM {F_ : Cont.map S T} :=
+  { NMle_left : forall a b c, leS a b -> F_ c b -> F_ c a
+  ; NMle_right :  forall a b c, F_ b a -> leT b c -> F_ c a
+  ; NMlocal : forall {a b c}, F_ b a -> F_ c a -> 
+     Inhabited ((fun t => F_ t a) ∩ FormTop.down leT b c)
+  ; NMhere : forall s : S, In (union (fun _ => True) F_) s
+  }.
+
+Arguments tNM : clear implicits.
+
+Variable CovS : S -> Ensemble S -> Prop.
+Hypothesis FTS : FormTop.t leS CovS.
+Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ leT.
+
+Theorem contNM : forall (F : Cont.map S T),
+  tNM F
+  -> Cont.t leS leT CovS CovT F.
+Proof.
+intros. constructor; intros.
+- unfold InfoBase.Cov. apply FormTop.refl.
+  apply (NMhere H).
+- eapply (NMle_left H); eassumption. 
+- unfold InfoBase.Cov. apply FormTop.refl. 
+  pose proof (NMlocal H H0 H1).
+  destruct H2. destruct H2. unfold In in H2.
+  econstructor; eassumption.
+- unfold CovT, InfoBase.Cov in *. 
+  destruct H1 as [t0 Vt0 bt0].
+  apply FormTop.refl. exists t0. assumption.
+  apply (NMle_right H) with b; assumption.
+Qed.
+
+End InfoBaseCont.
+
+Arguments tNM {_} leS {_} leT F_.
+Arguments ptNM {_} leT F.
+
+Section InfoBaseML.
+
+Context {S} {leS : S -> S -> Prop} {POS : PreO.t leS}.
+Context {T} `{MeetLat.t T}.
 
 Record pt {F : Ensemble T} : Prop :=
   { pt_local : forall {a b}, F a -> F b -> F (MeetLat.min a b)
@@ -105,13 +161,26 @@ Instance pt_proper : Proper ((eq ==> iff) ==> iff) pt.
 Proof.
 Admitted.
 
+Lemma down_min : forall a b,
+ In (FormTop.down MeetLat.le a b) (MeetLat.min a b).
+Proof.
+intros. constructor; apply MeetLat.min_ok.
+Qed.
+
+Theorem pt_ptNM : forall F, pt F -> ptNM MeetLat.le F.
+Proof.
+intros. destruct H0. constructor; eauto.
+intros. constructor 1 with (MeetLat.min a b).
+econstructor. unfold In. eauto. apply down_min.
+Qed.
 
 (** I have no idea whether this is in fact
     a good definition *)
 Record t {F_ : Cont.map S T} :=
   { le_left : forall a b c, leS a b -> F_ c b -> F_ c a
   ; le_right :  forall a b c, F_ b a -> MeetLat.le b c -> F_ c a
-  ; local : forall {a b c}, F_ b a -> F_ c a -> F_ (MeetLat.min b c) a
+  ; local : forall {a b c}, F_ b a -> F_ c a -> 
+     F_ (MeetLat.min b c) a
   ; here : forall s : S, In (union (fun _ => True) F_) s
   }.
 
@@ -122,20 +191,21 @@ Hypothesis FTS : FormTop.t leS CovS.
 Let CovT : T -> (T -> Prop) -> Prop := @InfoBase.Cov _ MeetLat.le.
 
 Theorem cont : forall (F : Cont.map S T),
-  t F
-  -> Cont.t leS MeetLat.le CovS CovT F.
+  t F -> Cont.t leS MeetLat.le CovS CovT F.
 Proof.
-intros. constructor; intros.
-- unfold InfoBase.Cov. apply FormTop.refl.
-  apply (here H).
-- eapply (le_left H); eassumption. 
-- unfold InfoBase.Cov. apply FormTop.refl. unfold In. 
-  exists (MeetLat.min b c). split; apply MeetLat.min_ok. 
-  apply local; assumption.
-- unfold CovT, InfoBase.Cov in *. 
-  destruct H1 as [t0 Vt0 bt0].
-  apply FormTop.refl. exists t0. assumption.
-  apply (le_right H) with b; assumption.
+intros. apply contNM. assumption.
+destruct H0. constructor; eauto.
+intros. specialize (local0 _ _ _ H0 H1).
+constructor 1 with (MeetLat.min b c).
+constructor; eauto using down_min.
+Qed.
+
+Definition above_pt (x : T) : pt (MeetLat.le x).
+Proof.
+constructor; intros.
+- apply MeetLat.min_ok; assumption.
+- etransitivity; eassumption.
+- econstructor. unfold In. reflexivity.
 Qed.
 
 Definition lift_op (f : S -> T) (y : T) (x : S) : Prop :=
@@ -152,18 +222,48 @@ constructor; unfold lift_op; intros.
 - econstructor. unfold In. constructor. reflexivity.
 Qed.
 
-End InfoBaseCont.
+End InfoBaseML.
 
-Arguments t {_} {_} {_} {_} F_.
+Arguments t {_} leS {_ _} F_.
 Arguments pt {_} {_} F.
+Arguments lift_op {_ _ _} f y x.
+
+Section Product.
+
+Context {S} `{MeetLat.t S}.
+Context {T} `{MeetLat.t T}.
+Context {U} `{MeetLat.t U}.
+
+Definition lift_binop (f : S -> T -> U)
+  (result : U) (args : S * T) : Prop :=
+  let (l, r) := args in MeetLat.le (f l r) result.
+
+Existing Instances MeetLat.product_ops MeetLat.product.
+
+Theorem lift_binop_monotone : forall (f : S -> T -> U)
+  (fmono : forall x x' y y', MeetLat.le x x' -> MeetLat.le y y' 
+     -> MeetLat.le (f x y) (f x' y'))
+  , t MeetLat.le (lift_binop f).
+Proof.
+intros. unfold lift_binop. constructor; intros.
+- destruct a, b. simpl in *. unfold prod_op in *.
+  destruct H2. rewrite <- H3. apply fmono; assumption.
+- destruct a. rewrite <- H3.  assumption.
+- destruct a. apply MeetLat.min_ok; assumption.
+- destruct s. econstructor. constructor. 
+  reflexivity.
+Qed.
+
+End Product.
+
 
 Section Compose.
 
-Context {S : Type} {SOps} {MLS : MeetLat.t S SOps}.
+Context {S} {leS : S -> S -> Prop} {SOps} {MLS : MeetLat.t S SOps}.
 
 Instance OneOps : MeetLat.Ops True := MeetLat.one_ops.
 
-Theorem to_pt : forall (F : Cont.map True S), t (leS := MeetLat.le) F ->
+Theorem to_pt : forall (F : Cont.map True S), t MeetLat.le F ->
   pt (fun s => F s I).
 Proof.
 intros. constructor; intros.
@@ -173,7 +273,7 @@ intros. constructor; intros.
   econstructor; eauto.
 Qed.
 
-Theorem from_pt : forall (F : Ensemble S), pt F -> t (leS := MeetLat.le) (fun t' _ => F t').
+Theorem from_pt : forall (F : Ensemble S), pt F -> t MeetLat.le (fun t' _ => F t').
 Proof.
 intros. constructor; intros.
 - assumption.
@@ -187,8 +287,8 @@ Context {T TOps} {MLT : MeetLat.t T TOps}.
 Context {U UOps} {MLU : MeetLat.t U UOps}.
 
 Theorem t_compose (F : Cont.map S T) (G : Cont.map T U)
-  : t (leS := MeetLat.le) F -> t (leS := MeetLat.le) G
-  -> t (leS := MeetLat.le) (compose G F).
+  : t MeetLat.le F -> t MeetLat.le G
+  -> t MeetLat.le (compose G F).
 Proof.
 intros HF HG.
 constructor; unfold compose; intros.
@@ -222,7 +322,7 @@ Definition eval (F : Cont.map S T) (x : Ensemble S) (t : T) : Prop :=
 
 Require Import Morphisms.
 Theorem eval_pt (F : Cont.map S T) (x : Ensemble S)
-  : pt x -> t (leS := MeetLat.le) F -> pt (eval F x).
+  : pt x -> t MeetLat.le F -> pt (eval F x).
 Proof.
 intros Hx HF.
 pose proof (t_compose (fun t _ => x t) F (from_pt _ Hx) HF).
@@ -237,7 +337,7 @@ End EvalPt.
 
 End InfoBaseCont.
 
-Arguments InfoBaseCont.t {S} SOps {T} TOps F : rename, clear implicits.
+Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename, clear implicits.
 
 Module One.
 Section One.
@@ -398,3 +498,38 @@ Qed.
 End FinFunc.
 
 End Discrete.
+
+Module Sierpinski.
+
+Local Instance ops : MeetLat.Ops bool := MeetLat.two_ops.
+Local Instance SML : MeetLat.t bool ops := MeetLat.two.
+
+Definition Ix := InfoBase.Ix (leS := MeetLat.le).
+Definition C := InfoBase.C (leS := MeetLat.le) (eqS := MeetLat.eq).
+
+Definition sand : Cont.map (bool * bool) bool :=
+  InfoBaseCont.lift_binop andb.
+
+Existing Instances MeetLat.product MeetLat.product_ops.
+
+Theorem sand_cont : InfoBaseCont.t MeetLat.le sand.
+Proof.
+apply InfoBaseCont.lift_binop_monotone.
+simpl. intros. destruct x, x', y, y'; auto.
+Qed.
+
+Definition sor : Cont.map (bool * bool) bool :=
+  InfoBaseCont.lift_binop orb.
+
+Theorem sor_cont : InfoBaseCont.t MeetLat.le sor.
+Proof.
+apply InfoBaseCont.lift_binop_monotone.
+simpl. intros. destruct x, x', y, y'; auto; congruence.
+Qed.
+
+Definition const_cont (b : bool) : InfoBaseCont.pt (MeetLat.le (negb b)).
+Proof.
+apply InfoBaseCont.above_pt.
+Qed.
+
+End Sierpinski.

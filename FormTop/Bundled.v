@@ -177,9 +177,41 @@ Axiom Open : IGT -> IGT.
 
 Axiom undefined : forall A, A.
 
-Axiom Σ : IGT.
-Axiom Σand : Σ * Σ ~~> Σ.
-Axiom Σor : Σ * Σ ~~> Σ.
+Definition Σ : IGT := InfoBase Sierpinski.SML.
+
+Definition Σand_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sand.
+
+(** I need to prove that a the information-base product of meet lattices
+    is the same as the product of the information bases
+
+    This will be phrased as a homeomorphism!
+*)
+(** Sierpinski.sand_cont *)
+Definition Σand_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
+  (Cov (Σ * Σ)) (Cov Σ) Σand_mp.
+Proof.
+simpl. unfold Cov. simpl. 
+Admitted.
+
+Definition Σand : Σ * Σ ~~> Σ :=
+  {| mp := Σand_mp
+   ; mp_ok := Σand_mp_ok
+  |}.
+
+Definition Σor_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sor.
+
+(** Sierpinski.sor_cont *)
+Definition Σor_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
+  (Cov (Σ * Σ)) (Cov Σ) Σor_mp.
+Proof.
+simpl. unfold Cov. simpl. 
+Admitted.
+
+Definition Σor : Σ * Σ ~~> Σ :=
+  {| mp := Σor_mp
+   ; mp_ok := Σor_mp_ok
+  |}.
+
 Definition Σconst {Γ} : bool -> Γ ~~> Σ := undefined _.
 
 Definition open_abstract : forall {Γ A B : IGT}, Γ * A ~~> Σ -> Γ ~~> Open A

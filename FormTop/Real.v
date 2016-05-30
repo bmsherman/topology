@@ -138,8 +138,7 @@ Local Instance prod_ops : MeetLat.Ops (Q * Q) :=
 
 Theorem lift_binop_cont_ib : forall op
   (le_compat : forall a a' b b', a <= a' -> b <= b' -> op a b <= op a' b'), 
-  InfoBaseCont.t MeetLat.le
-  LowerR.ops (lift_binop op).
+  InfoBaseCont.t MeetLat.le (TOps := LowerR.ops) (lift_binop op).
 Proof.
 intros. constructor; unfold lift_binop; intros;
 repeat match goal with
