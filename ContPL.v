@@ -201,9 +201,9 @@ Class Extend {Γ Δ : U} : Type := extend : Δ ~~> Γ .
 
 Arguments Extend : clear implicits.
 
-Instance Extend_Refl {Γ : U} : Extend Γ Γ := identity.
+Global Instance Extend_Refl {Γ : U} : Extend Γ Γ := identity.
 
-Instance Extend_Prod {Γ Δ A : U} `{f : Extend Γ Δ}
+Global Instance Extend_Prod {Γ Δ A : U} `{f : Extend Γ Δ}
   : Extend Γ (Δ * A)%cTy := f ∘ proj1.
 
 Definition Lift {Γ Δ A} `{f : Extend Γ Δ} (x : Γ ~~> A) 
@@ -228,3 +228,5 @@ Definition exampleProgram {Γ} : Γ ~~> M R :=
       Ret (! x + ! y).
 
 End ContPL.
+
+Arguments Extend : clear implicits.

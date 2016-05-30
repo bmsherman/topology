@@ -3,10 +3,10 @@ Require Import FormTop.FormTop
   Frame FormTop.Product FormTop.InfoBase 
   Algebra.Sets.
 
-Module Bundled.
-
 Delimit Scope loc_scope with loc.
-Open Scope loc.
+Local Open Scope loc.
+
+Module Bundled.
 
 (* Inductively-generated formal topology *)
 Record IGT : Type :=
@@ -66,6 +66,8 @@ Definition comp `{LA : IGT}
   {| mp := compose (mp f) (mp g) 
   ; mp_ok := Cont.t_compose (mp g) (mp f) (mp_ok g) (mp_ok f)
   |}.
+
+Infix "∘" := comp (at level 60) : loc_scope.
 
 Definition One_intro_mp {A : IGT} : Cont.map (S A) (S One)
   := One.One_intro.
@@ -164,6 +166,77 @@ Definition parallel {A B X Y : IGT} (f : A ~~> X) (g : B ~~> Y)
    ; mp_ok := parallel_mp_ok f g
   |}.
 
+Definition discrete (A : Type) : IGT :=
+  {| S := A 
+  ; PO := PreO.discrete A
+  ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
+  |}.
+
+(** Spaces of open sets (using Scott topology *)
+Axiom Open : IGT -> IGT.
+
+Axiom undefined : forall A, A.
+
+Axiom Σ : IGT.
+Axiom Σand : Σ * Σ ~~> Σ.
+Axiom Σor : Σ * Σ ~~> Σ.
+Definition Σconst {Γ} : bool -> Γ ~~> Σ := undefined _.
+
+Definition open_abstract : forall {Γ A B : IGT}, Γ * A ~~> Σ -> Γ ~~> Open A
+  := undefined _.
+
+Class Hausdorff {A : IGT} : Type :=
+  { apart : A * A ~~> Σ }.
+
+Arguments Hausdorff A : clear implicits.
+
+(** Could have used Sierpinski? *)
+Class Discrete {A : IGT} : Type :=
+  { bequal : A * A ~~> discrete bool }.
+
+Require Import Numbers.Qnn.
+
+(** non-negative real numbers *)
+Axiom PR : IGT.
+Axiom PRplus PRmult : PR * PR ~~> PR.
+Axiom PRQnn : discrete Qnn ~~> PR.
+
+(** Non-negative lower real numbers *)
+Axiom LPR : IGT.
+Axiom LPRplus : LPR * LPR ~~> LPR.
+Axiom LPRmult : LPR * LPR ~~> LPR.
+Axiom LPRind : Σ ~~> LPR.
+Axiom LPRlower : PR ~~> LPR.
+
+(** Real numbers *)
+Axiom R : IGT.
+Axiom Rplus Rmult : R * R ~~> R.
+Axiom Rnegate : R ~~> R.
+Axiom Rpow : R * discrete nat ~~> R.
+Axiom square : R ~~> PR.
+Definition Rzero {Γ} : Γ ~~> R := undefined _.
+
+Axiom Stream : IGT -> IGT.
+
+Definition Rminus : R * R ~~> R := Rplus ∘ parallel id Rnegate.
+
+(** Measures and probabilities over a given space *)
+Axiom Meas : IGT -> IGT.
+Axiom Prob : IGT -> IGT.
+
+Definition coinflip {Γ} : Γ ~~> Prob (discrete bool) := undefined _.
+
+Axiom normal : R * PR ~~> Prob R.
+
+Definition stream {Γ A} : Γ ~~> Prob A -> Γ * A ~~> Prob A -> Γ ~~> Prob (Stream A)
+  := undefined _.
+
+Definition ProbIsMeas {A} : Prob A ~~> Meas A := undefined _.
+
+Definition MeasEval {A} : Meas A * Open A ~~> LPR := undefined _.
+
+Axiom ProbBoolEval : Prob (discrete bool) ~~> PR.
+
 End Bundled.
 
 Module B := Bundled.
@@ -188,3 +261,45 @@ Instance IGT_CMC : CMC B.IGT :=
   ; diagonal := fun _ => B.diagonal
   ; parallel := fun _ _ _ _ => B.parallel
   |}.
+
+Axiom MCProb : @MonadCat _ _ _ B.Prob. 
+
+Local Open Scope cTy.
+
+Require Import Coq.Lists.List.
+Import ListNotations.
+
+Infix "~>" := Map (at level 80) : loc_scope.
+
+Notation "! x" := (Lift x) (at level 20) : loc_scope.
+
+Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f))) 
+  (at level 120, right associativity) : loc_scope.
+
+Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
+  (at level 120, right associativity) : loc_scope.
+
+Definition Call1 {A B Γ : B.IGT} (f : A ~~> B) (x : Γ ~~> A)
+  : Γ ~~> B := f ∘ x.
+
+Definition Call2 {A B C Γ : B.IGT} 
+  (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
+  f ∘ parallel x y ∘ diagonal.
+
+Definition Rone {Γ} : Γ ~~> B.R := undefined _.
+
+Infix "+" := (Call2 B.Rplus) : loc_scope.
+(** Careful with the "*" sign. It's overloaded for products on
+    the types too. *)
+Infix "*" := (Call2 B.Rmult).
+Infix "-" := (Call2 B.Rminus) : loc_scope.
+
+Notation "0" := B.Rzero : loc_scope.
+Notation "1" := Rone : loc_scope.
+
+(** Discrete Ornstein-Uhlenbeck process *)
+Definition ornstein : [B.R; B.R] ~> B.Prob (B.Stream B.R) :=
+  makeFun [B.R; B.R] (fun _ θ σ =>
+     B.stream (Ret 0) (LAM x =>
+        (z <- Call2 B.normal 0 (Call1 B.square (!σ)) 
+        ; Ret ( (1 - !θ) * !x + !z)))).
