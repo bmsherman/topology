@@ -383,6 +383,20 @@ Module PO.
       in the obvious ways. There's really nothing interesting
       here. *)
 
+  Definition eq_PreO {S} (le : S -> S -> Prop) (x y : S) : Prop :=
+    le x y /\ le y x.
+
+  Definition fromPreO {S} (le : S -> S -> Prop) `{POS : PreO.t S le}
+    : PO.t le (eq_PreO le).
+  Proof.
+  constructor.
+  - assumption.
+  - unfold Proper, respectful, eq_PreO; intros.
+    destruct H, H0; split; intros; 
+    eauto using PreO.le_trans.
+  - unfold eq_PreO. auto.
+  Qed.
+
   Definition one : t (fun (_ : True) _ => True) (fun _ _ => True).
   Proof. 
     constructor; intros; auto.

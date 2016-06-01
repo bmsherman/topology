@@ -182,12 +182,13 @@ Proof.
 intros. split; apply gmonotone; intro; apply H; assumption.
 Qed.
 
-Definition localized := forall (a c : S),
+Class localized := 
+  IsLocalized : forall (a c : S),
   le a c -> forall (i : I c),
   exists (j : I a),
   (forall s, C a j s -> exists u, C c i u /\ down le a u s).
 
-Hypothesis loc : localized. 
+Context `{loc : localized}. 
 
 (** Proposition 3.5 of [1] *)
 Lemma le_infinity : forall (a c : S), le a c ->
@@ -406,8 +407,8 @@ Definition FOps : Frame.Ops (Ensemble S) :=
 
 Instance FOps' : Frame.Ops (Ensemble S) := FOps.
 
-Hypothesis PO : PreO.t le.
-Hypothesis tS : t le Cov. 
+Context `{PO : PreO.t S le}.
+Context `{tS : t S le Cov}. 
 
 Theorem FramePreO : @PreO.t (Ensemble S) leA.
 Proof.
@@ -592,7 +593,7 @@ Definition Cov (V : Ensemble S) (a : S)
 Context {FTS : FormTop.t leS CovS}.
 
 Instance Cov_Proper : Proper (leS --> Included ==> Basics.impl) CovS := 
-  FormTop.Cov_Proper _ _ _.
+  FormTop.Cov_Proper _ _.
 
 Theorem t (V : Ensemble S) : FormTop.t leS (Cov V).
 Proof.

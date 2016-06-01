@@ -46,8 +46,8 @@ Definition frame (F_ : map S T) (U : Ensemble T) : Ensemble S :=
 Hypothesis FTS : FormTop.t leS CovS. 
 Hypothesis FTT : FormTop.t leT CovT.
 
-Let FrameS := FormTop.Frame leS CovS POS FTS.
-Let FrameT := FormTop.Frame leT CovT POT FTT.
+Let FrameS := FormTop.Frame leS CovS.
+Let FrameT := FormTop.Frame leT CovT.
 
 Variable F_ : T -> Ensemble S.
 Hypothesis cont : t F_.
@@ -160,6 +160,14 @@ End Cont.
 
 Arguments t {S} leS {T} leT CovS CovT F_ : clear implicits.
 Arguments pt {T} leT CovT F : clear implicits.
+
+Require Import Morphisms.
+
+Lemma t_Proper : forall S T (leS : S -> S -> Prop) (leT : T -> T -> Prop), Proper
+  ((eq ==> eq ==> iff) ==> (eq ==> eq ==> iff) ==> eq ==> iff) (t leS leT).
+Proof.
+Admitted.
+
 
 Section Morph.
 

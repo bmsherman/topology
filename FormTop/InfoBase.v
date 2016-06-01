@@ -24,7 +24,7 @@ Definition Ix (s : S) : Type := { t : S & leS s t }.
 Definition C (s : S) (s' : Ix s) : Ensemble S := eqS (projT1 s').
 
 (** This axiom set is localized. *)
-Definition loc : FormTop.localized leS C.
+Local Instance loc : FormTop.localized leS C.
 Proof.
 pose proof (@PO.t_equiv _ _ _ PO) as eqEquiv.
 unfold FormTop.localized. intros. simpl.
@@ -71,7 +71,7 @@ Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
 Instance isCovG : FormTop.t leS GCov := 
-  FormTop.GCov_formtop _ C loc.
+  FormTop.GCov_formtop _ C.
 
 Instance isCov : FormTop.t leS Cov.
 Proof.
@@ -342,24 +342,34 @@ Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename, clear implicits.
 Module One.
 Section One.
 
-Definition Cov (_ : True) (U : True -> Prop) : Prop := U I.
+Local Instance MLOneOps : MeetLat.Ops True := MeetLat.one_ops.
+Local Instance MLOne : MeetLat.t True MLOneOps := MeetLat.one.
+Local Instance POOne : @PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
 
-Require Import Morphisms.
-Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov (@InfoBase.Cov _ (fun _ _ => True)).
+Definition Cov (_ : True) (U : True -> Prop) : Prop := U I.
+Definition Cov' := FormTop.GCov MeetLat.le 
+  (InfoBase.C (leS := MeetLat.le) (eqS := MeetLat.eq)).
+
+Theorem CovEquiv' : forall a U, Cov a U <-> Cov' a U.
 Proof.
-simpl_relation.
-intros. unfold Cov, InfoBase.Cov. split; intros.
-- exists I; unfold flip; tauto.
-- destruct H as [[] Ut _]. assumption.
+intros. unfold Cov, Cov'. split; intros.
+- apply FormTop.grefl. destruct a; assumption. 
+- induction H; auto. destruct a; auto.
+  destruct a. apply (H0 I). simpl. constructor.
 Qed.
 
-Instance MLOne : MeetLat.t True MeetLat.one_ops := MeetLat.one.
-Instance POOne : @PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
+Require Import Morphisms.
+Theorem CovEquiv : (eq ==> eq ==> iff)%signature Cov Cov'.
+Proof.
+simpl_relation. apply CovEquiv'.
+Qed.
+
+
 
 Instance FTOne : FormTop.t (@MeetLat.le _ MeetLat.one_ops) Cov.
 Proof.
 rewrite CovEquiv.
-apply InfoBase.isCov.
+apply FormTop.GCov_formtop. apply InfoBase.loc.
 Qed.
 
 Section One_intro.
@@ -371,7 +381,7 @@ Context {S : Type} {leS : S -> S -> Prop}
 Definition One_intro (_ : True) (s : S)  : Prop := True.
 
 Theorem One_intro_cont : 
-  Cont.t leS (fun _ _ => True) CovS Cov One_intro.
+  Cont.t leS (fun _ _ => True) CovS Cov' One_intro.
 Proof.
 constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
@@ -379,6 +389,7 @@ constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. 
   exists I. unfold FormTop.down, In; auto. constructor.
 - unfold Cov in H0. apply FormTop.refl. constructor 1 with I.
+  rewrite <- CovEquiv' in H0. unfold Cov in H0.
   assumption. auto.
 Qed.
 
@@ -414,15 +425,33 @@ Qed.
 Context {S} {leS : S -> Ensemble S} {POS : PreO.t leS}.
 Variable CovS : S -> (Ensemble S) -> Prop.
 
+Existing Instance Cont.t_Proper.
+
+Theorem pt_to_map (f : Ensemble S) :
+  Cont.pt leS CovS f -> Cont.t MeetLat.le leS Cov' CovS (fun t _ => f t).
+Proof.
+intros H. destruct H. destruct pt_here.
+rewrite <- CovEquiv.
+constructor; intros.
+- apply FormTop.refl. econstructor. constructor.
+  eassumption.
+- assumption.
+- apply FormTop.refl.
+  destruct (pt_local _ _ H0 H1). destruct H2.
+  econstructor. eassumption. assumption.
+- destruct (pt_cov _ _ H0 H1). destruct H2. 
+  econstructor; eassumption.
+Qed.
+
 Definition Point (f : Ensemble S) := Cont.t MeetLat.le leS Cov CovS (fun t _ => f t).
 
 Hypothesis FTS : FormTop.t leS CovS.
 
 Instance FrameS : Frame.t (Ensemble S) (FormTop.FOps leS CovS)
-  := FormTop.Frame leS CovS _ FTS.
+  := FormTop.Frame leS CovS.
 
 Instance FrameOne : Frame.t (True -> Prop) (FormTop.FOps MeetLat.le Cov)
-  := FormTop.Frame MeetLat.le Cov _ FTOne.
+  := FormTop.Frame MeetLat.le Cov.
 
 Existing Instance Frame.prop.
 
@@ -448,8 +477,6 @@ Definition Ix := @InfoBase.Ix _ (@Logic.eq A).
 Definition C := @InfoBase.C _ (@Logic.eq A).
 Definition CovI := @InfoBase.Cov _ (@Logic.eq A).
 
-(** Woops I should have a positivity predicate to say that the
-    "None" is covered by nothing *)
 Definition Cov (a : A) (U : A -> Prop) : Prop := U a.
 
 Require Import Morphisms.
@@ -533,3 +560,132 @@ apply InfoBaseCont.above_pt.
 Qed.
 
 End Sierpinski.
+
+Require Import FormTop.Product.
+
+Module Scott.
+
+Section Scott.
+
+Context {S} {leS : S -> S -> Prop} {POS : PreO.t leS}
+  {IxS : S -> Type}
+  {CS : forall a, IxS a -> Ensemble S}
+  {locS : FormTop.localized leS CS}.
+
+Context {T} {leT : T -> T -> Prop} {POT : PreO.t leT}
+  {IxT : T -> Type}
+  {CT : forall a, IxT a -> Ensemble T}
+  {locT : FormTop.localized leT CT}.
+
+Let CovS := FormTop.GCov leS CS.
+Let CovT := FormTop.GCov leT CT.
+
+Definition le_Open (U V : Ensemble T) :=
+  V ⊆ FormTop.Sat CovT U.
+
+Local Instance FTT : FormTop.t leT CovT.
+Proof. 
+apply FormTop.GCov_formtop.
+assumption.
+Qed.
+
+Lemma Sat_Cov : forall U V,
+  U ⊆ FormTop.Sat CovT V
+  -> FormTop.Sat CovT U ⊆ FormTop.Sat CovT V.
+Proof.
+intros. unfold FormTop.Sat, Included, In in *.
+intros. apply FormTop.trans with U. assumption. 
+apply H.
+Qed.
+
+Local Instance PreOrder_le_Open : PreO.t le_Open.
+Proof.
+unfold le_Open; constructor; 
+  unfold Reflexive, Transitive; intros.
+- apply (FormTop.Sat_mono _ _ _).
+- rewrite H0. apply Sat_Cov; assumption.
+Qed.
+
+Definition eq_Open := PO.eq_PreO le_Open.
+
+(** Define abstraction to Sierpinski space
+    S * T ~~> Σ   -->    S ~~> Open T  
+*)
+
+Existing Instances Sierpinski.ops Sierpinski.SML.
+
+Let prod_le := prod_op leS leT.
+Let prodC := Product.C _ _ IxS IxT CS CT.
+Let prodCov := FormTop.GCov prod_le prodC.
+Let sierpCov := FormTop.GCov MeetLat.le Sierpinski.C.
+
+Variable F : Cont.map (S * T) bool.
+Hypothesis contF : Cont.t
+   prod_le MeetLat.le prodCov sierpCov F.
+
+(** "false" is the smallest open set in the Sierpinski space,
+    which confusingly is the open set surrounding the
+    "top" or "true" point. *)
+
+Definition absF (subset : Ensemble T) (s : S) : Prop :=
+  le_Open (fun t => F false (s, t)) subset.
+
+Let OpenCov := FormTop.GCov le_Open (InfoBase.C
+  (leS := le_Open)
+  (eqS := eq_Open)).
+
+Local Instance FTS : FormTop.t leS CovS.
+Proof.
+apply FormTop.GCov_formtop.
+assumption.
+Qed.
+
+Lemma le_Open_mono : forall U V,
+  V ⊆ U -> le_Open U V.
+Proof.
+intros. unfold le_Open.
+rewrite H. apply (FormTop.Sat_mono leT CovT).
+Qed.
+
+Local Instance PO_le_eq : PO.t le_Open eq_Open
+  := PO.fromPreO _. 
+Existing Instance PO.fromPreO.
+
+(** This seems really suspicious. It's probably wrong. *)
+Theorem absF_cont : Cont.t leS le_Open CovS OpenCov absF.
+Proof.
+constructor; intros.
+- apply FormTop.grefl. constructor 1 with (fun _ => False).
+  constructor. unfold absF. unfold le_Open. 
+  unfold Included, In; intros.
+  contradiction.
+- unfold absF in *. rewrite <- H0.
+  apply le_Open_mono.
+  unfold Included, In; intros.
+  eapply (Cont.le_left contF (a, x) false (c, x)).
+  unfold prod_le, prod_op. simpl. split. eassumption.
+  reflexivity. assumption.
+- unfold absF in *.
+  apply FormTop.grefl.
+  exists (b ∪ c). split; apply le_Open_mono.
+  apply Union_Included_l.
+  apply Union_Included_r.
+  unfold Included, In in *.
+  unfold le_Open in *.
+  unfold Included, In; intros.
+  destruct H1. apply H. assumption. apply H0. assumption.
+- induction H0; simpl in *. 
+  + apply FormTop.grefl. constructor 1 with a0; assumption.
+  + apply IHGCov. unfold absF. 
+    unfold absF in H.
+    unfold le_Open in *.
+    rewrite H0. apply Sat_Cov. apply H.
+  + destruct i; simpl in *. unfold InfoBase.C in *. simpl in *.
+    apply (H1 x). reflexivity.
+    unfold absF, le_Open in *.
+    rewrite l. apply Sat_Cov. assumption.
+Qed.
+
+End Scott.
+
+End Scott.

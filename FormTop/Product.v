@@ -155,7 +155,7 @@ Definition diagonal (out : S * S) (p : S) : Prop :=
 Lemma t_diagonal : Cont.t leS (prod_op leS leS)
   CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
 Proof.
-pose proof (FormTop.GCov_formtop _ _ locS) as FTS.
+pose proof (FormTop.GCov_formtop _ CS) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
 - apply FormTop.refl. exists (a, a). split.
   split; reflexivity. 

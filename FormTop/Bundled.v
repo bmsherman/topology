@@ -18,15 +18,18 @@ Record IGT : Type :=
   ; localized : FormTop.localized le C
   }.
 
-Instance IGT_PreO : forall (X : IGT), PreO.t (le X) := PO.
+Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
 
 
 Generalizable All Variables.
 
 Definition Cov (X : IGT) := FormTop.GCov (le X) (C X).
 
-Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
-  FormTop.GCov_formtop _ _ (localized X).
+Local Instance local `(X : IGT) : FormTop.localized (le X) (C X)
+  := localized X.
+
+Local Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
+  FormTop.GCov_formtop _ _.
 
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   (ML : MeetLat.t A ops) : IGT :=
@@ -55,46 +58,56 @@ Arguments cmap LA LB : clear implicits.
 Infix "~~>" := cmap (at level 75) : loc_scope.
 
 Definition id `{LA : IGT} : LA ~~> LA := 
-  let POA := PO LA in 
   {| mp := Cont.id
   ; mp_ok := Cont.t_id |}.
 
 Definition comp `{LA : IGT} 
   `{LB : IGT} `{LD : IGT} (f : LB ~~> LD) (g : LA ~~> LB) : LA ~~> LD :=
-  let POA := PO LA in let POB := PO LB in
-  let POD := PO LD in
   {| mp := compose (mp f) (mp g) 
   ; mp_ok := Cont.t_compose (mp g) (mp f) (mp_ok g) (mp_ok f)
   |}.
 
 Infix "∘" := comp (at level 60) : loc_scope.
 
+Definition point_mp (A : IGT) (f : Ensemble (S A))
+  (fpt : Cont.pt (le A) (Cov A) f)
+  : Cont.t (le One) (le A) (Cov One) (Cov A) (fun t _ => f t).
+Proof.
+simpl.
+replace (fun _ _ : True => True) with (@MeetLat.le True One.one_ops)
+by reflexivity.
+replace (Cov One) with One.Cov' by reflexivity.
+apply (One.pt_to_map (leS := le A) (Cov A) f).
+assumption.
+Qed.
+
+Definition point (A : IGT) (f : S A -> Prop) (fpt : Cont.pt (le A) (Cov A) f)
+  : One ~~> A :=
+  {| mp := fun t _ => f t
+   ; mp_ok := point_mp A f fpt
+  |}.
+
 Definition One_intro_mp {A : IGT} : Cont.map (S A) (S One)
   := One.One_intro.
 
 Require Import Ensembles FunctionalExtensionality.
 
-(** This is so horrendously ugly... *)
 Definition One_intro_mp_ok {A : IGT} :
   Cont.t (le A) (le One) (Cov A) (Cov One)
   One_intro_mp.
 Proof.
-simpl. replace (Cov One) with One.Cov.
+simpl. replace (Cov One) with One.Cov' by reflexivity.
 unfold One_intro_mp.
 apply One.One_intro_cont.
-extensionality x.
-apply Extensionality_Ensembles.
-apply Same_set_iff. intros; simpl.
-unfold One.Cov, Cov. destruct x. split; intros.
-- apply FormTop.grefl.  assumption.
-- induction H. assumption. destruct a, b. assumption.
-  apply H0. destruct a. simpl. constructor.
 Qed.
 
 Definition One_intro `{A : IGT} : A ~~> One :=
   {| mp := One_intro_mp
    ; mp_ok := One_intro_mp_ok
   |}.
+
+Definition const {Γ A : IGT} (pt : One ~~> A) : Γ ~~> A
+  := pt ∘ One_intro.
 
 Definition proj1_mp {A B : IGT} : Cont.map (S (A * B)) (S A)
    := ProductMaps.proj_L (leS := le A).
@@ -173,7 +186,19 @@ Definition discrete (A : Type) : IGT :=
   |}.
 
 (** Spaces of open sets (using Scott topology *)
-Axiom Open : IGT -> IGT.
+Definition Open (A : IGT) : IGT :=
+  let LE := @Scott.le_Open (S A) (le A) (Ix A) (C A) in 
+  let PreO : PreO.t (le A) := IGT_PreO A in
+  let PO := 
+   @PO.PreO (Ensemble (S A)) LE _ (Scott.PO_le_eq (POT := PreO)
+  (locT := localized A)) in
+  {| S := Ensemble (S A)
+   ; le := LE
+   ; PO := PO
+   ; Ix := InfoBase.Ix
+   ; C := InfoBase.C (leS := LE) (eqS := PO.eq_PreO LE)
+   ; localized := InfoBase.loc (PO := PO.fromPreO LE)
+  |}.
 
 Axiom undefined : forall A, A.
 
@@ -214,8 +239,26 @@ Definition Σor : Σ * Σ ~~> Σ :=
 
 Definition Σconst {Γ} : bool -> Γ ~~> Σ := undefined _.
 
-Definition open_abstract : forall {Γ A B : IGT}, Γ * A ~~> Σ -> Γ ~~> Open A
-  := undefined _.
+Definition open_abstract_mp {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+     : Cont.map (S Γ) (S (Open A))
+  := Scott.absF (leT := le A) (IxT := Ix A) (CT := C A) f.
+
+Definition open_abstract_mp_ok {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+  : Cont.t (le (Γ * A)) (le Σ) (Cov (Γ * A)) (Cov Σ) f
+  -> Cont.t (le Γ) (le (Open A)) (Cov Γ) (Cov (Open A)) 
+    (open_abstract_mp f).
+Proof.
+intros H.
+apply Scott.absF_cont. apply H.
+Qed.
+
+Definition open_abstract {Γ A : IGT} (f : Γ * A ~~> Σ) : Γ ~~> Open A
+  := 
+  {| mp := open_abstract_mp (mp f)
+   ; mp_ok := open_abstract_mp_ok (mp f) (mp_ok f)
+  |}.
 
 Class Hausdorff {A : IGT} : Type :=
   { apart : A * A ~~> Σ }.
