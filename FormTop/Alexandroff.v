@@ -195,7 +195,7 @@ Definition f_or : Cont.map (option S * option S) (option S) :=
   | None => fun _ => True
   | Some y => fun mx => match mx with
     | (Some x1, _) => leS x1 y
-    | (None, Some xs) => leS xs y
+    | (None, Some x2) => leS x2 y
     | (None, None) => False
     end
   end.

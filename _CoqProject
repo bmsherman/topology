@@ -23,6 +23,8 @@ Numbers/LPReal.v
 Numbers/QFacts.v
 Numbers/LReal.v
 
+Spec/Category.v
+
 clement/SmallPowers.v
 
 alea/BinCoeff.v

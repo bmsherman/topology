@@ -69,6 +69,9 @@ Definition comp `{LA : IGT}
 
 Infix "∘" := comp (at level 60) : loc_scope.
 
+Definition eq_map {A B : IGT} (f g : A ~~> B)
+  : Prop := forall y : S B, FormTop.eqA (Cov A) (mp f y) (mp g y).
+
 Definition point_mp (A : IGT) (f : Ensemble (S A))
   (fpt : Cont.pt (le A) (Cov A) f)
   : Cont.t (le One) (le A) (Cov One) (Cov A) (fun t _ => f t).
@@ -316,43 +319,39 @@ End Bundled.
 
 Module B := Bundled.
 
-Require Import ContPL.
+Require Import Spec.Category.
+Import Category.
 
 Instance IGT_Cat : CCat B.IGT :=
-  {| CMap := B.cmap
-  ;  product := B.times
+  {| arrow := B.cmap
+  ;  prod := B.times
+  ; eq := fun _ _ => B.eq_map
   |}.
 
 Instance IGT_CMC : CMC B.IGT :=
-  {| identity := fun _ => B.id
+  {| id := fun _ => B.id
    ; compose := fun _ _ _ => B.comp
    
-   ; top := B.One
-   ; top_intro := fun _ => B.One_intro
+   ; unit := B.One
+   ; tt := fun _ => B.One_intro
 
-  ; proj1 := fun _ _ => B.proj1
-  ; proj2 := fun _ _ => B.proj2
+  ; fst := fun _ _ => B.proj1
+  ; snd := fun _ _ => B.proj2
 
   ; diagonal := fun _ => B.diagonal
   ; parallel := fun _ _ _ _ => B.parallel
   |}.
 
-Axiom MCProb : @MonadCat _ _ _ B.Prob. 
+Axiom MCProb : @SMonad _ _ _ B.Prob. 
 
-Local Open Scope cTy.
+Local Open Scope obj.
+Local Open Scope morph.
 
-Require Import Coq.Lists.List.
-Import ListNotations.
+Require Import ContPL.
 
-Infix "~>" := Map (at level 80) : loc_scope.
 
-Notation "! x" := (Lift x) (at level 20) : loc_scope.
 
-Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f))) 
-  (at level 120, right associativity) : loc_scope.
 
-Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
-  (at level 120, right associativity) : loc_scope.
 
 Definition Call1 {A B Γ : B.IGT} (f : A ~~> B) (x : Γ ~~> A)
   : Γ ~~> B := f ∘ x.
@@ -372,6 +371,11 @@ Infix "-" := (Call2 B.Rminus) : loc_scope.
 Notation "0" := B.Rzero : loc_scope.
 Notation "1" := Rone : loc_scope.
 
+Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
+  (at level 120, right associativity) : loc_scope.
+
+Require Import Coq.Lists.List.
+Import ListNotations.
 (** Discrete Ornstein-Uhlenbeck process *)
 Definition ornstein : [B.R; B.R] ~> B.Prob (B.Stream B.R) :=
   makeFun [B.R; B.R] (fun _ θ σ =>
