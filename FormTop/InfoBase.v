@@ -471,13 +471,11 @@ Generalizable All Variables.
 
 Variable A : Type.
 
-Hypothesis deceq : forall a a' : A, {a = a'} + {a <> a'}.
-
 Definition Ix := @InfoBase.Ix _ (@Logic.eq A).
 Definition C := @InfoBase.C _ (@Logic.eq A).
 Definition CovI := @InfoBase.Cov _ (@Logic.eq A).
 
-Definition Cov (a : A) (U : A -> Prop) : Prop := U a.
+Definition Cov (a : A) (U : Ensemble A) : Prop := U a.
 
 Require Import Morphisms.
 Theorem CovEquiv : (eq ==> eq ==> iff)%signature CovI Cov.
@@ -497,14 +495,21 @@ rewrite <- CovEquiv.
 apply InfoBase.isCov.
 Qed.
 
+Definition pt_ok (x : A) : Cont.pt eq Cov (eq x).
+Proof.
+constructor.
+- econstructor. reflexivity.
+- intros. subst.
+  repeat (econstructor || eauto).
+- intros. subst. econstructor.
+  econstructor. reflexivity. assumption.
+Qed.
+
 End Discrete.
 
-Section FinFunc.
+Section Func.
 
 Context {A B : Type}.
-Hypothesis deceqA : forall a a' : A, {a = a'} + {a <> a'}.
-Hypothesis deceqB : forall b b' : B, {b = b'} + {b <> b'}.
-
 Definition discrF (f : A -> B) (y : B) (x : A) : Prop := f x = y.
 
 Instance POB : PO.t Logic.eq Logic.eq := PO.discrete B.
@@ -522,7 +527,7 @@ constructor; unfold Cov; intros.
 - exists b; unfold In; auto.
 Qed.
 
-End FinFunc.
+End Func.
 
 End Discrete.
 

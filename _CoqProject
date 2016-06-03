@@ -24,6 +24,9 @@ Numbers/QFacts.v
 Numbers/LReal.v
 
 Spec/Category.v
+Spec/Discrete.v
+Spec/Sierpinski.v
+Spec/Real.v
 
 clement/SmallPowers.v
 

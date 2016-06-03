@@ -37,20 +37,48 @@ Class CMC {U : Type} `{CCat U} : Type :=
   ; diagonal : forall {A}, A ~~> A * A
   ; parallel : forall {A B X Y}, A ~~> X -> B ~~> Y -> A * B ~~> X * Y
 
+  ; compose_proper : forall {A B C} (f f' : A ~~> B) (g g' : B ~~> C),
+      f == f' -> g == g' -> compose g f == compose g' f'
+  ; parallel_proper : forall {A B X Y} (f f' : A ~~> X) (g g' : B ~~> Y),
+      f == f' -> g == g' -> parallel f g == parallel f' g'
   }.
 
 Arguments CMC U {_} : clear implicits.
 
-Infix "∘" := compose (at level 30) : morph_scope.
+Infix "∘" := compose (at level 40, left associativity) : morph_scope.
 Infix "⊗" := parallel (at level 25) : morph_scope.
 
-Require Import Coq.Program.Combinators Coq.Program.Equality.
+Record Iso {U} `{CMC U} {A B : U} : Type :=
+  { to   : A ~~> B
+  ; from : B ~~> A
+  ; to_from : to ∘ from == id
+  ; from_to : from ∘ to == id
+  }.
 
-Definition add_unit_left {U} `{CMC U} {A : U} : A ~~> unit * A
+Arguments Iso {_ _ _} A B : clear implicits.
+
+Infix "≅" := Iso (at level 70, no associativity) : obj_scope.
+
+Section BasicOps. 
+Context {U} `{CMC U}.
+
+Definition ap0 {Γ A : U} (f : unit ~~> A)
+  : Γ ~~> A := f ∘ tt.
+
+Definition ap1 {Γ A B : U} (f : A ~~> B) (x : Γ ~~> A)
+  : Γ ~~> B := f ∘ x.
+
+Definition ap2 {Γ A B C : U} 
+  (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
+  f ∘ x ⊗ y ∘ diagonal.
+
+Definition add_unit_left {A : U} : A ~~> unit * A
   := tt ⊗ id ∘ diagonal.
 
-Definition add_unit_right {U} `{CMC U} {A : U} : A ~~> A * unit
+Definition add_unit_right {A : U} : A ~~> A * unit
   := id ⊗ tt ∘ diagonal.
+
+End BasicOps.
 
 Class CMC_Props {U : Type} `{CMC U} : Prop :=
   { compose_id_left : forall {A B} (f : A ~~> B), id ∘ f == f

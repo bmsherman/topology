@@ -341,6 +341,7 @@ Instance IGT_CMC : CMC B.IGT :=
   ; diagonal := fun _ => B.diagonal
   ; parallel := fun _ _ _ _ => B.parallel
   |}.
+Admitted.
 
 Axiom MCProb : @SMonad _ _ _ B.Prob. 
 
@@ -348,8 +349,6 @@ Local Open Scope obj.
 Local Open Scope morph.
 
 Require Import ContPL.
-
-
 
 
 
