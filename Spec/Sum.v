@@ -17,21 +17,24 @@ Infix "+" := sum : obj_scope.
 
 Context `{SumTys}.
 
+(** Does sum_elim need to have the context Γ? It seems
+    like it may *)
 Class SumOps : Type :=
   { False_elim : forall {A}, False ~~> A
   ; inl : forall {A B}, A ~~> A + B
   ; inr : forall {A B}, B ~~> A + B
-  ; sum_elim : forall {A B C}, A ~~> C -> B ~~> C -> A + B ~~> C
+  ; sum_elim : forall {Γ A B C}, Γ * A ~~> C -> Γ * B ~~> C 
+     -> Γ * (A + B) ~~> C
   }.
 
 Context `{SumOps}.
 
 Class SumProps : Type :=
   { False_elim_unique : forall {A} (x y : False ~~> A), x == y
-  ; sum_elim_inl : forall {A B C} (f : A ~~> C) (g : B ~~> C),
-      sum_elim f g ∘ inl == f
-  ; sum_elim_inr : forall {A B C} (f : A ~~> C) (g : B ~~> C),
-      sum_elim f g ∘ inr == g
+  ; sum_elim_inl : forall {Γ A B C} (f : Γ * A ~~> C) (g : Γ * B ~~> C),
+      sum_elim f g ∘ (id ⊗ inl) == f
+  ; sum_elim_inr : forall {Γ A B C} (f : Γ * A ~~> C) (g : Γ * B ~~> C),
+      sum_elim f g ∘ (id ⊗ inr) == g
   }.
 
 End Sum.

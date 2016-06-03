@@ -9,7 +9,7 @@ Section Sierpinski.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-Variable Σ : U.
+Context {Σ : U}.
 
 Class ΣOps : Type :=
   { true : unit ~~> Σ

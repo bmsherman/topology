@@ -25,6 +25,7 @@ Numbers/LReal.v
 
 Spec/Category.v
 Spec/Discrete.v
+Spec/Prob.v
 Spec/Real.v
 Spec/Sierpinski.v
 Spec/Stream.v

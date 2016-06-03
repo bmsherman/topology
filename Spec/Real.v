@@ -39,8 +39,7 @@ Import Sierp.
 
 Variable D : Type -> U.
 Context {dops : DiscreteOps D}.
-Variable Σ : U.
-Context {sigops : ΣOps Σ}.
+Context `{sigops : ΣOps (U := U) (ccat := ccat) (cmc := cmc)}.
 
 (** Real numbers *)
 Variable R : U.

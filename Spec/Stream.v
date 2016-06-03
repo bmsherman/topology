@@ -9,7 +9,7 @@ Section Stream.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-Variable Stream : U -> U.
+Context {Stream : U -> U}.
 
 Class StreamOps : Type :=
   { stream : forall {Γ A}, Γ ~~> A -> A ~~> A -> Γ ~~> Stream A

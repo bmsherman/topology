@@ -142,61 +142,102 @@ Infix "~>" := Map (at level 80) : obj_scope.
 Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f))) 
   (at level 120, right associativity) : morph_scope.
 
+Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
+  (at level 120, right associativity) : morph_scope.
+
 Section LangExample.
 
+Require Import Spec.Real Spec.Sierpinski Spec.Prob Spec.Sum.
+
+Import Prob.
+Import Real.
+Import Sum.
 Context {U : Type}.
-Context `{CMC U}.
-Definition undefined A : A.
-Admitted.
+Context `{MeasOps U}.
+Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) U 
+   (LRnn := LRnn)}.
+Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (R := R)
+  (Σ := Σ)}.
+Context {sumops : SumOps}.
+Import Sierp.
+Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc)
+  (Σ := Σ)}.
 
-Variable R : U.
-Definition constR {Γ} : nat -> Γ ~~> R := undefined _.
-Variable plus : [R; R] ~> R.
-Variable times : [R; R] ~> R.
 
-Delimit Scope contExp_scope with cExp.
-Local Open Scope cExp.
-Infix "+" := (Call plus) : contExp_scope.
-Infix "*" := (Call times) : contExp_scope.
+Definition sum_match {Γ A B C}
+  (e : Γ ~~> A + B)
+  (l : Γ * A ~~> C) (r : Γ * B ~~> C) : Γ ~~> C :=
+  sum_elim l r ∘ (id ⊗ e) ∘ diagonal.
 
-Variable B : U.
-Definition constB {Γ} : bool -> Γ ~~> B := undefined _.
-Definition andB : [B; B] ~> B := undefined _. 
-Infix "&&" := (Call andB) : contExp_scope.
-Definition if_then_else {A} : [B; A; A] ~> A := undefined _.
 Notation "'If' cond 'Then' thenExp 'Else' elseExp" :=
-  (Call if_then_else (cond) (thenExp) (elseExp)) (at level 160) : contExp_scope.
+  (sum_match (cond)%morph (LAM _ => thenExp ∘ fst)%morph (LAM _ => elseExp ∘ fst)%morph) (at level 160) : morph_scope.
 
+Definition bool := unit + unit.
+Definition btrue : unit ~~> bool := inl ∘ tt.
+Definition bfalse : unit ~~> bool := inr ∘ tt.
+Definition band : bool * bool ~~> bool :=
+  sum_elim (inl ∘ tt) fst.
 
+Infix "&&" := (ap2 band).
 
-Definition test {Γ : U} : Γ ~~> R
- := constR 2 + constR 3.
+Infix "+" := (ap2 (Rplus R)) : morph_scope.
+Infix "*" := (ap2 (Rmult R)) : morph_scope.
+Notation "0" := (ap0 (Rzero R)) : morph_scope.
+Notation "1" := (ap0 (Rone R)) : morph_scope.
 
-Definition exampleFun : [B; R; R] ~> R :=
-  makeFun [B; R; R] (fun _ b x y => 
-   let z := x * x in 
+Fixpoint constR {Γ} (n : nat) : Γ ~~> R := match n with
+  | 0%nat => 0
+  | S n' => (1 + constR n')%morph
+  end.
+
+Definition exampleFun : [bool; R; R] ~> R :=
+  makeFun [bool; R; R] (fun Γ b x y => 
+   let z := (x * x)%morph in 
    If b && b
      Then z + constR 3
      Else x + (x * y) + z).
 
 Definition example2 : [R] ~> R :=
-  makeFun [R] (FUN x => let f := Call exampleFun (constB true) x in
-      f (constR 5) + f x).
+  makeFun [R] (fun Γ x => let f := Call exampleFun (ap0 btrue) x in
+      f (constR 5) + f x)%morph.
 
-Definition squareAndAdd : R ~~> R := makeFun1 (FUN x => x * x + x).
+Definition squareAndAdd : R ~~> R := makeFun1 (fun _ x => x * x + x)%morph.
 
-Context {M : U -> U} {SM : SMonad U M}.
+Local Instance smd : SMonad U Prob := ProbMonad.
 
-Definition coinflip : forall {Γ}, Γ ~~> M B := undefined _.
-Definition normal : forall {Γ}, Γ ~~> M R := undefined _.
-
-Definition exampleProgram {Γ} : Γ ~~> M R :=
-  x <- normal;
-  b <- coinflip;
+Definition exampleProgram {Γ} : Γ ~~> Prob R :=
+  x <- ap0 normal;
+  b <- ap0 coinflip;
   If b
-    Then Ret (! x)
+    Then Ret (!x)
     Else
-      y <- normal;
-      Ret (! x + ! y).
+      y <- ap0 normal;
+      Ret (!x + !y).
+
+Require Import Spec.Stream.
+Import Stream.
+
+Context `{StreamOps (U := U) (ccat := ccat) (Stream := Stream)}.
+
+Infix "-" := (ap2 (Rsub R)) : morph_scope.
+
+Definition ornstein : [R; R] ~> Prob (Stream R) :=
+  makeFun [R; R] (fun _ θ σ => let σ2 := σ * σ in
+     pstream (Ret 0) (LAM x =>
+        (z <- ap0 normal 
+        ; Ret ( (1 - !θ) * !x + !σ2 * !z))))%morph.
+
+Definition peval {A} : Prob A * Open A ~~> LRnn :=
+  MeasEval ∘ ((SubProb_to_Meas ∘ Prob_to_SubProb) ⊗ id).
+
+Context `{OpenOps (U := U) (ccat := ccat) (Σ := Σ) (Open := Open)}.
+
+Infix "<" := (ap2 (Rlt R)).
+Infix "/\" := (ap2 and).
+
+Definition ornstein_prob : [R; R] ~> LRnn :=
+  makeFun [R; R] (fun _ θ σ =>
+  ap2 peval (Call ornstein θ σ)
+     (open_abstract (LAM x => ap1 hd x < 0  /\  1 < ap1 hd (ap1 tl x))))%morph.
 
 End LangExample.

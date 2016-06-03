@@ -9,15 +9,13 @@ Section Prob.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-Variable Σ : U.
-
 Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream.
 Import Sierp.
 Import Real.
 Import Sum.
 Import Stream.
 
-Context `{sierpops : ΣOps U (ccat := ccat) (cmc := cmc) Σ}.
+Context `{sierpops : ΣOps U (ccat := ccat) (cmc := cmc)}.
 Context `{lrnnops : LRnnOps U (ccat := ccat) (cmc := cmc) 
   (Σ := Σ)}.
 Context `{realops : ROps U (ccat := ccat) (cmc := cmc) 
@@ -25,12 +23,12 @@ Context `{realops : ROps U (ccat := ccat) (cmc := cmc)
 Context `{sumops : SumOps U (ccat := ccat)}.
 Context `{streamops : StreamOps U (ccat := ccat)}.
 
-Variable Open : U -> U.
+Context {Open : U -> U}.
 
 Class OpenOps : Type :=
   { open_abstract : forall {Γ A : U}, Γ * A ~~> Σ -> Γ ~~> Open A }.
 
-Variable Meas Prob SubProb : U -> U.
+Context {Meas Prob SubProb : U -> U}.
 
 Class MeasOps : Type :=
   { MeasMonad : SMonad U Meas
@@ -44,8 +42,8 @@ Class MeasOps : Type :=
   ; ProbEval : forall {A B : U}, Prob (A + B) ~~> R
   ; coinflip : unit ~~> Prob (unit + unit)
   ; normal : unit ~~> Prob R
-  ; pstream : forall {Γ A}, Γ ~~> Prob A -> A ~~> Prob A
-     -> Γ ~~> Stream A
+  ; pstream : forall {Γ A}, Γ ~~> Prob A -> Γ * A ~~> Prob A
+     -> Γ ~~> Prob (Stream A)
   }.
 
 End Prob.
