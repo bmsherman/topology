@@ -13,6 +13,7 @@
 \usepackage{amsmath}
 \usepackage{amsthm}
 
+\usepackage{../tex/mathpartir}
 \usepackage{url}
 
 \newtheorem{definition}{Definition}
@@ -40,6 +41,7 @@
 \newcommand{\bool}{\mathbb{B}}
 \newcommand{\cons}{::}
 \newcommand{\un}[1]{\ \mathrm{#1}}
+\newcommand{\irule}[1]{\textsc{#1}}
 
 \title{Overview of Probability in Coq}
 \author{Ben Sherman}
@@ -445,6 +447,81 @@ Given formal topologies $S$ and $T$, a continuous relation $F : S \to T \to \Pro
 \]
 
 Recall that we can define a point $x$ in the formal topology $S$ as a continuous relation $x : \One \to S \to \Prop$. Then the Dirac delta of this distribution, $\delta_x : S \to \underline{[0,1]}$ is simply given by $\map{x}{\mu_\One}$.
+
+\section{Computation with formal topology}
+
+The collection $\mathsf{Pt}(S, \le, \cov)$ of points on a space $(S, \le, \cov)$ are predicates $ x : S \to \Prop$ satisfying the following rules:
+\begin{mathpar}
+\inferrule* [right=inhabited]
+  { }
+  {\exists a, x \models a}
+  
+\inferrule* [right=convergent]
+  {x \models a \\ x \models b}
+  {x \models a \downarrow b}
+
+\inferrule* [right=split-cov]
+  {x \models a \\ a \cov U}
+  {\exists b \in U, x \models b}.
+\end{mathpar}
+Each of these three rules can be read computationally. We view a point as an interaction structure which provides an interactive refinement process. First, by \irule{inhabited}, we are given an open which the point lies in; this can be viewed as the ``starting state'' for the refinement process. Then, using the \irule{split-cov} rule, we can use an open cover to refine our state of knowledge about the point to one of the opens in the cover. Using the convergent rule, we can combine any of the previous opens in which the point is known to lie into a single open which is as least as fine as all the others, so that we need only keep track of a single ``smallest'' open which a point lies in.
+
+Are the computational rules sufficient for characterizing points? That is, if two points $x$ and $y$ differ extensionally (i.e., $\neg (\forall a : S, a \in x \leftrightarrow a \in y)$), can we determine this by computing with the above rules alone? Suppose the space $S$ is such that there is an open set $\top : S$ such that $\forall a : S, a \le \top$. Furthermore, suppose that there is a point $\bot \subseteq S$ characterized by $\bot = \{ \top \}$. Then, since every point splits covers, the fact that $\bot$ is a point means that every open cover of $\top$ must already \emph{contain} $\top$ since $\bot$ splits covers. Note that $S$ is compact and is not Hausdorff in this scenario.
+
+Moreover, any point in this space may legitimately behave computationally as if it were the point $\bot$. Of course, a point which is not $\bot$ may also behave computationally in a way which clearly distinguishes it from $\bot$. So different ``proofs'' that a point obeys the required rules result in different computational behavior.
+
+There is a way to characterize the potential computational behaviors of points by looking at the specialization preorder on points. Given two points $x \subseteq S$ and $y \subseteq S$, we say $x \sqsubseteq y$ if $x \subseteq y$, that is, every open which contains $x$ also contains $y$. Accordingly, $\bot$ is the bottom element of this order.
+
+It is my impression that two distinct minimal points $x$ and $y$ should be able to be distinguished, but I can't seem to think of a proof. In particular, in a Hausdorff space, the specialization preorder is the discrete preorder (i.e., it is the reflexive relation): all points are incomparable, so all points are minimal, so every point should be able to be distinguished from one another.
+
+So even though we consider points to be determined by the opens in which they lie, different proofs of being a point have different computational behavior, and some may be more useful.
+
+\begin{definition} A \emph{point implementation} of a given point is the collection of proofs that $x$ satisfies the rules \irule{inhabited}, \irule{convergent}, and \irule{split-cov}.
+\end{definition}
+
+\begin{definition}
+A point implementation of a point $x$ is \emph{maximally informative} if, for every $a : S$ such that $x \models a$, we can derive $\exists b, b \in \downarrow \{ a \} \wedge x \models b$ solely from repeated applications of the \irule{inhabited}, \irule{convergent}, and \irule{split-cov} rules.
+\end{definition}
+
+Therefore, maximally informative point implementations allow a point to be uniquely identified.
+\begin{theorem}
+For the Sierpíski space $\Sigma$, there is a maximally informative point implementation for the indicator $\chi_P$ of a proposition $P : \Prop$ if and only if $P$ is decidable.
+\end{theorem}
+\begin{proof}
+Let $\bot, \top : \Open{\Sigma}$ with $\bot \le \top$ be the basic opens of $\Sigma$. 
+
+$\Longleftarrow$: If $P$ is decidable, then if $P$ is true we can use $x \models \bot$ for the \irule{inhabited} rule, and if $P$ is false, then for all rules we will have $x \models \top$.
+
+$\Longrightarrow$: If we have a maximally informative point implementation for the indicator $\chi_P$ by $\irule{inhabited}$ we have either $x \models \top$ or $x \models \bot$. If $x \models \bot$, then $P$ is true and we are done. If $x \models \top$, then we apply the \irule{split-cov} rule with the cover $\top \cov \{ \bot, \top \}$. If the response is $x \models \bot$, then $P$ is true, and otherwise, $P$ must be false, though the formal proof that $P$ is probably not very simple.
+\end{proof}
+
+There is a related notion that I have thought of outside the context of formal topology. Let $\mathsf{Partial} : \Type \to \Type$ denote the ``non-termination'' monad. 
+\begin{definition}
+For a given proposition $P : \Prop$, a \emph{verified semidecision procedure} for $P$ is a function $d_P : \mathsf{Partial}\ P$ such that
+\[
+P \to (\exists p : P, d_P \Downarrow \mathsf{Now}\ p).
+\]
+\end{definition}
+I don't think it matters if the proof $P$ on the left-hand side of the above implication is truncated or not. Similarly, I believe that if $P$ has a verified semidecision procedure, then $P$ has a weakly constant endomap (see \cite{kraus2014}). For any $f : \nat \to \bool$, it should be possible to create a verified semidecision procedure for the proposition $\exists n : \nat, f(n) = \mathsf{true}$.
+
+Viewed in this light, it seems that the simplest encoding of the Sierpínski space $\Sigma$ may not be the best space for creating maximally informative points; I would like that maximally informative points on the Sierpínski space exactly correspond with verified semidecision procedures, but with these definitions this is not the case. Consider the canonical proposition $\exists n : \nat, f(n) = \mathsf{true}$. With the Sierpínski space, we cannot encode with the opens how much of the sequence we have already investigated, and so it is not possible to investigate arbitrarily far. Perhaps, we may prefer some space, which is also an information base, but which instead has opens $\bot_i$ for $i \in \nat$ satisfying $i \le j \to \bot_i \le \bot_j$ and $\bot_i \le \top$. I'm not too sure; I haven't given this all that much thought.
+
+\subsection{Sampling from probability distributions}
+
+[[ The following is wrong; it doesn't necessarily produce the right distribution. I thought I knew how to sample from a distribution, but this doesn't work. I hope there's a way to fix the argument. ]]
+
+It should be possible to sample from probability distributions in the following sense. Suppose we have a probability distribution $\mu : S \to \lowerT{\R}^+$. Then $\mu_\infty(S) = 1$, so for an open cover $S \cov U$, $\mu_\infty(U) = 1$. Therefore, for every (small) $\varepsilon > 0$, there is a finite subset $\{u_1, \ldots, u_n \}$ such that
+\[
+\mu(u_1 \vee \cdots \vee u_n) \ge 1 - \varepsilon.
+\]
+
+Then, if we define
+\[
+q_i = \mu(u_1 \vee \cdots \vee u_i),
+\]
+we have that we can ``fill up'' the interval $[0, 1 - \varepsilon]$ with the rationals $q_i$.
+
+Therefore, we can sample an $x : \R$ uniformly from the interval $[0, 1]$. With probability 1, we can find some $\varepsilon > 0$ such that $x < 1 - \varepsilon$, and then with probability 1 we will find that there is some $i$ such that $q_{i-1} < x < q_i$. In this case, we will say that our randomly sampled point lies within the open $u_i$.
 
 \section{Future plans}
 
