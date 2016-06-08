@@ -293,7 +293,7 @@ Qed.
 (** * Subsets *)
 
 Lemma sig_eq (A : Type) (P : A -> Prop) (Pirrel : forall a (p q : P a), p = q)
-  : forall (x y : sig P), projT1 x = projT1 y -> x = y.
+  : forall (x y : sig P), proj1_sig x = proj1_sig y -> x = y.
 Proof.
 intros. destruct x, y. simpl in *.
 induction H. rewrite (Pirrel x p p0).
@@ -440,7 +440,7 @@ Definition fromEquiv {A B} (x : Equiv.T A B) : T A B :=
   |}.
 
 
-Lemma sigmaProj1_eq : forall {A A' B} {to : A -> A'} {from : A' -> A}
+Lemma sigmaProj1_eq : forall {A A' B} (to : A -> A') (from : A' -> A)
   {a : A}
   (from_to : from (to a) = a),
   forall b,
@@ -473,14 +473,14 @@ Lemma sigmaPropEquiv {A A' : Type} {B : A -> Type}
   : T (sigT B) (sigT (fun a' => B (Equiv.from iso a'))).
 Proof.
 pose iso as iso'.
-destruct iso.
+destruct iso. simpl.
 refine (
   {| to := fun p : sigT B => let (a, b) := p in 
       existT (fun a' => B (from0 a')) (to0 a) (Equiv.transport B (eq_sym (from_to0 a)) b)
   ; from := fun p : sigT (fun a' => B (from0 a')) => let (a', b) := p in
       existT B (from0 a') b
   ; from_to := fun p : sigT B => match p with
-     existT a b => sigmaProj1_eq (from_to0 a) b
+     existT a b => sigmaProj1_eq to0 from0 (from_to0 a) b
      end
   ; to_from := fun p : sigT (fun a' => B (from0 a')) => match p with
      existT a' b => sigmaProj1_eq2 iso' a' b

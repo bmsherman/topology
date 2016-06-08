@@ -27,8 +27,8 @@ Theorem Union_union : forall A B (a b : Ensemble A) (f : A -> Ensemble B),
   union a f ∪ union b f === union (a ∪ b) f.
 Proof.
 intros. constructor; unfold Included; intros.
-- destruct H; destruct H; econstructor; 
-  (eassumption || (econstructor (eassumption))).
+- destruct H; destruct H; 
+  eauto using union_intro, Union_introl, Union_intror.
 - destruct H. destruct H; [ left | right]; econstructor; eauto.
 Qed.
 
@@ -37,7 +37,7 @@ Theorem union_Intersection :
   union (a ∩ b) f ⊆ union a f ∩ union b f.
 Proof.
 intros. unfold Included, In; intros. 
-destruct H. destruct H. constructor; econstructor (eauto). 
+destruct H. destruct H. constructor; eauto using union_intro. 
 Qed.
 
 Theorem Intersection_Included_l : forall A (U V : Ensemble A),
@@ -109,12 +109,14 @@ intros. unfold subrelation, predicate_implication, pointwise_lifting,
   Basics.impl. intros. destruct H. assumption.
 Qed.
 
+Require Import Setoid.
 Instance Included_Proper : forall U, Proper (@Same_set U ==> @Same_set U ==> iff)
   (@Included U).
 Proof.
 intros. unfold Proper, respectful.
-intros. destruct H, H0. split; intros;
-repeat (etransitivity; try eassumption).
+intros. destruct H, H0. split; intros.
+rewrite H1. rewrite H3. assumption.
+rewrite H. rewrite <- H2.  assumption.
 Qed.
 
 Theorem Same_set_iff : forall A (U V : Ensemble A),

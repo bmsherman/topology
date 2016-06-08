@@ -476,7 +476,7 @@ Module PO.
 
   Local Instance prop : t (fun (P Q : Prop) => P -> Q) (fun P Q => P <-> Q).
   Proof. 
-  constructor; intuition.
+  constructor; intuition. apply PreO.prop.
   split; simpl in *; intros; intuition.
   Qed.
 
