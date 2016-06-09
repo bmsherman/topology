@@ -1,5 +1,7 @@
 Require Import Frame FormTop.FormTop FormTop.Cont Algebra.Sets.
 
+Set Asymmetric Patterns.
+
 (** A definition of concrete topological spaces. These are formal topologies
     which are related to a type of points in the expected way, through a
     relation which I call [In]. See Definition 1.2 in [1]. Their relation

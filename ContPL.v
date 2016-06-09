@@ -153,7 +153,7 @@ Import Prob.
 Import Real.
 Import Sum.
 Context {U : Type}.
-Context `{MeasOps U}.
+Context `{mops : MeasOps U}.
 Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) U 
    (LRnn := LRnn)}.
 Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (R := R)
@@ -223,7 +223,7 @@ Infix "-" := (ap2 (Rsub R)) : morph_scope.
 
 Definition ornstein : [R; R] ~> Prob (Stream R) :=
   makeFun [R; R] (fun _ θ σ => let σ2 := σ * σ in
-     pstream (Ret 0) (LAM x =>
+     pstream (MeasOps := mops) (Ret 0) (LAM x =>
         (z <- ap0 normal 
         ; Ret ( (1 - !θ) * !x + !σ2 * !z))))%morph.
 
@@ -235,9 +235,11 @@ Context `{OpenOps (U := U) (ccat := ccat) (Σ := Σ) (Open := Open)}.
 Infix "<" := (ap2 (Rlt R)).
 Infix "/\" := (ap2 and).
 
+(** This seems to cause a Coq bug in v8.5...
 Definition ornstein_prob : [R; R] ~> LRnn :=
   makeFun [R; R] (fun _ θ σ =>
   ap2 peval (Call ornstein θ σ)
      (open_abstract (LAM x => ap1 hd x < 0  /\  1 < ap1 hd (ap1 tl x))))%morph.
+*)
 
 End LangExample.

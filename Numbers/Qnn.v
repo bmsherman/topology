@@ -122,7 +122,7 @@ Require Import QArith.Qminmax.
 
 Definition Qnn_truncate (q : Q) : Qnn.
 Proof.
-refine {| qnn := !! (Qmax 0 q) |}.
+refine {| qnn := Q2Qc (Qmax 0 q) |}.
 unfold Qcle. simpl. rewrite Qred_correct.
 apply Q.le_max_l.
 Defined.

@@ -369,8 +369,7 @@ Proof.
 intros.
 (** Eventually I'd like a commutative monoid tactic
     to handle this. *) 
-admit.
-Qed.
+Admitted.
 
 Theorem LRzero_plus_id_l : forall x, (x + 0 == x)%LR.
 Proof.
@@ -425,7 +424,7 @@ refine ({| lbound := RmultT (lower x) (upper x) (lower y) (upper y) |}); intros.
 - induction H. econstructor; try eassumption; rewrite H0; assumption.
 - admit.
 - admit.
-Qed.
+Admitted.
 
 (** I just wrote this down quickly. It is probably wrong! *)
 Definition RNLmult (x y : RealNL) : RealNL.

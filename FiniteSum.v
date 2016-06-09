@@ -1,5 +1,7 @@
 Require Import Numbers.LPReal.
 
+Set Asymmetric Patterns.
+
 Require Types.Finite Types.Iso.
 
 Local Open Scope LPR.
@@ -67,7 +69,7 @@ Require Import ProofIrrelevance Ring.
 Theorem sum_finite_subset_dec_equiv {A} (fin : Finite.T A)
   (P : A -> Prop) (decP : forall a, {P a} + {~ P a}) (f : A -> LPReal)
   : sum_finite_subset fin P f =
-    sum_finite (Finite.fin_dec_subset fin decP) (fun x => f (projT1 x)).
+    sum_finite (Finite.fin_dec_subset fin decP) (fun x => f (proj1_sig x)).
 Proof.
 unfold sum_finite_subset.
 induction fin.

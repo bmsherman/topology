@@ -442,12 +442,15 @@ destruct H0. split; intros. rewrite <- H. assumption.
 rewrite <- H0. assumption.
 Qed.
 
+Require Import Coq.Setoids.Setoid.
+
+
 Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
 Proof.
 intros. constructor; unfold Sat, In in *.
-  rewrite <- Intersection_Included_l; eassumption.
-  rewrite <- Intersection_Included_r; eassumption.
+  rewrite <- (Intersection_Included_l _ U V); eassumption.
+  rewrite <- (Intersection_Included_r _ U V); eassumption.
 Qed.
 
 Theorem Sat_Union : forall U V,

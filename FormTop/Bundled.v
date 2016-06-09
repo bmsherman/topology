@@ -172,7 +172,7 @@ Definition parallel_mp_ok {A B X Y : IGT}
   Cont.t (le (A * B)) (le (X * Y)) (Cov (A * B)) (Cov (X * Y))
   (parallel_mp f g).
 Proof.
-simpl. apply ProductMaps.t_parallel.
+simpl. apply ProductMaps.t_parallel; try typeclasses eauto.
 apply (mp_ok f). apply (mp_ok g).
 Qed.
 
@@ -344,40 +344,3 @@ Instance IGT_CMC : CMC B.IGT :=
 Admitted.
 
 Axiom MCProb : @SMonad _ _ _ B.Prob. 
-
-Local Open Scope obj.
-Local Open Scope morph.
-
-Require Import ContPL.
-
-
-
-Definition Call1 {A B Γ : B.IGT} (f : A ~~> B) (x : Γ ~~> A)
-  : Γ ~~> B := f ∘ x.
-
-Definition Call2 {A B C Γ : B.IGT} 
-  (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
-  f ∘ parallel x y ∘ diagonal.
-
-Definition Rone {Γ} : Γ ~~> B.R := undefined _.
-
-Infix "+" := (Call2 B.Rplus) : loc_scope.
-(** Careful with the "*" sign. It's overloaded for products on
-    the types too. *)
-Infix "*" := (Call2 B.Rmult).
-Infix "-" := (Call2 B.Rminus) : loc_scope.
-
-Notation "0" := B.Rzero : loc_scope.
-Notation "1" := Rone : loc_scope.
-
-Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
-  (at level 120, right associativity) : loc_scope.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-(** Discrete Ornstein-Uhlenbeck process *)
-Definition ornstein : [B.R; B.R] ~> B.Prob (B.Stream B.R) :=
-  makeFun [B.R; B.R] (fun _ θ σ =>
-     B.stream (Ret 0) (LAM x =>
-        (z <- Call2 B.normal 0 (Call1 B.square (!σ)) 
-        ; Ret ( (1 - !θ) * !x + !z)))).

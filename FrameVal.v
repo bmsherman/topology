@@ -250,7 +250,7 @@ refine (
 - unfold ContinuousV. intros. apply LPRle_antisym. 
   apply LPRsup_le. intros. rewrite continuous.
   apply LPRsup_le. intros. apply LPRsup_ge2. exists a0.
-  apply LPRsup_ge2. exists a. reflexivity. assumption. assumption.
+  apply LPRsup_ge2. exists a. reflexivity. eassumption. assumption.
   apply LPRsup_le. intros. apply LPRsup_le. intros.
   apply LPRsup_ge2. exists a0. apply monotonic.
   apply F.sup_ok.

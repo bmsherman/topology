@@ -26,7 +26,7 @@ Variable bot : S.
 Hypothesis bok_ok : @PreO.bottom _ Lattice.le bot.
 
 Definition extend (mu : S -> LPReal) (U : S -> Prop) : LPReal :=
-  LPRsup (fun s : { t | U t } => mu (projT1 s)).
+  LPRsup (fun s : { t | U t } => mu (proj1_sig s)).
 
 Hypothesis Cov : S -> (S -> Prop) -> Prop.
 

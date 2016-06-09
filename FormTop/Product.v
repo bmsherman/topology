@@ -334,7 +334,7 @@ constructor; intros; unfold parallel in *.
   Focus 2. eapply Product.factors; try eassumption.
   eapply H2. eapply Product.unfactors1; try eassumption.
   admit. eapply H3. eapply Product.unfactors2. 
-  3:eassumption. assumption. assumption. admit.
+  eassumption. admit.
   unfold Included, In; intros.
   destruct x. destruct H4. destruct H4, H5.
   destruct H4, H5. econstructor.
