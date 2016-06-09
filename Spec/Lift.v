@@ -37,4 +37,5 @@ Class LiftProps : Prop :=
 
 End Lift.
 
+
 End Lift.

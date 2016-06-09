@@ -242,4 +242,5 @@ Definition ornstein_prob : [R; R] ~> LRnn :=
      (open_abstract (LAM x => ap1 hd x < 0  /\  1 < ap1 hd (ap1 tl x))))%morph.
 *)
 
+
 End LangExample.
