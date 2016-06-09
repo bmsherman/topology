@@ -48,6 +48,9 @@ Arguments CMC U {_} : clear implicits.
 Infix "∘" := compose (at level 40, left associativity) : morph_scope.
 Infix "⊗" := parallel (at level 25) : morph_scope.
 
+Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
+  forall X (g1 g2 : X ~~> A), f ∘ g1 == f ∘ g2 -> g1 == g2.
+
 Record Iso {U} `{CMC U} {A B : U} : Type :=
   { to   : A ~~> B
   ; from : B ~~> A
