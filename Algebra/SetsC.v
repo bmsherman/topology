@@ -1,28 +1,30 @@
 Require Import Coq.Classes.CRelationClasses.
 
-Polymorphic Definition Subset (A : Type) := A -> Type.
+Set Universe Polymorphism.
+
+Definition Subset (A : Type) := A -> Type.
 Definition bin_op (A : Type) := A -> A -> A.
 
 Section Defns.
-Polymorphic Context {A : Type}.
+Context {A : Type}.
 
-Polymorphic Definition In (U : Subset A) (x : A) := U x. 
+Definition In (U : Subset A) (x : A) := U x. 
 
-Polymorphic Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset A) : Subset A
+Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset A) : Subset A
   := fun a : A => f (U a) (V a).
 
-Polymorphic Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset A) : Type
+Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset A) : Type
   := forall a : A, f (U a) (V a).
 
-Polymorphic Definition Intersection : bin_op (Subset A) := pointwise_op prod.
+Definition Intersection : bin_op (Subset A) := pointwise_op prod.
 
-Polymorphic Definition Union : bin_op (Subset A) := pointwise_op sum.
+Definition Union : bin_op (Subset A) := pointwise_op sum.
 
-Polymorphic Inductive Inhabited {U : Subset A} :=
+Inductive Inhabited {U : Subset A} :=
   Inhabited_intro : forall a : A, In U a -> Inhabited.
 
-Polymorphic Definition Included : crelation (Subset A) := pointwise_rel arrow.
-Polymorphic Definition Same_set : crelation (Subset A) := pointwise_rel iffT.
+Definition Included : crelation (Subset A) := pointwise_rel arrow.
+Definition Same_set : crelation (Subset A) := pointwise_rel iffT.
 End Defns.
 
 Arguments Inhabited {A} U : clear implicits.
@@ -36,11 +38,11 @@ Infix "===" := Same_set (at level 70) : Subset_scope.
 Delimit Scope Subset_scope with Subset.
 Local Open Scope Subset.
 
-Polymorphic Definition compose {S T U} (F : S -> T -> Type)
+Definition compose {S T U} (F : S -> T -> Type)
   (G : T -> U -> Type) (s : S) (u : U) : Type :=
     { t : T & (F s t * G t u)%type }.
 
-Polymorphic Inductive union {S T} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
+Inductive union {S T} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
 Theorem Union_union : forall A B (a b : Subset A) (f : A -> Subset B),
@@ -163,7 +165,7 @@ intros. unfold Proper, respectful.
 intros. subst. apply union_idx_monotone. assumption.
 Qed.
 
-Local Polymorphic Instance Union_Proper_eq : forall A, 
+Local Instance Union_Proper_eq : forall A, 
   Proper (Same_set ==> Same_set ==> Same_set) (@Union A).
 Proof.
 unfold Proper, respectful, Same_set, pointwise_rel, iffT.
@@ -172,7 +174,7 @@ intros. split; intros;
   [apply X | apply X0]; assumption ).
 Qed.
 
-Polymorphic Instance Union_Proper_le_flip : forall A,
+Instance Union_Proper_le_flip : forall A,
   Proper (Included --> Included --> flip Included) (@Union A).
 Proof.
 unfold Proper, respectful, Included, pointwise_rel, flip, arrow.
@@ -181,28 +183,28 @@ intros.
   [apply X | apply X0]; assumption.
 Qed.
 
-Polymorphic Lemma Same_set_iff_In:
+Lemma Same_set_iff_In:
   forall (A : Type) (U V : Subset A),
   (forall x : A, iffT (In U x) (In V x)) -> U === V.
 Proof.
 apply Same_set_iff.
 Qed.
 
-Polymorphic Instance In_Proper : forall A,
+Instance In_Proper : forall A,
   Proper (Included ==> eq ==> arrow) (@In A).
 Proof.
 unfold Proper, respectful, arrow. intros.
 subst.  apply X. assumption.
 Qed.
 
-Polymorphic Instance In_Proper2 : forall A, 
+Instance In_Proper2 : forall A, 
   Proper (Included --> eq --> flip arrow) (@In A).
 Proof.
 unfold Proper, respectful, flip, arrow. intros.
 subst.  apply X. assumption.
 Qed.
 
-Polymorphic Lemma Included_Same_set : forall A (U V : Subset A),
+Lemma Included_Same_set : forall A (U V : Subset A),
   U ⊆ V -> V ⊆ U -> U === V.
 Proof.
 unfold Included, Same_set, pointwise_rel, arrow.

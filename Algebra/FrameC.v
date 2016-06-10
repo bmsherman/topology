@@ -1,14 +1,16 @@
 Require Import Coq.Classes.CMorphisms Coq.Classes.CRelationClasses.
+
+Set Universe Polymorphism.
 Generalizable All Variables.
 
-Polymorphic Definition prod_op {A B} (fA : crelation A) (fB : crelation B)
+Definition prod_op {A B} (fA : crelation A) (fB : crelation B)
    (x y : A * B) := (fA (fst x) (fst y) * fB (snd x) (snd y))%type.
 
-Polymorphic Definition map_op {A B} 
+Definition map_op {A B} 
   (f : A -> B) (P : crelation B) (x y : A) : Type := 
   P (f x) (f y).
 
-Polymorphic Definition pointwise_op {A} {B : A -> Type} 
+Definition pointwise_op {A} {B : A -> Type} 
   (P : forall a, crelation (B a))
   (f g : forall a, B a) := forall a, P a (f a) (g a).
 
@@ -54,7 +56,7 @@ Polymorphic Definition pointwise_op {A} {B : A -> Type}
 Module PreO.
   (** The relation [le] (read: Less than or Equal) is a preorder when
       it is reflexive [le_refl] and transitive [le_trans]. *)
-  Polymorphic Class t {A : Type} {le : crelation A} : Type := 
+  Class t {A : Type} {le : crelation A} : Type := 
     { le_refl : forall x, le x x
     ; le_trans : forall x y z, le x y -> le y z -> le x z
     }.
@@ -70,22 +72,22 @@ Module PreO.
   
   (** A morphism of preorders is just a monotonic function. That is,
       it preserves ordering. *)
-  Polymorphic Definition morph `(leA : crelation A) `(leB : crelation B) 
+  Definition morph `(leA : crelation A) `(leB : crelation B) 
    `(f : A -> B) : Type :=
     forall a b, leA a b -> leB (f a) (f b).
 
   Section Facts.
 
-  Polymorphic Context `{le : crelation A}.
-  Polymorphic Context (tA : t le).
+  Context `{le : crelation A}.
+  Context (tA : t le).
   Infix "<=" := le.
 
-  Polymorphic Lemma morph_id : morph le le (fun x => x).
+  Lemma morph_id : morph le le (fun x => x).
   Proof. 
     unfold morph; auto.
   Qed.
 
-  Polymorphic Lemma morph_compose `(tB : t B leB) `(tC : t C leC)
+  Lemma morph_compose `(tB : t B leB) `(tC : t C leC)
     : forall (f : A -> B) (g : B -> C), 
      morph le leB f -> morph leB leC g -> morph le leC (fun x => g (f x)).
   Proof.
@@ -93,13 +95,13 @@ Module PreO.
   Qed.
 
   (** [top t] holds if [t] is bigger than everything *)
-  Polymorphic Definition top (t : A) : Type := forall a, a <= t.
+  Definition top (t : A) : Type := forall a, a <= t.
 
   (** [bottom b] holds if [b] is smaller than everything *)
-  Polymorphic Definition bottom (b : A) : Type := forall a, b <= a.
+  Definition bottom (b : A) : Type := forall a, b <= a.
 
   (** [max l r m] holds if [m] is the maximum of [l] and [r]. *)
-  Polymorphic Record max {l r m : A} : Type :=
+  Record max {l r m : A} : Type :=
   { max_l     : l <= m
   ; max_r     : r <= m
   ; max_least : forall m', l <= m' -> r <= m' -> m <= m'
@@ -108,13 +110,13 @@ Module PreO.
   Arguments max : clear implicits.
 
   (** [max] is commutative *)
-  Polymorphic Lemma max_comm : forall l r m, max l r m -> max r l m.
+  Lemma max_comm : forall l r m, max l r m -> max r l m.
   Proof.
   intros. destruct X; constructor; auto. 
   Qed.
 
   (** [min l r m] holds if [m] is the minimum of [l] and [r] *)
-  Polymorphic Record min {l r m : A} : Type :=
+  Record min {l r m : A} : Type :=
   { min_l        : m <= l
   ; min_r        : m <= r
   ; min_greatest : forall m', m' <= l -> m' <= r -> m' <= m
@@ -123,7 +125,7 @@ Module PreO.
   Global Arguments min : clear implicits.
 
   (** [min] is commutative *)
-  Polymorphic Lemma min_comm : forall l r m, min l r m -> min r l m.
+  Lemma min_comm : forall l r m, min l r m -> min r l m.
   Proof.
   intros. destruct X; constructor; auto.
   Qed.
@@ -132,7 +134,7 @@ Module PreO.
 
   (** [min] is associative, phrased in a relational manner,
       i.e., minima are associative when they exist *)
-  Polymorphic Lemma min_assoc : forall a b c, 
+  Lemma min_assoc : forall a b c, 
     forall bc, min b c bc ->
     forall ab, min a b ab ->
     forall abc, iffT (min a bc abc) (min ab c abc).
@@ -158,7 +160,7 @@ Module PreO.
       * rewrite H0. apply (min_r BC).
   Qed.
 
-  Polymorphic Lemma min_idempotent : forall a, min a a a.
+  Lemma min_idempotent : forall a, min a a a.
   Proof.
   intros. constructor.
   - reflexivity.
@@ -168,26 +170,26 @@ Module PreO.
 
   (** [sup f m] holds when [m] is the supremum of all
       values indexed by [f]. *)
-  Polymorphic Record sup {I : Type} (f : I -> A) (m : A) : Type :=
+  Record sup {I : Type} (f : I -> A) (m : A) : Type :=
   { sup_ge : forall i, f i <= m
   ; sup_least : forall m', (forall i, f i <= m') -> m <= m'
   }.
 
   (** [inf f m] holds when [m] is the infimum of all
       values indexed by [f]. *)
-  Polymorphic Record inf {I : Type} (f : I -> A) (m : A) : Type :=
+  Record inf {I : Type} (f : I -> A) (m : A) : Type :=
   { inf_le : forall i, m <= f i
   ; inf_greatest : forall m', (forall i, m' <= f i) -> m' <= m
   }.
 
   (** A directed subset of [A] is one where every two
       elements have a common upper bound. *)
-  Polymorphic Definition directed {I} (f : I -> A) :=
+  Definition directed {I} (f : I -> A) :=
     forall i j : I, { k : A & prod (f i <= k) (f j <= k) }.
 
   End Facts.
 
-  Polymorphic Definition scott_cont `{tA : t A leA} 
+  Definition scott_cont `{tA : t A leA} 
   `{tB : t B leB} (f : A -> B) :=
   forall I (g : I -> A), @directed _ leA _ g
   -> forall m, @sup _ leA _ g m 
@@ -242,7 +244,7 @@ Module PreO.
       [f <= g] (where [f, g : A -> B]) whenever
       the relation holds pointwise, i.e., for all [a : A],
       we have [f a <= g a]. *)
-  Polymorphic Definition pointwise {A} {B : A -> Type} 
+  Definition pointwise {A} {B : A -> Type} 
     {leB : forall a, B a -> B a -> Type}
     (tB : forall a, t (leB a)) 
     : @t (forall a, B a) (pointwise_op leB).
@@ -289,7 +291,7 @@ Arguments PreO.max {A} {le} _ _ _ : clear implicits.
 (** Partial orders: We take a preorder, but also have an equality relation [eq]
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
 Module PO.
-  Polymorphic Class t {A : Type} {le : crelation A} {eq : crelation A} : Type :=
+  Class t {A : Type} {le : crelation A} {eq : crelation A} : Type :=
   { PreO :> PreO.t le
   ; le_proper : Proper (eq ==> eq ==> iffT) le
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
@@ -298,9 +300,9 @@ Module PO.
   Arguments t {A} le eq : clear implicits.
 
   Section Morph.
-  Polymorphic Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
+  Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
 
-  Polymorphic Record morph {f : A -> B} : Type :=
+  Record morph {f : A -> B} : Type :=
    { f_PreO : PreO.morph leA leB f
    ; f_eq : Proper (eqA ==> eqB) f
    }.
@@ -312,23 +314,23 @@ Module PO.
   Arguments morph {_} leA eqA {_} leB eqB f.
 
   Section Facts.
-  Polymorphic Context `{tA : t A leA eqA}.
+  Context `{tA : t A leA eqA}.
 
   (** The equality relation of a partial order must form an
       equivalence relation. *)
-  Polymorphic Definition eq_refl : Reflexive eqA. 
+  Definition eq_refl : Reflexive eqA. 
   Proof. unfold Reflexive. 
     intros. apply le_antisym; apply PreO.le_refl.
   Qed.
 
-  Polymorphic Definition eq_sym : Symmetric eqA.
+  Definition eq_sym : Symmetric eqA.
   Proof. 
   unfold Symmetric. intros x y H. apply le_antisym. eapply le_proper.
   apply eq_refl. apply H. apply PreO.le_refl. eapply le_proper.
   apply H. apply eq_refl. apply PreO.le_refl.
   Qed.
 
-  Polymorphic Definition eq_trans : Transitive eqA.
+  Definition eq_trans : Transitive eqA.
   Proof.
     unfold Transitive.
     intros x y z H H0. apply le_antisym. eapply le_proper. apply H. 
@@ -337,7 +339,7 @@ Module PO.
     eapply le_proper. apply eq_refl. apply H0. apply PreO.le_refl.
   Qed.
 
-  Polymorphic Lemma max_unique : forall l r m m'
+  Lemma max_unique : forall l r m m'
    , PreO.max (le := leA) l r m 
    -> PreO.max (le := leA) l r m' 
    -> eqA m m'.
@@ -347,7 +349,7 @@ Module PO.
   - apply H0; apply H.
   Qed.
 
-  Polymorphic Lemma min_unique : forall l r m m'
+  Lemma min_unique : forall l r m m'
    , PreO.min (le := leA) l r m 
    -> PreO.min (le := leA) l r m' 
    -> eqA m m'.
@@ -359,18 +361,18 @@ Module PO.
 
   End Facts.
 
-  Polymorphic Instance t_equiv `{tA : t A leA eqA} : Equivalence eqA.
+  Instance t_equiv `{tA : t A leA eqA} : Equivalence eqA.
   Proof. 
     constructor; [apply eq_refl | apply eq_sym | apply eq_trans ].
   Qed.
 
-  Polymorphic Lemma morph_id `{tA : t A leA eqA} : morph leA eqA leA eqA (fun x : A => x).
+  Lemma morph_id `{tA : t A leA eqA} : morph leA eqA leA eqA (fun x : A => x).
   Proof. constructor.
     - apply PreO.morph_id. 
     - solve_proper.
   Qed.
 
-  Polymorphic Lemma morph_compose `{tA : t A leA eqA} `{tB : t B leB eqB} `{tC : t C leC eqC}
+  Lemma morph_compose `{tA : t A leA eqA} `{tB : t B leB eqB} `{tC : t C leC eqC}
     : forall (f : A -> B) (g : B -> C), morph leA eqA leB eqB f 
     -> morph leB eqB leC eqC g -> morph leA eqA leC eqC (fun x => g (f x)).
   Proof.
@@ -379,13 +381,13 @@ Module PO.
     - solve_proper.
   Qed.
 
-  Polymorphic Instance le_properI `(tA : t A leA eqA) 
+  Instance le_properI `(tA : t A leA eqA) 
     : Proper (eqA ==> eqA ==> iffT) leA.
   Proof. intros. apply le_proper. Qed.
 
   (** Morphisms must respect the equality relations on both their
       source (domain) and target (codomain). *)
-  Polymorphic Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
+  Instance morph_properI `(tA : t A leA eqA) `(tB : t B leB eqB) (f : A -> B)
     : morph leA eqA leB eqB f -> Proper (eqA ==> eqB) f.
   Proof. 
     intros H. destruct H. unfold Proper, respectful. apply f_eq0. 
@@ -395,10 +397,10 @@ Module PO.
       in the obvious ways. There's really nothing interesting
       here. *)
 
-  Polymorphic Definition eq_PreO {S} (le : crelation S) (x y : S) : Type :=
+  Definition eq_PreO {S} (le : crelation S) (x y : S) : Type :=
     (le x y * le y x)%type.
 
-  Polymorphic Definition fromPreO {S} (le : crelation S) `{POS : PreO.t S le}
+  Definition fromPreO {S} (le : crelation S) `{POS : PreO.t S le}
     : PO.t le (eq_PreO le).
   Proof.
   constructor.
@@ -498,14 +500,14 @@ Module PO.
   split; simpl in *; intros; intuition.
   Qed.
 
-  Local Polymorphic Instance type : t arrow iffT.
+  Local Instance type : t arrow iffT.
   Proof. 
   constructor; intuition. apply PreO.type.
   split; simpl in *; intros unfold iffT; firstorder.
   split; assumption.
   Qed.
 
-  Local Polymorphic Instance subset (A : Type) : @t (A -> Type) _ _ := pointwise (fun _ => type).
+  Local Instance subset (A : Type) : @t (A -> Type) _ _ := pointwise (fun _ => type).
  
 End PO.
 
@@ -516,7 +518,7 @@ End PO.
     type (I -> A), where I is a directed set. *)
 Module JoinLat.
 
-  Polymorphic Class Ops {A} : Type :=
+  Class Ops {A} : Type :=
   { le : crelation A
   ; eq : crelation A
   ; max : A -> A -> A
@@ -527,7 +529,7 @@ Module JoinLat.
   (** When do the operations [le], [eq], and [max] actually represent
       a join semi-lattice? We need [le] and [eq] to be a partial order,
       and we need our [max] operation to actually implement a maximum. *)
-  Polymorphic Class t {A : Type} {O : Ops A} : Type :=
+  Class t {A : Type} {O : Ops A} : Type :=
   { PO :> PO.t le eq
   ; max_proper : Proper (eq ==> eq ==> eq) max
   ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
@@ -539,7 +541,7 @@ Module JoinLat.
     : Proper (eq ==> eq ==> eq) max.
   Proof. intros. apply max_proper. Qed.
 
-  Polymorphic Record morph `{OA : Ops A} `{OB : Ops B}
+  Record morph `{OA : Ops A} `{OB : Ops B}
     {f : A -> B} : Type :=
    { f_PO : PO.morph le eq le eq f
    ; f_max : forall a b, eq (f (max a b)) (max (f a) (f b))
@@ -549,14 +551,14 @@ Module JoinLat.
 
   (** A morphism on join semi-lattices respects the equality relation
       on its source and target. *)
-  Polymorphic Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
+  Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
   morph OA OB f -> Proper (eq ==> eq) f.
   Proof. 
     unfold Proper, respectful. intros H x y xy. apply (PO.f_eq (f_PO H)).
     assumption.
   Qed.
 
-  Polymorphic Lemma morph_id {A OA} (tA : t A OA) 
+  Lemma morph_id {A OA} (tA : t A OA) 
     : morph OA OA (fun x => x).
   Proof.
   constructor; intros.
@@ -564,7 +566,7 @@ Module JoinLat.
   - apply PO.eq_refl.
   Qed.
 
-  Polymorphic Lemma morph_compose {A B C OA OB OC} 
+  Lemma morph_compose {A B C OA OB OC} 
     (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f 
            -> morph OB OC g 
@@ -663,13 +665,13 @@ Module JoinLat.
   Local Instance subset (A : Type) : t (A -> Prop) (pointwise_ops (fun _ => prop_ops)) 
     := pointwise (fun _ => prop).
 
-  Polymorphic Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
+  Definition product_ops `(OA : Ops A) `(OB : Ops B) : Ops (A * B) :=
     {| le := prod_op le le
      ; eq := prod_op eq eq
      ; max := fun (x y : A * B) => (max (fst x) (fst y), max (snd x) (snd y))
     |}.
 
-  Polymorphic Definition product {A OA B OB} (tA : t A OA) (tB : t B OB) 
+  Definition product {A OA B OB} (tA : t A OA) (tB : t B OB) 
    : t (A * B) (product_ops OA OB).
   Proof. constructor;
     (apply PO.product; apply PO) ||
@@ -694,7 +696,7 @@ End JoinLat.
     The code is essentially copied from [JoinLat]. *)
 Module MeetLat.
 
-  Polymorphic Class Ops {A} : Type :=
+  Class Ops {A} : Type :=
   { le : crelation A
   ; eq : crelation A
   ; min : A -> A -> A
@@ -705,7 +707,7 @@ Module MeetLat.
 
   Arguments Ops : clear implicits.
 
-  Polymorphic Class t {A : Type} {O : Ops A} : Type :=
+  Class t {A : Type} {O : Ops A} : Type :=
   { PO :> PO.t le eq
   ; min_proper : Proper (eq ==> eq ==> eq) min
   ; min_ok : forall l r, PreO.min (le := le) l r (min l r)
@@ -713,11 +715,11 @@ Module MeetLat.
 
   Arguments t : clear implicits.
 
-  Polymorphic Instance min_properI `(tA : t A)
+  Instance min_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) min.
   Proof. intros. apply min_proper. Qed.
 
-  Polymorphic Record morph `{OA : Ops A} `{OB : Ops B}
+  Record morph `{OA : Ops A} `{OB : Ops B}
     {f : A -> B} : Type :=
    { f_PO : PO.morph le eq le eq f
    ; f_min : forall a b, f (min a b) === min (f a) (f b)
@@ -725,14 +727,14 @@ Module MeetLat.
 
   Arguments morph {A} OA {B} OB f.
 
-  Polymorphic Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
+  Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
   morph OA OB f -> Proper (eq ==> eq) f.
   Proof. 
     unfold Proper, respectful. intros H x y xy. apply (PO.f_eq (f_PO H)).
     assumption.
   Qed.
 
-  Polymorphic Lemma morph_id {A OA} (tA : t A OA) 
+  Lemma morph_id {A OA} (tA : t A OA) 
     : morph OA OA (fun x => x).
   Proof.
   constructor; intros.
@@ -740,7 +742,7 @@ Module MeetLat.
   - apply PO.eq_refl.
   Qed.
 
-  Polymorphic Lemma morph_compose {A B C OA OB OC} 
+  Lemma morph_compose {A B C OA OB OC} 
     (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f 
            -> morph OB OC g 
@@ -753,19 +755,19 @@ Module MeetLat.
   Qed.
 
   Section Props.
-  Polymorphic Context `{tA : t A}.
+  Context `{tA : t A}.
 
-  Polymorphic Lemma min_l : forall l r, min l r <= l.
+  Lemma min_l : forall l r, min l r <= l.
   Proof. 
   intros. eapply PreO.min_l. apply min_ok.
   Qed.
 
-  Polymorphic Lemma min_r : forall l r, min l r <= r.
+  Lemma min_r : forall l r, min l r <= r.
   Proof. 
   intros. eapply PreO.min_r. apply min_ok.
   Qed.
 
-  Polymorphic Lemma min_comm : forall l r, min l r === min r l.
+  Lemma min_comm : forall l r, min l r === min r l.
   Proof.
   intros.
   apply PO.min_unique with l r.
@@ -773,7 +775,7 @@ Module MeetLat.
   - apply PreO.min_comm. apply min_ok.
   Qed.
 
-  Polymorphic Lemma min_assoc : forall a b c, 
+  Lemma min_assoc : forall a b c, 
     min a (min b c) === min (min a b) c.
   Proof. 
   intros.
@@ -783,7 +785,7 @@ Module MeetLat.
   Unshelve. apply min_ok. apply min_ok.
   Qed.
 
-  Polymorphic Lemma min_idempotent : forall a, min a a === a.
+  Lemma min_idempotent : forall a, min a a === a.
   Proof.
   intros. apply PO.min_unique with a a.
   apply min_ok. apply PreO.min_idempotent. apply PO.PreO.
@@ -883,7 +885,7 @@ Module MeetLat.
    eapply PreO.min_greatest. apply min_ok. assumption. assumption.
    Qed. 
 
-  Polymorphic Lemma sc_monotone {A OA B OB} (tA : t A OA) (tB : t B OB) : forall (f : A -> B),
+  Lemma sc_monotone {A OA B OB} (tA : t A OA) (tB : t B OB) : forall (f : A -> B),
       PreO.scott_cont f ->
       forall x y : A, x <= y -> f x <= f y.
   Proof.
@@ -916,7 +918,7 @@ End MeetLat.
     this is basically just copied from the two modules above. *)
 Module Lattice.
 
-  Polymorphic Class Ops {A} : Type :=
+  Class Ops {A} : Type :=
     { le : crelation A
     ; eq : crelation A
     ; max : A -> A -> A
@@ -925,7 +927,7 @@ Module Lattice.
 
   Arguments Ops : clear implicits.
 
-  Polymorphic Class t {A : Type} {O : Ops A} : Type :=
+  Class t {A : Type} {O : Ops A} : Type :=
   { PO :> PO.t le eq
   ; max_proper : Proper (eq ==> eq ==> eq) max
   ; max_ok : forall l r, PreO.max (le := le) l r (max l r)
@@ -935,16 +937,16 @@ Module Lattice.
 
   Arguments t : clear implicits.
 
-  Polymorphic  Definition toMeetLatOps' {A} (ops : Ops A) : MeetLat.Ops A :=
+   Definition toMeetLatOps' {A} (ops : Ops A) : MeetLat.Ops A :=
     {| MeetLat.le := le
      ; MeetLat.eq := eq
      ; MeetLat.min := min
     |}.
 
-  Polymorphic Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
+  Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
     := toMeetLatOps'.
 
-  Polymorphic Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
+  Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
   Proof.
   intros. constructor.
   - apply PO.
@@ -952,16 +954,16 @@ Module Lattice.
   - apply min_ok.
   Qed.
 
-  Polymorphic Definition toJoinLatOps' {A} (ops : Ops A) : JoinLat.Ops A :=
+  Definition toJoinLatOps' {A} (ops : Ops A) : JoinLat.Ops A :=
     {| JoinLat.le := le
      ; JoinLat.eq := eq
      ; JoinLat.max := max
     |}.
 
-  Polymorphic Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
+  Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
     := toJoinLatOps'.
 
-  Polymorphic Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
+  Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
   Proof.
   intros. constructor.
   - apply PO.
@@ -969,15 +971,15 @@ Module Lattice.
   - apply max_ok.
   Qed.
 
-  Polymorphic Instance max_properI `(tA : t A)
+  Instance max_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) max.
   Proof. intros. apply max_proper. Qed.
 
-  Polymorphic Instance min_properI `(tA : t A)
+  Instance min_properI `(tA : t A)
     : Proper (eq ==> eq ==> eq) min.
   Proof. intros. apply min_proper. Qed.
 
-  Polymorphic Record morph `{OA : Ops A} `{OB : Ops B}
+  Record morph `{OA : Ops A} `{OB : Ops B}
     {f : A -> B} : Type :=
    { f_PO : PO.morph le eq le eq f
    ; f_max : forall a b, eq (f (max a b)) (max (f a) (f b))
@@ -986,14 +988,14 @@ Module Lattice.
 
   Arguments morph {A} OA {B} OB f.
 
-  Polymorphic Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
+  Lemma f_eq {A B OA OB} {tA : t A OA} {tB : t B OB} {f : A -> B} : 
   morph OA OB f -> Proper (eq ==> eq) f.
   Proof. 
     unfold Proper, respectful. intros H x y xy. apply (PO.f_eq (f_PO H)).
     assumption.
   Qed.
 
-  Polymorphic Lemma morph_id {A OA} (tA : t A OA) 
+  Lemma morph_id {A OA} (tA : t A OA) 
     : morph OA OA (fun x => x).
   Proof.
   constructor; intros.
@@ -1002,7 +1004,7 @@ Module Lattice.
   - apply PO.eq_refl.
   Qed.
 
-  Polymorphic Lemma morph_compose {A B C OA OB OC} 
+  Lemma morph_compose {A B C OA OB OC} 
     (tA : t A OA) (tB : t B OB) (tC : t C OC)
     : forall f g, morph OA OB f 
            -> morph OB OC g 
@@ -1151,14 +1153,14 @@ Module L := Lattice.
     for [A] to the locale for [B].
     *)
 Module Frame.
-  Polymorphic Class Ops {A} :=
+  Class Ops {A} :=
    { LOps :> L.Ops A
    ; sup : forall {Ix : Type}, (Ix -> A) -> A
    }.
 
   Arguments Ops : clear implicits.
 
-  Polymorphic Class t {A} {OA : Ops A}: Type :=
+  Class t {A} {OA : Ops A}: Type :=
   { L :> L.t A LOps
   ; sup_proper : forall {Ix : Type},
      Proper (pointwise_relation _ L.eq ==> L.eq) (@sup _ _ Ix)
@@ -1169,9 +1171,9 @@ Module Frame.
 
   Arguments t : clear implicits.
   Section Facts.
-  Polymorphic Context {A OA} {tA : t A OA}.
+  Context {A OA} {tA : t A OA}.
 
-  Polymorphic Definition sup_proper_u : forall {Ix : Type} (f g : Ix -> A),
+  Definition sup_proper_u : forall {Ix : Type} (f g : Ix -> A),
     (forall (i : Ix), L.eq (f i) (g i)) -> L.eq (sup f) (sup g).
   Proof.
   intros. apply sup_proper. unfold pointwise_relation.
@@ -1181,17 +1183,17 @@ Module Frame.
 
   (** Every frame must have a top and bottom element. *)
 
-  Polymorphic Definition top : A := sup (fun a => a).
+  Definition top : A := sup (fun a => a).
 
-  Polymorphic Definition top_ok : PreO.top (le := L.le) top.
+  Definition top_ok : PreO.top (le := L.le) top.
   Proof. 
     unfold PreO.top. simpl. pose proof (sup_ok (fun a => a)) as H.
     destruct H. apply sup_ge.
   Qed.
 
-  Polymorphic Definition bottom : A := sup (fun contra : False => False_rect _ contra).
+  Definition bottom : A := sup (fun contra : False => False_rect _ contra).
 
-  Polymorphic Definition bottom_ok : PreO.bottom (le := L.le) bottom.
+  Definition bottom_ok : PreO.bottom (le := L.le) bottom.
   Proof.
     unfold PreO.bottom. intros. 
     apply (PreO.sup_least (fun contra : False => False_rect _ contra)).
@@ -1200,10 +1202,10 @@ Module Frame.
 
   End Facts.
   Section Morph. 
-  Polymorphic Context {A OA} {tA : t A OA}.
-  Polymorphic Context {B OB} {tB : t B OB}.
+  Context {A OA} {tA : t A OA}.
+  Context {B OB} {tB : t B OB}.
 
-  Polymorphic Record morph {f : A -> B} : Type :=
+  Record morph {f : A -> B} : Type :=
   { f_L : L.morph LOps LOps f
   ; f_sup : forall {Ix : Type} (g : Ix -> A), L.eq (f (sup g)) (sup (fun i => f (g i)))
   ; f_top : L.eq (f top) top
@@ -1211,13 +1213,13 @@ Module Frame.
 
   Arguments morph : clear implicits.
 
-  Polymorphic Lemma f_eq {f : A -> B} :
+  Lemma f_eq {f : A -> B} :
     morph f -> Proper (L.eq ==> L.eq) f.
   Proof. 
     intros H. apply (L.f_eq (f_L H)).
   Qed.
 
-  Polymorphic Lemma f_bottom {f : A -> B} : morph f -> L.eq (f bottom) bottom.
+  Lemma f_bottom {f : A -> B} : morph f -> L.eq (f bottom) bottom.
   Proof.
   intros MF. unfold bottom. rewrite (f_sup MF). apply sup_proper.
   unfold pointwise_relation. intros. contradiction.
@@ -1228,15 +1230,15 @@ Module Frame.
   Arguments morph {A} OA {B} OB f.
 
   Section MorphProps.
-  Polymorphic Context {A OA} {tA : t A OA}.
+  Context {A OA} {tA : t A OA}.
 
-  Polymorphic Lemma morph_id : morph OA OA (fun x => x).
+  Lemma morph_id : morph OA OA (fun x => x).
   Proof. 
    intros. constructor. apply L.morph_id. apply L.
    reflexivity. reflexivity.
   Qed.
 
-  Polymorphic Lemma morph_compose {B OB} {tB : t B OB}
+  Lemma morph_compose {B OB} {tB : t B OB}
     {C OC} {tC : t C OC}
      (f : A -> B) (g : B -> C)
      : morph OA OB f 
@@ -1307,7 +1309,7 @@ Module Frame.
     apply (sup_distr (t := H a)).
   Qed.
 
-  Polymorphic Lemma sup_pointwise {A} {OA} {X : t A OA} {Ix Ix'} (f : Ix -> A) (g : Ix' -> A)
+  Lemma sup_pointwise {A} {OA} {X : t A OA} {Ix Ix'} (f : Ix -> A) (g : Ix' -> A)
   : (forall (i : Ix), { j : Ix' & L.le (f i) (g j) })
   -> L.le (sup f) (sup g).
   Proof.
@@ -1316,7 +1318,7 @@ Module Frame.
   apply PreO.sup_ge. apply sup_ok.
   Qed.
 
-  Polymorphic Definition morph_pointwise {A B C OC} {tC : t C OC} (f : B -> A)
+  Definition morph_pointwise {A B C OC} {tC : t C OC} (f : B -> A)
     : morph (pointwise_ops (fun _ : A => OC)) (pointwise_ops (fun _ : B => OC))
       (fun g b => g (f b)).
   Proof.
@@ -1336,7 +1338,7 @@ Module Frame.
 
   (** [cmap] represents a continuous map on locales. It is just a
       package for a frame homomorphism running in the opposite direction. *)
-  Polymorphic Record cmap {A OA} {B OB} := 
+  Record cmap {A OA} {B OB} := 
   { finv :> B -> A
   ; cont : morph OB OA finv
   }.
@@ -1345,11 +1347,11 @@ Module Frame.
 
   (** A point in [A] is a continuous map from the frame representing
       a space with one point ([Prop]) to [A]. *)
-  Polymorphic Definition point {A} (OA : Ops A) := cmap prop_ops OA.
+  Definition point {A} (OA : Ops A) := cmap prop_ops OA.
 
   (** Every function [f : A -> B] is continuous on the topology
       which includes all subsets. *)
-  Polymorphic Definition subset_map {A B} (f : A -> B) : cmap (subset_ops A) (subset_ops B).
+  Definition subset_map {A B} (f : A -> B) : cmap (subset_ops A) (subset_ops B).
   Proof.
   refine ( {| finv P x := P (f x) |}).
   apply morph_pointwise.

@@ -1,5 +1,6 @@
 Require Import Algebra.FrameC Algebra.SetsC CMorphisms CRelationClasses.
 Set Asymmetric Patterns.
+Set Universe Polymorphism.
 
 (** Formal topologies. *)
 
@@ -26,8 +27,8 @@ Section Defn.
 
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Polymorphic Context {S} {le : crelation S} {PO : PreO.t le}.
-Polymorphic Context {Cov : S -> Subset S -> Type}.
+Context {S} {le : crelation S} {PO : PreO.t le}.
+Context {Cov : S -> Subset S -> Type}.
 
 Infix "<|" := Cov (at level 60) : FT_scope.
 Local Infix "<=" := le.
@@ -37,13 +38,13 @@ Local Open Scope FT_scope.
 
 (** States that [c] is less than or equal to the minimum of
     [a] and [b]. *)
-Polymorphic Definition down (a b c : S) : Type :=
+Definition down (a b c : S) : Type :=
   le c a * le c b.
 
-Polymorphic Definition downset (U : Subset S) : Subset S :=
+Definition downset (U : Subset S) : Subset S :=
   union U (fun x y => y <= x).
 
-Polymorphic Lemma down_downset : forall (x y : S) (U V : Subset S),
+Lemma down_downset : forall (x y : S) (U V : Subset S),
   In U x -> In V y -> 
   down x y ⊆ downset U ∩ downset V.
 Proof.
@@ -52,7 +53,7 @@ unfold Included, pointwise_rel, arrow; intros a downa.
 destruct downa. econstructor; econstructor; eauto.
 Qed.
 
-Polymorphic Lemma downset_included : forall V,
+Lemma downset_included : forall V,
    V ⊆ downset V.
 Proof.
 intros. unfold Included, pointwise_rel, arrow; intros.
@@ -63,7 +64,7 @@ Qed.
     Definition of when the [Cov] relation is indeed a formal cover.
     Here, the [Cov] relation means the little triangle that is
     seen in the literature. *)
-Polymorphic Class t : Type :=
+Class t : Type :=
   { refl : forall (a : S) (U : Subset S), In U a -> a <| U
   ; trans : forall (a : S) (U V : Subset S), 
        a <| U 
@@ -79,7 +80,7 @@ Polymorphic Class t : Type :=
 Arguments t : clear implicits.
 
 (** Definition of a formal cover that also has a positivity predicate. *)
-Polymorphic Record tPos {Pos : S -> Prop} :=
+Record tPos {Pos : S -> Prop} :=
   { cov :> t
   ; mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
   ; positive : forall a U, (Pos a -> a <| U) -> a <| U
@@ -87,21 +88,21 @@ Polymorphic Record tPos {Pos : S -> Prop} :=
 
 Arguments tPos : clear implicits.
 
-Polymorphic Definition stable :=
+Definition stable :=
   forall a b U V, a <| U -> b <| V
   -> forall c, c <= a -> c <= b ->
     c <| downset U ∩ downset V.
 
-Polymorphic Context `{H : t}.
+Context `{H : t}.
 
-Polymorphic Lemma monotone (U V : Subset S)
+Lemma monotone (U V : Subset S)
   : U ⊆ V -> forall a : S, a <| U -> a <| V.
 Proof.
 intros UV a CovaU. eapply trans. eassumption. 
 intros a' Ua'. apply refl. apply UV. assumption.
 Qed.
 
-Polymorphic Lemma subset_equiv : forall (U V : Subset S), U === V
+Lemma subset_equiv : forall (U V : Subset S), U === V
   -> forall a, iffT (a <| U) (a <| V).
 Proof.
 intros. split; apply monotone; firstorder.
@@ -116,32 +117,32 @@ Arguments stable {S} le Cov : clear implicits.
 
 Section IGDefn.
 
-Polymorphic Context {S} {le : crelation S}.
-Polymorphic Context `{PO : PreO.t S le}.
+Context {S} {le : crelation S}.
+Context `{PO : PreO.t S le}.
 
 (** Inductively generated formal topologies. See section
     3 of [1]. *)
 
-Polymorphic Variable I : S -> Type.
-Polymorphic Variable C : forall (s : S), I s -> Subset S.
+Variable I : S -> Type.
+Variable C : forall (s : S), I s -> Subset S.
 
 (** Given the axiom set [I] and [C], this generates the
     formal cover corresponding to that axiom set. *)
-Polymorphic Inductive GCov (a : S) (U : Subset S) : Type :=
+Inductive GCov (a : S) (U : Subset S) : Type :=
   | grefl : U a -> GCov a U
   | gle_left : forall (b : S)
      , le a b -> GCov b U -> GCov a U
   | ginfinity : forall (i : I a),
      (forall u, C a i u -> GCov u U) -> GCov a U.
 
-Polymorphic Inductive GCovL (a : S) (U : Subset S) : Type :=
+Inductive GCovL (a : S) (U : Subset S) : Type :=
   | glrefl : U a -> GCovL a U
   | glle_left : forall (b : S), le a b -> GCovL b U -> GCovL a U
   | gle_infinity : forall (b : S) (i : I b)
     , le a b -> (forall u, { u' : S & (C b i u' * down le a u' u)%type } -> GCovL u U)
     -> GCovL a U.
 
-Polymorphic Lemma Lmore a U : GCov a U -> GCovL a U.
+Lemma Lmore a U : GCov a U -> GCovL a U.
 Proof.
 intros aU. induction aU.
 - apply glrefl. assumption.
@@ -152,7 +153,7 @@ intros aU. induction aU.
   assumption.
 Qed.
 
-Polymorphic Lemma gmonotone (a : S) (U V : Subset S) :
+Lemma gmonotone (a : S) (U V : Subset S) :
   U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros UV aU. induction aU.
@@ -162,7 +163,7 @@ intros UV aU. induction aU.
 - eapply ginfinity. eauto.
 Qed.
 
-Polymorphic Lemma gmonotoneL a (U V : Subset S) :
+Lemma gmonotoneL a (U V : Subset S) :
   U ⊆ V -> GCovL a U -> GCovL a V.
 Proof.
 intros UV aU. induction aU.
@@ -171,22 +172,22 @@ intros UV aU. induction aU.
 - eapply gle_infinity. eassumption. intros. apply X; eassumption.
 Qed.
 
-Polymorphic Lemma gsubset_equiv (U V : Subset S) : U === V
+Lemma gsubset_equiv (U V : Subset S) : U === V
   -> forall a, iffT (GCov a U) (GCov a V).
 Proof.
 intros UV a. split; apply gmonotone; intros; rewrite UV; reflexivity.
 Qed.
 
-Polymorphic Class localized := 
+Class localized := 
   IsLocalized : forall (a c : S),
   le a c -> forall (i : I c),
   { j : I a  & 
   (forall s, C a j s -> { u : S & (C c i u * down le a u s) } )}%type.
 
-Polymorphic Context `{loc : localized}. 
+Context `{loc : localized}. 
 
 (** Proposition 3.5 of [1] *)
-Polymorphic Lemma le_infinity (a c : S) : le a c ->
+Lemma le_infinity (a c : S) : le a c ->
   forall (i : I c) (U : Subset S), 
   (forall u v, C c i v -> down le a v u -> GCov u U)
   -> GCov a U.
@@ -201,7 +202,7 @@ destruct s as (u' & (cciu & downu)).
 eapply H; eassumption.
 Qed.
 
-Polymorphic Lemma GCov_stable : stable le GCov.
+Lemma GCov_stable : stable le GCov.
 Proof.
 unfold localized in loc.
 unfold stable. 
@@ -234,7 +235,7 @@ Qed.
 (** Theorem 3.6 of [1].
     In fact, the formal cover that we defined based on the axiom set 
     indeed satistifes the requirements of being a formal topology. *)
-Polymorphic Instance GCov_formtop : t le GCov.
+Instance GCov_formtop : t le GCov.
 Proof.
 unfold localized in loc.
 constructor.
@@ -260,14 +261,14 @@ Arguments GCovL {S} le {I} C _ _ : clear implicits.
 
 Section AxiomSetRefine.
 
-Polymorphic Context {S} {le : crelation S}.
-Polymorphic Context `{PO : PreO.t S le}.
+Context {S} {le : crelation S}.
+Context `{PO : PreO.t S le}.
 
-Polymorphic Definition AxiomSetRefine {I I' : S -> Type} 
+Definition AxiomSetRefine {I I' : S -> Type} 
   (C : forall s, I s -> Subset S) (C' : forall s, I' s -> Subset S) :=
   forall s (i : I s), { j : I' s  &  C s i === C' s j }.
 
-Polymorphic Lemma AxRefineCovL {I I'} (C : forall s, I s -> Subset S) 
+Lemma AxRefineCovL {I I'} (C : forall s, I s -> Subset S) 
   (C' : forall s, I' s -> Subset S) :
   AxiomSetRefine C C' -> forall a U, GCovL le C a U -> GCovL le C' a U.
 Proof.
@@ -281,7 +282,7 @@ induction aU.
   apply X. exists u'. split. apply s. apply Gbxu'. assumption.
 Qed.
 
-Polymorphic Lemma AxRefineCov {I I'} (C : forall s, I s -> Subset S) 
+Lemma AxRefineCov {I I'} (C : forall s, I s -> Subset S) 
   (C' : forall s, I' s -> Subset S) :
   AxiomSetRefine C C' -> forall a U, GCov le C a U -> GCov le C' a U.
 Proof.
@@ -297,7 +298,7 @@ Qed.
 End AxiomSetRefine.
 
 (*
-Polymorphic Instance t_proper {S : Type} : 
+Instance t_proper {S : Type} : 
   Proper ((eq ==> eq ==> iff) ==> (eq ==> eq ==> iffT) ==> iffT) (@t S).
 Proof.
 Admitted.
@@ -307,21 +308,21 @@ Admitted.
 
 Section Localize.
 
-Polymorphic Context {S : Type} {le : crelation S}.
-Polymorphic Context {PO : PreO.t le}.
-Polymorphic Context {Ix : S -> Type}.
-Polymorphic Variable (C : forall s, Ix s -> Subset S).
+Context {S : Type} {le : crelation S}.
+Context {PO : PreO.t le}.
+Context {Ix : S -> Type}.
+Variable (C : forall s, Ix s -> Subset S).
 
-Polymorphic Definition IxL (a : S) := 
+Definition IxL (a : S) := 
   { i : sigT Ix & match i with
     | existT c _ => le a c end }.
 
-Polymorphic Definition CL (a : S) : IxL a -> Subset S := 
+Definition CL (a : S) : IxL a -> Subset S := 
   fun i => match i with
   | existT (existT c k) _ => fun z => { u : S & C c k u * down le a u z }%type
   end.
 
-Polymorphic Theorem Llocalized : localized le CL.
+Theorem Llocalized : localized le CL.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *. destruct x.
@@ -336,7 +337,7 @@ exists s. split. exists u. split. assumption. unfold down in *.
   split; [assumption | reflexivity].
 Qed.
 
-Polymorphic Theorem cov_equiv : forall a U,
+Theorem cov_equiv : forall a U,
   iffT (GCovL le C a U) (GCov le CL a U).
 Proof.
 intros a U. split; intros H.
@@ -359,7 +360,7 @@ intros a U. split; intros H.
     intros. auto.
 Qed.
 
-Polymorphic Theorem GCovL_formtop : t le (GCovL le C).
+Theorem GCovL_formtop : t le (GCovL le C).
 Proof.
 Admitted.
 (*
@@ -372,49 +373,49 @@ Qed.
 End Localize.
 
 Section ToFrame.
-Polymorphic Context {S : Type}.
-Polymorphic Variable (le : crelation S) (Cov : S -> Subset S -> Type).
+Context {S : Type}.
+Variable (le : crelation S) (Cov : S -> Subset S -> Type).
 
-Polymorphic Definition Sat (U : Subset S) : Subset S :=
+Definition Sat (U : Subset S) : Subset S :=
   fun s => Cov s U.
 
-Polymorphic Definition leA (U V : Subset S) : Type := Included (Sat U) (Sat V).
+Definition leA (U V : Subset S) : Type := Included (Sat U) (Sat V).
 
-Polymorphic Definition eqA (U V : Subset S) : Type := Same_set (Sat U) (Sat V).
+Definition eqA (U V : Subset S) : Type := Same_set (Sat U) (Sat V).
 
-Polymorphic Definition minA (U V : Subset S) : Subset S :=
+Definition minA (U V : Subset S) : Subset S :=
   downset le U ∩ downset le V.
 
-Polymorphic Inductive supA I (f : I -> Subset S) : Subset S := 
+Inductive supA I (f : I -> Subset S) : Subset S := 
   MksupA : forall i s, f i s -> In (supA I f) s.
 
-Polymorphic Definition LOps : Lattice.Ops (Subset S) :=
+Definition LOps : Lattice.Ops (Subset S) :=
   {| Lattice.le := leA
   ;  Lattice.eq := eqA
   ;  Lattice.max := Union
   ;  Lattice.min := minA
   |}.
 
-Polymorphic Instance LOps' : Lattice.Ops (Subset S) := LOps.
+Instance LOps' : Lattice.Ops (Subset S) := LOps.
 
-Polymorphic Definition FOps : Frame.Ops (Subset S) := 
+Definition FOps : Frame.Ops (Subset S) := 
   {| Frame.LOps := LOps
    ; Frame.sup := supA
   |}.
 
-Polymorphic Instance FOps' : Frame.Ops (Subset S) := FOps.
+Instance FOps' : Frame.Ops (Subset S) := FOps.
 
-Polymorphic Context `{PO : PreO.t S le}.
-Polymorphic Context `{tS : t S le Cov}. 
+Context `{PO : PreO.t S le}.
+Context `{tS : t S le Cov}. 
 
-Polymorphic Theorem FramePreO : @PreO.t (Subset S) leA.
+Theorem FramePreO : @PreO.t (Subset S) leA.
 Proof.
 constructor; unfold leA; intros.
 - reflexivity.
 - etransitivity; eassumption.
 Qed.
 
-Polymorphic Theorem FramePO : @PO.t (Subset S) leA eqA.
+Theorem FramePO : @PO.t (Subset S) leA eqA.
 Proof.
 constructor; unfold eqA; intros.
 - apply FramePreO.
@@ -424,7 +425,7 @@ constructor; unfold eqA; intros.
   apply X. assumption. apply X0. assumption.
 Qed.
 
-Polymorphic Instance Cov_Proper  :
+Instance Cov_Proper  :
   Proper (le --> Included ==> arrow) Cov.
 Proof.
 unfold Proper, respectful, arrow. intros.
@@ -435,7 +436,7 @@ Qed.
 
 (** This is just a flipped version of what's above. It
     shouldn't be needed. *)
-Polymorphic Instance Cov_Proper3  :
+Instance Cov_Proper3  :
   Proper (le ==> Included --> flip arrow) Cov.
 Proof.
 unfold Proper, respectful, arrow, flip. intros.
@@ -443,7 +444,7 @@ eapply le_left; try eassumption.
 eapply (monotone _); eassumption.
 Qed.
 
-Polymorphic Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
+Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
 Proof.
 unfold Proper, respectful. intros x y xy x' y' xy'. subst.
 split; intros. apply (monotone x'). 
@@ -455,7 +456,7 @@ Qed.
 
 
 
-Polymorphic Theorem Sat_Intersection : forall U V,
+Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
 Proof.
 intros. constructor; unfold Sat, In in *.
@@ -463,7 +464,7 @@ intros. constructor; unfold Sat, In in *.
   rewrite <- (Intersection_Included_r _ U V); eassumption.
 Qed.
 
-Polymorphic Theorem Sat_Union : forall U V,
+Theorem Sat_Union : forall U V,
   Sat U ∪ Sat V ⊆ Sat (U ∪ V).
 Proof.
 intros. unfold Included, pointwise_rel, arrow; intros a H. 
@@ -472,25 +473,25 @@ rewrite <- Union_Included_l. assumption.
 rewrite <- Union_Included_r. assumption. 
 Qed.
 
-Polymorphic Theorem Sat_mono : forall U, U ⊆ Sat U.
+Theorem Sat_mono : forall U, U ⊆ Sat U.
 Proof.
 intros. unfold Included, pointwise_rel, arrow, Sat. 
 intros. apply refl. assumption.
 Qed.
 
-Polymorphic Theorem Sat_mono2 : forall U V, U ⊆ V -> Sat U ⊆ Sat V.
+Theorem Sat_mono2 : forall U V, U ⊆ V -> Sat U ⊆ Sat V.
 Proof.
 intros U V H. unfold Included, pointwise_rel, arrow, Sat. 
 intros a X. rewrite <- H. assumption.
 Qed.
 
-Polymorphic Theorem Cov_Sat : forall a U, iffT (Cov a U) (Cov a (Sat U)).
+Theorem Cov_Sat : forall a U, iffT (Cov a U) (Cov a (Sat U)).
 Proof.
 intros. split; intros. rewrite <- Sat_mono. assumption.
 eapply trans. eassumption. intros a0 H0. apply H0.
 Qed.
 
-Polymorphic Theorem Sat_downset : forall U, Sat U === Sat (downset le U).
+Theorem Sat_downset : forall U, Sat U === Sat (downset le U).
 Proof.
 intros. split.
 - apply Sat_mono2. unfold Included, In, downset.
@@ -502,7 +503,7 @@ Qed.
 
 Existing Instances Union_Proper_le_flip Union_Proper_eq.
 
-Polymorphic Theorem FrameLatt : Lattice.t (Subset S) LOps.
+Theorem FrameLatt : Lattice.t (Subset S) LOps.
 Proof.
 constructor; intros.
 - apply FramePO.
@@ -554,7 +555,7 @@ constructor; intros.
     rewrite Cov_Sat, <- X0, <- Cov_Sat. apply refl.  assumption.
 Qed.
 
-Polymorphic Theorem Frame : Frame.t (Subset S) FOps.
+Theorem Frame : Frame.t (Subset S) FOps.
 Proof.
 constructor; intros.
 - apply FrameLatt.
@@ -602,19 +603,19 @@ End FormTop.
 Module Subspace.
 
 Section Defn.
-Polymorphic Context {S : Type} {leS : crelation S}.
-Polymorphic Hypothesis POS : PreO.t leS.
-Polymorphic Variable CovS : S -> (Subset S) -> Type.
+Context {S : Type} {leS : crelation S}.
+Hypothesis POS : PreO.t leS.
+Variable CovS : S -> (Subset S) -> Type.
 
-Polymorphic Definition Cov (V : Subset S) (a : S)
+Definition Cov (V : Subset S) (a : S)
   (U : Subset S) : Type := CovS a (V ∪ U).
 
 
-Polymorphic Context {FTS : FormTop.t leS CovS}.
+Context {FTS : FormTop.t leS CovS}.
 
 Existing Instances FormTop.Cov_Proper FormTop.Cov_Proper2 FormTop.Cov_Proper3.
 
-Polymorphic Theorem t (V : Subset S) : FormTop.t leS (Cov V).
+Theorem t (V : Subset S) : FormTop.t leS (Cov V).
 Proof.
 constructor; unfold Cov; intros.
 - apply FormTop.refl. right. assumption.
@@ -639,23 +640,23 @@ End Defn.
 Arguments Cov {S} CovS V a U : clear implicits.
 
 Section IGDefn.
-Polymorphic Context {S} {leS : crelation S}.
-Polymorphic Hypothesis POS : PreO.t leS.
-Polymorphic Context {Ix : S -> Type}.
-Polymorphic Variable C : forall a, Ix a -> (Subset S).
+Context {S} {leS : crelation S}.
+Hypothesis POS : PreO.t leS.
+Context {Ix : S -> Type}.
+Variable C : forall a, Ix a -> (Subset S).
 
-Polymorphic Variable V : Subset S. 
+Variable V : Subset S. 
 
-Polymorphic Definition SIx (a : S) : Type :=
+Definition SIx (a : S) : Type :=
   (Ix a + { I : True & V a })%type.
 
-Polymorphic Definition SC (a : S) (i : SIx a) : Subset S := 
+Definition SC (a : S) (i : SIx a) : Subset S := 
   match i with
   | inl i' => C a i'
   | inr _ => fun _ => False
   end.
 
-Polymorphic Theorem same : forall a U,
+Theorem same : forall a U,
   iffT (FormTop.GCovL leS SC a U) (Cov (FormTop.GCovL leS C) V a U).
 Proof.
 intros. unfold Cov. split; intros H.
