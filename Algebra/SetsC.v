@@ -1,0 +1,210 @@
+Require Import Coq.Classes.CRelationClasses.
+
+Polymorphic Definition Subset (A : Type) := A -> Type.
+Definition bin_op (A : Type) := A -> A -> A.
+
+Section Defns.
+Polymorphic Context {A : Type}.
+
+Polymorphic Definition In (U : Subset A) (x : A) := U x. 
+
+Polymorphic Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset A) : Subset A
+  := fun a : A => f (U a) (V a).
+
+Polymorphic Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset A) : Type
+  := forall a : A, f (U a) (V a).
+
+Polymorphic Definition Intersection : bin_op (Subset A) := pointwise_op prod.
+
+Polymorphic Definition Union : bin_op (Subset A) := pointwise_op sum.
+
+Polymorphic Inductive Inhabited {U : Subset A} :=
+  Inhabited_intro : forall a : A, In U a -> Inhabited.
+
+Polymorphic Definition Included : crelation (Subset A) := pointwise_rel arrow.
+Polymorphic Definition Same_set : crelation (Subset A) := pointwise_rel iffT.
+End Defns.
+
+Arguments Inhabited {A} U : clear implicits.
+
+
+Infix "⊆" := Included (at level 60) : Subset_scope.
+Infix "∩" := Intersection (at level 50) : Subset_scope.
+Infix "∪" := Union (at level 55) : Subset_scope.
+Infix "===" := Same_set (at level 70) : Subset_scope.
+
+Delimit Scope Subset_scope with Subset.
+Local Open Scope Subset.
+
+Polymorphic Definition compose {S T U} (F : S -> T -> Type)
+  (G : T -> U -> Type) (s : S) (u : U) : Type :=
+    { t : T & (F s t * G t u)%type }.
+
+Polymorphic Inductive union {S T} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
+  union_intro : forall a, In U a -> f a b -> In (union U f) b.
+
+Theorem Union_union : forall A B (a b : Subset A) (f : A -> Subset B),
+  union a f ∪ union b f === union (a ∪ b) f.
+Proof.
+intros. constructor; unfold Included; intros.
+- destruct X; destruct u; econstructor; eauto; firstorder.
+- destruct X; destruct i; [ left | right]; econstructor; eauto.
+Qed.
+
+Theorem union_Intersection : 
+  forall (A B : Type) (a b : Subset A) (f : A -> Subset B),
+  union (a ∩ b) f ⊆ union a f ∩ union b f.
+Proof.
+intros. unfold Included, pointwise_rel, arrow; intros. 
+destruct X. destruct i. constructor; econstructor; eassumption.
+Qed.
+
+Theorem Intersection_Included_l : forall A (U V : Subset A),
+  U ∩ V ⊆ U.
+Proof.
+firstorder.
+Qed.
+
+Theorem Intersection_Included_r : forall A (U V : Subset A),
+  U ∩ V ⊆ V.
+Proof.
+firstorder.
+Qed.
+
+Theorem Union_Included_l : forall A (U V : Subset A),
+  U ⊆ U ∪ V.
+Proof.
+firstorder.
+Qed.
+
+Theorem Union_Included_r : forall A (U V : Subset A),
+  V ⊆ U ∪ V.
+Proof.
+firstorder.
+Qed.
+
+Require Import CMorphisms.
+
+Instance Intersection_Proper_le : forall U,
+  Proper (Included ==> Included ==> Included) (@Intersection U).
+Proof.
+intros. unfold Proper, respectful.
+firstorder.
+Qed.
+
+Instance Intersection_Proper : forall U,
+  Proper (Same_set ==> Same_set ==> Same_set) (@Intersection U).
+Proof.
+intros. unfold Proper, respectful.
+firstorder.
+Qed.
+
+Instance Union_Proper_le : forall U,
+  Proper (Included ==> Included ==> Included) (@Union U).
+Proof.
+intros. unfold Proper, respectful.
+firstorder.
+Qed.
+
+Instance Included_Reflexive : forall U, Reflexive (@Included U).
+Proof.
+intros. unfold Reflexive. firstorder.
+Qed.
+
+Instance Included_Transitive : forall U, Transitive (@Included U).
+Proof.
+intros. unfold Transitive. firstorder.
+Qed.
+
+Instance Included_subrelation : forall U, subrelation (@Same_set U) (@Included U).
+Proof.
+intros. unfold subrelation. firstorder.
+Qed.
+
+Instance Included_Proper : forall U, Proper (@Same_set U ==> @Same_set U ==> iffT)
+  (@Included U).
+Proof.
+intros. unfold Proper, respectful. firstorder.
+Qed.
+
+Theorem Same_set_iff : forall A (U V : Subset A),
+  (forall x, iffT (U x) (V x)) -> U === V.
+Proof.
+firstorder.
+Qed.
+
+Instance Same_set_Equivalence : forall U, Equivalence (@Same_set U).
+Proof. intros. unfold Same_set. constructor;
+  unfold Reflexive, Symmetric, Transitive; firstorder.
+Qed.
+
+Lemma union_compose : forall A B C (H : Subset A) (G : A -> Subset B) 
+  (F : B -> Subset C),
+  union (union H G) F === union H (compose G F).
+Proof.
+intros. apply Same_set_iff. intros; split; intros.
+- destruct X. destruct i. repeat (econstructor || eauto).
+- destruct X. destruct c. destruct p.
+  repeat (econstructor || eauto).
+Qed.
+
+Lemma union_idx_monotone : forall A B (U V : Subset A) (F : A -> Subset B),
+  U ⊆ V -> union U F ⊆ union V F.
+Proof.
+intros. unfold Included, pointwise_rel, arrow.
+intros. destruct X0. econstructor; eauto.
+apply X. assumption.
+Qed.
+
+Local Instance union_Proper : forall A B, 
+  Proper (Included ==> eq ==> Included) (@union A B).
+Proof.
+intros. unfold Proper, respectful.
+intros. subst. apply union_idx_monotone. assumption.
+Qed.
+
+Local Polymorphic Instance Union_Proper_eq : forall A, 
+  Proper (Same_set ==> Same_set ==> Same_set) (@Union A).
+Proof.
+unfold Proper, respectful, Same_set, pointwise_rel, iffT.
+intros. split; intros; 
+  (destruct X1; [left | right];
+  [apply X | apply X0]; assumption ).
+Qed.
+
+Polymorphic Instance Union_Proper_le_flip : forall A,
+  Proper (Included --> Included --> flip Included) (@Union A).
+Proof.
+unfold Proper, respectful, Included, pointwise_rel, flip, arrow.
+intros.
+  destruct X1; [left | right];
+  [apply X | apply X0]; assumption.
+Qed.
+
+Polymorphic Lemma Same_set_iff_In:
+  forall (A : Type) (U V : Subset A),
+  (forall x : A, iffT (In U x) (In V x)) -> U === V.
+Proof.
+apply Same_set_iff.
+Qed.
+
+Polymorphic Instance In_Proper : forall A,
+  Proper (Included ==> eq ==> arrow) (@In A).
+Proof.
+unfold Proper, respectful, arrow. intros.
+subst.  apply X. assumption.
+Qed.
+
+Polymorphic Instance In_Proper2 : forall A, 
+  Proper (Included --> eq --> flip arrow) (@In A).
+Proof.
+unfold Proper, respectful, flip, arrow. intros.
+subst.  apply X. assumption.
+Qed.
+
+Polymorphic Lemma Included_Same_set : forall A (U V : Subset A),
+  U ⊆ V -> V ⊆ U -> U === V.
+Proof.
+unfold Included, Same_set, pointwise_rel, arrow.
+firstorder.
+Qed.

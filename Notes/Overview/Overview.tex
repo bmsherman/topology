@@ -737,7 +737,7 @@ Unfortunately, many interesting samplers are not total. For instance, consider t
 
 But in the case that $b \cons bs = r \cons rs$, this function does not terminate! The recursion in the above definition is not well-founded. Fortunately, this event occurs with measure 0, because the randomness ($\prod_\omega \coinflip$) is distributed uniformly at random.
 
-The solution is to use the topological construction of \emph{one-point compactification} to allow general fixpoints. Given any space $A$, we can adjoin a bottom element $\bot_A$ and modify the topology, so that the compactified space $A_\bot$ has least fixed points. We think of $\bot_A$ as indicating nontermination. This construction is just the generalization of lifted domains in domain theory. So the correct type of $\mathsf{bias}$ is
+The solution is to use the topological construction of \emph{lifting} to allow general fixpoints. Given any space $A$, we can adjoin a bottom element $\bot_A$ and modify the topology, so that the lifted (as well as compactified) space $A_\bot$ has least fixed points. We think of $\bot_A$ as indicating nontermination. This construction is just the generalization of lifted domains in domain theory. So the correct type of $\mathsf{bias}$ is
 \[
 \mathsf{bias} : \bool^\omega \times \bool^\omega \leadsto \left( \bool^\omega \times \bool \right)_\bot.
 \]
