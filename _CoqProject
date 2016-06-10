@@ -22,6 +22,8 @@ Algebra/FrameC.v
 Algebra/Sets.v
 Algebra/SetsC.v
 
+Examples/ContPL.v
+
 Numbers/Qnn.v
 Numbers/LPReal.v
 Numbers/QFacts.v
