@@ -436,6 +436,7 @@ Qed.
 
 (** This is just a flipped version of what's above. It
     shouldn't be needed. *)
+
 Instance Cov_Proper3  :
   Proper (le ==> Included --> flip arrow) Cov.
 Proof.
@@ -443,6 +444,7 @@ unfold Proper, respectful, arrow, flip. intros.
 eapply le_left; try eassumption.
 eapply (monotone _); eassumption.
 Qed.
+
 
 Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
 Proof.
@@ -452,9 +454,6 @@ apply Included_subrelation. assumption. assumption.
 apply (monotone y'). apply Included_subrelation. symmetry. assumption.
 assumption.
 Qed.
-
-
-
 
 Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
