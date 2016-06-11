@@ -20,6 +20,7 @@
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
 \newtheorem{corrolary}{Corrolary}
+\newtheorem{claim}{Claim}
  
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\lowerT}[1]{\overrightarrow{#1}}
@@ -502,9 +503,21 @@ For a given proposition $P : \Prop$, a \emph{verified semidecision procedure} fo
 P \to (\exists p : P, d_P \Downarrow \mathsf{Now}\ p).
 \]
 \end{definition}
+
+\begin{claim}
+If $P$ and $Q$ each have verified semidecision procedures, then so do $P \vee Q$ as well as $P \wedge Q$.
+\end{claim}
+
 I don't think it matters if the proof $P$ on the left-hand side of the above implication is truncated or not. Similarly, I believe that if $P$ has a verified semidecision procedure, then $P$ has a weakly constant endomap (see \cite{kraus2014}). For any $f : \nat \to \bool$, it should be possible to create a verified semidecision procedure for the proposition $\exists n : \nat, f(n) = \mathsf{true}$.
 
-Viewed in this light, it seems that the simplest encoding of the Sierpínski space $\Sigma$ may not be the best space for creating maximally informative points; I would like that maximally informative points on the Sierpínski space exactly correspond with verified semidecision procedures, but with these definitions this is not the case. Consider the canonical proposition $\exists n : \nat, f(n) = \mathsf{true}$. With the Sierpínski space, we cannot encode with the opens how much of the sequence we have already investigated, and so it is not possible to investigate arbitrarily far. Perhaps, we may prefer some space, which is also an information base, but which instead has opens $\bot_i$ for $i \in \nat$ satisfying $i \le j \to \bot_i \le \bot_j$ and $\bot_i \le \top$. I'm not too sure; I haven't given this all that much thought.
+Viewed in this light, it seems that the simplest encoding of the Sierpínski space $\Sigma$ may not be the best space for creating maximally informative points; I would like that maximally informative points on the Sierpínski space exactly correspond with verified semidecision procedures, but with these definitions this is not the case. Consider the canonical proposition $\exists n : \nat, f(n) = \mathsf{true}$. With this encoding of the Sierpínski space, we cannot encode with the opens how much of the sequence we have already investigated, and so it is not possible to investigate arbitrarily far.
+
+However, I think we can achieve this with a different encoding of the Sierpínski space (i.e., a space which is homeomorphic to Sierpínski but not intensionally equal). For instance, we could take the space $\nat^\infty$, the Alexandroff compactification of $\nat$, where $\infty : \nat^\infty$ indicates non-termination and $n : \nat^\infty$ for finite $n$ indicates termination after $n$ steps. Then, we can take the following quotient: we simply identify all basic opens which $\infty$ does not lie in, and identify all basic opens which $\infty$ does lie in. This should give the Sierpínski space (or, a space homeomorphic to the Sierpínski space), but where there are still the same basic opens and the same covering axioms (though there are new covering axioms as well) as $\nat^\infty$.
+
+\begin{claim}
+By defining the Sierpínski space as a quotient of $\nat^\infty$, if a proposition $P : \Prop$ has a (verified) semidecision procedure, then there is a maximally informative point implementation for its indicator $\chi_P$ in the Sierpínski space.
+\end{claim}
+
 
 \subsection{Sampling from probability distributions}
 
