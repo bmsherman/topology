@@ -1,6 +1,6 @@
 (** I will try to use the same names for the operations
     that there are in Coq *)
-
+Require Import RelationClasses Morphisms.
 Module Category.
 
 (** A category, with its type of morphisms, and a product operation *)
@@ -37,11 +37,27 @@ Class CMC {U : Type} `{CCat U} : Type :=
   ; diagonal : forall {A}, A ~~> A * A
   ; parallel : forall {A B X Y}, A ~~> X -> B ~~> Y -> A * B ~~> X * Y
 
+  ; eq_Equivalence :> forall A B, Equivalence (eq (A := A) (B := B))
   ; compose_proper : forall {A B C} (f f' : A ~~> B) (g g' : B ~~> C),
       f == f' -> g == g' -> compose g f == compose g' f'
   ; parallel_proper : forall {A B X Y} (f f' : A ~~> X) (g g' : B ~~> Y),
       f == f' -> g == g' -> parallel f g == parallel f' g'
   }.
+
+
+Global Instance compose_Proper `{CMC} : forall A B C : U,
+  Proper (eq (A := B) (B := C) ==> eq ==> eq (A := A)) compose.
+Proof. 
+intros. unfold Proper, respectful.
+intros. apply compose_proper; assumption.
+Qed.
+
+Global Instance parallel_Proper `{CMC} : forall A B C D : U,
+  Proper (eq (A := B) (B := B) ==> eq (A := C) (B := D) ==> eq) parallel.
+Proof. 
+intros. unfold Proper, respectful.
+intros. apply parallel_proper; assumption.
+Qed.
 
 Arguments CMC U {_} : clear implicits.
 
@@ -122,7 +138,9 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
 (** See https://ncatlab.org/nlab/show/strong+monad#alternative_definition
 *)
 Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
-  { strength_unit : forall {A},
+  { map_proper : forall {A B} (f g : A ~~> B),
+      f == g -> map f == map g
+  ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
   ; strength_compose : forall {A B C},
@@ -136,5 +154,12 @@ Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
     == 
     join ∘ map strong ∘ strong
   }.
+
+Global Instance map_Proper `{SMonad_Props} : forall A B : U,
+  Proper (eq (A := A) (B := B) ==> eq) map.
+Proof. 
+intros. unfold Proper, respectful.
+intros. apply map_proper; assumption.
+Qed.
 
 End Category.
