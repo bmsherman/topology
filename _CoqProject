@@ -20,6 +20,7 @@ FormTopC/FormTop.v
 FormTopC/Cont.v
 FormTopC/Product.v
 FormTopC/InfoBase.v
+FormTopC/Bundled.v
 
 Algebra/FrameC.v
 Algebra/Sets.v

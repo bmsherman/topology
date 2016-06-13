@@ -1,6 +1,9 @@
 Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC 
   FormTopC.Cont.
 
+Set Universe Polymorphism.
+Set Asymmetric Patterns.
+
 (** Product spaces for inductively generated formal topologies.
     See Section 4.3 of [1]. *)
 Module Product.
@@ -202,6 +205,13 @@ constructor; intros; unfold diagonal, CovS in *.
          eauto using PreO.le_trans.
       *)
       admit.
+(** This is a coq bug
+  Admitted.
+*)
+Abort.
+
+Lemma t_diagonal : Cont.t leS (prod_op leS leS)
+  CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
 Admitted.
   
 
@@ -274,6 +284,12 @@ constructor; intros; unfold proj_R in *.
     specialize (s0 _ c). destruct s0 as (u & Caiu & downu).
     eapply X. eassumption.
     destruct downu. assumption.
+(** Another Coq bug. 
+Admitted. *)
+Abort.
+
+Lemma t_proj_R : Cont.t (prod_op leS leT) leT 
+  (@Product.Cov _ _ leS leT IS IT CS CT) CovT proj_R.
 Admitted.
 
 Context {A} `{POA : PreO.t A leA}.
