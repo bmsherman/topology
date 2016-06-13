@@ -34,22 +34,44 @@ Class CMC {U : Type} `{CCat U} : Type :=
   ; fst : forall {A B}, A * B ~~> A
   ; snd : forall {A B}, A * B ~~> B
 
-  ; diagonal : forall {A}, A ~~> A * A
-  ; parallel : forall {A B X Y}, A ~~> X -> B ~~> Y -> A * B ~~> X * Y
+  ; pair : forall {Γ A B}, (Γ ~~> A) -> (Γ ~~> B) -> (Γ ~~> A * B)
 
   ; eq_Equivalence :> forall A B, Equivalence (eq (A := A) (B := B))
   ; compose_proper : forall {A B C} (f f' : A ~~> B) (g g' : B ~~> C),
       f == f' -> g == g' -> compose g f == compose g' f'
-  ; parallel_proper : forall {A B X Y} (f f' : A ~~> X) (g g' : B ~~> Y),
-      f == f' -> g == g' -> parallel f g == parallel f' g'
+  ; pair_proper : forall {Γ A B} (f f' : Γ ~~> A) (g g' : Γ ~~> B),
+      f == f' -> g == g' -> pair f g == pair f' g'
   }.
 
+Definition parallel {U} `{CMC U} {A B C D : U} (f : A ~~> B) (g : C ~~> D) : A * C ~~> B * D :=
+  pair (compose f fst) (compose g snd).
+
+Theorem parallel_proper `{CMC} : forall {A B C D} (f f' : A ~~> B) (g g' : C ~~> D),
+    f == f' -> g == g' -> parallel f g == parallel f' g'.
+Proof. intros. unfold parallel. apply pair_proper.
+       - apply compose_proper.
+         + apply Equivalence_Reflexive.
+         + apply H1.
+       - apply compose_proper.
+         + apply Equivalence_Reflexive.
+         + apply H2.
+Defined.           
+
+Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A :=
+  pair id id.
 
 Global Instance compose_Proper `{CMC} : forall A B C : U,
   Proper (eq (A := B) (B := C) ==> eq ==> eq (A := A)) compose.
 Proof. 
 intros. unfold Proper, respectful.
 intros. apply compose_proper; assumption.
+Qed.
+
+Global Instance pair_Proper `{CMC} : forall A B C : U,
+  Proper (eq (A := A) (B := B) ==> eq (A := A) (B := C) ==> eq) pair.
+Proof. 
+intros. unfold Proper, respectful.
+intros. apply pair_proper; assumption.
 Qed.
 
 Global Instance parallel_Proper `{CMC} : forall A B C D : U,
@@ -62,6 +84,7 @@ Qed.
 Arguments CMC U {_} : clear implicits.
 
 Infix "∘" := compose (at level 40, left associativity) : morph_scope.
+(* Notation "( A , B )" := (pair A B) : morph_scope. *) (* TODO figure out how to do this without destroying everything. *)
 Infix "⊗" := parallel (at level 25) : morph_scope.
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
@@ -99,20 +122,48 @@ Definition add_unit_right {A : U} : A ~~> A * unit
 
 End BasicOps.
 
-Class CMC_Props {U : Type} `{CMC U} : Prop :=
+Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
   { compose_id_left : forall {A B} (f : A ~~> B), id ∘ f == f
   ; compose_id_right : forall {A B} (f : A ~~> B), f ∘ id == f
-  ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C)
-      (h : C ~~> D), (h ∘ g) ∘ f == h ∘ (g ∘ f)
-  ; interchange : forall {A B C D E F} (f : A ~~> B) (g : B ~~> C) (h : D ~~> E) (k : E ~~> F),
-      (g ⊗ k) ∘ (f ⊗ h) == (g ∘ f) ⊗ (k ∘ h)
-  ; diag_nat : forall {A B} (h : A ~~> B), (h ⊗ h) ∘ diagonal == diagonal ∘ h
-  ; fst_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), fst ∘ (f ⊗ g) = f ∘ fst
-  ; snd_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), snd ∘ (f ⊗ g) = g ∘ snd
-  ; recover : forall {A}, (fst ⊗ snd) ∘ diagonal = id (A := A * A)
+  ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C) (h : C ~~> D), h ∘ (g ∘ f) == (h ∘ g) ∘ f
+  ; pair_uniq : forall {A B C} (h : A ~~> B * C), h == pair (fst ∘ h) (snd ∘ h)
+  ; pair_fst : forall {A B C} (f : A ~~> B) (g : A ~~> C), fst ∘ (pair f g) == f
+  ; pair_snd : forall {A B C} (f : A ~~> B) (g : A ~~> C), snd ∘ (pair f g) == g
+  ; unit_uniq : forall {A} (h : A ~~> unit), h == tt
   }.
 
 Arguments CMC_Props U {_ _} : clear implicits.
+
+Section BasicProps.
+  Require Coq.Setoids.Setoid.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {cmp : @CMC_Props U ccat cmc}.
+
+  Theorem isom_eq : forall {A B C : U} (f f' : A ~~> B) (s : B ≅ C), (to s) ∘ f == (to s) ∘ f' -> f == f'.
+  Proof. intros. assert ((from s) ∘ ((to s) ∘ f) == (from s) ∘ ((to s) ∘ f')).
+         { rewrite H. reflexivity.
+         }
+         rewrite -> compose_assoc in H0, H0.
+         rewrite (from_to s) in H0.
+         rewrite compose_id_left in H0, H0.
+         apply H0.
+  Defined.
+
+  Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
+  Proof. intros. rewrite (pair_uniq f). rewrite (pair_uniq f').
+         rewrite H, H0. reflexivity.
+  Defined.
+  
+
+  Theorem unit_isom : forall {A : U}, (unit * A) ≅ A.
+  Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd (pair tt id) _ _).
+         - rewrite pair_snd. reflexivity.
+         - apply proj_eq.
+           + rewrite unit_uniq. symmetry. apply unit_uniq.
+           + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_snd. rewrite compose_id_left.
+             reflexivity.
+  Defined.
+  
+End BasicProps.
 
 (** Strong monads for cartesian monoidal categories *)
 Class SMonad {U : Type} `{CMC U} {M : U -> U} : Type :=
@@ -140,6 +191,7 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
 Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
+  ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                          
   ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
@@ -154,6 +206,16 @@ Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
     == 
     join ∘ map strong ∘ strong
   }.
+
+Section Basic_SMonad_Props.
+  Require Coq.Setoids.Setoid.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {M : U -> U} {smd : SMonad U M} {smp : @SMonad_Props U M ccat cmc smd}.
+
+  Theorem M_iso : forall {A B : U}, (A ≅ B) -> ((M A) ≅ (M B)).
+  Proof. intros A B s. refine (@Build_Iso U ccat cmc (M A) (M B) (map (to s)) (map (from s)) _ _).
+         - rewrite map_compose. Fail rewrite (to_from s). (* TODO I think there is an issue with setoid rewriting here? *) 
+  
+End Basic_SMonad_Props.
 
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
   Proper (eq (A := A) (B := B) ==> eq) map.
