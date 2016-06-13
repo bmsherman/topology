@@ -19,6 +19,7 @@ FormTop/Alexandroff.v
 FormTopC/FormTop.v
 FormTopC/Cont.v
 FormTopC/Product.v
+FormTopC/InfoBase.v
 
 Algebra/FrameC.v
 Algebra/Sets.v
