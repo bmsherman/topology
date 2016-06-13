@@ -88,8 +88,12 @@ Class CMC_Props {U : Type} `{CMC U} : Prop :=
   ; compose_id_right : forall {A B} (f : A ~~> B), f ∘ id == f
   ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C)
       (h : C ~~> D), (h ∘ g) ∘ f == h ∘ (g ∘ f)
-  ; diag_fst : forall {A}, fst ∘ add_unit_right == id (A := A)
-  ; diag_snd : forall {A}, snd ∘ add_unit_left == id (A := A)
+  ; interchange : forall {A B C D E F} (f : A ~~> B) (g : B ~~> C) (h : D ~~> E) (k : E ~~> F),
+      (g ⊗ k) ∘ (f ⊗ h) == (g ∘ f) ⊗ (k ∘ h)
+  ; diag_nat : forall {A B} (h : A ~~> B), (h ⊗ h) ∘ diagonal == diagonal ∘ h
+  ; fst_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), fst ∘ (f ⊗ g) = f ∘ fst
+  ; snd_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), snd ∘ (f ⊗ g) = g ∘ snd
+  ; recover : forall {A}, (fst ⊗ snd) ∘ diagonal = id (A := A * A)
   }.
 
 Arguments CMC_Props U {_ _} : clear implicits.
