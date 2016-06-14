@@ -85,7 +85,7 @@ Qed.
 Arguments CMC U {_} : clear implicits.
 
 Infix "∘" := compose (at level 40, left associativity) : morph_scope.
-(* Notation "( A , B )" := (pair A B) : morph_scope. *) (* TODO figure out how to do this without destroying everything. *)
+ Notation "⟨ f , g ⟩" := (pair f g) : morph_scope.
 Infix "⊗" := parallel (at level 25) : morph_scope.
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
@@ -127,9 +127,9 @@ Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
   { compose_id_left : forall {A B} (f : A ~~> B), id ∘ f == f
   ; compose_id_right : forall {A B} (f : A ~~> B), f ∘ id == f
   ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C) (h : C ~~> D), h ∘ (g ∘ f) == (h ∘ g) ∘ f
-  ; pair_uniq : forall {A B C} (h : A ~~> B * C), h == pair (fst ∘ h) (snd ∘ h)
-  ; pair_fst : forall {A B C} (f : A ~~> B) (g : A ~~> C), fst ∘ (pair f g) == f
-  ; pair_snd : forall {A B C} (f : A ~~> B) (g : A ~~> C), snd ∘ (pair f g) == g
+  ; pair_uniq : forall {A B C} (h : A ~~> B * C), h == ⟨fst ∘ h, snd ∘ h⟩
+  ; pair_fst : forall {A B C} (f : A ~~> B) (g : A ~~> C), fst ∘ ⟨f, g⟩ == f
+  ; pair_snd : forall {A B C} (f : A ~~> B) (g : A ~~> C), snd ∘ ⟨f, g⟩ == g
   ; unit_uniq : forall {A} (h : A ~~> unit), h == tt
   }.
 
@@ -167,7 +167,7 @@ Section BasicProps.
   
 
   Theorem unit_isom_left : forall {A : U}, (unit * A) ≅ A.
-  Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd (pair tt id) _ _).
+  Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd ⟨tt, id⟩ _ _).
          - rewrite pair_snd. reflexivity.
          - apply proj_eq.
            + rewrite unit_uniq. symmetry. apply unit_uniq.
@@ -176,7 +176,7 @@ Section BasicProps.
   Defined.
 
   Theorem unit_isom_right : forall {A : U}, (A * unit) ≅ A.
-  Proof. intros A. refine (@Build_Iso U ccat cmc (A * unit) A fst (pair id tt) _ _).
+  Proof. intros A. refine (@Build_Iso U ccat cmc (A * unit) A fst ⟨id, tt⟩ _ _).
          - rewrite pair_fst. reflexivity.
          - apply proj_eq.
            + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_fst. rewrite compose_id_left.
@@ -185,7 +185,7 @@ Section BasicProps.
   Defined.
 
   
-  Lemma parallel_pair : forall {A B C D E : U} (f : A ~~> B) (g : A ~~> C) (h : B ~~> D) (k : C ~~> E), (h ⊗ k) ∘ (pair f g) == pair (h ∘ f) (k ∘ g).
+  Lemma parallel_pair : forall {A B C D E : U} (f : A ~~> B) (g : A ~~> C) (h : B ~~> D) (k : C ~~> E), (h ⊗ k) ∘ ⟨f, g⟩ == ⟨h ∘ f, k ∘ g⟩.
   Proof. intros A B C D E f g h k.
          unfold parallel. apply proj_eq.
          - rewrite compose_assoc. rewrite pair_fst, pair_fst.
