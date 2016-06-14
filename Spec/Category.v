@@ -226,7 +226,8 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
     ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                       ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
-  ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
+    ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
+  ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
   ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd

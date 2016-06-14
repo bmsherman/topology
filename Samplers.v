@@ -57,6 +57,27 @@ Record Sampler {Δ A S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) : Type :=
 
 Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
 
+Theorem map_Ret : forall {Γ A B : U} (f : Γ ~~> A) (h : A ~~> B) , (map h) ∘ (Ret f) == Ret (h ∘ f).
+Proof. intros Γ A B f h.
+       unfold Ret. rewrite compose_assoc. rewrite <- ret_nat. rewrite compose_assoc.
+       reflexivity.
+Defined.
+
+Theorem map_Bind : forall {Γ A B C} (f : Γ * A ~~> Prob B) (m : Γ ~~> Prob A) (g : B ~~> C), (map g) ∘ (Bind m f) == Bind m ((map g) ∘ f).
+Proof.
+  intros Γ A B C f m g.
+  unfold Bind. unfold bind. rewrite (compose_assoc _ (join ∘ map f)). rewrite (compose_assoc _ join).
+  rewrite join_nat. rewrite <- (compose_assoc _ (map (map g))). rewrite map_compose. reflexivity.
+  Defined.
+
+Theorem map_Bind1 : forall {Γ A B C} (f : (Γ * A ~~> A) -> (Γ * A ~~> Prob B)) (e : Γ ~~> Prob A)(g : B ~~> C),
+    ((map g) ∘ (x <- e; (f x))) == (x <- e; ((map g) ∘ (f x))).
+  intros Γ A B C f e g.
+  apply map_Bind.
+Defined.
+
+
+
 Definition const_sampler {A : U} : Sampler (Δ := A) (S := unit) (ret ∘ tt) ret.
 Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso unit_isom_left)).
        unfold M_iso. simpl. rewrite (compose_assoc _ (map swap ∘ strong)), (compose_assoc _ (map swap)).
@@ -72,3 +93,7 @@ Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso uni
        { apply (from_to unit_isom_right). }
        rewrite cancel. rewrite compose_id_right. rewrite <- ret_nat.
        unfold indep. unfold makeFun. simpl.
+       rewrite compose_assoc.
+       rewrite map_Bind1.
+       Fail rewrite (map_Bind1 _ _ snd).
+       
