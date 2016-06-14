@@ -113,13 +113,13 @@ Definition ap1 {Γ A B : U} (f : A ~~> B) (x : Γ ~~> A)
 
 Definition ap2 {Γ A B C : U} 
   (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
-  f ∘ x ⊗ y ∘ diagonal.
+  f ∘ ⟨x, y⟩.
 
 Definition add_unit_left {A : U} : A ~~> unit * A
-  := tt ⊗ id ∘ diagonal.
+  := ⟨tt, id⟩.
 
 Definition add_unit_right {A : U} : A ~~> A * unit
-  := id ⊗ tt ∘ diagonal.
+  := ⟨id, tt⟩.
 
 End BasicOps.
 
@@ -214,11 +214,11 @@ Notation "A -[ f ]-> B" := (f%morph : (arrow A%obj B%obj)) (at level 60)
 
 Definition prod_assoc_left {U} `{CMC U} {A B C : U} 
   : A * (B * C) ~~> (A * B) * C := 
-  (id ⊗ fst) ⊗ (snd ∘ snd) ∘ diagonal.
+  ⟨id ⊗ fst, snd ∘ snd⟩.
 
 Definition prod_assoc_right {U} `{CMC U} {A B C : U} 
   : (A * B) * C ~~> A * (B * C) := 
-  (fst ∘ fst) ⊗ (snd ⊗ id) ∘ diagonal.
+  ⟨fst ∘ fst, snd ⊗ id⟩.
 
 (** See https://ncatlab.org/nlab/show/strong+monad#alternative_definition
 *)

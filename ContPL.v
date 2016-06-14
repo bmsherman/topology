@@ -68,7 +68,7 @@ Fixpoint parprod {Γ : U} {As : list U}
   match As as As' return (hlist As' (fun A => Γ ~~> A)) -> Γ ~~> nprod As' with
   | nil => fun _ => tt
   | _ => fun xs => let (y, ys) := xs in 
-        (y ⊗ parprod ys) ∘ diagonal
+        ⟨y, parprod ys⟩
   end.
 
 
@@ -102,13 +102,13 @@ Definition bind {Γ} {A B} (m : Γ ~~> M A) (f : A ~~> M B) : Γ ~~> M B :=
   join ∘ map f ∘ m.
 
 Definition Bind {Γ} {A B} (m : Γ ~~> M A) (f : (Γ * A) ~~> M B) : Γ ~~> M B :=
- bind (strong ∘ (id ⊗ m) ∘ diagonal) f.
+ bind (strong ∘ ⟨id, m⟩) f.
 
 Definition Ret {Γ A} (x : Γ ~~> A) : Γ ~~> M A := ret ∘ x.
 
 Definition addContext {Γ ret : U} (f : Γ ~~> M ret)
   : (Γ ~~> M (Γ * ret)) 
-  := strong ∘ (id ⊗ f) ∘ diagonal.
+  := strong ∘ ⟨id, f⟩.
 
 Class Extend {Γ Δ : U} : Type := extend : Δ ~~> Γ .
 
