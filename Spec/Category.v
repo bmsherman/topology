@@ -24,7 +24,7 @@ Infix "==" := eq (at level 70, no associativity) : morph_scope.
 
 (** Cartesian monoidal categories *)
 
-Class CMC {U : Type} `{CCat U} : Type :=
+Class CMC {U : Type} {ccat : CCat U} : Type :=
   { id : forall {A}, A ~~> A
   ; compose : forall {A B C}, B ~~> C -> A ~~> B -> A ~~> C
  
@@ -48,13 +48,14 @@ Definition parallel {U} `{CMC U} {A B C D : U} (f : A ~~> B) (g : C ~~> D) : A *
 
 Theorem parallel_proper `{CMC} : forall {A B C D} (f f' : A ~~> B) (g g' : C ~~> D),
     f == f' -> g == g' -> parallel f g == parallel f' g'.
-Proof. intros. unfold parallel. apply pair_proper.
+Proof. intros A B C D f f' g g' ff' gg'.
+ unfold parallel. apply pair_proper.
        - apply compose_proper.
          + apply Equivalence_Reflexive.
-         + apply H1.
+         + apply ff'.
        - apply compose_proper.
          + apply Equivalence_Reflexive.
-         + apply H2.
+         + apply gg'.
 Defined.           
 
 Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A :=
@@ -138,7 +139,7 @@ Section BasicProps.
   Require Coq.Setoids.Setoid.
   Context {U} {ccat : CCat U} {cmc : CMC U} {cmp : @CMC_Props U ccat cmc}.
 
-  Theorem isom_eq : forall {A B C : U} (f f' : A ~~> B) (s : B ≅ C), (to s) ∘ f == (to s) ∘ f' -> f == f'.
+  Theorem isom_eq_left : forall {A B C : U} (f f' : A ~~> B) (s : B ≅ C), (to s) ∘ f == (to s) ∘ f' -> f == f'.
   Proof. intros. assert ((from s) ∘ ((to s) ∘ f) == (from s) ∘ ((to s) ∘ f')).
          { rewrite H. reflexivity.
          }
@@ -148,13 +149,24 @@ Section BasicProps.
          apply H0.
   Defined.
 
+
+  Theorem isom_eq_right : forall {A B C : U} (f f' : B ~~> C) (s : A ≅ B), f ∘ (to s) == f' ∘ (to s) -> f == f'.
+  Proof. intros. assert ((f ∘ (to s)) ∘ (from s) == (f' ∘ (to s)) ∘ (from s)).
+         { rewrite H. reflexivity.
+         }
+         rewrite <- compose_assoc in H0, H0.
+         rewrite (to_from s) in H0.
+         rewrite compose_id_right in H0, H0.
+         apply H0.
+  Defined.
+  
   Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
   Proof. intros. rewrite (pair_uniq f). rewrite (pair_uniq f').
          rewrite H, H0. reflexivity.
   Defined.
   
 
-  Theorem unit_isom : forall {A : U}, (unit * A) ≅ A.
+  Theorem unit_isom_left : forall {A : U}, (unit * A) ≅ A.
   Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd (pair tt id) _ _).
          - rewrite pair_snd. reflexivity.
          - apply proj_eq.
@@ -162,11 +174,33 @@ Section BasicProps.
            + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_snd. rewrite compose_id_left.
              reflexivity.
   Defined.
+
+  Theorem unit_isom_right : forall {A : U}, (A * unit) ≅ A.
+  Proof. intros A. refine (@Build_Iso U ccat cmc (A * unit) A fst (pair id tt) _ _).
+         - rewrite pair_fst. reflexivity.
+         - apply proj_eq.
+           + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_fst. rewrite compose_id_left.
+             reflexivity.
+           + rewrite unit_uniq. symmetry. apply unit_uniq.            
+  Defined.
+
+  
+  Lemma parallel_pair : forall {A B C D E : U} (f : A ~~> B) (g : A ~~> C) (h : B ~~> D) (k : C ~~> E), (h ⊗ k) ∘ (pair f g) == pair (h ∘ f) (k ∘ g).
+  Proof. intros A B C D E f g h k.
+         unfold parallel. apply proj_eq.
+         - rewrite compose_assoc. rewrite pair_fst, pair_fst.
+           rewrite <- compose_assoc. rewrite pair_fst. reflexivity.
+         - rewrite compose_assoc. rewrite pair_snd, pair_snd.
+           rewrite <- compose_assoc. rewrite pair_snd. reflexivity.
+  Defined.
+  
+           
+
   
 End BasicProps.
 
 (** Strong monads for cartesian monoidal categories *)
-Class SMonad {U : Type} `{CMC U} {M : U -> U} : Type :=
+Class SMonad {U : Type} {ccat : CCat U} {cmc : CMC U} {M : U -> U} : Type :=
   { ret  : forall {A}, A ~~> M A
   ; map : forall {A B}, (A ~~> B) -> M A ~~> M B
   ; strong : forall {A B}, A * M B ~~> M (A * B)
@@ -188,10 +222,11 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
 
 (** See https://ncatlab.org/nlab/show/strong+monad#alternative_definition
 *)
-Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
+Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad U M} : Prop :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
-  ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                          
+    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                       ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
+  ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
   ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
@@ -207,15 +242,7 @@ Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
     join ∘ map strong ∘ strong
   }.
 
-Section Basic_SMonad_Props.
-  Require Coq.Setoids.Setoid.
-  Context {U} {ccat : CCat U} {cmc : CMC U} {M : U -> U} {smd : SMonad U M} {smp : @SMonad_Props U M ccat cmc smd}.
 
-  Theorem M_iso : forall {A B : U}, (A ≅ B) -> ((M A) ≅ (M B)).
-  Proof. intros A B s. refine (@Build_Iso U ccat cmc (M A) (M B) (map (to s)) (map (from s)) _ _).
-         - rewrite map_compose. Fail rewrite (to_from s). (* TODO I think there is an issue with setoid rewriting here? *) 
-  
-End Basic_SMonad_Props.
 
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
   Proper (eq (A := A) (B := B) ==> eq) map.
@@ -223,5 +250,19 @@ Proof.
 intros. unfold Proper, respectful.
 intros. apply map_proper; assumption.
 Qed.
+
+
+Section Basic_SMonad_Props.
+  Require Coq.Setoids.Setoid.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {M : U -> U} {smd : SMonad U M} {smp : @SMonad_Props U M ccat cmc smd}.
+
+  Theorem M_iso : forall {A B : U}, (A ≅ B) -> ((M A) ≅ (M B)).
+  Proof. intros A B s. refine (@Build_Iso U ccat cmc (M A) (M B) (map (to s)) (map (from s)) _ _).
+         - rewrite map_compose. rewrite (to_from s). rewrite map_id. reflexivity.
+         - rewrite map_compose. rewrite (from_to s). rewrite map_id. reflexivity.
+  Defined.
+         
+  
+End Basic_SMonad_Props.
 
 End Category.
