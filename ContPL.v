@@ -144,3 +144,71 @@ Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f)))
 
 Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
   (at level 120, right associativity) : morph_scope.
+
+Section Instances.
+
+(** Instances *)
+
+Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
+
+  Lemma lam_extensional {Γ A B} (f g : Γ * A ~~> A -> Γ * A ~~> B) : 
+    (forall a, f a == g a) -> (LAM a => f a) == (LAM a => g a).
+  Proof.
+  intros. unfold makeFun1E. apply H.
+  Qed.
+
+  Require Import Morphisms.
+
+  Global Instance ap0_Proper : forall Γ A : U, Proper (eq (B := A) ==> eq (A := Γ)) ap0.
+  Proof.
+  unfold Proper, respectful.
+  intros. unfold ap0. rewrite H. reflexivity.
+  Qed.
+
+  Global Instance ap1_Proper : forall Γ A B : U, 
+   Proper (eq (B := A) ==> eq (B := B) ==> eq (A := Γ)) ap1.
+  Proof.
+  unfold Proper, respectful.
+  intros. unfold ap1. rewrite H, H0. reflexivity.
+  Qed.
+
+  Global Instance ap2_Proper : forall Γ A B C : U, 
+   Proper (eq (B := A) ==> eq (B := B) ==> eq (B := C) ==> eq (A := Γ)) ap2.
+  Proof.
+  unfold Proper, respectful.
+  intros. unfold ap2. rewrite H, H0, H1. reflexivity.
+  Qed.
+
+  Context {M : U -> U} {MC : SMonad U M} {MCProps : SMonad_Props (H1 := MC)}.
+
+  Global Instance bind_Proper {Γ A B} : 
+    Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) bind.
+  Proof.
+  unfold Proper, respectful; intros.
+  unfold bind. rewrite H, H0. reflexivity.
+  Qed.
+
+  Global Instance Bind_Proper {Γ A B} : 
+   Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) Bind.
+  Proof.
+  unfold Proper, respectful; intros.
+  unfold Bind. rewrite H, H0. reflexivity.
+  Qed.
+
+  Global Instance Ret_Proper {Γ A} :
+   Proper (eq (B := A) ==> eq (A := Γ)) Ret.
+  Proof.
+  unfold Proper, respectful; intros. unfold Ret. 
+  rewrite H. reflexivity.
+  Qed.
+
+  Lemma bind_extensional {Γ A B} (mu : Γ ~~> M A) (f g : Γ * A ~~> A -> Γ * A ~~> M B) : 
+    (forall a, f a == g a) ->
+   (a <- mu; f a) == (a <- mu; g a).
+  Proof.
+  intros. unfold Bind. unfold bind.
+  apply lam_extensional in H.
+  rewrite H. reflexivity.
+  Qed.
+
+End Instances.
