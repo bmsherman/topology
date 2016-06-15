@@ -225,16 +225,18 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
 Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad U M} : Prop :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
-    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                       ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
+    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                      ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
     ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
-  ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
-  ; strength_unit : forall {A},
+    ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
+    ; join_map_ret : forall {A : U}, join ∘ (map (ret(A:=A))) = id
+    ; join_ret : forall {A : U}, join ∘ (ret(A:=(M A))) = id
+    ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
-  ; strength_compose : forall {A B C},
+    ; strength_compose : forall {A B C},
    (A * (B * M C)) -[strong ∘ (id ⊗ strong)]-> (M (A * (B * C)))
    == map prod_assoc_right ∘ strong ∘ prod_assoc_left
-  ; strength_ret : forall {A B},
+    ; strength_ret : forall {A B},
     (A * B) -[ ret ]-> (M (A * B)) ==
     strong ∘ (id ⊗ ret)
   ; strength_join : forall {A B},
@@ -262,6 +264,18 @@ Section Basic_SMonad_Props.
          - rewrite map_compose. rewrite (to_from s). rewrite map_id. reflexivity.
          - rewrite map_compose. rewrite (from_to s). rewrite map_id. reflexivity.
   Defined.
+
+  
+ Definition emap {Γ A B : U} (f : Γ * A ~~> B) : Γ * (M A) ~~> M B :=
+   (map f) ∘ strong.
+
+ 
+Global Instance emap_Proper : forall Γ A B : U,
+  Proper (eq (A := Γ * A) (B := B) ==> eq) emap.
+Proof. 
+intros. unfold Proper, respectful.
+intros. unfold emap. apply compose_proper. apply Equivalence_Reflexive. apply map_proper. assumption.
+Qed.
          
   
 End Basic_SMonad_Props.
