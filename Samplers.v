@@ -1,3 +1,5 @@
+Require Import Coq.Lists.List.
+Import ListNotations.
 Require Import ContPL.
 Require Import Spec.Category.
 Require Import Spec.Prob.
@@ -11,8 +13,6 @@ Import Sum.
 Import Lift.
 Import Stream.
 Import Discrete.
-Require Import Coq.Lists.List.
-Import ListNotations.
 Local Open Scope morph.
 Local Open Scope obj.
 
@@ -26,71 +26,74 @@ Section Samplers.
   (Σ := Σ)}.
   Context {sumops : SumOps}.
   Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
+  Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
+  Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)}.
 
-  Definition prod_pair {Γ A B : U} (f : Γ ~~> A) (g : Γ ~~> B) : Γ ~~> A * B :=
-    (f ⊗ g) ∘ diagonal.
+  Definition swap {A B : U} : A * B ~~> B * A :=
+    ⟨snd, fst⟩.
 
-  Notation "( x , y )" := (prod_pair x y) : morph_scope.
-
-  Check ap0.
-(*    makeFun [Prob A ; Prob B] *) 
-(* : [(Prob A) ; (Prob B)] ~> Prob (A * B)*)
-
-Local Instance smd : SMonad U Prob := ProbMonad.
-  
-  
-  Definition indep {Γ X Y : U} (DA : Γ ~~> Prob X) (DB : Γ ~~> Prob Y)  :=
-    a <- DA; (b <- DB; Ret (!a , !b)).
-
-  Check indep.
-                
-
-  (* TODO rewrite with ContPL? *)
-  
-  Theorem indep' : forall {X A B : U} (DA : X ~~> Prob A) (DB : X ~~> Prob B), X ~~> Prob (A * B).
-  Proof.
-    intros.
-    eapply compose.
-    apply (join (SMonad := ProbMonad)).
-    eapply compose.
-    apply (map (SMonad := ProbMonad) (strong (SMonad := ProbMonad))).
-    eapply compose.
-    apply (map (SMonad := ProbMonad) ((snd ⊗ fst) ∘ diagonal)).
-    eapply compose.
-    apply (strong (SMonad := ProbMonad)).
-    eapply compose.
-    apply (DB ⊗ DA).
-    apply diagonal.
-Defined.
-
-  Print indep.
-
-  Theorem sampling_cond : forall {X A S : U} (DS : X ~~> Prob S) (DA : X ~~> Prob A) (transform : X * S ~~> S * A), Type.
-  Proof. intros. eapply eq.
-         - eapply compose. apply (map (SMonad := ProbMonad) transform).
-         eapply compose. apply (strong (SMonad := ProbMonad)).
-         eapply compose. apply (id ⊗ DS).
-         apply diagonal.
-         - eapply compose. apply (indep (X := (Prob S) * (Prob A))).
-           { apply fst. }
-           { apply snd. }
-           eapply compose. apply (DS ⊗ DA).
-           apply diagonal.
+  Lemma snd_swap {A B : U} : snd ∘ (@swap A B) == fst.
+  Proof. unfold swap. rewrite pair_snd. reflexivity.
   Defined.
   
+ 
+  (* Local Instance smd : SMonad U Prob := ProbMonad. *)
 
-  Record Sampler {X A S : U} (DS : X ~~> Prob S) (DA : X ~~> Prob A) : Type :=
+Definition indep {A B : U} : [Prob A ; Prob B] ~> Prob (A * B) := 
+   makeFun [Prob A ; Prob B] (fun Γ DA DB =>
+                                  a <- !DA;
+                                  b <- !DB;
+                                  Ret ⟨!a, !b⟩).
+
+Definition emap {Γ A B : U} (f : Γ * A ~~> B) : Γ * (Prob A) ~~> Prob B :=
+  (map f) ∘ strong.
+
+Record Sampler {Δ A S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) : Type :=
     sampler
       {
-        transform : X * S ~~> S * A;
-        samples : sampling_cond DS DA transform
+        sample : Δ * S ~~> S * A;
+        sampling_cond : indep ∘ ⟨DS, ⟨DA, tt⟩⟩ == (emap sample) ∘ ⟨id, DS⟩
       }.
 
-  Theorem id_sampling_cond_stmnt {X S : U} {DS : X ~~> Prob S} (A : U) (a : X ~~> A) : Type.
-  Proof. intros. eapply sampling_cond. exact DS. eapply compose. eapply (ret (SMonad := ProbMonad)). apply a. eapply compose. apply ((snd ⊗ fst) ∘ diagonal). apply (a ⊗ id).
+Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
+
+Theorem map_Ret : forall {Γ A B : U} (f : Γ ~~> A) (h : A ~~> B) , (map h) ∘ (Ret f) == Ret (h ∘ f).
+Proof. intros Γ A B f h.
+       unfold Ret. rewrite compose_assoc. rewrite <- ret_nat. rewrite compose_assoc.
+       reflexivity.
+Defined.
+
+Theorem map_Bind : forall {Γ A B C} (f : Γ * A ~~> Prob B) (m : Γ ~~> Prob A) (g : B ~~> C), (map g) ∘ (Bind m f) == Bind m ((map g) ∘ f).
+Proof.
+  intros Γ A B C f m g.
+  unfold Bind. unfold bind. rewrite (compose_assoc _ (join ∘ map f)). rewrite (compose_assoc _ join).
+  rewrite join_nat. rewrite <- (compose_assoc _ (map (map g))). rewrite map_compose. reflexivity.
   Defined.
 
-  Theorem id_sampling_cond {X S : U} {DS : X ~~> Prob S} (A : U) (a : X ~~> A) : (@id_sampling_cond_stmnt X S DS A a).
-  Proof. unfold id_sampling_cond_stmnt. unfold sampling_cond. unfold indep.
-         admit.
-         Admitted.
+Theorem map_Bind1 : forall {Γ A B C} (f : (Γ * A ~~> A) -> (Γ * A ~~> Prob B)) (e : Γ ~~> Prob A)(g : B ~~> C),
+    ((map g) ∘ (x <- e; (f x))) == (x <- e; ((map g) ∘ (f x))).
+  intros Γ A B C f e g.
+  apply map_Bind.
+Defined.
+
+
+
+Definition const_sampler {A : U} : Sampler (Δ := A) (S := unit) (ret ∘ tt) ret.
+Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso unit_isom_left)).
+       unfold M_iso. simpl. rewrite (compose_assoc _ (map swap ∘ strong)), (compose_assoc _ (map swap)).
+       rewrite map_compose. rewrite snd_swap.
+       assert ((strong ∘ ⟨id (A:=A), ret ∘ tt⟩) == (ret ∘ ⟨id, tt⟩)) as beginning.
+       { assert (⟨id (A:=A), ret ∘ tt⟩ == (id ⊗ ret) ∘ ⟨id, tt⟩) as Δ0.
+         { rewrite parallel_pair. rewrite compose_id_left. reflexivity.
+         } rewrite Δ0. rewrite compose_assoc. rewrite <- strength_ret. reflexivity.
+       }
+       rewrite <- compose_assoc, beginning. eapply (isom_eq_right _ _ (unit_isom_right)).
+       simpl. rewrite <- (compose_assoc _ (ret ∘ ⟨id, tt⟩)). rewrite <- (compose_assoc _ ⟨id, tt⟩).
+       assert (⟨id (A:=A), tt⟩ ∘ fst == id) as cancel.
+       { apply (from_to unit_isom_right). }
+       rewrite cancel. rewrite compose_id_right. rewrite <- ret_nat.
+       unfold indep. unfold makeFun. simpl.
+       rewrite compose_assoc.
+       rewrite map_Bind1.
+       Fail rewrite (map_Bind1 _ _ snd).
+       

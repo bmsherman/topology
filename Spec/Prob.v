@@ -43,7 +43,8 @@ Class MeasOps : Type :=
   ; coinflip : unit ~~> Prob (unit + unit)
   ; normal : unit ~~> Prob R
   ; pstream : forall {Γ A}, Γ ~~> Prob A -> Γ * A ~~> Prob A
-     -> Γ ~~> Prob (Stream A)
+                       -> Γ ~~> Prob (Stream A)
+  ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
   }.
 
 End Prob.

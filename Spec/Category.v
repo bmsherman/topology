@@ -24,7 +24,7 @@ Infix "==" := eq (at level 70, no associativity) : morph_scope.
 
 (** Cartesian monoidal categories *)
 
-Class CMC {U : Type} `{CCat U} : Type :=
+Class CMC {U : Type} {ccat : CCat U} : Type :=
   { id : forall {A}, A ~~> A
   ; compose : forall {A B C}, B ~~> C -> A ~~> B -> A ~~> C
  
@@ -34,22 +34,45 @@ Class CMC {U : Type} `{CCat U} : Type :=
   ; fst : forall {A B}, A * B ~~> A
   ; snd : forall {A B}, A * B ~~> B
 
-  ; diagonal : forall {A}, A ~~> A * A
-  ; parallel : forall {A B X Y}, A ~~> X -> B ~~> Y -> A * B ~~> X * Y
+  ; pair : forall {Γ A B}, (Γ ~~> A) -> (Γ ~~> B) -> (Γ ~~> A * B)
 
   ; eq_Equivalence :> forall A B, Equivalence (eq (A := A) (B := B))
   ; compose_proper : forall {A B C} (f f' : A ~~> B) (g g' : B ~~> C),
       f == f' -> g == g' -> compose g f == compose g' f'
-  ; parallel_proper : forall {A B X Y} (f f' : A ~~> X) (g g' : B ~~> Y),
-      f == f' -> g == g' -> parallel f g == parallel f' g'
+  ; pair_proper : forall {Γ A B} (f f' : Γ ~~> A) (g g' : Γ ~~> B),
+      f == f' -> g == g' -> pair f g == pair f' g'
   }.
 
+Definition parallel {U} `{CMC U} {A B C D : U} (f : A ~~> B) (g : C ~~> D) : A * C ~~> B * D :=
+  pair (compose f fst) (compose g snd).
+
+Theorem parallel_proper `{CMC} : forall {A B C D} (f f' : A ~~> B) (g g' : C ~~> D),
+    f == f' -> g == g' -> parallel f g == parallel f' g'.
+Proof. intros A B C D f f' g g' ff' gg'.
+ unfold parallel. apply pair_proper.
+       - apply compose_proper.
+         + apply Equivalence_Reflexive.
+         + apply ff'.
+       - apply compose_proper.
+         + apply Equivalence_Reflexive.
+         + apply gg'.
+Defined.           
+
+Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A :=
+  pair id id.
 
 Global Instance compose_Proper `{CMC} : forall A B C : U,
   Proper (eq (A := B) (B := C) ==> eq ==> eq (A := A)) compose.
 Proof. 
 intros. unfold Proper, respectful.
 intros. apply compose_proper; assumption.
+Qed.
+
+Global Instance pair_Proper `{CMC} : forall A B C : U,
+  Proper (eq (A := A) (B := B) ==> eq (A := A) (B := C) ==> eq) pair.
+Proof. 
+intros. unfold Proper, respectful.
+intros. apply pair_proper; assumption.
 Qed.
 
 Global Instance parallel_Proper `{CMC} : forall A B C D : U,
@@ -62,6 +85,7 @@ Qed.
 Arguments CMC U {_} : clear implicits.
 
 Infix "∘" := compose (at level 40, left associativity) : morph_scope.
+ Notation "⟨ f , g ⟩" := (pair f g) : morph_scope.
 Infix "⊗" := parallel (at level 25) : morph_scope.
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
@@ -89,33 +113,94 @@ Definition ap1 {Γ A B : U} (f : A ~~> B) (x : Γ ~~> A)
 
 Definition ap2 {Γ A B C : U} 
   (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
-  f ∘ x ⊗ y ∘ diagonal.
+  f ∘ ⟨x, y⟩.
 
 Definition add_unit_left {A : U} : A ~~> unit * A
-  := tt ⊗ id ∘ diagonal.
+  := ⟨tt, id⟩.
 
 Definition add_unit_right {A : U} : A ~~> A * unit
-  := id ⊗ tt ∘ diagonal.
+  := ⟨id, tt⟩.
 
 End BasicOps.
 
-Class CMC_Props {U : Type} `{CMC U} : Prop :=
+Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
   { compose_id_left : forall {A B} (f : A ~~> B), id ∘ f == f
   ; compose_id_right : forall {A B} (f : A ~~> B), f ∘ id == f
-  ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C)
-      (h : C ~~> D), (h ∘ g) ∘ f == h ∘ (g ∘ f)
-  ; interchange : forall {A B C D E F} (f : A ~~> B) (g : B ~~> C) (h : D ~~> E) (k : E ~~> F),
-      (g ⊗ k) ∘ (f ⊗ h) == (g ∘ f) ⊗ (k ∘ h)
-  ; diag_nat : forall {A B} (h : A ~~> B), (h ⊗ h) ∘ diagonal == diagonal ∘ h
-  ; fst_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), fst ∘ (f ⊗ g) = f ∘ fst
-  ; snd_nat : forall {A B C D} (f : A ~~> B) (g : C ~~> D), snd ∘ (f ⊗ g) = g ∘ snd
-  ; recover : forall {A}, (fst ⊗ snd) ∘ diagonal = id (A := A * A)
+  ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C) (h : C ~~> D), h ∘ (g ∘ f) == (h ∘ g) ∘ f
+  ; pair_uniq : forall {A B C} (h : A ~~> B * C), h == ⟨fst ∘ h, snd ∘ h⟩
+  ; pair_fst : forall {A B C} (f : A ~~> B) (g : A ~~> C), fst ∘ ⟨f, g⟩ == f
+  ; pair_snd : forall {A B C} (f : A ~~> B) (g : A ~~> C), snd ∘ ⟨f, g⟩ == g
+  ; unit_uniq : forall {A} (h : A ~~> unit), h == tt
   }.
 
 Arguments CMC_Props U {_ _} : clear implicits.
 
+Section BasicProps.
+  Require Coq.Setoids.Setoid.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {cmp : @CMC_Props U ccat cmc}.
+
+  Theorem isom_eq_left : forall {A B C : U} (f f' : A ~~> B) (s : B ≅ C), (to s) ∘ f == (to s) ∘ f' -> f == f'.
+  Proof. intros. assert ((from s) ∘ ((to s) ∘ f) == (from s) ∘ ((to s) ∘ f')).
+         { rewrite H. reflexivity.
+         }
+         rewrite -> compose_assoc in H0, H0.
+         rewrite (from_to s) in H0.
+         rewrite compose_id_left in H0, H0.
+         apply H0.
+  Defined.
+
+
+  Theorem isom_eq_right : forall {A B C : U} (f f' : B ~~> C) (s : A ≅ B), f ∘ (to s) == f' ∘ (to s) -> f == f'.
+  Proof. intros. assert ((f ∘ (to s)) ∘ (from s) == (f' ∘ (to s)) ∘ (from s)).
+         { rewrite H. reflexivity.
+         }
+         rewrite <- compose_assoc in H0, H0.
+         rewrite (to_from s) in H0.
+         rewrite compose_id_right in H0, H0.
+         apply H0.
+  Defined.
+  
+  Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
+  Proof. intros. rewrite (pair_uniq f). rewrite (pair_uniq f').
+         rewrite H, H0. reflexivity.
+  Defined.
+  
+
+  Theorem unit_isom_left : forall {A : U}, (unit * A) ≅ A.
+  Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd ⟨tt, id⟩ _ _).
+         - rewrite pair_snd. reflexivity.
+         - apply proj_eq.
+           + rewrite unit_uniq. symmetry. apply unit_uniq.
+           + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_snd. rewrite compose_id_left.
+             reflexivity.
+  Defined.
+
+  Theorem unit_isom_right : forall {A : U}, (A * unit) ≅ A.
+  Proof. intros A. refine (@Build_Iso U ccat cmc (A * unit) A fst ⟨id, tt⟩ _ _).
+         - rewrite pair_fst. reflexivity.
+         - apply proj_eq.
+           + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_fst. rewrite compose_id_left.
+             reflexivity.
+           + rewrite unit_uniq. symmetry. apply unit_uniq.            
+  Defined.
+
+  
+  Lemma parallel_pair : forall {A B C D E : U} (f : A ~~> B) (g : A ~~> C) (h : B ~~> D) (k : C ~~> E), (h ⊗ k) ∘ ⟨f, g⟩ == ⟨h ∘ f, k ∘ g⟩.
+  Proof. intros A B C D E f g h k.
+         unfold parallel. apply proj_eq.
+         - rewrite compose_assoc. rewrite pair_fst, pair_fst.
+           rewrite <- compose_assoc. rewrite pair_fst. reflexivity.
+         - rewrite compose_assoc. rewrite pair_snd, pair_snd.
+           rewrite <- compose_assoc. rewrite pair_snd. reflexivity.
+  Defined.
+  
+           
+
+  
+End BasicProps.
+
 (** Strong monads for cartesian monoidal categories *)
-Class SMonad {U : Type} `{CMC U} {M : U -> U} : Type :=
+Class SMonad {U : Type} {ccat : CCat U} {cmc : CMC U} {M : U -> U} : Type :=
   { ret  : forall {A}, A ~~> M A
   ; map : forall {A B}, (A ~~> B) -> M A ~~> M B
   ; strong : forall {A B}, A * M B ~~> M (A * B)
@@ -129,17 +214,20 @@ Notation "A -[ f ]-> B" := (f%morph : (arrow A%obj B%obj)) (at level 60)
 
 Definition prod_assoc_left {U} `{CMC U} {A B C : U} 
   : A * (B * C) ~~> (A * B) * C := 
-  (id ⊗ fst) ⊗ (snd ∘ snd) ∘ diagonal.
+  ⟨id ⊗ fst, snd ∘ snd⟩.
 
 Definition prod_assoc_right {U} `{CMC U} {A B C : U} 
   : (A * B) * C ~~> A * (B * C) := 
-  (fst ∘ fst) ⊗ (snd ⊗ id) ∘ diagonal.
+  ⟨fst ∘ fst, snd ⊗ id⟩.
 
 (** See https://ncatlab.org/nlab/show/strong+monad#alternative_definition
 *)
-Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
+Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad U M} : Prop :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
+    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                       ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
+    ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
+  ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
   ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
@@ -155,11 +243,27 @@ Class SMonad_Props {U} {M : U -> U} `{SMonad U M} : Prop :=
     join ∘ map strong ∘ strong
   }.
 
+
+
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
   Proper (eq (A := A) (B := B) ==> eq) map.
 Proof. 
 intros. unfold Proper, respectful.
 intros. apply map_proper; assumption.
 Qed.
+
+
+Section Basic_SMonad_Props.
+  Require Coq.Setoids.Setoid.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {M : U -> U} {smd : SMonad U M} {smp : @SMonad_Props U M ccat cmc smd}.
+
+  Theorem M_iso : forall {A B : U}, (A ≅ B) -> ((M A) ≅ (M B)).
+  Proof. intros A B s. refine (@Build_Iso U ccat cmc (M A) (M B) (map (to s)) (map (from s)) _ _).
+         - rewrite map_compose. rewrite (to_from s). rewrite map_id. reflexivity.
+         - rewrite map_compose. rewrite (from_to s). rewrite map_id. reflexivity.
+  Defined.
+         
+  
+End Basic_SMonad_Props.
 
 End Category.

@@ -32,7 +32,7 @@ Class LiftProps : Prop :=
   { strict_mono : forall {A}, Mono (strict (A := A))
   ; gen_recursion_tl : forall {A},
     gen_recursion (A := A) == sum_elim fst (strict ∘ snd) 
-                              ∘ ((gen_recursion ∘ tl (StreamOps := SOps))  ⊗ hd (StreamOps := SOps)) ∘ diagonal
+                              ∘ ⟨(gen_recursion ∘ tl (StreamOps := SOps)),  hd (StreamOps := SOps)⟩
   } .
 
 End Lift.
