@@ -113,7 +113,7 @@ Proof. Abort.
 
 Lemma ret_Ret : forall {Γ A} (x : Γ ~~> A), (Ret x) == ret ∘ x.  (*TODO is there a non-stupid way to do this? *)
 Proof. unfold Ret. reflexivity.
-       Defined.
+Defined.
 
 Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
 Proof. intros A B.
@@ -162,7 +162,7 @@ Proof. intros A B.
          rewrite compose_id_right. assumption.
 Defined.
           
-
+Section Constant_Sampler.
 Definition const_sampler {A : U} : Sampler (Δ := A) (S := unit) (ret ∘ tt) ret.
 Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso unit_isom_left)).
        unfold M_iso. simpl. rewrite (compose_assoc _ (map swap ∘ strong)), (compose_assoc _ (map swap)).
@@ -196,3 +196,16 @@ Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso uni
        rewrite pair_snd, pair_fst.
        reflexivity.
 Defined.
+
+End Constant_Sampler.
+
+Section Coinflip_Sampler.
+
+  Definition Boole := unit + unit.
+  Definition Cantor := Stream Boole.
+
+  Definition infinite_coinflips : unit ~~> Prob Cantor := (pstream (coinflip) (coinflip ∘ tt)).
+    
+
+  
+End Coinflip_Sampler.
