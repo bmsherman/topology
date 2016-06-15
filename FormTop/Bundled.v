@@ -337,9 +337,6 @@ Instance IGT_CMC : CMC B.IGT :=
 
   ; fst := fun _ _ => B.proj1
   ; snd := fun _ _ => B.proj2
-
-  ; diagonal := fun _ => B.diagonal
-  ; parallel := fun _ _ _ _ => B.parallel
   |}.
 Admitted.
 

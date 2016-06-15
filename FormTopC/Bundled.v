@@ -190,6 +190,10 @@ Definition parallel {A B X Y : IGT} (f : A ~~> X) (g : B ~~> Y)
    ; mp_ok := parallel_mp_ok f g
   |}.
 
+Definition pair {Γ A B : IGT} (f : Γ ~~> A) (g : Γ ~~> B)
+  : Γ ~~> A * B
+  := parallel f g ∘ diagonal.
+
 Definition discrete (A : Type) : IGT :=
   {| S := A 
   ; PO := PreO.discrete A
@@ -295,8 +299,7 @@ Instance IGT_CMC : CMC IGT :=
   ; fst := fun _ _ => proj1
   ; snd := fun _ _ => proj2
 
-  ; diagonal := fun _ => Bundled.diagonal
-  ; parallel := fun _ _ _ _ => Bundled.parallel
+  ; pair := fun _ _ _ => Bundled.pair
   |}.
 Proof.
 Admitted.

@@ -76,7 +76,7 @@ intros. apply pair_proper; assumption.
 Qed.
 
 Global Instance parallel_Proper `{CMC} : forall A B C D : U,
-  Proper (eq (A := B) (B := B) ==> eq (A := C) (B := D) ==> eq) parallel.
+  Proper (eq (A := A) (B := B) ==> eq (A := C) (B := D) ==> eq) parallel.
 Proof. 
 intros. unfold Proper, respectful.
 intros. apply parallel_proper; assumption.

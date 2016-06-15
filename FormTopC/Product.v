@@ -163,11 +163,8 @@ pose proof (FormTop.GCov_formtop _ CS) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
 - apply FormTop.refl. exists (a, a). split.
   split; reflexivity. 
-- destruct b. destruct X0.
-  (** Coq bug 
-  split; eauto using PreO.le_trans
-  *)
-  admit. 
+- destruct b. destruct X0. 
+  split; etransitivity; eassumption.
 - destruct b, c. destruct X, X0.
   apply FormTop.refl. exists (a, a).
   split. split; unfold prod_op; simpl; eauto.
@@ -176,9 +173,8 @@ constructor; intros; unfold diagonal, CovS in *.
   + apply FormTop.refl. exists a. assumption. assumption. 
   + apply IHX0. destruct a, b, l. simpl in *. 
     destruct X. 
-    (** Coq bug 
-      split; eauto using PreO.le_trans *)
-    admit.
+    split. transitivity s; eassumption.
+    transitivity s0; eassumption.
   + destruct a. simpl in *. destruct X0. destruct i.
     * destruct p. unfold FormTop.localized in locS. 
       specialize (locS a0 s l i).
@@ -189,9 +185,7 @@ constructor; intros; unfold diagonal, CovS in *.
       destruct s2. destruct p. 
       apply X with (x0, s0).
       auto. destruct d. 
-      (** Coq bug
-        eauto using PreO.le_trans. *)
-      admit.
+      split. assumption. transitivity a0; eassumption.
     * destruct p. unfold FormTop.localized in locS. 
       specialize (locS a0 s0 l0 i).
       destruct locS.
@@ -200,19 +194,9 @@ constructor; intros; unfold diagonal, CovS in *.
       specialize (s2 _ X0).
       destruct s2. destruct p. 
       apply X with (s, x0).
-      auto. destruct d. 
-      (** Coq bug
-         eauto using PreO.le_trans.
-      *)
-      admit.
-(** This is a coq bug
-  Admitted.
-*)
-Abort.
-
-Lemma t_diagonal : Cont.t leS (prod_op leS leS)
-  CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
-Admitted.
+      auto. destruct d.
+      split. transitivity a0; assumption. assumption.
+Qed.
   
 
 Context {T} `{POT : PreO.t T leT}.
@@ -261,9 +245,7 @@ constructor; intros; unfold proj_R in *.
 - apply FormTop.refl. destruct a. exists t. unfold In.
   constructor. reflexivity.
 - destruct c, a, X. simpl in l, l0. 
-  (** Coq bug 
-  eauto using PreO.le_trans *)
-  admit.
+  etransitivity; eassumption.
 - destruct a. apply FormTop.refl. 
   exists t. split; eauto. reflexivity. 
 - destruct a. generalize dependent t. induction X0; intros.
@@ -284,13 +266,7 @@ constructor; intros; unfold proj_R in *.
     specialize (s0 _ c). destruct s0 as (u & Caiu & downu).
     eapply X. eassumption.
     destruct downu. assumption.
-(** Another Coq bug. 
-Admitted. *)
-Abort.
-
-Lemma t_proj_R : Cont.t (prod_op leS leT) leT 
-  (@Product.Cov _ _ leS leT IS IT CS CT) CovT proj_R.
-Admitted.
+Qed.
 
 Context {A} `{POA : PreO.t A leA}.
 Context {IA} {CA : forall (t : A), IA t -> Subset A}.
@@ -327,7 +303,7 @@ Theorem t_parallel (F : Cont.map S A) (G : Cont.map T B)
       (parallel F G).
 Proof.
 intros ContF ContG.
-constructor; intros; unfold parallel in *.
+constructor; intros.
 - eapply FormTop.gmonotone with
   (fun s : S * T => let (s', t') := s in
   union (fun _ => True) F s' * union (fun _ => True) G t')%type.
@@ -336,12 +312,13 @@ constructor; intros; unfold parallel in *.
   destruct H. destruct u, u0.
   constructor 1 with (a, a0). 
   constructor. econstructor; eassumption.
-  destruct a. 
-  (** This used to work; not sure why unification is failing here.
-  apply Product.factors; try assumption.
+  destruct a.
+  eapply FormTop.monotone.
+  Focus 2.
+  apply Product.factors; try eassumption.
   apply (Cont.here ContF). apply (Cont.here ContG).
-  *)
-  admit.
+  unfold Included, pointwise_rel, arrow; intros. 
+  destruct a. assumption.
 - destruct c, b, a. destruct X, X0; simpl in *.
   split.
   eapply (Cont.le_left ContF); eassumption.
@@ -357,26 +334,86 @@ constructor; intros; unfold parallel in *.
   destruct i, i0.
   exists (a1, a2). unfold FormTop.down, In, prod_op; auto.
   split; assumption.
-- destruct a, b. destruct X. 
-  pose proof (fun VA => Cont.cov ContF VA f).
-  pose proof (fun VB => Cont.cov ContG VB g).
-  (* I think I can do it if the spaces A and B are both
-     nonempty (as topological spaces). But if not, I
-     learn nothing from the fact that (a, b) <| V.
+- generalize dependent a. induction X0; intros.
+  + apply FormTop.refl. exists a. assumption. assumption.
+  + apply IHX0. destruct a, b, a0. simpl in *. destruct X.
+    destruct l. simpl in *. 
+    split; eapply IGCont.le_right; try eassumption;
+    eapply IGCont.converse; try eassumption;
+    eapply FormTop.GCov_formtop; eassumption.
+  +
+Admitted.
 
-     Actually, I'm not sure. I don't think the following
-     strategy works.
-  *)
-  eapply FormTop.gmonotone. 
-  Focus 2. eapply Product.factors; try eassumption.
-  eapply X. eapply Product.unfactors1; try eassumption.
-  admit. eapply X1. eapply Product.unfactors2. 
-  eassumption. admit.
+
+Theorem t_parallelIG (F : Cont.map S A) (G : Cont.map T B)
+  : IGCont.t leS CovS leA CA F
+  -> IGCont.t leT CovT leB CB G
+  -> IGCont.t (prod_op leS leT) 
+      (@Product.Cov _ _ leS leT IS IT CS CT)
+       (prod_op leA leB)
+      (@Product.C _ _ IA IB CA CB)
+      (parallel F G).
+Proof.
+intros ContF ContG. constructor; intros.
+- eapply FormTop.gmonotone with
+  (fun s : S * T => let (s', t') := s in
+  union (fun _ => True) F s' * union (fun _ => True) G t')%type.
+  unfold Included, pointwise_rel, arrow; intros x H.
+  destruct a, x. 
+  destruct H. destruct u, u0.
+  constructor 1 with (a, a0). 
+  constructor. econstructor; eassumption.
+  destruct a.
+  eapply FormTop.monotone.
+  Focus 2.
+  apply Product.factors; try eassumption.
+  apply (IGCont.here _ ContF). apply (IGCont.here _ ContG).
+  unfold Included, pointwise_rel, arrow; intros. 
+  destruct a. assumption.
+- destruct a, b, c.
+  destruct X, X0.
+  pose proof (IGCont.local _ ContF _ _ _ f f0).
+  pose proof (IGCont.local _ ContG _ _ _ g g0).
+  eapply FormTop.monotone. Focus 2.
+  eapply Product.factors; eassumption.
   unfold Included, pointwise_rel, arrow; intros x H.
   destruct x. destruct H. destruct u, u0.
-  destruct i, i0. econstructor.
-  
-Admitted.
+  destruct i, i0.
+  exists (a1, a2). unfold FormTop.down, In, prod_op; auto.
+  split; assumption.
+- destruct c, b, a. destruct X, X0; simpl in *.
+  split. 
+  eapply (IGCont.le_left _ ContF); eassumption.
+  eapply (IGCont.le_left _ ContG); eassumption.
+- destruct a, b, c. destruct X, X0. simpl in *.
+  split. eapply (IGCont.le_right _ ContF); eassumption.
+  eapply (IGCont.le_right _ ContG); eassumption.
+- destruct b. simpl in j. destruct j; simpl in *.
+  +
+  destruct p. destruct a.
+  destruct X.
+  pose proof (IGCont.ax_right _ ContF _ _ i f).
+  assert (Product.Cov S T IS (leS := leS) (leT := leT) IT CS CT (s, t)
+    (fun open => let (s', t') := open in (union (CA a0 i) F s') * (t = t')))%type.
+  eapply Product.factors; try eassumption. apply FormTop.grefl. reflexivity.
+  eapply FormTop.gmonotone. 2: apply X0.
+  unfold Included, pointwise_rel, arrow; intros.
+  destruct a. destruct X1. subst.
+  destruct u.  exists (a, b). unfold In. split. assumption.
+  reflexivity. split; assumption.
+  + (** Same thing on this side. Yay! *)
+  destruct p. destruct a.
+  destruct X.
+  pose proof (IGCont.ax_right _ ContG _ _ i g).
+  assert (Product.Cov S T IS (leS := leS) (leT := leT) IT CS CT (s, t)
+    (fun open => let (s', t') := open in (s = s') * (union (CB b i) G t')))%type.
+  eapply Product.factors; try eassumption. apply FormTop.grefl. reflexivity.
+  eapply FormTop.gmonotone. 2: apply X0.
+  unfold Included, pointwise_rel, arrow; intros.
+  destruct a. destruct X1. subst.
+  destruct u. exists (a0, a). unfold In. split. reflexivity. assumption.
+  split; assumption.
+Qed.
 
 End Products.
 End ProductMaps.

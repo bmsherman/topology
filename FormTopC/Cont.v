@@ -329,16 +329,16 @@ Lemma saturation : forall F, Cont.t leS leT CovS CovT F ->
 Proof.
 Admitted.
 
+(** NOTE: This is a (white?) lie: it should say that it holds for
+    the saturation of F.
+*)
 Theorem converse : forall F, Cont.t leS leT CovS CovT F -> t F.
 Proof.
 intros. 
 constructor; intros.
 - eauto using (Cont.here X).
 - eauto using (Cont.local X).
-- (* Coq error
-  eauto using (Cont.le_left X).
-  *)
-  admit.
+- eapply (Cont.le_left X); eassumption.
 - eapply saturation. eassumption. 
   eapply (Cont.cov X (b := b) (eq c)). eassumption.
   apply FormTop.gle_left with c. assumption.
@@ -349,7 +349,7 @@ constructor; intros.
   intros. apply FormTop.grefl. eassumption.
   unfold Included, pointwise_rel, arrow; intros. destruct X1.
   exists a1; eauto.
-Admitted.
+Qed.
 
 End IGCont.
 End IGCont.
