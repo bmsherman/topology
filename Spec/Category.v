@@ -243,6 +243,8 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
     strong ∘ ((A * M (M B)) -[ id ⊗ join ]-> (A * M B))
     == 
     join ∘ map strong ∘ strong
+  ; fst_strong : forall {A B}, (map fst) ∘ (strong (A:=A)(B:=B)) == ret ∘ fst
+  ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd
   }.
 
 
