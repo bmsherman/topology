@@ -179,7 +179,7 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
   intros. unfold ap2. rewrite H, H0, H1. reflexivity.
   Qed.
 
-  Context {M : U -> U} {MC : SMonad U M} {MCProps : SMonad_Props (H1 := MC)}.
+  Context {M : U -> U} {MC : SMonad U M} {MCProps : SMonad_Props (smd := MC)}.
 
   Global Instance bind_Proper {Γ A B} : 
     Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) bind.
