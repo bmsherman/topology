@@ -250,10 +250,10 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
     strong ∘ ((A * M (M B)) -[ id ⊗ join ]-> (A * M B))
     == 
     join ∘ map strong ∘ strong
+  ; strong_nat : forall {A A' B B'} (f : A ~~> A') (g : B ~~> B'), strong ∘ (f ⊗ (map g)) == map (f ⊗ g) ∘ strong
   ; fst_strong : forall {A B}, (map fst) ∘ (strong (A:=A)(B:=B)) == ret ∘ fst
   ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd
   }.
-  ; strong_nat : forall {A A' B B'} (f : A ~~> A') (g : B ~~> B'), strong ∘ (f ⊗ (map g)) == map (f ⊗ g) ∘ strong
 
 
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
@@ -278,6 +278,14 @@ Section Basic_SMonad_Props.
  Definition emap {Γ A B : U} (f : Γ * A ~~> B) : Γ * (M A) ~~> M B :=
    (map f) ∘ strong.
 
+ (*
+ Lemma emap_compose : forall {Γ Δ A B C : U} (f : Γ * A ~~> Δ * B)(g : Δ * B ~~> C), (emap (g ∘ f)) == (emap g) ∘ ⟨fst ∘ emap f, map (snd ∘ f)⟩.
+ Proof. intros Γ Δ A B C f g.
+        Check (emap (g ∘ f)).
+        Check (emap g).
+        Check ⟨fst ∘ f, map (snd ∘ f) ∘ ret⟩.
+   (emap (g ∘ f)) == (emap g) ∘ ⟨fst ∘ f, emap (snd ∘ f)⟩.
+*)
  
 Global Instance emap_Proper : forall Γ A B : U,
   Proper (eq (A := Γ * A) (B := B) ==> eq) emap.
