@@ -193,7 +193,14 @@ Section BasicProps.
          - rewrite compose_assoc. rewrite pair_snd, pair_snd.
            rewrite <- compose_assoc. rewrite pair_snd. reflexivity.
   Defined.
-  
+
+  Lemma pair_f : forall {A B C D : U} (f : A ~~> B) (h : B ~~> C) (k : B ~~> D),
+      ⟨h, k⟩ ∘ f == ⟨h ∘ f, k ∘ f⟩.
+  Proof. intros A B C D f h k. apply proj_eq.
+         - rewrite pair_fst, compose_assoc, pair_fst. reflexivity.
+         - rewrite pair_snd, compose_assoc, pair_snd. reflexivity.
+  Defined.
+
            
 
   
@@ -246,7 +253,7 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
   ; fst_strong : forall {A B}, (map fst) ∘ (strong (A:=A)(B:=B)) == ret ∘ fst
   ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd
   }.
-
+  ; strong_nat : forall {A A' B B'} (f : A ~~> A') (g : B ~~> B'), strong ∘ (f ⊗ (map g)) == map (f ⊗ g) ∘ strong
 
 
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
