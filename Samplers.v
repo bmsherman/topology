@@ -28,6 +28,7 @@ Section Samplers.
   Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)}.
+  Context `{Streamops : StreamOps (U := U) (Stream:=Stream) (ccat := ccat)}.
 
   Definition swap {A B : U} : A * B ~~> B * A :=
     ⟨snd, fst⟩.
@@ -98,13 +99,38 @@ Proof. intros Γ A B m f.
        unfold Bind, bind, emap. rewrite compose_assoc, compose_assoc. reflexivity.
 Defined.
 
+Definition jmap {Γ A B} (f : Γ * A ~~> Prob B) : Γ * Prob A ~~> Prob B := join ∘ (emap f).
 
+Theorem Bind_push : forall {Γ Δ A B} (m : Γ ~~> Prob A) (f : Γ * A ~~> Prob B) (g : Δ ~~> Γ),
+    (Bind m f) ∘ g == (jmap f) ∘ ⟨g, m ∘ g⟩.
+Proof. intros Γ Δ A B m f g.
+       unfold Bind, bind, jmap, emap. rewrite compose_assoc, compose_assoc.
+       rewrite <- (compose_assoc g). rewrite pair_f, compose_id_left.
+       reflexivity.
+Defined.
+
+Theorem Bind1_push : forall {Γ Δ A B} (e : Γ ~~> Prob A) (f : Γ * A ~~> A -> Γ * A ~~> Prob B) (g : Δ ~~> Γ),
+    (x <- e; f x) ∘ g == jmap (f snd) ∘ ⟨ g, e ∘ g ⟩.
+Proof. intros Γ Δ A B e f g.
+       apply Bind_push.
+Defined.
+
+Theorem jmap_Bind_push : forall {Γ Δ A B C} (m : Γ * C ~~> Prob A) (f : (Γ * C) * A ~~> Prob B) (g : Δ ~~> Γ * Prob C),
+    (jmap (Bind m f)) ∘ g == ( (jmap (f ∘ prod_assoc_left)) ∘ (id ⊗ inner_indep) ∘ prod_assoc_right ∘ ⟨g, (jmap m) ∘ g⟩).
+Proof. intros Γ Δ A B C m f g.
+       unfold Bind, bind, jmap, emap.
+Abort.      
+
+ 
 Theorem Bind_Ret : forall {Γ A B} (m : Γ ~~> Prob A) (x : Γ * A ~~> B), (Bind m (Ret x)) == (emap x) ∘ ⟨id, m⟩.
 Proof. intros Γ A B m x. (* Probably exists a more direct proof of this from the previous. *) 
        unfold Bind, Ret, emap, bind. rewrite <- map_compose. rewrite (compose_assoc (map x)).
        rewrite join_map_ret, compose_id_left. rewrite compose_assoc. reflexivity.
 Defined.
 
+Theorem Bind1_Ret : forall {Γ A B}  (f : (Γ * A ~~> A) -> (Γ * A ~~> B)) (e : Γ ~~> Prob A), (x <- e; Ret (f x)) == (emap (f snd)) ∘ ⟨id, e⟩.
+Proof. intros Γ A B f e. apply Bind_Ret.
+Defined.
 
 (* This should be true, but I don't think it's useful enough to bother proving. Maybe if I need it later I will.
 Theorem strength_indep : forall {A B : U}, (strong (A:=A)(B:=B)) == inner_indep ∘ (ret ⊗ id).
@@ -115,7 +141,7 @@ Lemma ret_Ret : forall {Γ A} (x : Γ ~~> A), (Ret x) == ret ∘ x.  (*TODO is t
 Proof. unfold Ret. reflexivity.
 Defined.
 
-Hint Rewrite (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _) : cat_db.
+Hint Rewrite (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _) (@pair_fst _ _ _ _) (@pair_snd _ _ _ _) : cat_db.
 
 Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
 Proof. intros A B.
@@ -164,41 +190,36 @@ Proof. intros A B.
          } 
          rewrite compose_id_right. assumption.
 Defined.
-          
+
 Section Constant_Sampler.
-Definition const_sampler {A : U} : Sampler (Δ := A) (S := unit) (ret ∘ tt) ret.
-Proof. refine (sampler swap _). unfold emap. eapply (isom_eq_left _ _ (M_iso unit_isom_left)).
-       unfold M_iso. simpl. rewrite (compose_assoc _ (map swap ∘ strong)), (compose_assoc _ (map swap)).
-       rewrite map_compose. rewrite snd_swap.
-       assert ((strong ∘ ⟨id (A:=A), ret ∘ tt⟩) == (ret ∘ ⟨id, tt⟩)) as beginning.
-       { assert (⟨id (A:=A), ret ∘ tt⟩ == (id ⊗ ret) ∘ ⟨id, tt⟩) as Δ0.
-         { rewrite parallel_pair. rewrite compose_id_left. reflexivity.
-         } rewrite Δ0. rewrite compose_assoc. rewrite <- strength_ret. reflexivity.
+  (* Δ S ~~> S A := (Δ * A) * S ~~> S * A. *)
+Definition const_sampler {Δ A S : U} {D : Δ * A ~~> Prob S} : Sampler (Δ := Δ * A) (A := A) (S := S) D (ret ∘ snd).
+Proof. refine (sampler ⟨snd, snd ∘ fst⟩ _).
+       Check (map swap) ∘ strong ∘ ⟨snd, D⟩. Check (emap ⟨snd , snd ∘ fst ⟩ ∘ ⟨id, D⟩).
+       assert (emap ⟨snd , snd ∘ fst ⟩ ∘ ⟨id, D⟩ == (map swap) ∘ strong ∘ ⟨snd, D⟩).
+       {
+         unfold emap, swap.
+         assert (⟨snd, D⟩ == (snd ⊗ id) ∘ ⟨id, D⟩).
+         {
+           rewrite parallel_pair. autorewrite with cat_db. reflexivity.
+         }
+         rewrite H0, compose_assoc.
+         rewrite <- (compose_assoc (snd ⊗ id)).
+         rewrite <- map_id. rewrite strong_nat.
+         rewrite compose_assoc, map_compose, pair_f.
+         unfold parallel. rewrite pair_snd, pair_fst, compose_id_left.
+         reflexivity.
        }
-       rewrite <- compose_assoc, beginning. eapply (isom_eq_right _ _ (unit_isom_right)).
-       simpl. rewrite <- (compose_assoc _ (ret ∘ ⟨id, tt⟩)). rewrite <- (compose_assoc _ ⟨id, tt⟩).
-       assert (⟨id (A:=A), tt⟩ ∘ fst == id) as cancel.
-       { apply (from_to unit_isom_right). }
-       rewrite cancel. rewrite compose_id_right. rewrite <- ret_nat.
-       unfold indep. unfold makeFun, Call, prodsplay. simpl.
-       rewrite compose_assoc.
-       rewrite map_Bind1.
-       setoid_rewrite (map_Bind1 _ _ snd).
-       setoid_rewrite map_Ret.
-       rewrite pair_snd. 
-       unfold Lift, Extend_Prod, Extend_Refl.
-       rewrite compose_id_right, compose_id_left, compose_id_right.
-       rewrite Bind_Ret.
-       rewrite <- (compose_id_left snd). rewrite emap_snd_pair.
-       rewrite map_id, compose_id_left.
-       rewrite Bind_emap.
-       rewrite <- (compose_assoc _ _ join).
-       rewrite emap_fst_pair, compose_id_right.
-       rewrite compose_assoc, join_ret, compose_id_left.
-       rewrite <- (compose_assoc _ snd fst).
-       rewrite pair_snd, pair_fst.
-       reflexivity.
-Defined.
+       rewrite H0.
+       
+       (* ***** *)
+       unfold indep. unfold makeFun, Call, prodsplay. 
+       unfold Lift, Extend_Prod, Extend_Refl. simpl.
+       rewrite Bind1_push.
+       autorewrite with cat_db.
+       
+Abort.
+       
 
 End Constant_Sampler.
 
@@ -208,7 +229,12 @@ Section Coinflip_Sampler.
   Definition Cantor := Stream Boole.
 
   Definition infinite_coinflips : unit ~~> Prob Cantor := pstream (MeasOps := mops) coinflip (coinflip ∘ tt).
-    
 
+  Definition coinflip_sampler : Sampler (Δ := unit) (S := Cantor) (A := Boole) infinite_coinflips coinflip.
+  Proof.
+    refine (sampler (⟨tl, hd⟩ ∘ snd) _).
+    rewrite emap_snd_pair.
+    unfold Call, indep, makeFun, Lift, prodsplay, Extend_Prod, Extend_Refl. simpl.
+  Abort.
   
 End Coinflip_Sampler.
