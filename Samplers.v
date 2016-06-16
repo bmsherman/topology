@@ -115,6 +115,8 @@ Lemma ret_Ret : forall {Γ A} (x : Γ ~~> A), (Ret x) == ret ∘ x.  (*TODO is t
 Proof. unfold Ret. reflexivity.
 Defined.
 
+Hint Rewrite (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _) : cat_db.
+
 Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
 Proof. intros A B.
        unfold marg. apply proj_eq.
@@ -128,8 +130,8 @@ Proof. intros A B.
            rewrite pair_fst.
            rewrite Bind_Ret.
            unfold Lift, Extend_Refl, Extend_Prod. simpl. (* I should automate this maybe? *)
-           rewrite compose_id_left, compose_id_left.  (*This too.*)
-           rewrite emap_fst_pair. rewrite compose_id_right, compose_id_right.
+           autorewrite with cat_db.
+           rewrite emap_fst_pair. autorewrite with cat_db.
            rewrite <- ret_Ret.
            (* NB at this point we've reduced one Bind ... Ret ... to a Ret ... *)
            rewrite Bind_Ret.
@@ -150,8 +152,9 @@ Proof. intros A B.
            rewrite pair_snd.
            rewrite Bind_Ret.
            unfold Lift, Extend_Refl, Extend_Prod. simpl.
-           rewrite compose_id_right, compose_id_right. rewrite <- (compose_id_left snd).
-           rewrite emap_snd_pair. rewrite compose_id_left.
+           autorewrite with cat_db.
+           rewrite <- (compose_id_left snd).
+           rewrite emap_snd_pair.
            rewrite map_id. rewrite compose_id_left.
            rewrite Bind_emap.
            rewrite <- (compose_assoc _ _ join).
@@ -204,7 +207,7 @@ Section Coinflip_Sampler.
   Definition Boole := unit + unit.
   Definition Cantor := Stream Boole.
 
-  Definition infinite_coinflips : unit ~~> Prob Cantor := (pstream (coinflip) (coinflip ∘ tt)).
+  Definition infinite_coinflips : unit ~~> Prob Cantor := pstream (MeasOps := mops) coinflip (coinflip ∘ tt).
     
 
   
