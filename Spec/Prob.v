@@ -31,9 +31,9 @@ Class OpenOps : Type :=
 Context {Meas Prob SubProb : U -> U}.
 
 Class MeasOps : Type :=
-  { MeasMonad : SMonad U Meas
-  ; ProbMonad : SMonad U Prob
-  ; SubProbMonad : SMonad U SubProb
+  { MeasMonad : SMonad (ccat := ccat) (cmc := cmc) U Meas
+  ; ProbMonad : SMonad  (ccat := ccat) (cmc := cmc) U Prob
+  ; SubProbMonad : SMonad  (ccat := ccat) (cmc := cmc) U SubProb
   ; Prob_to_SubProb : forall {A}, Prob A ~~> SubProb A
   ; SubProb_to_Meas : forall {A}, SubProb A ~~> Meas A
   ; MeasEval : forall {A}, Meas A * Open A ~~> LRnn
@@ -45,6 +45,7 @@ Class MeasOps : Type :=
   ; pstream : forall {Γ A}, Γ ~~> Prob A -> Γ * A ~~> Prob A
                        -> Γ ~~> Prob (Stream A)
   ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
+  ; fst_strong : forall {A B}, (map fst) ∘ (strong (M:=Prob)(A:=A)(B:=B)) == ret ∘ fst
   }.
 
 End Prob.

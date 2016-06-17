@@ -15,7 +15,7 @@ Class SumTys : Type :=
 
 Infix "+" := sum : obj_scope.
 
-Context `{SumTys}.
+Context `{sts : SumTys}.
 
 (** Does sum_elim need to have the context Γ? It seems
     like it may *)

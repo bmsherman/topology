@@ -19,17 +19,17 @@ Local Open Scope obj.
 Section Samplers.
 
   Context {U : Type}.
-  Context `{mops : MeasOps U}.
-  Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) U 
-   (LRnn := LRnn)}.
-  Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (R := R)
-  (Σ := Σ)}.
-  Context {sumops : SumOps}.
-  Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
+  Context `{sigmaops : ΣOps (U := U)}.
+  Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
+  Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) (Σ := Σ) U}.
+  Context `{sumops : SumOps (U:=U) (ccat := ccat)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
-  Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)}.
-  Context `{Streamops : StreamOps (U := U) (Stream:=Stream) (ccat := ccat)}.
+  Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
+  Context `{mops : MeasOps U
+(ccat := ccat) (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
+  Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc) (smd := ProbMonad)}.
 
+  Local Instance SMD : SMonad U Prob := ProbMonad.
 
   Hint Rewrite
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
@@ -54,7 +54,7 @@ Section Samplers.
   Lemma emap_fst_pair : forall {Γ A B C : U} (f : Γ ~~> C) (h : A ~~> Γ) (k : A ~~> Prob B),
       (emap (f ∘ fst)) ∘ ⟨h , k⟩ == ret ∘ f ∘ h.
   Proof. intros Γ A B C f h k. unfold emap. rewrite <- map_compose.
-         rewrite <- (compose_assoc strong).
+         rewrite <- (compose_assoc strong). unfold SMD. (* I'm slightly sad that unfold has to be there. *)
          rewrite fst_strong. rewrite -> compose_assoc.
          rewrite ret_nat. rewrite <- (compose_assoc _ fst). rewrite pair_fst.
          reflexivity.

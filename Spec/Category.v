@@ -251,8 +251,7 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
     == 
     join ∘ map strong ∘ strong
   ; strong_nat : forall {A A' B B'} (f : A ~~> A') (g : B ~~> B'), strong ∘ (f ⊗ (map g)) == map (f ⊗ g) ∘ strong
-  ; fst_strong : forall {A B}, (map fst) ∘ (strong (A:=A)(B:=B)) == ret ∘ fst
-  ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd
+  ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd (* Maybe provable from other axioms? *)
   }.
 
 
