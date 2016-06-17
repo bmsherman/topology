@@ -161,8 +161,8 @@ Section BasicProps.
   Defined.
   
   Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
-  Proof. intros. rewrite (pair_uniq f). rewrite (pair_uniq f').
-         rewrite H, H0. reflexivity.
+  Proof. intros A B C f f' Hfst Hsnd. rewrite (pair_uniq f). rewrite (pair_uniq f').
+         rewrite Hfst, Hsnd. reflexivity.
   Defined.
   
 
