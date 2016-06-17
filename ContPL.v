@@ -202,6 +202,13 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
   rewrite H. reflexivity.
   Qed.
 
+  Global Instance Lift_Proper : forall {Γ Δ A : U} {ext : Extend U ccat Γ Δ}, 
+    Proper (eq ==> eq) (Lift (Γ := Γ) (Δ := Δ) (A := A)).
+  Proof.
+  intros. unfold Proper, respectful. intros. unfold Lift.
+  apply compose_Proper. assumption. reflexivity.
+  Qed.
+
   Lemma bind_extensional {Γ A B} (mu : Γ ~~> M A) (f g : Γ * A ~~> A -> Γ * A ~~> M B) : 
     (forall a, f a == g a) ->
    (a <- mu; f a) == (a <- mu; g a).

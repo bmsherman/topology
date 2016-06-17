@@ -166,6 +166,75 @@ Proof. Abort.
          unfold Ret; rewrite compose_assoc; reflexivity.
   Defined.
 
+
+  Require Import Morphisms.
+
+  Instance indep_ext1 {Γ A B} : Proper (eq ==> eq ==> eq) (@indep Γ A B).
+  Proof.
+  unfold Proper, respectful. intros. unfold indep. apply Bind_Proper.
+  assumption. apply lam_extensional. intros. 
+  apply Bind_Proper. rewrite <- H1. reflexivity. reflexivity.
+  Qed.
+
+  Lemma Bind_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
+    (f : Δ * A ~~> Prob B), Bind x f ∘ g == Bind (x ∘ g) (f ∘ (g ⊗ id)).
+  Proof.
+  intros. unfold Bind. unfold bind. rewrite <- !(compose_assoc _ _ join).
+  apply compose_Proper. reflexivity. rewrite <- map_compose.
+  rewrite <- !(compose_assoc _ _ (map f)). 
+  apply compose_Proper. reflexivity.
+  rewrite compose_assoc. rewrite <- strong_nat. 
+  rewrite <- !(compose_assoc _ _ strong).
+  apply compose_Proper. reflexivity.
+  rewrite map_id. 
+  rewrite parallel_pair. autorewrite with cat_db.
+  rewrite pair_f. autorewrite with cat_db. reflexivity.
+  Qed.
+
+
+
+  Theorem call_inv {A B C : U} (f : forall Δ, Δ ~~> A -> Δ ~~> B -> Δ ~~> C)
+  (f_ext1 : forall Δ, Proper (eq ==> eq ==> eq) (f Δ))
+  (f_ext : forall Γ Δ (g : Γ ~~> Δ) (x : Δ ~~> A) (y : Δ ~~> B),
+     f Δ x y ∘ g == f Γ (x ∘ g) (y ∘ g))
+  {Γ : U} (x : Γ ~~> A) (y : Γ ~~> B)
+  : Call (makeFun [A; B] f) x y == f Γ x y.
+  Proof. 
+  unfold Call, makeFun, prodsplay. simpl.
+  rewrite f_ext. autorewrite with cat_db. rewrite <- compose_assoc.
+  autorewrite with cat_db. reflexivity.
+  Qed.
+
+  Theorem indep_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
+    (y : Δ ~~> Prob B), indep x y ∘ g == indep (x ∘ g) (y ∘ g).
+  Proof.
+  intros. unfold indep. rewrite Bind_ext. apply Bind_Proper. 
+  reflexivity. unfold makeFun1E. 
+  rewrite Bind_ext.
+  apply Bind_Proper. unfold Lift, Extend_Prod, Extend_Refl.
+  autorewrite with cat_db. 
+  rewrite <- !(compose_assoc _ _ y). 
+  apply compose_Proper. reflexivity.
+  unfold parallel. autorewrite with cat_db. reflexivity.
+  rewrite Ret_f. apply Ret_Proper.
+  rewrite pair_f. apply pair_Proper.
+  unfold Lift, Extend_Prod, Extend_Refl; simpl.
+  unfold parallel.
+  autorewrite with cat_db.
+  rewrite <- compose_assoc. autorewrite with cat_db.
+  rewrite compose_assoc. autorewrite with cat_db. reflexivity.
+  unfold parallel. autorewrite with cat_db. reflexivity.
+  Qed.
+
+  Theorem call_indep : forall Γ A B (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
+    Call (makeFun [Prob A; Prob B] (fun _ => indep)) mu nu == indep mu nu.
+  Proof.
+  intros. apply (call_inv (fun _ => indep)).
+  - intros. typeclasses eauto.
+  - intros. apply indep_ext.
+  Qed.
+
+
   Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
   Proof. intros A B.
          unfold marg. apply proj_eq.
