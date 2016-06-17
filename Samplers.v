@@ -53,17 +53,16 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   
   Definition swap {A B : U} : A * B ~~> B * A :=
     ⟨snd, fst⟩.
-
   
   Definition indep {Γ A B : U} (DA : Γ ~~> Prob A) (DB : Γ ~~> Prob B) : (Γ ~~> Prob (A * B)) :=
-                                 ( a <- DA;
-                                   b <- !DB;
-                                   Ret ⟨!a, b⟩).
+      ( a <- DA;
+        b <- !DB;
+        Ret ⟨!a, b⟩).
 
   Definition inner_indep {A B : U} : (Prob A) * (Prob B) ~~> Prob (A * B) :=
     indep (Γ := Prob A * Prob B) fst snd.
 
-  Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
+   Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
     ⟨map fst , map snd⟩.
   (* 'marg' for 'marginal' *)
 
@@ -296,10 +295,10 @@ Proof. Abort.
       {
         sample : Δ * S ~~> S * A;
         sampling_cond : (indep DS DA) == (emap sample) ∘ ⟨id, DS⟩
-                                                       (* Replace RHS with something more program-y??? *) 
+                                                       (* Maybe replace RHS with something more program-y??? EG: (s <- DS; Ret sample). (that one looks weird because it draws s but appears to never use it.)  *) 
       }.
-  
-  Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
+
+      Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
   
   
   Section Constant_Sampler.
@@ -309,19 +308,21 @@ Proof. Abort.
     Proof. refine (sampler ⟨snd, x ∘ fst⟩ _).       
            unfold indep. 
            unfold Lift, Extend_Prod, Extend_Refl. simpl.
-           assert (((a <- D; b <- Ret x ∘ (id ∘ fst); Ret ⟨ a ∘ (id ∘ fst), b ⟩)) ==
-                   ((a <- D; b <- Ret (x ∘ fst); Ret ⟨ a ∘ (id ∘ fst), b ⟩))) as rewriting_failure.
-           { Fail setoid_rewrite Ret_f. admit. }
-           rewrite rewriting_failure.
+           rewrite bind_extensional. Focus 2.
+           intros a.
+           setoid_rewrite Ret_f.
            setoid_rewrite Bind'_Ret_f.
            rewrite Ret_f.
-           rewrite pair_f.
-           autorewrite with cat_db.
-           rewrite <- (compose_assoc _ fst snd).
-           autorewrite with cat_db.
-           rewrite Bind_m_Ret.
+           rewrite pair_f. 
            reflexivity.
-    Admitted. (* So close!!! *)
+           simpl.
+           setoid_rewrite Ret_f. setoid_rewrite pair_f.
+           autorewrite with cat_db.
+           rewrite <- (compose_assoc _ fst snd). autorewrite with cat_db.
+           rewrite Bind_m_Ret.
+           (* rewrite Bind'_m_Ret. // If the RHS of the sampling condition becomes a program. *)
+           reflexivity.
+Defined.
     
     
   End Constant_Sampler.
@@ -339,6 +340,7 @@ Proof. Abort.
       refine (sampler (⟨tl, hd⟩ ∘ snd) _).
       rewrite emap_snd_pair.
       unfold indep, Lift, Extend_Prod, Extend_Refl. simpl.
+      
     Abort.
     
   End Coinflip_Sampler.
