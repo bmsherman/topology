@@ -31,10 +31,26 @@ Section Samplers.
 
   Local Instance SMD : SMonad U Prob := ProbMonad.
 
+ (*
+
+Candidates for below I'm not sure about:
+ (@to_from _ _ _ _ _ _), (@from_to _ _ _ _ _ _ _)
+
+There's an argument to be made for adding parallel_pair, but I don't think I want it.
+
+  *)
+ 
   Hint Rewrite
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
-       (@pair_fst _ _ _ _) (@pair_snd _ _ _ _) : cat_db.
-
+       (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
+       (@unit_uniq _ _ _ _)
+       (@map_id _ Prob _ _ _ _)
+       (@join_map_ret _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _)
+       (@strength_ret _ _ _ _ _ _)
+       (@fst_strong _ _ _) (@snd_strong _ _ _ _ _ _)
+       (@stream_hd _ _ _) (@stream_tl _ _ _)
+    : cat_db.
+  
   Definition swap {A B : U} : A * B ~~> B * A :=
     ⟨snd, fst⟩.
 
@@ -132,11 +148,10 @@ Section Samplers.
          rewrite <- (compose_id_left id).
          rewrite <- (parallel_pair id x id ret).
          rewrite (compose_assoc _ _ strong).
-         rewrite <- strength_ret.
+         autorewrite with cat_db.
          rewrite compose_assoc.
          rewrite <- (compose_assoc ret).
          rewrite <- ret_nat, compose_assoc.
-         rewrite join_ret.
          autorewrite with cat_db.
          reflexivity.
   Defined.
@@ -243,35 +258,35 @@ Proof. Abort.
            setoid_rewrite map_Bind'.
            setoid_rewrite map_Bind'.
            setoid_rewrite map_Ret.
-           rewrite pair_fst.
            rewrite Bind_m_Ret.
            unfold Lift, Extend_Refl, Extend_Prod. (* I should automate this maybe? *)
            autorewrite with cat_db.
-           rewrite emap_fst_pair. autorewrite with cat_db.
+           rewrite emap_fst_pair.
+           autorewrite with cat_db.
            rewrite <- ret_Ret.
            (* NB at this point we've reduced one Bind ... Ret ... to a Ret ... *)
            rewrite Bind_m_Ret.
            rewrite <- (compose_id_left snd). (* A bit silly, maybe make this special later? *)
            rewrite emap_snd_pair.
-           rewrite map_id. rewrite compose_id_left. reflexivity.
+           autorewrite with cat_db.
+           reflexivity.
            
-         - rewrite compose_assoc. autorewrite with cat_db.
+         - rewrite compose_assoc.
+           autorewrite with cat_db.
            unfold inner_indep. unfold indep.
            setoid_rewrite map_Bind'. 
            setoid_rewrite map_Bind'.
            setoid_rewrite map_Ret.
-           autorewrite with cat_db.
            rewrite Bind_m_Ret.
            unfold Lift, Extend_Refl, Extend_Prod.
            autorewrite with cat_db.
            rewrite <- (compose_id_left snd).
            rewrite emap_snd_pair.
-           rewrite map_id.
            autorewrite with cat_db.
            rewrite Bind_emap.
            rewrite <- (compose_assoc _ _ join).
-           rewrite emap_fst_pair. rewrite compose_id_right. rewrite compose_assoc.
-           rewrite join_ret, compose_id_left. 
+           rewrite emap_fst_pair. rewrite compose_assoc, compose_assoc.
+           autorewrite with cat_db.
            reflexivity.
            
   Defined.
