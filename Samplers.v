@@ -296,7 +296,10 @@ Proof. Abort.
            unfold Lift, Extend_Prod, Extend_Refl. simpl.
            assert (((a <- D; b <- Ret x ∘ (id ∘ fst); Ret ⟨ a ∘ (id ∘ fst), b ⟩)) ==
                    ((a <- D; b <- Ret (x ∘ fst); Ret ⟨ a ∘ (id ∘ fst), b ⟩))) as rewriting_failure.
-           { Fail setoid_rewrite Ret_f. admit. }
+           { apply bind_extensional. intros. setoid_rewrite Ret_f. 
+             apply Bind_Proper. autorewrite with cat_db. reflexivity.
+             reflexivity. 
+           }
            rewrite rewriting_failure.
            setoid_rewrite Bind'_Ret_f.
            rewrite Ret_f.
@@ -306,7 +309,7 @@ Proof. Abort.
            autorewrite with cat_db.
            rewrite Bind_m_Ret.
            reflexivity.
-    Admitted. (* So close!!! *)
+    Qed.
     
     
   End Constant_Sampler.

@@ -30,6 +30,9 @@ Record t {F_ : map S T} : Type :=
 
 Arguments t F_ : clear implicits.
 
+Definition Sat (F_ : map S T) : map S T := fun t s =>
+  CovS s (F_ t).
+
 Record pt {F : Subset T} :=
   { pt_here : Inhabited F
   ; pt_local : forall {b c}, F b -> F c -> Inhabited (FormTop.down leT b c ∩ F)
@@ -46,6 +49,32 @@ Definition frame (F_ : map S T) (U : Subset T) : Subset S :=
 
 Hypothesis FTS : FormTop.t leS CovS. 
 Hypothesis FTT : FormTop.t leT CovT.
+
+Lemma Sat_mono2 (F_ : map S T) : RelIncl F_ (Sat F_).
+Proof.
+unfold RelIncl. intros. unfold Sat.
+unfold Included, pointwise_rel, arrow; intros.
+apply FormTop.refl. assumption.
+Qed.
+
+Lemma Sat_mono (F_ G_ : map S T) : 
+  RelIncl F_ G_ -> 
+  RelIncl (Sat F_) (Sat G_).
+Proof.
+unfold RelIncl, Sat; intros.
+unfold Included, pointwise_rel, arrow; intros.
+eapply FormTop.monotone. apply X. assumption.
+Qed.
+
+Lemma Sat_idempotent (F_ : map S T) :
+  RelSame (Sat F_) (Sat (Sat F_)).
+Proof.
+apply RelIncl_RelSame. apply Sat_mono2.
+unfold RelIncl, Included, pointwise_rel, arrow, Sat.
+intros.
+eapply FormTop.trans. eassumption.
+intros. assumption.
+Qed.
 
 Let FrameS := FormTop.Frame leS CovS.
 Let FrameT := FormTop.Frame leT CovT.
@@ -332,23 +361,51 @@ Admitted.
 (** NOTE: This is a (white?) lie: it should say that it holds for
     the saturation of F.
 *)
-Theorem converse : forall F, Cont.t leS leT CovS CovT F -> t F.
+
+Existing Instances union_Proper FormTop.Cov_Proper.
+
+Lemma Cov_Sat : forall a U (F : Cont.map S T), 
+  CovS a (union U F) ->
+  CovS a (union U (Cont.Sat (CovS := CovS) F)).
+Proof.
+intros. 
+eapply (FormTop.Cov_Proper _ _). reflexivity. 
+  eapply union_monotone.
+  eapply Cont.Sat_mono2. eassumption. assumption.
+Qed.
+
+Theorem converse : forall F, Cont.t leS leT CovS CovT F 
+  -> t (Cont.Sat (CovS := CovS) F).
 Proof.
 intros. 
 constructor; intros.
-- eauto using (Cont.here X).
-- eauto using (Cont.local X).
-- eapply (Cont.le_left X); eassumption.
-- eapply saturation. eassumption. 
-  eapply (Cont.cov X (b := b) (eq c)). eassumption.
-  apply FormTop.gle_left with c. assumption.
+- apply Cov_Sat. eauto using (Cont.here X).
+- unfold Cont.Sat in *. 
+  apply Cov_Sat.
+  pose proof (FormTop.le_right _ _ _ X0 X1).
+  clear X0 X1.
+  eapply FormTop.trans. eassumption.
+  clear a X2. intros. destruct X0. destruct d, d0.
+  apply (Cont.local X); eapply (Cont.le_left X). 
+  apply l. assumption. apply l0. assumption.
+- unfold Cont.Sat in *. 
+  eapply FormTop.le_left; eassumption.
+- unfold Cont.Sat in *. 
+  eapply FormTop.trans. eassumption.
+  intros. 
+  assert (CovT b (eq c)).
+  eapply FormTop.gle_left. eassumption.
   apply FormTop.grefl. reflexivity.
-  intros. destruct X2. destruct i. assumption.
-- eapply FormTop.monotone. Focus 2.  eapply (Cont.cov X).
-  eassumption. apply FormTop.ginfinity with j.
-  intros. apply FormTop.grefl. eassumption.
-  unfold Included, pointwise_rel, arrow; intros. destruct X1.
-  exists a1; eauto.
+  pose proof (Cont.cov X (a := a0) (b := b) (eq c)).
+  eapply FormTop.monotone. Focus 2. apply X4.
+  assumption. assumption.
+  unfold Included, pointwise_rel, arrow.
+  intros. destruct X5.  destruct i. assumption.
+- unfold Cont.Sat in X0. 
+  eapply FormTop.trans. eassumption. clear a X0.
+  intros. apply Cov_Sat. eapply (Cont.cov X). eassumption.
+  apply FormTop.ginfinity with j. intros. 
+  apply FormTop.grefl. assumption.
 Qed.
 
 End IGCont.

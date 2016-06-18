@@ -38,6 +38,12 @@ Infix "===" := Same_set (at level 70) : Subset_scope.
 Delimit Scope Subset_scope with Subset.
 Local Open Scope Subset.
 
+Definition RelIncl {A B : Type} : crelation (A -> Subset B) := 
+  fun F G => forall a : A, F a ⊆ G a.
+
+Definition RelSame {A B : Type} : crelation (A -> Subset B) :=
+  fun F G => forall a : A, F a === G a.
+
 Definition compose {S T U} (F : S -> T -> Type)
   (G : T -> U -> Type) (s : S) (u : U) : Type :=
     { t : T & (F s t * G t u)%type }.
@@ -129,6 +135,14 @@ Proof.
 intros. unfold Proper, respectful. firstorder.
 Qed.
 
+Require RelationClasses.
+Instance RelIncl_PreOrder : forall A B, PreOrder (@RelIncl A B).
+Proof.
+intros. constructor; unfold Reflexive, Transitive, RelIncl; intros.
+- reflexivity. 
+- transitivity (y a); auto.
+Qed.
+
 Theorem Same_set_iff : forall A (U V : Subset A),
   (forall x, iffT (U x) (V x)) -> U === V.
 Proof.
@@ -138,6 +152,45 @@ Qed.
 Instance Same_set_Equivalence : forall U, Equivalence (@Same_set U).
 Proof. intros. unfold Same_set. constructor;
   unfold Reflexive, Symmetric, Transitive; firstorder.
+Qed.
+
+
+Instance RelSame_Equivalence : forall A B, Equivalence (@RelSame A B).
+Proof. intros. unfold RelSame. constructor;
+  unfold Reflexive, Symmetric, Transitive; intros.
+- reflexivity.
+- symmetry. auto.
+- transitivity (y a); auto.
+Qed.
+
+Require Coq.Setoids.Setoid.
+Instance RelIncl_Proper : forall A B, Proper (RelSame ==> RelSame ==> iffT)
+  (@RelIncl A B).
+Proof.
+intros. unfold Proper, respectful, RelIncl, RelSame. intros. split; intros.
+- rewrite <- X, <- X0. auto.
+- rewrite X, X0. auto.
+Qed.
+
+Lemma Included_Same_set : forall A (U V : Subset A),
+  U ⊆ V -> V ⊆ U -> U === V.
+Proof.
+unfold Included, Same_set, pointwise_rel, arrow.
+firstorder.
+Qed.
+
+Lemma RelIncl_RelSame : forall A B (F G : A -> Subset B),
+  RelIncl F G -> RelIncl G F -> RelSame F G.
+Proof.
+unfold RelIncl, RelSame; intros. apply Included_Same_set; auto.
+Qed.
+
+Instance RelSame_Proper : forall A B, Proper (RelSame ==> RelSame ==> iffT)
+  (@RelSame A B).
+Proof.
+intros. unfold Proper, respectful, RelSame. intros. split; intros.
+- rewrite <- X, <- X0. auto.
+- rewrite X, X0. auto.
 Qed.
 
 Lemma union_compose : forall A B C (H : Subset A) (G : A -> Subset B) 
@@ -158,11 +211,20 @@ intros. destruct X0. econstructor; eauto.
 apply X. assumption.
 Qed.
 
+Lemma union_monotone : forall A B (U : Subset A) (F G : A -> Subset B),
+  RelIncl F G -> union U F ⊆ union U G.
+Proof.
+intros. unfold Included, pointwise_rel, arrow.
+intros. destruct X0.
+econstructor. eassumption. apply X. assumption.
+Qed.
+
 Local Instance union_Proper : forall A B, 
-  Proper (Included ==> eq ==> Included) (@union A B).
+  Proper (Included ==> RelIncl ==> Included) (@union A B).
 Proof.
 intros. unfold Proper, respectful.
-intros. subst. apply union_idx_monotone. assumption.
+intros. rewrite union_idx_monotone. 
+apply union_monotone. assumption. assumption.
 Qed.
 
 Local Instance Union_Proper_eq : forall A, 
@@ -202,11 +264,4 @@ Instance In_Proper2 : forall A,
 Proof.
 unfold Proper, respectful, flip, arrow. intros.
 subst.  apply X. assumption.
-Qed.
-
-Lemma Included_Same_set : forall A (U V : Subset A),
-  U ⊆ V -> V ⊆ U -> U === V.
-Proof.
-unfold Included, Same_set, pointwise_rel, arrow.
-firstorder.
 Qed.

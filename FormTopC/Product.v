@@ -278,7 +278,7 @@ Context {IB} {CB : forall (t : B), IB t -> Subset B}.
 Variable locB : FormTop.localized leB CB.
 Let CovB := FormTop.GCov leB CB.
 
-Definition parallel (F : Cont.map S A) (G : Cont.map T B)
+Definition parallelIG (F : Cont.map S A) (G : Cont.map T B)
   (out : A * B) (p : S * T) : Type :=
   let (s, t) := p in let (a, b) := out in
    F a s * G b t.
@@ -294,57 +294,6 @@ Qed.
 
 Require Import CRelationClasses. 
 
-Theorem t_parallel (F : Cont.map S A) (G : Cont.map T B)
-  : Cont.t leS leA CovS CovA F
-  -> Cont.t leT leB CovT CovB G
-  -> Cont.t (prod_op leS leT) (prod_op leA leB)
-      (@Product.Cov _ _ leS leT IS IT CS CT)
-      (@Product.Cov _ _ leA leB IA IB CA CB)
-      (parallel F G).
-Proof.
-intros ContF ContG.
-constructor; intros.
-- eapply FormTop.gmonotone with
-  (fun s : S * T => let (s', t') := s in
-  union (fun _ => True) F s' * union (fun _ => True) G t')%type.
-  unfold Included, pointwise_rel, arrow; intros x H.
-  destruct a, x. 
-  destruct H. destruct u, u0.
-  constructor 1 with (a, a0). 
-  constructor. econstructor; eassumption.
-  destruct a.
-  eapply FormTop.monotone.
-  Focus 2.
-  apply Product.factors; try eassumption.
-  apply (Cont.here ContF). apply (Cont.here ContG).
-  unfold Included, pointwise_rel, arrow; intros. 
-  destruct a. assumption.
-- destruct c, b, a. destruct X, X0; simpl in *.
-  split.
-  eapply (Cont.le_left ContF); eassumption.
-  eapply (Cont.le_left ContG); eassumption.
-- destruct a, b, c.
-  destruct X, X0.
-  pose proof (Cont.local ContF f f0).
-  pose proof (Cont.local ContG g g0).
-  eapply FormTop.monotone. Focus 2.
-  eapply Product.factors; eassumption.
-  unfold Included, pointwise_rel, arrow; intros x H.
-  destruct x. destruct H. destruct u, u0.
-  destruct i, i0.
-  exists (a1, a2). unfold FormTop.down, In, prod_op; auto.
-  split; assumption.
-- generalize dependent a. induction X0; intros.
-  + apply FormTop.refl. exists a. assumption. assumption.
-  + apply IHX0. destruct a, b, a0. simpl in *. destruct X.
-    destruct l. simpl in *. 
-    split; eapply IGCont.le_right; try eassumption;
-    eapply IGCont.converse; try eassumption;
-    eapply FormTop.GCov_formtop; eassumption.
-  +
-Admitted.
-
-
 Theorem t_parallelIG (F : Cont.map S A) (G : Cont.map T B)
   : IGCont.t leS CovS leA CA F
   -> IGCont.t leT CovT leB CB G
@@ -352,7 +301,7 @@ Theorem t_parallelIG (F : Cont.map S A) (G : Cont.map T B)
       (@Product.Cov _ _ leS leT IS IT CS CT)
        (prod_op leA leB)
       (@Product.C _ _ IA IB CA CB)
-      (parallel F G).
+      (parallelIG F G).
 Proof.
 intros ContF ContG. constructor; intros.
 - eapply FormTop.gmonotone with
@@ -413,6 +362,24 @@ intros ContF ContG. constructor; intros.
   destruct a. destruct X1. subst.
   destruct u. exists (a0, a). unfold In. split. reflexivity. assumption.
   split; assumption.
+Qed.
+
+Definition parallel (F : Cont.map S A) (G : Cont.map T B) :=
+  parallelIG (Cont.Sat (CovS := CovS) F) (Cont.Sat (CovS := CovT) G).
+
+Theorem t_parallel (F : Cont.map S A) (G : Cont.map T B)
+  : Cont.t leS leA CovS CovA F
+  -> Cont.t leT leB CovT CovB G
+  -> Cont.t (prod_op leS leT) (prod_op leA leB)
+      (@Product.Cov _ _ leS leT IS IT CS CT)
+      (@Product.Cov _ _ leA leB IA IB CA CB)
+      (parallel F G).
+Proof.
+intros ContF ContG.
+unfold parallel. apply IGCont.cont. 
+apply FormTop.GCov_formtop. apply Product.loc; eassumption. 
+apply t_parallelIG; apply IGCont.converse; 
+  try apply FormTop.GCov_formtop; try eassumption.
 Qed.
 
 End Products.

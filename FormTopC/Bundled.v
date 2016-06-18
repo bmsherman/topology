@@ -173,7 +173,8 @@ Definition diagonal {A : IGT} : A ~~> A * A :=
 
 Definition parallel_mp {A B X Y : IGT} 
   (f : A ~~> X) (g : B ~~> Y) : Cont.map (S (A * B)) (S (X * Y))
-  := ProductMaps.parallel (mp f) (mp g).
+  := ProductMaps.parallel (leS := le A) (CS := C A) 
+      (leT := le B) (CT := C B) (mp f) (mp g).
 
 Definition parallel_mp_ok {A B X Y : IGT}
   (f : A ~~> X) (g : B ~~> Y) :
@@ -199,6 +200,10 @@ Definition discrete (A : Type) : IGT :=
   ; PO := PreO.discrete A
   ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
   |}.
+
+
+
+
 
 (** Spaces of open sets (using Scott topology *)
 Definition Open (A : IGT) : IGT :=
