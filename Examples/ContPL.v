@@ -26,11 +26,10 @@ Context {sumops : SumOps}.
 Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc)
   (Σ := Σ)}.
 
-
 Definition sum_match {Γ A B C}
   (e : Γ ~~> A + B)
   (l : Γ * A ~~> C) (r : Γ * B ~~> C) : Γ ~~> C :=
-  sum_elim l r ∘ (id ⊗ e) ∘ diagonal.
+  sum_elim l r ∘ ⟨ id , e ⟩.
 
 Notation "'If' cond 'Then' thenExp 'Else' elseExp" :=
   (sum_match (cond)%morph (LAM _ => thenExp ∘ fst)%morph (LAM _ => elseExp ∘ fst)%morph) (at level 160) : morph_scope.
@@ -84,11 +83,13 @@ Context `{StreamOps (U := U) (ccat := ccat) (Stream := Stream)}.
 
 Infix "-" := (ap2 (Rsub R)) : morph_scope.
 
+(** This seems to cause a Coq bug in v8.5...
 Definition ornstein : [R; R] ~> Prob (Stream R) :=
   makeFun [R; R] (fun _ θ σ => let σ2 := σ * σ in
      pstream (MeasOps := mops) (Ret 0) (LAM x =>
         (z <- ap0 normal 
         ; Ret ( (1 - !θ) * !x + !σ2 * !z))))%morph.
+*)
 
 Definition peval {A} : (Prob A * Open A ~~> LRnn)%obj :=
   MeasEval ∘ ((SubProb_to_Meas ∘ Prob_to_SubProb) ⊗ id).

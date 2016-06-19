@@ -30,10 +30,12 @@ Class OpenOps : Type :=
 
 Context {Meas Prob SubProb : U -> U}.
 
+Require Import Prob.ContPL.
+
 Class MeasOps : Type :=
-  { MeasMonad : SMonad U Meas
-  ; ProbMonad : SMonad U Prob
-  ; SubProbMonad : SMonad U SubProb
+  { MeasMonad : SMonad (ccat := ccat) (cmc := cmc) U Meas
+  ; ProbMonad : SMonad  (ccat := ccat) (cmc := cmc) U Prob
+  ; SubProbMonad : SMonad  (ccat := ccat) (cmc := cmc) U SubProb
   ; Prob_to_SubProb : forall {A}, Prob A ~~> SubProb A
   ; SubProb_to_Meas : forall {A}, SubProb A ~~> Meas A
   ; MeasEval : forall {A}, Meas A * Open A ~~> LRnn
@@ -42,10 +44,28 @@ Class MeasOps : Type :=
   ; ProbEval : forall {A B : U}, Prob (A + B) ~~> R
   ; coinflip : unit ~~> Prob (unit + unit)
   ; normal : unit ~~> Prob R
-  ; pstream : forall {Γ A}, Γ ~~> Prob A -> Γ * A ~~> Prob A
+  ; pstream : forall {Γ A X}, Γ ~~> X -> Γ * X ~~> Prob (A * X)
                        -> Γ ~~> Prob (Stream A)
   ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
+  ; fst_strong : forall {A B}, (map fst) ∘ (strong (M:=Prob)(A:=A)(B:=B)) == ret ∘ fst
   }.
+
+Context {mops : MeasOps}.
+
+Existing Instance ProbMonad.
+
+(* This should probably get moved somewhere else *)
+Definition liftF {Γ Δ A B : U} 
+  {ext : Extend U ccat Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=
+  f ∘ (ext ⊗ id).
+
+Axiom pstream_unfold : forall (Γ A X : U) 
+  (x : Γ ~~> X) (f : Γ * X ~~> Prob (A * X)),
+      pstream x f == (
+         y <- f ∘ ⟨ id , x ⟩ ;
+         zs <- pstream (X := X) (snd ∘ y) (liftF f) ;
+         Ret (cons (fst ∘ !y) zs) 
+         ).  
 
 End Prob.
 

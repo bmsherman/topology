@@ -15,7 +15,7 @@ Class SumTys : Type :=
 
 Infix "+" := sum : obj_scope.
 
-Context `{SumTys}.
+Context `{sts : SumTys}.
 
 (** Does sum_elim need to have the context Γ? It seems
     like it may *)
@@ -36,6 +36,11 @@ Class SumProps : Type :=
   ; sum_elim_inr : forall {Γ A B C} (f : Γ * A ~~> C) (g : Γ * B ~~> C),
       sum_elim f g ∘ (id ⊗ inr) == g
   }.
+
+Definition sum_match {Γ A B C}
+  (e : Γ ~~> A + B)
+  (l : Γ * A ~~> C) (r : Γ * B ~~> C) : Γ ~~> C :=
+  sum_elim l r ∘ ⟨ id , e ⟩.
 
 End Sum.
 

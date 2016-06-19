@@ -161,8 +161,8 @@ Section BasicProps.
   Defined.
   
   Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
-  Proof. intros. rewrite (pair_uniq f). rewrite (pair_uniq f').
-         rewrite H, H0. reflexivity.
+  Proof. intros A B C f f' Hfst Hsnd. rewrite (pair_uniq f). rewrite (pair_uniq f').
+         rewrite Hfst, Hsnd. reflexivity.
   Defined.
   
 
@@ -244,15 +244,14 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
    (A * (B * M C)) -[strong ∘ (id ⊗ strong)]-> (M (A * (B * C)))
    == map prod_assoc_right ∘ strong ∘ prod_assoc_left
     ; strength_ret : forall {A B},
-    (A * B) -[ ret ]-> (M (A * B)) ==
-    strong ∘ (id ⊗ ret)
+        strong ∘ (id ⊗ ret) ==
+        (A * B) -[ ret ]-> (M (A * B))
   ; strength_join : forall {A B},
     strong ∘ ((A * M (M B)) -[ id ⊗ join ]-> (A * M B))
     == 
     join ∘ map strong ∘ strong
   ; strong_nat : forall {A A' B B'} (f : A ~~> A') (g : B ~~> B'), strong ∘ (f ⊗ (map g)) == map (f ⊗ g) ∘ strong
-  ; fst_strong : forall {A B}, (map fst) ∘ (strong (A:=A)(B:=B)) == ret ∘ fst
-  ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd
+  ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd (* Maybe provable from other axioms? *)
   }.
 
 
