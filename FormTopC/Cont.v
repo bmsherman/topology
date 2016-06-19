@@ -33,6 +33,9 @@ Arguments t F_ : clear implicits.
 Definition Sat (F_ : map S T) : map S T := fun t s =>
   CovS s (F_ t).
 
+Definition func_LE (F_ G_ : map S T) : Type :=
+  RelIncl (Sat F_) (Sat G_).
+
 Record pt {F : Subset T} :=
   { pt_here : Inhabited F
   ; pt_local : forall {b c}, F b -> F c -> Inhabited (FormTop.down leT b c ∩ F)
@@ -75,6 +78,49 @@ intros.
 eapply FormTop.trans. eassumption.
 intros. assumption.
 Qed.
+
+Section DirectedSup.
+Context {Ix : Type} `{JoinLat.t Ix}.
+Variable (f : Ix -> map S T).
+Variable (fmono : forall i j, JoinLat.le i j -> RelIncl (f i) (f j)).
+Definition func_Dsup : map S T := fun t s =>
+  { i : Ix & f i t s }.
+
+Lemma oneIncl i : RelIncl (f i) func_Dsup.
+Proof.
+intros. unfold RelIncl, Included, pointwise_rel, arrow; intros.
+exists i. assumption.
+Qed.
+
+Lemma single_Dsup : forall i a U,
+ CovS a (union U (f i)) ->
+ CovS a (union U func_Dsup).
+Proof.
+intros.  eapply FormTop.Cov_Proper. typeclasses eauto. 
+  reflexivity. apply union_monotone. apply (oneIncl i).
+assumption.
+Qed.
+
+Variable nonempty : Ix.
+
+Lemma func_Dsup_Cont : (forall i, Cont.t (f i)) -> Cont.t func_Dsup.
+Proof.
+intros iCont. constructor; intros.
+- eapply single_Dsup. apply (Cont.here (iCont nonempty)).
+- unfold func_Dsup in *. destruct X0.
+  exists x. eapply (Cont.le_left (iCont x)); eassumption.
+- destruct X, X0.
+  pose (x' := JoinLat.max x x0).
+  apply single_Dsup with x'.
+  apply (Cont.local (iCont x')).
+  eapply fmono; (apply JoinLat.max_ok || assumption).
+  eapply fmono. eapply PreO.max_r. apply JoinLat.max_ok. 
+  assumption.
+- destruct X. apply single_Dsup with x.
+  eapply (Cont.cov (iCont x)). eassumption. assumption.
+Qed.
+
+End DirectedSup.
 
 Let FrameS := FormTop.Frame leS CovS.
 Let FrameT := FormTop.Frame leT CovT.
@@ -350,17 +396,6 @@ intros. constructor; intros.
     intros. destruct X3. 
     eapply X0; eassumption.
 Qed.
-
-(** This is actually not true, and it's a problem with
-    my definition of general continuity. Really annoying. *)
-Lemma saturation : forall F, Cont.t leS leT CovS CovT F ->
-  forall a b W, CovS a W -> (forall w, In W w -> F b w) -> F b a.
-Proof.
-Admitted.
-
-(** NOTE: This is a (white?) lie: it should say that it holds for
-    the saturation of F.
-*)
 
 Existing Instances union_Proper FormTop.Cov_Proper.
 
