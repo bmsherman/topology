@@ -201,8 +201,21 @@ Definition discrete (A : Type) : IGT :=
   ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
   |}.
 
+Axiom undefined : forall A, A.
 
+Definition discrete_f_mp {A B} (f : A -> B)
+  : Cont.map (S (discrete A)) (S (discrete B)) :=
+  Discrete.discrF f.
 
+Definition discrete_f_mp_ok {A B} (f : A -> B)
+  : Cont.t (le (discrete A)) (le (discrete B)) (Cov (discrete A)) (Cov (discrete B)) (discrete_f_mp f) := Discrete.fContI f.
+
+Definition discrete_f {A B} (f : A -> B) : discrete A ~~> discrete B :=
+  {| mp := discrete_f_mp f 
+   ; mp_ok := discrete_f_mp_ok f |}.
+
+Definition discrete_pt {A} (x : A) : One ~~> discrete A :=
+  point (discrete A) (eq x) (Discrete.pt_okI x).
 
 
 (** Spaces of open sets (using Scott topology *)
@@ -309,5 +322,24 @@ Instance IGT_CMC : CMC IGT :=
 Proof.
 Admitted.
 
+
+Definition runDiscrete {A} (x : One ~~> discrete A) : A.
+pose proof (Cont.here (mp_ok x) I) as H.
+remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
+induction H; subst. destruct u. destruct i.
+- exact a0.
+- apply IHGCov. reflexivity.
+- induction i. simpl in *. apply (X I).
+  unfold InfoBase.C. constructor. reflexivity.
+Defined.
+
+Definition add3 : discrete nat ~~> discrete nat :=
+  discrete_f (fun n => n + 3).
+
+Definition five : One ~~> discrete nat :=
+  discrete_pt 5.
+
+Definition eight : One ~~> discrete nat :=
+  add3 ∘ five.
 
 End Bundled.

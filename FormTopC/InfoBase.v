@@ -518,6 +518,20 @@ constructor.
   econstructor. reflexivity. assumption.
 Qed.
 
+Lemma pt_singleton (U : Subset A) :
+  Cont.pt eq Cov U -> forall x y : A, U x -> U y -> x = y.
+Proof.
+intros H x y Ux Uy.
+pose proof (Cont.pt_local H Ux Uy).
+destruct X. destruct i.
+destruct d. subst. assumption.
+Qed.
+
+Definition pt_eval (U : Subset A) (x : Cont.pt eq Cov U)
+  := match Cont.pt_here x with
+   | Inhabited_intro y _ => y
+  end.
+
 End Discrete.
 
 Section Func.
@@ -538,6 +552,36 @@ constructor; unfold Cov; intros.
 - inv H. inv H0. exists (f a). split; reflexivity.
   reflexivity.
 - exists b; unfold In; auto.
+Qed.
+
+(** Should be able to get this from the above just from
+  rewriting, but it's not working... *)
+Theorem fContI (f : A -> B) :
+  Cont.t Logic.eq Logic.eq (InfoBase.GCov (leS := eq) (eqS := eq)) 
+  (InfoBase.GCov (leS := eq) (eqS := eq)) (discrF f).
+Proof.
+constructor; unfold Cov; intros.
+- apply FormTop.grefl. exists (f a); constructor.
+- subst. assumption.
+- inv H. inv H0. apply FormTop.grefl. exists (f a). split; reflexivity.
+  reflexivity.
+- apply FormTop.grefl. exists b; unfold In; auto. induction X; auto.
+  subst. apply IHX. assumption. induction i. subst.
+  apply X. constructor. assumption. 
+Qed.
+
+(** Same story here... *)
+Definition pt_okI (x : A) : Cont.pt eq (InfoBase.GCov (leS := eq) (eqS := eq)) (eq x).
+Proof.
+constructor.
+- econstructor. reflexivity.
+- intros. subst.
+  repeat (econstructor || eauto).
+- intros. subst. econstructor.
+  econstructor. reflexivity. induction X. 
+  + assumption.
+  + subst. assumption.
+  + destruct i. subst. apply X. constructor.
 Qed.
 
 End Func.
@@ -644,6 +688,7 @@ Hypothesis contF : Cont.t
 (** "false" is the smallest open set in the Sierpinski space,
     which confusingly is the open set surrounding the
     "top" or "true" point. *)
+
 
 Definition absF (subset : Subset T) (s : S) : Type :=
   le_Open (fun t => F false (s, t)) subset.
