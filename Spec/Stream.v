@@ -55,10 +55,32 @@ Definition cons {Γ A} (x : Γ ~~> A) (xs : Γ ~~> Stream A)
   stream ⟨ xs , inl ∘ x ⟩ 
     (sum_elim ⟨ snd      , ⟨ fst      , inr ∘ tt ⟩ ⟩
               ⟨ hd ∘ fst , ⟨ tl ∘ fst , inr ∘ tt ⟩ ⟩).
-
+    
 Context {SProps : StreamProps}.
 Context {cmcprops : CMC_Props U}.
 Context {sumProps : SumProps}.
+
+
+Theorem cons_Proper : forall {Γ A}, Proper (eq ==> eq ==> eq) (@cons Γ A).
+Proof. unfold Proper, respectful.
+       intros Γ A x y xy xs ys xsys.
+       unfold cons.
+       eapply stream_Proper; try reflexivity.
+       apply pair_Proper; try assumption.
+       apply compose_Proper; try assumption; try reflexivity.
+Qed.
+
+Theorem cons_ext : forall {Γ Δ A} (g : Γ ~~> Δ) (x : Δ ~~> A) (xs : Δ ~~> Stream A),
+    cons x xs ∘ g == cons (x ∘ g) (xs ∘ g).
+Proof. intros Γ Δ A g x xs.
+       unfold cons.
+       rewrite <- stream_ext1.
+       apply stream_Proper; try reflexivity.
+       rewrite pair_f. rewrite compose_assoc.
+       reflexivity.
+Qed.
+
+
 
 Theorem cons_hd {Γ A} (x : Γ ~~> A) (xs : Γ ~~> Stream A)
   : hd ∘ cons x xs == x.
