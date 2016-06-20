@@ -36,6 +36,24 @@ Definition Sat (F_ : map S T) : map S T := fun t s =>
 Definition func_LE (F_ G_ : map S T) : Type :=
   RelIncl (Sat F_) (Sat G_).
 
+Definition func_EQ (F_ G_ : map S T) : Type :=
+  RelSame (Sat F_) (Sat G_).
+
+Lemma func_LE_PreOrder : PreOrder func_LE.
+Proof.
+constructor; unfold Reflexive, Transitive, func_LE; intros.
+- reflexivity.
+- etransitivity; eassumption.
+Qed.
+
+Lemma func_EQ_Equivalence : Equivalence func_EQ.
+Proof.
+constructor; unfold Reflexive, Transitive, Symmetric, func_EQ; intros.
+- reflexivity.
+- symmetry; assumption.
+- etransitivity; eassumption.
+Qed.
+
 Record pt {F : Subset T} :=
   { pt_here : Inhabited F
   ; pt_local : forall {b c}, F b -> F c -> Inhabited (FormTop.down leT b c ∩ F)
@@ -348,6 +366,24 @@ intros. constructor; intros.
   apply (cov X _ Fat).
   apply (cov X0 _ Gtb). assumption.
 Qed.
+
+Lemma compose_proper : forall (F F' : map S T) (G G' : map T U),
+  func_EQ (CovS := CovS) F F' -> func_EQ (CovS := CovT) G G' -> 
+  func_EQ (CovS := CovS) (compose G F) (compose G' F').
+Proof.
+unfold func_EQ, compose. intros. unfold RelSame.
+intros. apply Same_set_iff_In. unfold Sat, In.
+intros. split; intros. unfold In in *.
+eapply FormTop.trans. eassumption. unfold In. intros.
+clear x X1. destruct X2.  destruct p. 
+apply (Sat_mono2 (leS := leT) (CovS := CovT)) in g.
+apply (Sat_mono2 (leS := leS) (CovS := CovS)) in f.
+apply X0 in g. apply X in f.
+unfold Sat in g, f. eapply FormTop.trans. eassumption.
+intros.
+apply FormTop.refl. unfold In. 
+Abort.
+
 
 End Morph.
 End Cont.

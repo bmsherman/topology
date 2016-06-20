@@ -482,10 +482,19 @@ Section Discrete.
 Variable A : Type.
 
 Definition Ix := @InfoBase.Ix _ (@Logic.eq A).
-Definition C := @InfoBase.C _ (@Logic.eq A).
+Definition C := @InfoBase.C _ (@Logic.eq A) (@Logic.eq A).
 Definition CovI := @InfoBase.Cov _ (@Logic.eq A).
+Definition CovG := @InfoBase.GCov A Logic.eq Logic.eq.
 
 Definition Cov (a : A) (U : Subset A) : Type := U a.
+
+Lemma CovG_Cov : forall a U, CovG a U -> In U a.
+Proof.
+intros. induction X. 
+- assumption.
+- subst. assumption.
+- induction i. subst. apply X. reflexivity.
+Qed.
 
 Theorem CovEquiv : (eq ==> eq ==> iffT)%signature CovI Cov.
 Proof.
@@ -557,8 +566,8 @@ Qed.
 (** Should be able to get this from the above just from
   rewriting, but it's not working... *)
 Theorem fContI (f : A -> B) :
-  Cont.t Logic.eq Logic.eq (InfoBase.GCov (leS := eq) (eqS := eq)) 
-  (InfoBase.GCov (leS := eq) (eqS := eq)) (discrF f).
+  Cont.t Logic.eq Logic.eq (CovG A) 
+  (CovG B) (discrF f).
 Proof.
 constructor; unfold Cov; intros.
 - apply FormTop.grefl. exists (f a); constructor.
@@ -571,7 +580,7 @@ constructor; unfold Cov; intros.
 Qed.
 
 (** Same story here... *)
-Definition pt_okI (x : A) : Cont.pt eq (InfoBase.GCov (leS := eq) (eqS := eq)) (eq x).
+Definition pt_okI (x : A) : Cont.pt eq (CovG A) (eq x).
 Proof.
 constructor.
 - econstructor. reflexivity.
@@ -583,6 +592,45 @@ constructor.
   + subst. assumption.
   + destruct i. subst. apply X. constructor.
 Qed.
+
+(** Show that (discrete A * discrete B ≅ discrete (A * B) *)
+
+Require Import FormTopC.Product.
+
+Theorem prod_assoc_cont :
+  Cont.t (prod_op Logic.eq Logic.eq) Logic.eq
+         (Product.Cov A B (leS := Logic.eq) (leT := Logic.eq) 
+         (Ix A) (Ix B) (C A) (C B)) (CovG (A * B)) Logic.eq.
+Proof.
+constructor; intros.
+- apply FormTop.grefl. econstructor. constructor. reflexivity.
+- destruct X. destruct a, b, c. simpl in *. subst. assumption.
+- subst. apply FormTop.grefl. constructor 1 with a.
+  split; reflexivity. reflexivity.
+- subst. unfold Cov in X. apply FormTop.grefl.
+  econstructor. apply CovG_Cov. eassumption. reflexivity.
+Qed.
+
+Theorem prod_deassoc_cont : 
+  Cont.t Logic.eq (prod_op Logic.eq Logic.eq) (CovG (A * B))
+         (Product.Cov A B (leS := Logic.eq) (leT := Logic.eq) 
+         (Ix A) (Ix B) (C A) (C B)) Logic.eq.
+Proof.
+constructor; unfold Cov; intros.
+- econstructor. econstructor. reflexivity. reflexivity.
+- congruence.
+- subst. destruct a. econstructor. econstructor. repeat (split || reflexivity).
+  reflexivity.
+- subst. apply FormTop.grefl. constructor 1 with a; try reflexivity.
+  induction X. assumption. destruct a, b. destruct l.
+  simpl in *. subst. assumption.
+  destruct a. destruct i. 
+  apply X. simpl. destruct p. split. destruct i. subst.
+  constructor. reflexivity.
+  apply X. simpl.  destruct p. split.  reflexivity. destruct i.
+  subst. constructor.
+Qed.
+
 
 End Func.
 

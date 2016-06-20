@@ -1,4 +1,4 @@
-An exploration of how to formalize probability in Coq.
+A programming language for topology and probability in Coq.
 
 ## Building
 
@@ -6,6 +6,7 @@ To build, run `make` at the base level of the project directory.
 
 ## Files
 
+### Numbers
 - Qnn.v : Non-negative rational numbers
   - semiring (0, 1, addition, multiplication)
   - truncated subtraction
@@ -44,6 +45,7 @@ To build, run `make` at the base level of the project directory.
 - Frame.v : Work in progress; attempting to develop notions of topology
   so that measures need only be defined for open sets
 
+### Old
 - Prob.v, Prob2.v, Prob3.v : these files are old. They were three different
 attempts to encode probability in Coq. In Prob.v and Prob2.v, I was hoping
 to base everything off of the Cantor space, where everything is naturally
