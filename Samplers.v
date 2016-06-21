@@ -24,6 +24,7 @@ Section Samplers.
   Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
   Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) (Σ := Σ) U}.
   Context `{sumops : SumOps (U:=U) (ccat := ccat)}.
+  Context `{sumprops : SumProps (U:=U) (ccat:=ccat) (cmc:=cmc) (sts:=sts)(H:=sumops)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
   Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
@@ -225,7 +226,7 @@ Proof. Abort.
 
 
   Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
-    (f : forall {m}, Δ * m ~~> A -> Δ * m ~~> Prob B), (a <- x; f a) ∘ g == (b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩).
+    (f : Δ * A ~~> A -> Δ * A ~~> Prob B), (a <- x; f a) ∘ g == (b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩).
   Proof.
     intros.
     rewrite Bind_ext. apply Bind_Proper; try reflexivity.
@@ -362,6 +363,21 @@ Defined.
   Definition constant_stream {Γ A : U} (mu : Γ ~~> Prob A) :
     Γ ~~> Prob (Stream A) := 
     pstream (MeasOps := mops) (Γ := Γ) tt (LAM _ => map add_unit_right ∘ !mu).
+
+  Theorem constant_stream_ext1 : forall {Γ Δ A : U} (mu : Δ ~~> Prob A) (f : Γ ~~> Δ),
+      constant_stream (mu ∘ f) == (constant_stream mu) ∘ f.
+  Proof. intros Γ Δ A mu f.
+         unfold constant_stream.
+         rewrite pstream_ext1.
+         apply pstream_Proper.
+         - symmetry. apply unit_uniq.
+         - unfold makeFun1E, Lift, Extend_Prod, Extend_Refl.
+           autorewrite with cat_db.
+           rewrite <- !compose_assoc.
+           rewrite parallel_fst. reflexivity.
+Qed.
+           
+
   
   Definition infinite_coinflips : unit ~~> Prob Cantor := 
     constant_stream coinflip.
@@ -456,6 +472,7 @@ Defined.
          rewrite <- H1, H0, H2. reflexivity.
   Qed.                
 
+  Existing Instance Streamprops.
   
   Definition coinflip_sampler {Δ : U} :
       Sampler (Δ := Δ) (S := Cantor) (A := Boole) (infinite_coinflips ∘ tt) (coinflip ∘ tt).
@@ -468,12 +485,30 @@ Defined.
     rewrite constant_unfold.
     unfold constant_unfold_prog.
     rewrite Bind'_ext.
-    rewrite (compose_assoc tt).
-    rewrite map_Bind'. (* Use fubini first. *)
-    setoid_rewrite map_Bind'.
+    setoid_rewrite Bind'_ext.
+    setoid_rewrite Ret_ext.
+    rewrite map_Bind.
+    setoid_rewrite map_Bind.
     setoid_rewrite map_Ret.
     setoid_rewrite pair_f.
-    
-  Abort.
-  
-  
+    rewrite compose_assoc.
+    rewrite cons_tl'.
+    rewrite compose_assoc. rewrite cons_hd.
+    autorewrite with cat_db.
+    unfold Lift at 4, Extend_Prod, Extend_Refl.
+    rewrite <- (compose_assoc _ _ snd).
+    rewrite <- (compose_assoc _ _ id).
+    autorewrite with cat_db.
+    rewrite !compose_assoc.
+    autorewrite with cat_db.
+    apply Bind_Proper; try reflexivity.
+    unfold makeFun1E.
+    unfold Lift, Extend_Prod, Extend_Refl.
+    unfold infinite_coinflips.
+    apply Bind_Proper.
+    - rewrite constant_stream_ext1.
+      autorewrite with cat_db.
+      rewrite <- !compose_assoc.
+      autorewrite with cat_db. reflexivity.
+    - autorewrite with cat_db. reflexivity.
+  Qed.
