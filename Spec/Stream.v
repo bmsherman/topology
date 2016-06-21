@@ -29,14 +29,11 @@ Class StreamProps : Prop :=
   { stream_Proper : forall Γ X A, Proper (eq ==> eq ==> eq) (@stream _ Γ X A)
   ; stream_ext1 : forall Γ Δ X A (g : Γ ~~> Δ) (x : Δ ~~> X) (f : X ~~> A * X),
     stream (x ∘ g) f == stream x f ∘ g
-  ; stream_ext2 : forall Γ X X' A (g : X ~~> X') (x : Γ ~~> X) (f : X ~~> A * X)
-    (f' : X' ~~> A * X'),
-     f' ∘ g == (id ⊗ g) ∘ f
-   -> stream x f == stream (g ∘ x) f'
   ; stream_hd : forall {Γ X A} (x : Γ ~~> X) (f : X ~~> A * X),
     hd ∘ stream x f == fst ∘ f ∘ x
   ; stream_tl : forall {Γ X A} (x : Γ ~~> X) (f : X ~~> A * X),
     tl ∘ stream x f == stream (snd ∘ f ∘ x) f
+  ; stream_uniq : forall {Γ A} (xs : Γ ~~> Stream A), xs == stream (X := Stream A) xs ⟨hd, tl⟩ (*Possibly provable from bisim? *)
 (* Is this the best way to state the property about when two streams
    are equal? *)
   ; stream_bisim : forall {Γ A} (x y : Γ ~~> Stream A),
@@ -160,6 +157,56 @@ induction n; simpl; intros.
   rewrite <- !(compose_assoc _ tt).
   rewrite !tt_beta. reflexivity.
 Qed.
+
+Theorem cons_tl' : forall {Γ A} (a : Γ ~~> A) (aa : Γ ~~> Stream A), (tl ∘ (cons a aa)) == aa.
+Proof. intros Γ A a aa.
+       assert (cons a aa == cons a (stream aa ⟨hd, tl⟩)) as should_be_obvious.
+       {
+         apply cons_Proper; try reflexivity.
+         apply stream_uniq.
+       }
+       rewrite should_be_obvious.
+       rewrite cons_tl.
+       symmetry. apply stream_uniq.
+Qed.
+
+Theorem stream_ext2 :  forall Γ X X' A (g : X ~~> X') (x : Γ ~~> X) (f : X ~~> A * X) (f' : X' ~~> A * X'),
+    f' ∘ g == (id ⊗ g) ∘ f -> stream x f == stream (g ∘ x) f'.
+Proof. intros Γ X X' A g x f f' f'g_gf.
+       apply stream_bisim.
+       intros n.
+       generalize dependent X'.
+       generalize dependent X.
+       generalize dependent Γ.
+       generalize dependent A.
+       induction n.
+       - intros A Γ X x f X' g f' f'g_gf.
+         simpl. rewrite !stream_hd.
+         rewrite <- (compose_assoc _ f'), -> (compose_assoc x g f').
+         rewrite f'g_gf.
+         rewrite !compose_assoc, parallel_fst, compose_id_left.
+         reflexivity.
+       - intros A Γ X x f X' g f' f'g_gf.
+         simpl.
+         rewrite <- !compose_assoc.
+         rewrite !stream_tl.
+         assert (snd ∘ f' ∘ (g ∘ x) == g ∘ (snd ∘ f ∘ x)) as H0.
+         { rewrite !compose_assoc.
+           apply compose_Proper; try reflexivity.
+           rewrite <- compose_assoc.
+           rewrite f'g_gf, compose_assoc, parallel_snd.
+           reflexivity.
+         }
+         assert (stream (snd ∘ f' ∘ (g ∘ x)) f' == stream (g ∘ (snd ∘ f ∘ x)) f') as H1.
+         {
+           apply stream_Proper; try reflexivity. apply H0.
+         }
+         rewrite H1. (* Not sure how better to phrase this. *)
+         apply IHn. assumption.
+Qed.
+         
+
+         
 
 End Stream.
 
