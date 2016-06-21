@@ -17,7 +17,7 @@ Class StreamOps : Type :=
   ; tl : forall {A}, Stream A ~~> Stream A
   }.
 
-Context `{StreamOps}.  
+Context `{sps : StreamOps}.  
 
 Fixpoint idx (n : nat) {A} : Stream A ~~> A := match n with
   | 0 => hd
@@ -33,7 +33,6 @@ Class StreamProps : Prop :=
     hd ∘ stream x f == fst ∘ f ∘ x
   ; stream_tl : forall {Γ X A} (x : Γ ~~> X) (f : X ~~> A * X),
     tl ∘ stream x f == stream (snd ∘ f ∘ x) f
-  ; stream_uniq : forall {Γ A} (xs : Γ ~~> Stream A), xs == stream (X := Stream A) xs ⟨hd, tl⟩ (*Possibly provable from bisim? *)
 (* Is this the best way to state the property about when two streams
    are equal? *)
   ; stream_bisim : forall {Γ A} (x y : Γ ~~> Stream A),
@@ -157,6 +156,30 @@ induction n; simpl; intros.
   rewrite <- !(compose_assoc _ tt).
   rewrite !tt_beta. reflexivity.
 Qed.
+
+Theorem stream_uniq : forall {Γ A} (xs : Γ ~~> Stream A),
+    xs == stream (X := Stream A) xs ⟨hd, tl⟩.
+Proof. intros Γ A xs. apply stream_bisim.
+       intros n. generalize dependent A. generalize dependent Γ.
+       induction n.
+       - intros Γ A xs.
+         simpl.
+         rewrite stream_hd, pair_fst.
+         reflexivity.
+       - intros Γ A xs.
+         simpl. rewrite <- !compose_assoc.
+         rewrite stream_tl.
+         assert (stream (snd ∘ ⟨ hd, tl ⟩ ∘ xs) ⟨ hd, tl ⟩ == stream (tl ∘ xs) ⟨hd, tl⟩) as H.
+         {
+           apply stream_Proper; try reflexivity.
+           rewrite pair_snd; reflexivity.
+         }
+         rewrite H.
+         apply IHn.
+Qed.
+
+
+
 
 Theorem cons_tl' : forall {Γ A} (a : Γ ~~> A) (aa : Γ ~~> Stream A), (tl ∘ (cons a aa)) == aa.
 Proof. intros Γ A a aa.
