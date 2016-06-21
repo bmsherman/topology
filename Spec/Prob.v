@@ -71,6 +71,10 @@ Axiom pstream_unfold : forall (Γ A X : U)
          Ret (cons (fst ∘ !y) zs) 
       ).
 
+Axiom Fubini : forall {Γ A B C} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B) (f : A * B ~~> C),
+    (x <- mu; y <- !nu; Ret (f ∘ ⟨!x, y⟩)) == (y <- nu; x <- !mu; Ret (f ∘ ⟨x, !y⟩)).
+
+
 End Prob.
 
 End Prob.
