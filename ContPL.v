@@ -1,3 +1,6 @@
+Set Universe Polymorphism.
+Set Asymmetric Patterns.
+
 Require Import Coq.Lists.List.
 
 Import ListNotations.
