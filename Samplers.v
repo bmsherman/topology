@@ -1,6 +1,7 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import ContPL.
+Require Import Morphisms.
 Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream.
@@ -25,7 +26,7 @@ Section Samplers.
   Context `{sumops : SumOps (U:=U) (ccat := ccat)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
-  Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc)(H:=Streamops)}.
+  Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
   Context `{mops : MeasOps U
 (ccat := ccat) (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc) (smd := ProbMonad)}.
@@ -101,8 +102,9 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     rewrite join_nat. rewrite <- (compose_assoc _ (map (map g))). rewrite map_compose. reflexivity.
   Defined.
   
-  Theorem map_Bind' : forall {Γ A B C} (f : (Γ * A ~~> A) -> (Γ * A ~~> Prob B)) (e : Γ ~~> Prob A)(g : B ~~> C),
-      ((map g) ∘ (x <- e; (f x))) == (x <- e; ((map g) ∘ (f x))).
+  Theorem map_Bind' : forall {Γ A B C}
+      (f : Γ * A ~~> A -> Γ * A ~~> Prob B) (e : Γ ~~> Prob A) (g : B ~~> C),
+      (map g) ∘ (x <- e; (f x)) == (x <- e; ((map g) ∘ (f x))).
     intros Γ A B C f e g.
     apply map_Bind.
   Defined.
@@ -123,19 +125,6 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite <- (compose_assoc g). rewrite pair_f, compose_id_left.
          reflexivity.
   Defined.
-
-  Theorem Bind'_push : forall {Γ Δ A B} (e : Γ ~~> Prob A) (f : Γ * A ~~> A -> Γ * A ~~> Prob B) (g : Δ ~~> Γ),
-      (x <- e; f x) ∘ g == jmap (f snd) ∘ ⟨ g, e ∘ g ⟩.
-  Proof. intros Γ Δ A B e f g.
-         apply Bind_push.
-  Defined.
-  
-  Theorem jmap_Bind_push : forall {Γ Δ A B C} (m : Γ * C ~~> Prob A) (f : (Γ * C) * A ~~> Prob B) (g : Δ ~~> Γ * Prob C),
-      (jmap (Bind m f)) ∘ g == ( (jmap (f ∘ prod_assoc_left)) ∘ (id ⊗ inner_indep) ∘ prod_assoc_right ∘ ⟨g, (jmap m) ∘ g⟩).
-  Proof. intros Γ Δ A B C m f g.
-         unfold Bind, bind, jmap, emap.
-  Abort.      
-
  
   Theorem Bind_m_Ret : forall {Γ A B} (m : Γ ~~> Prob A) (x : Γ * A ~~> B),
       (Bind m (Ret x)) == (emap x) ∘ ⟨id, m⟩.
@@ -158,14 +147,17 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          autorewrite with cat_db.
          reflexivity.
   Defined.
+
+  Axiom whatever : forall {A}, A.
     
-  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : (Γ * A ~~> A) -> (Γ * A ~~> B)),
-      (x <- m; Ret (f x)) == (emap (f snd)) ∘ ⟨id, m⟩.
-  Proof. intros Γ A B m f. apply Bind_m_Ret.
+  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : forall (m : U), Γ * m ~~> A -> Γ * m ~~> B),
+      (x <- m; Ret (f _ x)) ==  (emap (makeFun1E (f A)) ∘ ⟨id, m⟩).
+  Proof. intros Γ A B m f.
+         apply Bind_m_Ret.
   Defined.
 
   Theorem Bind'_Ret_f : forall {Γ A B} (x : Γ ~~> A) (f : Γ * A ~~> A -> Γ * A ~~> Prob B),
-      (y <- (Ret x); (f y)) == (f snd) ∘ ⟨id, x⟩.
+      (y <- (Ret x); (f y)) == (makeFun1E f) ∘ ⟨id, x⟩.
   Proof. intros Γ A B x f. apply Bind_Ret_f.
   Defined.
   
@@ -184,13 +176,13 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          autorewrite with cat_db.
          rewrite !compose_assoc; reflexivity.
   Qed.
-
+  
   Theorem Bind'_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> B -> Γ * B ~~> Prob C),
-      (x <- (map g) ∘ m; (f x)) == (x <- m; (((f snd) ∘ (id ⊗ g)))).
-  Proof. intros Γ A B C m g f. apply Bind_map_f.
+      (x <- (map g) ∘ m; (f x)) == (x <- m; (f snd) ∘ (id ⊗ g)).
+  Proof. intros Γ A B C m g f.
+         apply  Bind_map_f. 
   Qed.
-
-
+  
 
 (* This should be true, but I don't think it's useful enough to bother proving. Maybe if I need it later I will.
 Theorem strength_indep : forall {A B : U}, (strong (A:=A)(B:=B)) == inner_indep ∘ (ret ⊗ id).
@@ -231,6 +223,17 @@ Proof. Abort.
   rewrite pair_f. autorewrite with cat_db. reflexivity.
   Qed.
 
+
+  Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
+    (f : forall {m}, Δ * m ~~> A -> Δ * m ~~> Prob B), (a <- x; f a) ∘ g == (b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩).
+  Proof.
+    intros.
+    rewrite Bind_ext. apply Bind_Proper; try reflexivity.
+    unfold makeFun1E. apply compose_Proper; try reflexivity.
+    apply proj_eq.
+    - rewrite parallel_fst. autorewrite with cat_db. reflexivity.
+    - rewrite parallel_snd. autorewrite with cat_db. reflexivity.
+  Qed.
 
 
   Theorem call_inv {A B C : U} (f : forall Δ, Δ ~~> A -> Δ ~~> B -> Δ ~~> C)
@@ -337,7 +340,9 @@ Proof. Abort.
            rewrite bind_extensional. Focus 2.
            intros a.
            setoid_rewrite Ret_ext.
+           Check Bind'_Ret_f.
            setoid_rewrite Bind'_Ret_f.
+           unfold makeFun1E.
            rewrite Ret_ext.
            rewrite pair_f. 
            reflexivity.
@@ -423,18 +428,52 @@ Defined.
            reflexivity.
   Qed.
            
-           
-           
 
+
+  (* Maybe this should be elsewhere? *)
+  
+  Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
+    (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
+  Proof. intros Γ A B mu nu. remember (Fubini mu nu id) as H0.
+         assert ( (x <- mu; y <- ! nu; Ret (id ∘ ⟨ ! x, y ⟩))
+              ==  (x <- mu; y <- ! nu; Ret ⟨ ! x, y ⟩)) as H1.
+         {
+           apply Bind_Proper; try reflexivity.
+           apply lam_extensional; intros a.
+           apply Bind_Proper; try reflexivity.
+           apply lam_extensional; intros b.
+           rewrite compose_id_left. reflexivity.
+         }
+         assert ( ((y <- nu; x <- ! mu; Ret (id ∘ ⟨ x, ! y ⟩))) ==
+                  ((y <- nu; x <- ! mu; Ret ⟨ x, ! y ⟩) ) ) as H2.
+         {
+           apply Bind_Proper; try reflexivity.
+           apply lam_extensional; intros b.
+           apply Bind_Proper; try reflexivity.
+           apply lam_extensional; intros a.
+           rewrite compose_id_left. reflexivity.
+         }
+         rewrite <- H1, H0, H2. reflexivity.
+  Qed.                
+
+  
   Definition coinflip_sampler {Δ : U} :
       Sampler (Δ := Δ) (S := Cantor) (A := Boole) (infinite_coinflips ∘ tt) (coinflip ∘ tt).
   Proof.
     refine (sampler (⟨tl, hd⟩ ∘ snd) _). unfold Map.
     rewrite emap_snd_pair.
-    unfold indep, Lift, Extend_Prod, Extend_Refl.
-    
+    unfold indep.
+    rewrite Fubini_pair.
+    unfold infinite_coinflips at 2.
+    rewrite constant_unfold.
+    unfold constant_unfold_prog.
+    rewrite Bind'_ext.
+    rewrite (compose_assoc tt).
+    rewrite map_Bind'. (* Use fubini first. *)
+    setoid_rewrite map_Bind'.
+    setoid_rewrite map_Ret.
+    setoid_rewrite pair_f.
     
   Abort.
-  
   
   
