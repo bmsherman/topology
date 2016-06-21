@@ -75,7 +75,7 @@ Definition comp `{LA : IGT}
 Infix "∘" := comp (at level 40, left associativity) : loc_scope.
 
 Definition eq_map {A B : IGT} (f g : A ~~> B)
-  : Prop := forall y : S B, inhabited (FormTop.eqA (Cov A) (mp f y) (mp g y)).
+  : Prop := inhabited (Cont.func_EQ (CovS := Cov A) (mp f) (mp g)).
 
 Definition point_mp (A : IGT) (f : Subset (S A))
   (fpt : Cont.pt (le A) (Cov A) f)
@@ -322,6 +322,19 @@ Instance IGT_Cat : CCat IGT :=
   ; eq := fun _ _ => eq_map
   |}.
 
+Require Import CRelationClasses.
+Lemma truncate_Equiv A (f : crelation A) :
+  Equivalence f -> RelationClasses.Equivalence (fun x y => inhabited (f x y)).
+Proof.
+intros H. constructor;
+  unfold RelationClasses.Reflexive,
+         RelationClasses.Symmetric,
+         RelationClasses.Transitive; intros.
+- constructor. reflexivity.
+- destruct H0. constructor. symmetry. assumption.
+- destruct H0, H1. constructor. etransitivity; eassumption.
+Qed.
+
 Instance IGT_CMC : CMC IGT :=
   {| id := fun _ => Bundled.id
    ; compose := fun _ _ _ => comp
@@ -335,9 +348,18 @@ Instance IGT_CMC : CMC IGT :=
   ; pair := fun _ _ _ => Bundled.pair
   |}.
 Proof.
-apply undefined. apply undefined. apply undefined.
+intros. unfold eq. simpl. unfold eq_map.
+- apply truncate_Equiv. constructor; 
+  unfold Reflexive, Symmetric, Transitive; intros.
+  + reflexivity. 
+  + symmetry. assumption.
+  + etransitivity; eassumption.
+- unfold eq. simpl. unfold eq_map. intros.
+  destruct H, H0. constructor.
+  simpl. apply Cont.compose_proper;
+    (apply mp_ok || assumption).
+- apply undefined.
 Defined.
-
 
 Definition runDiscrete {A} (x : One ~~> discrete A) : A.
 pose proof (Cont.here (mp_ok x) I) as H.
@@ -349,10 +371,6 @@ induction H; subst. destruct u. destruct i.
   unfold InfoBase.C. constructor. reflexivity.
 Defined.
 
-Require Import Prob.ContPL.
-
-Set Printing All.
-
 Definition discrBinOp {A B C : Type} 
   (f : A -> B -> C) : discrete A * discrete B ~~> discrete C :=
  discrete_f (fun p : A * B => let (x, y) := p in f x y) ∘ discrete_prod_assoc.
@@ -362,9 +380,6 @@ Definition natMult : discrete nat * discrete nat ~~> discrete nat :=
 
 Definition natAdd : discrete nat * discrete nat ~~> discrete nat :=
   discrBinOp Nat.add.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
 
 Definition testFunc : discrete nat * discrete nat ~~> discrete nat
   := ap2 natMult (ap2 natAdd fst snd) snd.
@@ -378,15 +393,15 @@ Definition five : One ~~> discrete nat :=
 Definition eight : One ~~> discrete nat :=
   add3 ∘ five.
 
-Definition sixty_five : One ~~> discrete nat :=
-  ap2 testFunc eight five.
+Definition func_1 : discrete nat ~~> discrete nat :=
+  ap2 testFunc (ap0 eight) id.
 
-Definition test_computation : nat := runDiscrete sixty_five.
+Definition test_computation (n : nat) : nat 
+  := runDiscrete (func_1 ∘ discrete_pt n).
 
 End Bundled.
 
 (*
 Extraction Language Haskell.
-Extraction Bundled.test_computation.
 Extraction "test.hs" Bundled.test_computation.
 *)

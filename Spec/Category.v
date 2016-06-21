@@ -1,3 +1,5 @@
+Set Universe Polymorphism. 
+
 (** I will try to use the same names for the operations
     that there are in Coq *)
 Require Import RelationClasses Morphisms.

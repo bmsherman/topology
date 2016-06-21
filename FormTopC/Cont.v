@@ -39,19 +39,39 @@ Definition func_LE (F_ G_ : map S T) : Type :=
 Definition func_EQ (F_ G_ : map S T) : Type :=
   RelSame (Sat F_) (Sat G_).
 
-Lemma func_LE_PreOrder : PreOrder func_LE.
+Global Instance func_LE_PreOrder : PreOrder func_LE.
 Proof.
 constructor; unfold Reflexive, Transitive, func_LE; intros.
 - reflexivity.
 - etransitivity; eassumption.
 Qed.
 
-Lemma func_EQ_Equivalence : Equivalence func_EQ.
+Global Instance func_EQ_Equivalence : Equivalence func_EQ.
 Proof.
 constructor; unfold Reflexive, Transitive, Symmetric, func_EQ; intros.
 - reflexivity.
 - symmetry; assumption.
 - etransitivity; eassumption.
+Qed.
+
+Lemma func_LE_antisym : forall (F F' : map S T),
+  func_LE F F' -> func_LE F' F -> func_EQ F F'.
+Proof.
+unfold func_LE, func_EQ. intros.
+apply RelIncl_RelSame; assumption.
+Qed.
+
+Lemma RelSame_RelIncl A B (F F' : A -> Subset B) :
+  RelSame F F' -> RelIncl F F'.
+Proof.
+unfold RelSame, RelIncl.
+intros. rewrite X. reflexivity.
+Qed.
+
+Lemma func_EQ_LE F F' : func_EQ F F' -> func_LE F F'.
+Proof.
+unfold func_EQ, func_LE. intros. apply RelSame_RelIncl.
+assumption.
 Qed.
 
 Record pt {F : Subset T} :=
@@ -367,23 +387,40 @@ intros. constructor; intros.
   apply (cov X0 _ Gtb). assumption.
 Qed.
 
+Lemma compose_proper_LE : forall (F F' : map S T) (G G' : map T U),
+  Cont.t leS leT CovS CovT F' ->
+  func_LE (CovS := CovS) F F' -> func_LE (CovS := CovT) G G' -> 
+  func_LE (CovS := CovS) (compose G F) (compose G' F').
+Proof.
+unfold func_LE, compose. 
+intros F F' G G' ContF X X0. unfold RelSame.
+intros. unfold RelIncl, Included, pointwise_rel, arrow.
+unfold Sat, In.
+intros. unfold In in *.
+  eapply FormTop.trans. eassumption. unfold In. intros.
+  clear a0 X1. destruct X2.  destruct p. 
+  apply (Sat_mono2 (leS := leT) (CovS := CovT)) in g.
+  apply (Sat_mono2 (leS := leS) (CovS := CovS)) in f.
+  apply X0 in g. apply X in f.
+  unfold Sat in g, f. eapply FormTop.trans. eassumption.
+  intros. clear a1 f.
+  pose proof (fun a b => Cont.cov ContF (a := a) (b := b)).
+  specialize (X2 _ _ _ X1 g).
+  eapply FormTop.trans.  eassumption.
+  clear a0 X1 X2 g. intros. destruct X1. 
+  apply FormTop.refl. exists a1. split; assumption.
+  eassumption. eassumption.
+Qed.
+
 Lemma compose_proper : forall (F F' : map S T) (G G' : map T U),
+  Cont.t leS leT CovS CovT F ->
+  Cont.t leS leT CovS CovT F' ->
   func_EQ (CovS := CovS) F F' -> func_EQ (CovS := CovT) G G' -> 
   func_EQ (CovS := CovS) (compose G F) (compose G' F').
 Proof.
-unfold func_EQ, compose. intros. unfold RelSame.
-intros. apply Same_set_iff_In. unfold Sat, In.
-intros. split; intros. unfold In in *.
-eapply FormTop.trans. eassumption. unfold In. intros.
-clear x X1. destruct X2.  destruct p. 
-apply (Sat_mono2 (leS := leT) (CovS := CovT)) in g.
-apply (Sat_mono2 (leS := leS) (CovS := CovS)) in f.
-apply X0 in g. apply X in f.
-unfold Sat in g, f. eapply FormTop.trans. eassumption.
-intros.
-apply FormTop.refl. unfold In. 
-Abort.
-
+intros. apply func_LE_antisym; apply compose_proper_LE;
+  repeat (assumption || apply func_EQ_LE || symmetry).
+Qed.
 
 End Morph.
 End Cont.
