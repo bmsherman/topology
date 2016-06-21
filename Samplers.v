@@ -25,11 +25,12 @@ Section Samplers.
   Context `{sumops : SumOps (U:=U) (ccat := ccat)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
+  Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc)(H:=Streamops)}.
   Context `{mops : MeasOps U
 (ccat := ccat) (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc) (smd := ProbMonad)}.
 
-  Local Instance SMD : SMonad U Prob := ProbMonad.
+  Existing Instance ProbMonad.
 
  (*
 
@@ -66,10 +67,13 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     ⟨map fst , map snd⟩.
   (* 'marg' for 'marginal' *)
 
+(*   Definition cond_choice {Γ A B : U} (D : Γ ~~> Prob (A * B *)
+
+   
   Lemma emap_fst_pair : forall {Γ A B C : U} (f : Γ ~~> C) (h : A ~~> Γ) (k : A ~~> Prob B),
       (emap (f ∘ fst)) ∘ ⟨h , k⟩ == ret ∘ f ∘ h.
-  Proof. intros Γ A B C f h k. unfold emap. rewrite <- map_compose.
-         rewrite <- (compose_assoc strong). unfold SMD. (* I'm slightly sad that unfold has to be there. *)
+  Proof. intros Γ A B C f h k. unfold emap. rewrite map_compose.
+         rewrite <- (compose_assoc strong).
          rewrite fst_strong. rewrite -> compose_assoc.
          rewrite ret_nat. rewrite <- (compose_assoc _ fst). rewrite pair_fst.
          reflexivity.
@@ -77,7 +81,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Lemma emap_snd_pair : forall {Γ A B C : U} (f : B ~~> C) (h : A ~~> Γ) (k : A ~~> Prob B),
       (emap (f ∘ snd)) ∘ ⟨h , k⟩ == (map f) ∘ k.
-  Proof. intros Γ A B C f h k. unfold emap. rewrite <- map_compose.
+  Proof. intros Γ A B C f h k. unfold emap. rewrite map_compose.
          rewrite <- (compose_assoc _ (map snd)).
          rewrite snd_strong. rewrite <- (compose_assoc _ snd). rewrite pair_snd. reflexivity.
   Defined.
@@ -136,7 +140,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Theorem Bind_m_Ret : forall {Γ A B} (m : Γ ~~> Prob A) (x : Γ * A ~~> B),
       (Bind m (Ret x)) == (emap x) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m x.
-         unfold Bind, Ret, emap, bind. rewrite <- map_compose. rewrite (compose_assoc (map x)).
+         unfold Bind, Ret, emap, bind. rewrite map_compose. rewrite (compose_assoc (map x)).
          rewrite join_map_ret, compose_id_left. rewrite compose_assoc. reflexivity.
   Defined.
 
@@ -164,6 +168,28 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       (y <- (Ret x); (f y)) == (f snd) ∘ ⟨id, x⟩.
   Proof. intros Γ A B x f. apply Bind_Ret_f.
   Defined.
+  
+  Theorem Bind_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> Prob C),
+      (Bind ((map g) ∘ m) f) == (Bind m (f ∘ (id ⊗ g))).
+  Proof. intros Γ A B C m g f.
+         unfold Bind, bind.
+         rewrite map_compose.
+         rewrite <- (compose_assoc (strong ∘ ⟨id, m ⟩)).
+         rewrite (compose_assoc ⟨id, m⟩).
+         rewrite <- (compose_assoc _ _ (map f)).
+         rewrite <- strong_nat.
+         rewrite <- (compose_assoc _ _ (map f)).
+         rewrite <- (compose_assoc _ _ strong).
+         rewrite parallel_pair.
+         autorewrite with cat_db.
+         rewrite !compose_assoc; reflexivity.
+  Qed.
+
+  Theorem Bind'_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> B -> Γ * B ~~> Prob C),
+      (x <- (map g) ∘ m; (f x)) == (x <- m; (((f snd) ∘ (id ⊗ g)))).
+  Proof. intros Γ A B C m g f. apply Bind_map_f.
+  Qed.
+
 
 
 (* This should be true, but I don't think it's useful enough to bother proving. Maybe if I need it later I will.
@@ -175,7 +201,7 @@ Proof. Abort.
   Proof. unfold Ret. reflexivity.
   Defined.
 
-  Lemma Ret_f : forall {A B C} (x : A ~~> B) (f : B ~~> C), (Ret f) ∘ x == Ret (f ∘ x).
+  Lemma Ret_ext : forall {Γ Δ A} (g : Γ ~~> Δ) (f : Δ ~~> A), (Ret f) ∘ g == Ret (f ∘ g).
   Proof. intros A B C x f.
          unfold Ret; rewrite compose_assoc; reflexivity.
   Defined.
@@ -187,14 +213,14 @@ Proof. Abort.
   Proof.
   unfold Proper, respectful. intros. unfold indep. apply Bind_Proper.
   assumption. apply lam_extensional. intros. 
-  apply Bind_Proper. rewrite <- H0. reflexivity. reflexivity.
+  apply Bind_Proper. unfold Lift, Extend_Prod. rewrite <- H0. reflexivity. reflexivity.
   Qed.
 
   Lemma Bind_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
     (f : Δ * A ~~> Prob B), Bind x f ∘ g == Bind (x ∘ g) (f ∘ (g ⊗ id)).
   Proof.
   intros. unfold Bind. unfold bind. rewrite <- !(compose_assoc _ _ join).
-  apply compose_Proper. reflexivity. rewrite <- map_compose.
+  apply compose_Proper. reflexivity. rewrite map_compose.
   rewrite <- !(compose_assoc _ _ (map f)). 
   apply compose_Proper. reflexivity.
   rewrite compose_assoc. rewrite <- strong_nat. 
@@ -230,7 +256,7 @@ Proof. Abort.
   rewrite <- !(compose_assoc _ _ y). 
   apply compose_Proper. reflexivity.
   unfold parallel. autorewrite with cat_db. reflexivity.
-  rewrite Ret_f. apply Ret_Proper.
+  rewrite Ret_ext. apply Ret_Proper.
   rewrite pair_f. apply pair_Proper.
   unfold Lift, Extend_Prod, Extend_Refl; simpl.
   unfold parallel.
@@ -302,8 +328,6 @@ Proof. Abort.
 
       Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
   
-  
-  Section Constant_Sampler.
     
     Definition const_sampler {Δ A S : U} {D : Δ ~~> Prob S} {x : Δ ~~> A} :
       Sampler (Δ := Δ) (A := A) (S := S) D (Ret x).
@@ -312,42 +336,105 @@ Proof. Abort.
            unfold Lift, Extend_Prod, Extend_Refl. simpl.
            rewrite bind_extensional. Focus 2.
            intros a.
-           setoid_rewrite Ret_f.
+           setoid_rewrite Ret_ext.
            setoid_rewrite Bind'_Ret_f.
-           rewrite Ret_f.
+           rewrite Ret_ext.
            rewrite pair_f. 
            reflexivity.
            simpl.
-           setoid_rewrite Ret_f. setoid_rewrite pair_f.
+           setoid_rewrite Ret_ext. setoid_rewrite pair_f.
            autorewrite with cat_db.
            rewrite <- (compose_assoc _ fst snd). autorewrite with cat_db.
            rewrite Bind_m_Ret.
            reflexivity.
 Defined.
-    
-    
-  End Constant_Sampler.
+ 
   
-  Section Coinflip_Sampler.
-    
-    Definition Boole := unit + unit.
-    Definition Cantor := Stream Boole.
+  
+  Definition Boole := unit + unit.
+  Definition Cantor := Stream Boole.
+  
+  Definition constant_stream {Γ A : U} (mu : Γ ~~> Prob A) :
+    Γ ~~> Prob (Stream A) := 
+    pstream (MeasOps := mops) (Γ := Γ) tt (LAM _ => map add_unit_right ∘ !mu).
+  
+  Definition infinite_coinflips : unit ~~> Prob Cantor := 
+    constant_stream coinflip.
+  
+  Definition constant_unfold_prog : forall {Γ A : U} (mu : Γ ~~> Prob A), Γ ~~> Prob (Stream A).
+  Proof. intros. Check (constant_stream mu).
+         refine (y <- mu; (zs <- constant_stream (!mu); _)).
+         refine (Ret (cons (!y) zs)).
+         Show Proof.
+  Defined.
 
-    Definition constant_stream {Γ A : U} (mu : Γ ~~> Prob A) :
-     Γ ~~> Prob (Stream A) := 
-     pstream (MeasOps := mops) tt (LAM _ => map add_unit_right ∘ !mu).
-    
-    Definition infinite_coinflips : unit ~~> Prob Cantor := 
-     constant_stream coinflip.
+  Existing Instance pstream_Proper.
+  
+  Theorem constant_unfold : forall {Γ A : U} (mu : Γ ~~> Prob A),
+      (constant_stream mu) == (constant_unfold_prog mu).
+  Proof. intros Γ A mu.
+         unfold constant_unfold_prog, constant_stream.
+         rewrite pstream_unfold.
+         unfold makeFun1E at 1.
+         unfold Lift, Extend_Prod, Extend_Refl.
+         rewrite <- compose_assoc, <- compose_assoc.
+         unfold liftF.
+         autorewrite with cat_db.
+         rewrite Bind'_map_f.
+         apply Bind_Proper.
+         { reflexivity. }
+         unfold makeFun1E at 1.
+         unfold makeFun1E at 3.
+         unfold makeFun1E at 3.
+         unfold makeFun1E at 1.
+         rewrite (unit_uniq (snd ∘ snd)).
+         rewrite Bind_ext.
+         autorewrite with cat_db.
+         apply Bind_Proper.
+         - rewrite pstream_ext1. autorewrite with cat_db.
+           apply pstream_Proper; try reflexivity.
+           rewrite <- !(compose_assoc _ _ (map add_unit_right)).
+           apply compose_Proper; try reflexivity.
+           rewrite <- !(compose_assoc _ _ mu).
+           apply compose_Proper; try reflexivity.
+           (* This is the sort of goal that hopefully one day we can automate. *)
+           rewrite parallel_fst.
+           rewrite <- compose_assoc.
+           rewrite parallel_fst.
+           rewrite compose_assoc.
+           rewrite parallel_fst.
+           rewrite compose_id_left.
+           reflexivity.
+         - (* Maybe there's a lam_ext for such situations? *)
+           unfold makeFun1E. 
+           rewrite Ret_ext. apply Ret_Proper.
+           rewrite cons_ext.
+           apply cons_Proper.
+         +  autorewrite with cat_db.
+            rewrite <- !compose_assoc.
+            rewrite !parallel_fst.
+            rewrite (compose_assoc fst).
+            rewrite parallel_snd.
+            rewrite !compose_assoc.
+            unfold add_unit_right.
+            autorewrite with cat_db.
+            reflexivity.
+         + rewrite parallel_snd. rewrite compose_id_left.
+           reflexivity.
+  Qed.
+           
+           
+           
 
-    Definition coinflip_sampler {Δ : U} :
+  Definition coinflip_sampler {Δ : U} :
       Sampler (Δ := Δ) (S := Cantor) (A := Boole) (infinite_coinflips ∘ tt) (coinflip ∘ tt).
-    Proof.
-      refine (sampler (⟨tl, hd⟩ ∘ snd) _). unfold Map.
-      rewrite emap_snd_pair.
-      unfold indep, Lift, Extend_Prod, Extend_Refl. simpl.
-      
-    Abort.
+  Proof.
+    refine (sampler (⟨tl, hd⟩ ∘ snd) _). unfold Map.
+    rewrite emap_snd_pair.
+    unfold indep, Lift, Extend_Prod, Extend_Refl.
     
-  End Coinflip_Sampler.
+    
+  Abort.
+  
+  
   

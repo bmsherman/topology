@@ -196,6 +196,23 @@ Section BasicProps.
            rewrite <- compose_assoc. rewrite pair_snd. reflexivity.
   Defined.
 
+  Lemma parallel_fst : forall {A B C D : U} (f : A ~~> B) (g : C ~~> D),
+      fst ∘ (f ⊗ g) == f ∘ fst. (* Have I already proven this somewhere else maybe? *)
+  Proof. intros A B C D f g.
+         unfold parallel.
+         rewrite pair_fst.
+         reflexivity.
+  Qed.
+  
+  Lemma parallel_snd : forall {A B C D : U} (f : A ~~> B) (g : C ~~> D),
+      snd ∘ (f ⊗ g) == g ∘ snd.
+  Proof. intros A B C D f g.
+         unfold parallel.
+         rewrite pair_snd.
+         reflexivity.
+  Qed.
+  
+
   Lemma pair_f : forall {A B C D : U} (f : A ~~> B) (h : B ~~> C) (k : B ~~> D),
       ⟨h, k⟩ ∘ f == ⟨h ∘ f, k ∘ f⟩.
   Proof. intros A B C D f h k. apply proj_eq.
@@ -234,7 +251,8 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
 Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad U M} : Prop :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
-    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), (map g) ∘ (map f) == map (g ∘ f)                      ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
+    ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), map (g ∘ f) == (map g) ∘ (map f)
+    ; map_id : forall {A},  map (id (A := A)) == id (A := (M A))
     ; ret_nat : forall {A B : U} (f : A ~~> B), ret ∘ f == (map f) ∘ ret
     ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
     ; join_map_ret : forall {A : U}, join ∘ (map (ret(A:=A))) = id
@@ -271,8 +289,8 @@ Section Basic_SMonad_Props.
 
   Theorem M_iso : forall {A B : U}, (A ≅ B) -> ((M A) ≅ (M B)).
   Proof. intros A B s. refine (@Build_Iso U ccat cmc (M A) (M B) (map (to s)) (map (from s)) _ _).
-         - rewrite map_compose. rewrite (to_from s). rewrite map_id. reflexivity.
-         - rewrite map_compose. rewrite (from_to s). rewrite map_id. reflexivity.
+         - rewrite <- map_compose. rewrite (to_from s). rewrite map_id. reflexivity.
+         - rewrite <- map_compose. rewrite (from_to s). rewrite map_id. reflexivity.
   Defined.
 
   

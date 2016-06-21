@@ -10,6 +10,7 @@ Section Prob.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
 Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream.
+Require Import Morphisms.
 Import Sierp.
 Import Real.
 Import Sum.
@@ -45,7 +46,10 @@ Class MeasOps : Type :=
   ; coinflip : unit ~~> Prob (unit + unit)
   ; normal : unit ~~> Prob R
   ; pstream : forall {Γ A X}, Γ ~~> X -> Γ * X ~~> Prob (A * X)
-                       -> Γ ~~> Prob (Stream A)
+                         -> Γ ~~> Prob (Stream A)
+  ; pstream_Proper : forall Γ A X, Proper (eq ==> eq ==> eq) (@pstream Γ A X)
+  ; pstream_ext1 : forall {Γ Δ A X} (g : Γ ~~> Δ) (x : Δ ~~> X) (f : Δ * X ~~> Prob (A * X)),
+      (pstream x f) ∘ g == pstream (x ∘ g) (f ∘ (g ⊗ id))
   ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
   ; fst_strong : forall {A B}, (map fst) ∘ (strong (M:=Prob)(A:=A)(B:=B)) == ret ∘ fst
   }.
@@ -62,10 +66,10 @@ Definition liftF {Γ Δ A B : U}
 Axiom pstream_unfold : forall (Γ A X : U) 
   (x : Γ ~~> X) (f : Γ * X ~~> Prob (A * X)),
       pstream x f == (
-         y <- f ∘ ⟨ id , x ⟩ ;
+         y <-  (f ∘ ⟨ id , x ⟩);
          zs <- pstream (X := X) (snd ∘ y) (liftF f) ;
          Ret (cons (fst ∘ !y) zs) 
-         ).  
+      ).
 
 End Prob.
 
