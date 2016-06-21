@@ -516,6 +516,41 @@ constructor; intros.
   apply FormTop.grefl. assumption.
 Qed.
 
+Record pt {F : Subset T} := 
+  { pt_here : Inhabited F
+  ; pt_local : forall {b c}, F b -> F c -> Inhabited (FormTop.down leT b c ∩ F)
+  ; pt_le_right : forall {a b}, F a -> leT a b -> F b
+  ; pt_cov : forall {a}, F a -> forall (i : IT a), Inhabited (F ∩ CT a i)
+  }.
+
+Arguments pt : clear implicits.
+
+Lemma pt_cont F : pt F -> Cont.pt leT CovT F.
+Proof.
+intros H. constructor; intros.
+- apply (pt_here H).
+- apply (pt_local H); assumption.
+- induction X0. 
+  + exists a; split; assumption.
+  + apply IHX0. eapply (pt_le_right H); eassumption.
+  + destruct (pt_cov H X i). destruct i0.
+    eapply X0; eassumption.
+Qed.
+
+Lemma pt_cont_converse F : Cont.pt leT CovT F -> pt F.
+Proof.
+intros H. constructor; intros.
+- apply (Cont.pt_here H).
+- apply (Cont.pt_local H); assumption.
+- pose proof (Cont.pt_cov H X (V := eq b)).
+  destruct X1. eapply FormTop.gle_left. eassumption.
+  apply FormTop.grefl. reflexivity.
+  destruct i. subst. assumption.
+- apply (Cont.pt_cov H X (V := CT a i)).
+  apply FormTop.ginfinity with i.
+  intros. apply FormTop.grefl. assumption.
+Qed.
+
 End IGCont.
 End IGCont.
 

@@ -1,13 +1,45 @@
+Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC.
+
+Set Asymmetric Patterns.
+Set Universe Polymorphism.
 
 Add Rec LoadPath "/Users/Sherman/Documents/Projects/corn/" as CoRN.
-Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC.
 Require Import CoRN.metric2.Metric
   CoRN.model.structures.Qpossec
   Coq.QArith.QArith_base
   CMorphisms.
 
-Set Asymmetric Patterns.
-Set Universe Polymorphism.
+(** Positive upper-real numbers *)
+
+Module PosUR.
+
+(** I get a Coq error if I leave le as returning Prop *)
+Definition le (x y : Qpos) : Type := x <= y.
+
+Definition Ix (x : Qpos) : Type := unit.
+
+Definition C (q : Qpos) (_ : Ix q) : Subset Qpos
+  := fun q' => q' < q.
+
+Instance PO : PreO.t le.
+Proof.
+constructor; unfold le; intros.
+- apply Qle_refl.
+- eapply Qle_trans; eassumption.
+Qed.
+
+Existing Instance PreO.PreOrder_I.
+
+Definition loc : FormTop.localized le C.
+Proof.
+unfold FormTop.localized.
+intros. exists tt. unfold C. intros.
+exists s. split. eapply Qlt_le_trans; eassumption.
+split. apply Qlt_le_weak. assumption. 
+reflexivity.
+Qed.
+
+End PosUR.
 
 Module Metric.
 Section Metric.
