@@ -32,7 +32,7 @@ Definition sum_match {Γ A B C}
   sum_elim l r ∘ ⟨ id , e ⟩.
 
 Notation "'If' cond 'Then' thenExp 'Else' elseExp" :=
-  (sum_match (cond)%morph (LAM _ => thenExp ∘ fst)%morph (LAM _ => elseExp ∘ fst)%morph) (at level 160) : morph_scope.
+  (sum_match (cond)%morph (LAM _ => ! thenExp)%morph (LAM _ => ! elseExp)%morph) (at level 160) : morph_scope.
 
 Definition bool := unit + unit.
 Definition btrue : unit ~~> bool := inl ∘ tt.

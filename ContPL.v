@@ -122,16 +122,19 @@ Global Instance Extend_Refl {Γ : U} : Extend Γ Γ := id.
 Global Instance Extend_Prod {Γ Δ A : U} `{f : Extend Γ Δ}
   : Extend Γ (Δ * A) := f ∘ fst.
 
+Global Instance Extend_Compose {A B C : U}
+  {f : Extend A B} {g : Extend B C} : Extend A C := f ∘ g.
+
 Definition Lift {Γ Δ A} `{f : Extend Γ Δ} (x : Γ ~~> A) 
   : Δ ~~> A := x ∘ f.
 
 Definition makeFun1E {Γ arg ret : U} 
-  (f : (Γ * arg) ~~> arg -> (Γ * arg) ~~> ret)
-  : (Γ * arg) ~~> ret := f snd.
+  (f : forall Δ (ext : Extend Γ Δ), Δ ~~> arg -> Δ ~~> ret)
+  : Γ * arg ~~> ret := f _ extend snd.
 
 End ContPL.
 
-Arguments Extend : clear implicits.
+Arguments Extend {_ _} _ _: clear implicits.
 
 Notation "'FUN' x .. y => t " :=
         (fun _ => fun x => .. (fun y => t%morph) .. )
@@ -142,10 +145,10 @@ Notation "! x" := (Lift x) (at level 20) : morph_scope.
 
 Infix "~>" := Map (at level 80) : obj_scope.
 
-Notation "x <- e ; f" := (Bind e (makeFun1E (fun x => f))) 
+Notation "x <- e ; f" := (Bind e (makeFun1E (fun _ _ x => f))) 
   (at level 120, right associativity) : morph_scope.
 
-Notation "'LAM' x => f" := (makeFun1E (fun x => f)) 
+Notation "'LAM' x => f" := (makeFun1E (fun _ _ x => f)) 
   (at level 120, right associativity) : morph_scope.
 
 Section Instances.
@@ -154,8 +157,10 @@ Section Instances.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-  Lemma lam_extensional {Γ A B} (f g : Γ * A ~~> A -> Γ * A ~~> B) : 
-    (forall a, f a == g a) -> (LAM a => f a) == (LAM a => g a).
+  Lemma lam_extensional {Γ A B} 
+    (f g : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> B) : 
+    (forall Δ (ext : Extend Γ Δ) a, f _ ext a == g _ ext a) 
+  -> makeFun1E f == makeFun1E g.
   Proof.
   intros. unfold makeFun1E. apply H.
   Qed.
@@ -205,16 +210,17 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
   rewrite H. reflexivity.
   Qed.
 
-  Global Instance Lift_Proper : forall {Γ Δ A : U} {ext : Extend U ccat Γ Δ}, 
+  Global Instance Lift_Proper : forall {Γ Δ A : U} {ext : Extend Γ Δ}, 
     Proper (eq ==> eq) (Lift (Γ := Γ) (Δ := Δ) (A := A)).
   Proof.
   intros. unfold Proper, respectful. intros. unfold Lift.
   apply compose_Proper. assumption. reflexivity.
   Qed.
 
-  Lemma bind_extensional {Γ A B} (mu : Γ ~~> M A) (f g : Γ * A ~~> A -> Γ * A ~~> M B) : 
-    (forall a, f a == g a) ->
-   (a <- mu; f a) == (a <- mu; g a).
+  Lemma bind_extensional {Γ A B} (mu : Γ ~~> M A) 
+   (f g : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> M B) : 
+   (forall Δ (ext : Extend Γ Δ) a, f _ ext a == g _ ext a) ->
+   Bind mu (makeFun1E f) == Bind mu (makeFun1E g).
   Proof.
   intros. unfold Bind. unfold bind.
   apply lam_extensional in H.

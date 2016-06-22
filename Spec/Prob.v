@@ -60,7 +60,7 @@ Existing Instance ProbMonad.
 
 (* This should probably get moved somewhere else *)
 Definition liftF {Γ Δ A B : U} 
-  {ext : Extend U ccat Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=
+  {ext : Extend Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=
   f ∘ (ext ⊗ id).
 
 Axiom pstream_unfold : forall (Γ A X : U) 
