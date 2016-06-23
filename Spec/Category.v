@@ -88,7 +88,8 @@ Arguments CMC U {_} : clear implicits.
 
 Infix "∘" := compose (at level 40, left associativity) : morph_scope.
  Notation "⟨ f , g ⟩" := (pair f g) : morph_scope.
-Infix "⊗" := parallel (at level 25) : morph_scope.
+ Infix "⊗" := parallel (at level 25) : morph_scope.
+
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
   forall X (g1 g2 : X ~~> A), f ∘ g1 == f ∘ g2 -> g1 == g2.
@@ -195,7 +196,8 @@ Section BasicProps.
          - rewrite compose_assoc. rewrite pair_snd, pair_snd.
            rewrite <- compose_assoc. rewrite pair_snd. reflexivity.
   Defined.
-
+  
+    
   Lemma parallel_fst : forall {A B C D : U} (f : A ~~> B) (g : C ~~> D),
       fst ∘ (f ⊗ g) == f ∘ fst. (* Have I already proven this somewhere else maybe? *)
   Proof. intros A B C D f g.
@@ -220,8 +222,25 @@ Section BasicProps.
          - rewrite pair_snd, compose_assoc, pair_snd. reflexivity.
   Defined.
 
-           
+  Lemma diagonal_fst : forall {A : U}, fst ∘ diagonal (A:=A) == id.
+  Proof. intros A. unfold diagonal. apply pair_fst.
+  Defined.
 
+  Lemma diagonal_snd : forall {A : U}, snd ∘ diagonal (A:=A) == id.
+  Proof. intros A. unfold diagonal. apply pair_snd.
+  Defined.
+
+  Lemma pair_parallel_diagonal : forall {A B C : U} (f : A ~~> B) (g : A ~~> C),
+      ⟨f, g⟩ == (f ⊗ g) ∘ diagonal.
+  Proof. intros A B C f g. apply proj_eq.
+         - rewrite compose_assoc, parallel_fst, pair_fst.
+           rewrite <- compose_assoc, diagonal_fst, compose_id_right.
+           reflexivity.
+         - rewrite compose_assoc, parallel_snd, pair_snd.
+           rewrite <- compose_assoc, diagonal_snd, compose_id_right.
+           reflexivity.
+  Defined.
+  
   
 End BasicProps.
 
@@ -257,6 +276,7 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} {smd : SMonad 
     ; join_nat : forall {A B : U} (f : A ~~> B), (map f) ∘ join == join ∘ (map (map f))
     ; join_map_ret : forall {A : U}, join ∘ (map (ret(A:=A))) = id
     ; join_ret : forall {A : U}, join ∘ (ret(A:=(M A))) = id
+    ; join_join : forall {A : U}, join (A:=A) ∘ map join == join ∘ join
     ; strength_unit : forall {A},
      (unit * M A) -[ strong ]-> M (unit * A)
       == map add_unit_left ∘ snd
@@ -296,15 +316,6 @@ Section Basic_SMonad_Props.
   
  Definition emap {Γ A B : U} (f : Γ * A ~~> B) : Γ * (M A) ~~> M B :=
    (map f) ∘ strong.
-
- (*
- Lemma emap_compose : forall {Γ Δ A B C : U} (f : Γ * A ~~> Δ * B)(g : Δ * B ~~> C), (emap (g ∘ f)) == (emap g) ∘ ⟨fst ∘ emap f, map (snd ∘ f)⟩.
- Proof. intros Γ Δ A B C f g.
-        Check (emap (g ∘ f)).
-        Check (emap g).
-        Check ⟨fst ∘ f, map (snd ∘ f) ∘ ret⟩.
-   (emap (g ∘ f)) == (emap g) ∘ ⟨fst ∘ f, emap (snd ∘ f)⟩.
-*)
  
 Global Instance emap_Proper : forall Γ A B : U,
   Proper (eq (A := Γ * A) (B := B) ==> eq) emap.

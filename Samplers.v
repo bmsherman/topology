@@ -46,6 +46,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Hint Rewrite
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
+       (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
        (@unit_uniq _ _ _ _)
        (@map_id _ Prob _ _ _ _)
        (@join_map_ret _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _)
@@ -151,20 +152,104 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Axiom whatever : forall {A}, A.
     
-(*
-  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : forall (m : U), Γ * m ~~> A -> Γ * m ~~> B),
-      (x <- m; Ret (f _ x)) ==  (emap (makeFun1E (f A)) ∘ ⟨id, m⟩).
+
+  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> B),
+      Bind m (Ret (makeFun1E f)) ==  (emap (makeFun1E f)) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m f.
          apply Bind_m_Ret.
   Defined.
-*)
+
 
   Theorem Bind'_Ret_f : forall {Γ A B} (x : Γ ~~> A) 
   (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> Prob B),
       Bind (Ret x) (makeFun1E f) == (makeFun1E f) ∘ ⟨id, x⟩.
   Proof. intros Γ A B x f. apply Bind_Ret_f.
   Defined.
+
+  Ltac remove_eq_left :=
+    repeat rewrite <- compose_assoc; repeat (apply compose_Proper; try reflexivity).
+  Ltac remove_eq_right :=
+    repeat rewrite compose_assoc; repeat (apply compose_Proper; try reflexivity).
+
   
+  Theorem Bind_Bind : forall {Γ A B C : U} (m : Γ ~~> Prob A) (f : Γ * A ~~> Prob B) (g : Γ * B ~~> Prob C),
+      Bind (Bind m f) g == Bind m (Bind f (g ∘ (fst ⊗ id))).
+  Proof. intros Γ A B C m f g.
+         unfold Bind, bind.
+         rewrite !map_compose.
+         rewrite !compose_assoc.
+         rewrite join_join.
+         remove_eq_left. rewrite !compose_assoc.
+         rewrite <- join_nat. remove_eq_left.
+         rewrite !compose_assoc.
+         rewrite pair_parallel_diagonal at 1. rewrite compose_assoc.
+         assert (forall {Q X Y Z : U} (f : X ~~> Y) (g : Y ~~> Z), id (A:=Q) ⊗ (g ∘ f) == id ⊗ g ∘ id ⊗ f) as H.
+         {
+           intros Q X Y Z F G. apply proj_eq.
+           - rewrite compose_assoc. repeat (rewrite parallel_fst; autorewrite with cat_db).
+             reflexivity.
+           - rewrite compose_assoc. rewrite !parallel_snd. rewrite <- !compose_assoc.
+             rewrite parallel_snd. reflexivity.
+         }
+         rewrite !H.
+         rewrite !compose_assoc. rewrite strength_join. remove_eq_left.
+         rewrite !compose_assoc.
+         rewrite <- map_compose.
+         rewrite <- strong_nat, map_compose. remove_eq_left.
+         rewrite !compose_assoc. rewrite <- map_compose.
+         rewrite parallel_pair.
+         autorewrite with cat_db.
+         rewrite strong_nat.
+         rewrite <- (compose_assoc _ _ (map (id ⊗ f))).
+         rewrite strength_compose.
+         rewrite pair_parallel_diagonal at 2. 
+         assert (id ⊗ ⟨id, m⟩ ∘ diagonal == ⟨fst, id⟩ ∘ (id ⊗ m) ∘ diagonal) as Δ1.
+         { apply proj_eq.
+           - autorewrite with cat_db.
+             rewrite !compose_assoc.
+             autorewrite with cat_db.
+             reflexivity.
+           - autorewrite with cat_db.
+             rewrite !compose_assoc.
+             autorewrite with cat_db. unfold parallel.
+             apply proj_eq.
+             + autorewrite with cat_db.
+               rewrite !compose_assoc.
+               autorewrite with cat_db.
+               rewrite diagonal_snd, diagonal_fst. reflexivity.
+             + autorewrite with cat_db.
+               rewrite !compose_assoc.
+               autorewrite with cat_db. reflexivity.
+         }
+         rewrite <- !compose_assoc. rewrite Δ1 at 1.
+         remove_eq_right.
+         assert (prod_assoc_left ∘ ⟨fst, id⟩ == diagonal (A:=Γ) ⊗ id(A:=Prob A)) as Δ2.
+         {
+           unfold prod_assoc_left, parallel, diagonal.
+           rewrite !pair_f. autorewrite with cat_db.
+           rewrite <- !compose_assoc. autorewrite with cat_db.
+           reflexivity.
+         }
+         rewrite <- !compose_assoc. rewrite Δ2.
+         rewrite <- map_id at 1. rewrite strong_nat.
+         remove_eq_right.
+         rewrite <- !map_compose; apply map_Proper.
+         apply proj_eq.
+         - rewrite !compose_assoc; unfold prod_assoc_right, diagonal; autorewrite with cat_db.
+           rewrite <- compose_assoc; autorewrite with cat_db.
+           rewrite compose_assoc; autorewrite with cat_db. reflexivity.
+         - rewrite !compose_assoc; unfold prod_assoc_right, diagonal; autorewrite with cat_db.
+           rewrite <- !compose_assoc; autorewrite with cat_db.
+           rewrite <- (compose_id_right f) at 2; remove_eq_left.
+           rewrite compose_assoc; autorewrite with cat_db.
+           apply proj_eq.
+           + rewrite !compose_assoc; autorewrite with cat_db.
+             rewrite <- compose_assoc; autorewrite with cat_db.
+             rewrite compose_assoc; autorewrite with cat_db. reflexivity.
+           + rewrite !compose_assoc; autorewrite with cat_db. reflexivity.
+  Qed.
+         
+    
   Theorem Bind_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> Prob C),
       (Bind ((map g) ∘ m) f) == (Bind m (f ∘ (id ⊗ g))).
   Proof. intros Γ A B C m g f.
@@ -399,8 +484,6 @@ Qed.
 
   Existing Instance pstream_Proper.
 
-Ltac remove_eq_left :=
-  repeat rewrite <- compose_assoc; repeat (apply compose_Proper; try reflexivity).
 
 Lemma Bind_iso {Γ A A' B : U} (p : A ~~> A') 
   (mu : Γ ~~> Prob A) (mu' : Γ ~~> Prob A')
@@ -518,13 +601,13 @@ Lemma lam_postcompose {Γ A B C : U} (f : forall Δ (ext : Extend Γ Δ), Δ ~~>
 Proof.
  reflexivity.
 Qed.
-(*
+
 Notation "'LAM'< Γ | E > x => f" := (makeFun1E (fun Γ E x => f))
   (at level 120, right associativity).
 
 Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f))) 
   (at level 120, right associativity).
- *) 
+
 
   Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
                                                                    (constant_stream D) D.
@@ -565,22 +648,30 @@ Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f)))
   Definition pullback_sampler {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ') :
     (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
   Proof. intros [SA samples]. refine (sampler (SA ∘ (ext ⊗ id)) _).
+         unfold Extend in ext.
          rewrite <- indep_ext.
-         unfold Map, emap.
+         rewrite samples.
+         unfold Map, emap. (* extract to Map_ext? *)
          rewrite map_compose.
          rewrite <- (compose_assoc strong).
          rewrite <- strong_nat.
          rewrite <- !compose_assoc.
-         
-         
-         
+         rewrite parallel_pair.
+         autorewrite with cat_db.
+         rewrite <- (compose_id_left ext) at 2.
+         rewrite <- pair_f.
+         rewrite !compose_assoc.
+         reflexivity.
+  Qed.
+            
 
   Definition bind_sampler_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     (Δ ~~> Prob B).
   Proof. refine (a <- DA; _).
-         refine (b <- DB ∘ ⟨e, a⟩; _). (* Not sure how to write without having e... *)
+         refine (b <- DB ∘ ⟨e, a⟩; _).
          refine (Ret b).
   Defined.
+
 
   Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
@@ -589,4 +680,11 @@ Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f)))
          refine (sampler _ _).
          Unshelve. Focus 2.
          refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩).
-         
+
+(*         unfold bind_sampler_prog. (* Just Bind DA DB *)
+         setoid_rewrite Bind_m_Ret.
+         rewrite <- (compose_id_left snd). rewrite emap_snd_pair.
+         simpl_ext.
+         autorewrite with cat_db. *)
+         unfold indep.
+         unfold bind_sampler_prog. simpl_ext.
