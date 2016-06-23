@@ -518,37 +518,75 @@ Lemma lam_postcompose {Γ A B C : U} (f : forall Δ (ext : Extend Γ Δ), Δ ~~>
 Proof.
  reflexivity.
 Qed.
-
+(*
 Notation "'LAM'< Γ | E > x => f" := (makeFun1E (fun Γ E x => f))
   (at level 120, right associativity).
 
 Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f))) 
   (at level 120, right associativity).
-  
-  Definition coinflip_sampler {Δ : U} :
-      Sampler (Δ := Δ) (S := Cantor) (A := Boole) (infinite_coinflips ∘ tt) (coinflip ∘ tt).
-  Proof.
-    refine (sampler (⟨tl, hd⟩ ∘ snd) _). unfold Map.
-    rewrite emap_snd_pair.
-    unfold indep.
-    rewrite Fubini_pair.
-    unfold infinite_coinflips at 2.
-    rewrite constant_unfold.
-    unfold constant_unfold_prog.
-    rewrite Bind_ext.
-    rewrite map_Bind.
-    apply Bind_Proper. reflexivity.
-    rewrite lam_eval_par'.
-    rewrite lam_postcompose.
-    apply lam_extensional.
-    intros. rewrite map_Bind.
-    apply Bind_Proper. simpl_ext.
-    unfold infinite_coinflips. rewrite constant_stream_ext1.
-    rewrite compose_assoc. reflexivity.
-    rewrite lam_postcompose. apply lam_extensional.
-    intros.  rewrite map_Ret. unfold Ret.
-    remove_eq_left. rewrite pair_f. simpl_ext. apply pair_Proper.
-    rewrite cons_tl'. reflexivity. rewrite cons_hd.
-    apply compose_Proper; try reflexivity. 
-    symmetry. apply compose_id_right.
+ *) 
+
+  Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
+                                                                   (constant_stream D) D.
+  Proof. refine (sampler (⟨tl, hd⟩ ∘ snd) _).
+         unfold Map; rewrite emap_snd_pair.
+         unfold indep. rewrite Fubini_pair.
+         rewrite constant_unfold; unfold constant_unfold_prog.
+
+         rewrite map_Bind. apply Bind_Proper; try reflexivity.
+         rewrite lam_postcompose; apply lam_extensional.
+         intros. simpl.
+
+         rewrite map_Bind. apply Bind_Proper.
+         - simpl_ext. rewrite constant_stream_ext1.
+           reflexivity.
+         - rewrite lam_postcompose; apply lam_extensional.
+           intros. simpl.
+           rewrite map_Ret.
+           apply Ret_Proper.
+           rewrite pair_f.
+           rewrite cons_tl', cons_hd.
+           reflexivity.
   Qed.
+
+  Definition coinflip_sampler :
+    Sampler (Δ := unit) (S := Cantor) (A := Boole) infinite_coinflips coinflip :=
+    infinite_sampler _ _ _.
+  
+  Definition compose_sampler (Δ S A B : U) (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) :
+    (Sampler DS DA) -> (Sampler DA DB) -> (Sampler DS DB).  (* This is overkill, since the A ~> B could destroy A and we'd still be fine. *)
+  Proof. intros [ S0 samples0 ] [S1 samples1].
+         refine (sampler _ _).
+         Unshelve. Focus 2.
+         refine (_ ∘ ⟨fst, S0⟩).
+         refine (_ ∘ prod_assoc_right ∘ swap).
+  Abort.
+
+  Definition pullback_sampler {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ') :
+    (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
+  Proof. intros [SA samples]. refine (sampler (SA ∘ (ext ⊗ id)) _).
+         rewrite <- indep_ext.
+         unfold Map, emap.
+         rewrite map_compose.
+         rewrite <- (compose_assoc strong).
+         rewrite <- strong_nat.
+         rewrite <- !compose_assoc.
+         
+         
+         
+
+  Definition bind_sampler_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
+    (Δ ~~> Prob B).
+  Proof. refine (a <- DA; _).
+         refine (b <- DB ∘ ⟨e, a⟩; _). (* Not sure how to write without having e... *)
+         refine (Ret b).
+  Defined.
+
+  Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
+    forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
+      Sampler DS (bind_sampler_prog DS DA DB).
+  Proof. intros [SA samplesA] [SB samplesB].
+         refine (sampler _ _).
+         Unshelve. Focus 2.
+         refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩).
+         
