@@ -182,9 +182,8 @@ Proof.
 unfold PreO.morph. intros. unfold frame.
 simpl. unfold FormTop.leA, FormTop.Sat.
 unfold Included, pointwise_rel, arrow.
-intros a' H. simpl in H.
-apply (FormTop.trans _ _ _ H). intros a1 H1.
-destruct H1 as [t' at' Fa't'].
+intros a' H. FormTop.trans H.
+destruct H as [t' at' Fa't'].
 apply (cov cont _ Fa't'). apply X. unfold FormTop.Sat.
 apply FormTop.refl. assumption.
 Qed.
@@ -239,8 +238,7 @@ constructor.
     symmetry. apply Union_union.
   + intros. unfold frame. simpl. apply PO.le_antisym;
     unfold FormTop.leA, FormTop.Sat, Included, pointwise_rel, arrow; intros.
-    * apply (FormTop.trans _ _ _ X). clear a0 X.
-      intros. unfold FormTop.minA in X.
+    * FormTop.trans X. unfold FormTop.minA in X.
       destruct X. destruct i. destruct d, d0.
       unfold FormTop.minA.
       apply FormTop.le_right;
@@ -249,8 +247,7 @@ constructor.
       apply FormTop.refl. assumption.
       apply FormTop.le_left with a3. assumption.
       apply FormTop.refl. assumption.
-    * apply (FormTop.trans _ _ _ X). clear a0 X.
-      intros. unfold FormTop.minA in *.
+    * FormTop.trans X. unfold FormTop.minA in *.
       destruct X. destruct d, d0. destruct i, i0.
       rewrite <- FormTop.down_downset; try eassumption.
       apply local. assumption. 
@@ -290,6 +287,12 @@ End Cont.
 Arguments t {S} leS {T} leT CovS CovT F_ : clear implicits.
 Arguments pt {T} leT CovT F : clear implicits.
 
+Ltac ecov := match goal with
+ | [ H : In (?f _) ?a, X : t _ _ ?CovS _ ?F  
+      |- ?CovS ?a (union _ ?F) ] => 
+    eapply (cov X _ H)
+  end.
+
 Require Import CMorphisms.
 
 Lemma t_Proper : forall S T (leS : crelation S) (leT : crelation T), Proper
@@ -313,11 +316,10 @@ constructor; intros; unfold id in *.
 - eapply PreO.le_trans; eassumption.
 - apply FormTop.refl. exists a. split; eassumption.
   reflexivity.
-- eapply FormTop.trans with (fun b' => b = b').
-  eapply FormTop.le_left. eassumption.
-  apply FormTop.refl. reflexivity. unfold In.  
-  intros. subst. eapply FormTop.monotone.
-  2:eassumption. apply FormTop.downset_included.
+- eapply FormTop.le_left; try eassumption.
+  clear X. FormTop.trans X0.
+  apply FormTop.refl. econstructor. eassumption.
+  reflexivity.
 Qed.
 
 Context {T leT} `{POT : PreO.t T leT}.
@@ -355,12 +357,11 @@ Theorem t_compose : forall (F : map S T) (G : map T U),
   -> t leS leU CovS CovU (compose G F).
 Proof.
 intros. constructor; intros.
-- pose proof (here X a).
-  eapply FormTop.trans. eassumption.
-  simpl. intros. destruct X2. destruct i.
-  pose proof (here X0 a1).
-  pose proof (cov X _ f X2).
-  refine (FormTop.monotone _ _ _ _ X3).
+- pose proof (here X a) as X1.
+  FormTop.trans X1. destruct X1. destruct i.
+  pose proof (here X0 a0).
+  pose proof (cov X _ f X1).
+  refine (FormTop.monotone _ _ _ _ X2).
   rewrite union_compose. reflexivity.
 - unfold compose in *.
   intros. 
@@ -397,17 +398,14 @@ intros F F' G G' ContF X X0. unfold RelSame.
 intros. unfold RelIncl, Included, pointwise_rel, arrow.
 unfold Sat, In.
 intros. unfold In in *.
-  eapply FormTop.trans. eassumption. unfold In. intros.
-  clear a0 X1. destruct X2.  destruct p. 
+FormTop.trans X1. destruct X1. destruct p. 
   apply (Sat_mono2 (leS := leT) (CovS := CovT)) in g.
   apply (Sat_mono2 (leS := leS) (CovS := CovS)) in f.
   apply X0 in g. apply X in f.
-  unfold Sat in g, f. eapply FormTop.trans. eassumption.
-  intros. clear a1 f.
+  unfold Sat in g, f. FormTop.etrans.
   pose proof (fun a b => Cont.cov ContF (a := a) (b := b)).
-  specialize (X2 _ _ _ X1 g).
-  eapply FormTop.trans.  eassumption.
-  clear a0 X1 X2 g. intros. destruct X1. 
+  specialize (X1 _ _ _ f g). clear f.
+  FormTop.etrans. destruct X1. 
   apply FormTop.refl. exists a1. split; assumption.
   eassumption. eassumption.
 Qed.
@@ -464,9 +462,8 @@ intros. constructor; intros.
 - generalize dependent a. induction X1; intros.
   + apply FormTop.refl. exists a; assumption.
   + apply IHX1. eapply le_right; eassumption.
-  + pose proof (ax_right X _ _ i X1).
-    apply (@FormTop.trans S leS CovS FTS _ _ _ X2).  
-    intros. destruct X3. 
+  + pose proof (ax_right X _ _ i X1). clear X1.
+    FormTop.etrans. destruct X2. 
     eapply X0; eassumption.
 Qed.
 
@@ -489,29 +486,23 @@ intros.
 constructor; intros.
 - apply Cov_Sat. eauto using (Cont.here X).
 - unfold Cont.Sat in *. 
-  apply Cov_Sat.
-  pose proof (FormTop.le_right _ _ _ X0 X1).
-  clear X0 X1.
-  eapply FormTop.trans. eassumption.
-  clear a X2. intros. destruct X0. destruct d, d0.
+  apply Cov_Sat. FormTop.ejoin. FormTop.etrans.
+  destruct X2. destruct d, d0.
   apply (Cont.local X); eapply (Cont.le_left X). 
   apply l. assumption. apply l0. assumption.
 - unfold Cont.Sat in *. 
   eapply FormTop.le_left; eassumption.
-- unfold Cont.Sat in *. 
-  eapply FormTop.trans. eassumption.
-  intros. 
+- unfold Cont.Sat in *.
+  FormTop.etrans.
   assert (CovT b (eq c)).
   eapply FormTop.gle_left. eassumption.
   apply FormTop.grefl. reflexivity.
-  pose proof (Cont.cov X (a := a0) (b := b) (eq c)).
-  eapply FormTop.monotone. Focus 2. apply X4.
+  pose proof (Cont.cov X (a := a) (b := b) (eq c)).
+  eapply FormTop.monotone. Focus 2. apply X3.
   assumption. assumption.
-  unfold Included, pointwise_rel, arrow.
-  intros. destruct X5.  destruct i. assumption.
-- unfold Cont.Sat in X0. 
-  eapply FormTop.trans. eassumption. clear a X0.
-  intros. apply Cov_Sat. eapply (Cont.cov X). eassumption.
+  apply union_eq.
+- unfold Cont.Sat in X0. FormTop.etrans.
+  apply Cov_Sat. Cont.ecov.
   apply FormTop.ginfinity with j. intros. 
   apply FormTop.grefl. assumption.
 Qed.
@@ -556,6 +547,7 @@ End IGCont.
 
 Arguments IGCont.t {S} leS CovS
                    {T} leT {IT} CT F_ : clear implicits.
+Arguments IGCont.pt {T} leT {IT} CT F : clear implicits.
 
 
 

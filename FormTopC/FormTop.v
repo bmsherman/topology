@@ -66,13 +66,12 @@ Qed.
     seen in the literature. *)
 Class t : Type :=
   { refl : forall (a : S) (U : Subset S), In U a -> a <| U
-  ; trans : forall (a : S) (U V : Subset S), 
-       a <| U 
-     -> U <<| V
+  ; trans : forall {a U}, a <| U 
+     -> forall V, U <<| V
      -> a <| V
   ; le_left : forall (a b : S) (U : Subset S)
      , a <= b -> b <| U -> a <| U
-  ; le_right : forall (a : S) (U V : Subset S)
+  ; le_right : forall {a : S} {U V : Subset S}
     , a <| U -> a <| V
     -> a <| downset U ∩ downset V
   }.
@@ -98,8 +97,8 @@ Context `{H : t}.
 Lemma monotone (U V : Subset S)
   : U ⊆ V -> forall a : S, a <| U -> a <| V.
 Proof.
-intros UV a CovaU. eapply trans. eassumption. 
-intros a' Ua'. apply refl. apply UV. assumption.
+intros UV a CovaU. eapply trans; try eassumption.
+intros. apply refl. apply UV. assumption.
 Qed.
 
 Lemma subset_equiv : forall (U V : Subset S), U === V
@@ -114,6 +113,22 @@ Arguments t {S} le Cov : clear implicits.
 Arguments down {S} le a b c : clear implicits.
 Arguments downset {S} le U _ : clear implicits.
 Arguments stable {S} le Cov : clear implicits.
+
+Ltac trans H := apply (trans H); let T := type of H in 
+  match constr:(T) with
+  | _ ?a _ => clear a H; intros a H
+  end.
+
+Ltac etrans := match goal with
+     | [ H : ?Cov ?a _  |- ?Cov ?a _ ] => try (trans H)
+     end. 
+
+Ltac join H1 H2 := let H := fresh H1 in
+  pose proof (FormTop.le_right H1 H2) as H; clear H1 H2.
+
+Ltac ejoin := repeat match goal with
+  | [ H1 : ?Cov ?a _, H2 : ?Cov ?a _  |- ?Cov ?a _ ] => join H1 H2
+  end.
 
 Section IGDefn.
 
@@ -240,7 +255,7 @@ Proof.
 unfold localized in loc.
 constructor.
 - apply grefl.
-- intros a U V aU H. induction aU.
+- intros a U aU V H. induction aU.
   + auto.
   + eapply gle_left. eassumption. apply IHaU.
     assumption.
@@ -299,7 +314,7 @@ End AxiomSetRefine.
 
 (*
 Instance t_proper {S : Type} : 
-  Proper ((eq ==> eq ==> iff) ==> (eq ==> eq ==> iffT) ==> iffT) (@t S).
+  Proper ((eq ==> eq ==> iffT) ==> (eq ==> eq ==> iffT) ==> iffT) (@t S).
 Proof.
 Admitted.
 *)
@@ -487,7 +502,7 @@ Qed.
 Theorem Cov_Sat : forall a U, iffT (Cov a U) (Cov a (Sat U)).
 Proof.
 intros. split; intros. rewrite <- Sat_mono. assumption.
-eapply trans. eassumption. intros a0 H0. apply H0.
+etrans. assumption.
 Qed.
 
 Theorem Sat_downset : forall U, Sat U === Sat (downset le U).
@@ -496,8 +511,8 @@ intros. split.
 - apply Sat_mono2. unfold Included, In, downset.
   intros. econstructor. eassumption. reflexivity.
 - unfold Included, Sat, In, downset.
-  intros H. eapply trans. eassumption. intros a0 H0.
-  destruct H0. rewrite l. apply refl. assumption.
+  intros H. etrans. destruct H. 
+  rewrite l. apply refl. assumption.
 Qed.
 
 Existing Instances Union_Proper_le_flip Union_Proper_eq.
@@ -520,9 +535,7 @@ constructor; intros.
     apply Union_Included_r.
   + simpl. unfold leA. intros.
     unfold Sat, Included, pointwise_rel, arrow. 
-    intros a H.
-    apply trans with (l ∪ r). assumption. 
-    intros a' H2. rewrite Cov_Sat. destruct H2.
+    intros a H. etrans. rewrite Cov_Sat. destruct H.
     * rewrite <- X, <- Cov_Sat. apply refl. assumption.
     * rewrite <- X0, <- Cov_Sat. apply refl. assumption.
 - simpl. unfold Proper, respectful, eqA, minA.
@@ -532,24 +545,21 @@ constructor; intros.
     rewrite H, H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
     destruct H1. unfold Sat, In in *.
-    apply le_right; assumption.
+    join s s0. assumption.
   + rewrite Sat_Intersection. rewrite <- !Sat_downset.
     rewrite <- H, <- H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
     destruct H1. unfold Sat, In in *.
-    apply le_right; assumption.
+    join s s0; assumption.
 - simpl. constructor; unfold leA, minA; intros.
-  + unfold Sat, Included, pointwise_rel, arrow; intros a H. 
-    eapply trans. eassumption.
-    intros a0 H0. destruct H0 as (H0 & H1). destruct H0.
+  + unfold Sat, Included, pointwise_rel, arrow; intros a H.
+    etrans. destruct H as (H0 & H1). destruct H0.
+    rewrite l0. apply refl. assumption.
+  + unfold Sat, Included, pointwise_rel, arrow; intros a H.
+    etrans. destruct H as (H0 & H1). destruct H1. 
     rewrite l0. apply refl. assumption.
   + unfold Sat, Included, pointwise_rel, arrow; intros a H. 
-    eapply trans. eassumption. intros a0 H0. 
-    destruct H0 as (H0 & H1). destruct H1. 
-    rewrite l0. apply refl. assumption.
-  + unfold Sat, Included, pointwise_rel, arrow; intros a H. 
-    eapply trans. eassumption. intros a0 H0.
-    apply le_right. rewrite Cov_Sat, <- X, <- Cov_Sat.
+    etrans. apply le_right. rewrite Cov_Sat, <- X, <- Cov_Sat.
     apply refl. assumption.
     rewrite Cov_Sat, <- X0, <- Cov_Sat. apply refl.  assumption.
 Qed.
@@ -560,18 +570,14 @@ constructor; intros.
 - apply FrameLatt.
 - simpl. unfold eqA, pointwise_relation. 
   unfold Proper, respectful. intros.
-  split; intros.
-  + unfold Included, Sat.
-    eapply trans. eassumption.
-    intros a0 H1. destruct H1.
-    apply trans with (y i).
+  split; unfold Included, Sat; intros.
+  + etrans. destruct X0.
+    apply (trans (U := y i)).
     rewrite Cov_Sat, <- (X i), <- Cov_Sat. 
     apply refl. assumption. specialize (X i).
     intros. apply refl. econstructor. eassumption. 
-  + unfold Included, Sat, In; intros.
-    eapply trans. eassumption.
-    intros a0 H1. destruct H1.
-    apply trans with (x i).
+  + etrans. destruct X0.
+    apply (trans (U := x i)).
     rewrite Cov_Sat, (X i), <- Cov_Sat.
     apply refl. assumption. intros.
     apply refl. econstructor; eassumption.
@@ -579,8 +585,7 @@ constructor; intros.
   + apply Sat_mono2. unfold Included, pointwise_rel, arrow; intros. 
     econstructor; eassumption. 
   + unfold Included, Sat, pointwise_rel, arrow; intros.
-    eapply trans. eassumption.
-    intros a0 H1. destruct H1. 
+    etrans. destruct X0. 
     rewrite Cov_Sat, <- (X i), <- Cov_Sat.
     apply refl. assumption.
 - simpl. unfold minA, eqA.
@@ -618,14 +623,12 @@ Theorem t (V : Subset S) : FormTop.t leS (Cov V).
 Proof.
 constructor; unfold Cov; intros.
 - apply FormTop.refl. right. assumption.
-- eapply FormTop.trans. apply X. clear X. intros a' H.
-  destruct H. apply FormTop.refl. left. assumption.
+- FormTop.etrans.
+  destruct X. apply FormTop.refl. left. assumption.
   apply X0. assumption.
 - apply FormTop.le_left with b; assumption.
-- pose proof (FormTop.le_right a _ _ X X0). 
-  eapply FormTop.trans. apply X1.
-  clear X1. simpl. intros a' H1.
-  destruct H1. destruct d, d0.
+- FormTop.ejoin. FormTop.etrans.
+  destruct X1. destruct d, d0.
   destruct i. rewrite l. apply FormTop.refl. left.  assumption.
   destruct i0. rewrite l0. apply FormTop.refl. left. assumption.
   rewrite <- Union_Included_r.

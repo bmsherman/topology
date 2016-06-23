@@ -67,6 +67,14 @@ intros. unfold Included, pointwise_rel, arrow; intros.
 destruct X. destruct i. constructor; econstructor; eassumption.
 Qed.
 
+Lemma union_eq A B (x: A) (f : A -> Subset B) :
+  union (eq x) f ⊆ f x.
+Proof.
+unfold Included, In, pointwise_rel, arrow; intros.
+destruct X. induction i. assumption.
+Qed.
+
+
 Theorem Intersection_Included_l : forall A (U V : Subset A),
   U ∩ V ⊆ U.
 Proof.

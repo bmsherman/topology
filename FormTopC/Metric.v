@@ -8,36 +8,114 @@ Require Import CoRN.metric2.Metric
   CoRN.model.structures.Qpossec
   Coq.QArith.QArith_base
   CMorphisms.
+Require Import CoRN.model.structures.QposInf.
 
 (** Positive upper-real numbers *)
 
 Module PosUR.
 
-(** I get a Coq error if I leave le as returning Prop *)
-Definition le (x y : Qpos) : Type := x <= y.
+(** I get a Coq error with using the typeclasses
+    if I leave le as returning Prop *)
+Definition le (x y : QposInf) : Type := QposInf_le x y.
 
-Definition Ix (x : Qpos) : Type := unit.
+Local Infix "<=" := le.
 
-Definition C (q : Qpos) (_ : Ix q) : Subset Qpos
-  := fun q' => q' < q.
+Definition lt (x y : QposInf) : Type :=
+  ((x <= y) * ((y <= x) -> False))%type.
+
+Local Infix "<" := lt.
+
+Definition Ix (x : QposInf) : Type := unit.
+
+Definition C (q : QposInf) (_ : Ix q) : Subset QposInf
+  := fun q' => lt q' q.
 
 Instance PO : PreO.t le.
 Proof.
 constructor; unfold le; intros.
-- apply Qle_refl.
-- eapply Qle_trans; eassumption.
+- destruct x; simpl. apply Qle_refl. constructor.
+- destruct x, y, z; simpl in *; try (constructor || contradiction).
+ eapply Qle_trans; eassumption.
 Qed.
 
 Existing Instance PreO.PreOrder_I.
+
+Lemma lt_le_trans (x y z : QposInf) : x < y -> y <= z -> x < z.
+Proof.
+unfold lt in *. 
+intros P Q. destruct P as (P1 & P2). split.
+etransitivity; eassumption.
+intros.  apply P2. etransitivity; eassumption.
+Qed.
+
+Lemma lt_le_weak (x y : QposInf) : x < y -> x <= y.
+Proof.
+intros H. destruct H. assumption.
+Qed. 
 
 Definition loc : FormTop.localized le C.
 Proof.
 unfold FormTop.localized.
 intros. exists tt. unfold C. intros.
-exists s. split. eapply Qlt_le_trans; eassumption.
-split. apply Qlt_le_weak. assumption. 
+exists s. split. eapply lt_le_trans; eassumption.
+split. apply lt_le_weak. assumption. 
 reflexivity.
 Qed.
+
+Definition fromQpos (x : Qpos) (y : QposInf) := x < y.
+
+Require Import FormTopC.Cont.
+
+Definition Pt := IGCont.pt le C.
+
+Definition Qpos_two : Qpos := Qpos_one + Qpos_one.
+
+Definition Qpos_one_half : Qpos := Qpos_one / Qpos_two.
+
+Definition Qpos_smaller (x : Qpos) : { y : Qpos & y < x }.
+Proof.
+exists (Qpos_mult Qpos_one_half x).
+unfold lt. split. unfold le.
+simpl. setoid_replace (x : Q) with (Qmult 1%Q (x : Q)) at 2 by ring.
+apply Qmult_le_compat_r.
+ring_simplify. apply Qle_shift_inv_r. reflexivity.
+unfold Qle, Z.le. simpl. unfold not. intros. inversion H.
+apply Qlt_le_weak. apply Qpos_prf.
+intros.
+admit. (* I am lazy *)
+Admitted.
+
+Lemma Qpos_plus_lt (x y : Qpos) : x < x + y.
+Proof.
+unfold lt. split.
+- unfold le. simpl.
+  setoid_replace (x : Q) with (x + 0)%Q at 1.
+  apply Qplus_le_compat. apply Qle_refl. apply Qlt_le_weak.
+  apply Qpos_prf. ring.
+- unfold le. simpl. 
+  setoid_replace (x : Q) with (x + 0)%Q at 2 by ring.
+  intros. apply Q.Qplus_le_r in H.
+  eapply Qlt_not_le. 2:eassumption. apply Qpos_prf.
+Qed.
+
+Lemma QposInf_between (x y : QposInf) : x < y ->
+  { z : QposInf & ((x < z) * (z < y))%type }.
+Admitted.
+
+Definition Qpos_pt (x : Qpos) : Pt (fromQpos x).
+Proof.
+constructor; intros.
+- exists (x + 1)%Qpos. unfold In, fromQpos.
+  apply Qpos_plus_lt.
+- exists (QposInf_min b c). constructor.
+  constructor. apply QposInf_min_lb_l. apply QposInf_min_lb_r.
+  unfold fromQpos in *.
+  admit.
+- unfold fromQpos in *. eapply lt_le_trans; eassumption.
+- destruct i. unfold fromQpos in *. unfold C.
+  destruct (QposInf_between x a X).
+  destruct p. exists x0. split; assumption.
+Abort.
 
 End PosUR.
 

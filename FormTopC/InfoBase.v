@@ -704,8 +704,7 @@ Lemma Sat_Cov : forall U V,
   -> FormTop.Sat CovT U ⊆ FormTop.Sat CovT V.
 Proof.
 intros. unfold FormTop.Sat, Included, pointwise_rel, arrow in *.
-intros. apply FormTop.trans with U. assumption. 
-assumption.
+intros. FormTop.etrans. apply X; assumption. 
 Qed.
 
 Local Instance PreOrder_le_Open : PreO.t le_Open.
