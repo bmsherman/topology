@@ -21,6 +21,9 @@ FormTopC/Cont.v
 FormTopC/Product.v
 FormTopC/InfoBase.v
 FormTopC/Bundled.v
+FormTopC/Discrete.v
+FormTopC/NatInfty.v
+FormTopC/Lift.v
 
 Algebra/FrameC.v
 Algebra/Sets.v
@@ -46,6 +49,7 @@ clement/SmallPowers.v
 
 alea/BinCoeff.v
 
+StdLib.v
 ContPL.v
 Sample.v
 FiniteSum.v

@@ -79,9 +79,8 @@ Class t : Type :=
 Arguments t : clear implicits.
 
 (** Definition of a formal cover that also has a positivity predicate. *)
-Record tPos {Pos : S -> Prop} :=
-  { cov :> t
-  ; mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
+Record tPos {Pos : Subset S} :=
+  { mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
   ; positive : forall a U, (Pos a -> a <| U) -> a <| U
   }.
 
@@ -92,7 +91,7 @@ Definition stable :=
   -> forall c, c <= a -> c <= b ->
     c <| downset U ∩ downset V.
 
-Context `{H : t}.
+Context `{FTS : t}.
 
 Lemma monotone (U V : Subset S)
   : U ⊆ V -> forall a : S, a <| U -> a <| V.
@@ -110,6 +109,7 @@ Qed.
 End Defn.
 
 Arguments t {S} le Cov : clear implicits.
+Arguments tPos {S} Cov Pos : clear implicits.
 Arguments down {S} le a b c : clear implicits.
 Arguments downset {S} le U _ : clear implicits.
 Arguments stable {S} le Cov : clear implicits.
@@ -312,19 +312,107 @@ Qed.
 
 End AxiomSetRefine.
 
-(*
-Instance t_proper {S : Type} : 
-  Proper ((eq ==> eq ==> iffT) ==> (eq ==> eq ==> iffT) ==> iffT) (@t S).
+Lemma downset_Proper_impl {A} : Proper ((eq ==> eq ==> arrow) ==> Included ==> Included)
+  (@downset A).
 Proof.
-Admitted.
-*)
+unfold Proper, respectful.
+intros. unfold Included, In, pointwise_rel, arrow.
+intros. destruct X1. econstructor.
+apply X0. eassumption. unfold arrow in X.
+eapply X; try reflexivity. assumption.
+Qed.
 
+Lemma Same_set_Included {A} (U V : Subset A) : U === V -> ((U ⊆ V) * (V ⊆ U))%type.
+Proof.
+intros H. split; rewrite H; reflexivity. 
+Qed.
+
+Instance downset_Proper {A} : Proper ((eq ==> eq ==> iffT) ==> Same_set ==> Same_set) (@downset A).
+Proof.
+unfold Proper, respectful. intros.
+apply Same_set_Included in X0. destruct X0. 
+apply Included_Same_set; apply downset_Proper_impl; try assumption;
+  unfold respectful, arrow; intros; subst.
+eapply (fst (X _ _ eq_refl _ _ eq_refl)). assumption.
+eapply (snd (X _ _ eq_refl _ _ eq_refl)). assumption.
+Qed.
+
+Lemma t_proper_impl {S : Type} : 
+  Proper ((eq ==> eq ==> iffT) ==> (eq ==> Same_set ==> iffT) ==> arrow) (@t S).
+Proof.
+unfold Proper, respectful, arrow; intros.
+destruct X1. constructor; intros.
+- rewrite <- X0; try reflexivity. apply refl0. eassumption.
+- rewrite <- X0; try reflexivity. eapply trans0. 
+  rewrite X0; try reflexivity. eassumption. 
+  intros. rewrite X0; try reflexivity. apply X2. assumption.
+- rewrite <- X0; try reflexivity. eapply le_left0. 
+  rewrite X; try reflexivity. eassumption.
+  rewrite X0; try reflexivity. assumption.
+- rewrite <- X0. 2: reflexivity. Focus 2.
+  apply Intersection_Proper. apply downset_Proper.
+  unfold respectful. apply X. reflexivity.
+  apply downset_Proper. unfold respectful. apply X.
+  reflexivity. 
+  apply le_right0; rewrite X0; try reflexivity; assumption.
+Qed.
+
+Instance t_proper {S : Type} : 
+  Proper ((eq ==> eq ==> iffT) ==> (eq ==> Same_set ==> iffT) ==> iffT) (@t S).
+Proof.
+pose proof (@t_proper_impl S).
+unfold Proper, respectful, arrow in X. 
+unfold Proper, respectful. intros.
+split; intros;
+eapply X; try eassumption.
+intros. symmetry. apply X0; symmetry; assumption.
+intros. symmetry. apply X1; symmetry; assumption.
+Qed.
+
+Section Properness.
+Context {S : Type}.
+Variable (le : crelation S) (Cov : S -> Subset S -> Type).
+Context `{PO : PreO.t S le}.
+Context `{tS : t S le Cov}. 
+
+
+Instance Cov_Proper  :
+  Proper (le --> Included ==> arrow) Cov.
+Proof.
+unfold Proper, respectful, arrow. intros.
+unfold flip in *. 
+eapply le_left; try eassumption.
+eapply monotone; eassumption.
+Qed.
+
+(** This is just a flipped version of what's above. It
+    shouldn't be needed. *)
+
+Instance Cov_Proper3  :
+  Proper (le ==> Included --> flip arrow) Cov.
+Proof.
+unfold Proper, respectful, arrow, flip. intros.
+eapply le_left; try eassumption.
+eapply monotone; eassumption.
+Qed.
+
+
+Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
+Proof.
+unfold Proper, respectful. intros x y xy x' y' xy'. subst.
+split; intros. apply (monotone x'). 
+apply Included_subrelation. assumption. assumption.
+apply (monotone y'). apply Included_subrelation. symmetry. assumption.
+assumption.
+Qed.
+
+End Properness.
 
 
 Section Localize.
 
-Context {S : Type} {le : crelation S}.
-Context {PO : PreO.t le}.
+Context {S : Type}.
+Variable (le : crelation S).
 Context {Ix : S -> Type}.
 Variable (C : forall s, Ix s -> Subset S).
 
@@ -336,6 +424,8 @@ Definition CL (a : S) : IxL a -> Subset S :=
   fun i => match i with
   | existT (existT c k) _ => fun z => { u : S & C c k u * down le a u z }%type
   end.
+
+Context {PO : PreO.t le}.
 
 Theorem Llocalized : localized le CL.
 Proof.
@@ -375,15 +465,24 @@ intros a U. split; intros H.
     intros. auto.
 Qed.
 
+Local Instance GCov_Proper : Proper (le --> Included ==> arrow)
+  (GCov le CL). 
+Proof. 
+apply Cov_Proper. apply GCov_formtop.
+apply Llocalized.
+Qed.
+
 Theorem GCovL_formtop : t le (GCovL le C).
 Proof.
-Admitted.
-(*
 eapply t_proper. reflexivity.
-unfold Proper, respectful; intros. subst. apply cov_equiv.
-apply GCov_formtop. apply Llocalized.
+unfold Proper, respectful; intros.
+2: apply GCov_formtop. 2: apply Llocalized.
+split; intros; subst.
+eapply GCov_Proper. reflexivity. rewrite <- X. reflexivity.
+apply cov_equiv. assumption.
+apply cov_equiv. eapply GCov_Proper. reflexivity.
+rewrite X. reflexivity. assumption.
 Qed.
-*)
 
 End Localize.
 
@@ -440,35 +539,7 @@ constructor; unfold eqA; intros.
   apply X. assumption. apply X0. assumption.
 Qed.
 
-Instance Cov_Proper  :
-  Proper (le --> Included ==> arrow) Cov.
-Proof.
-unfold Proper, respectful, arrow. intros.
-unfold flip in *. 
-eapply le_left; try eassumption. 
-eapply (monotone _); eassumption.
-Qed.
-
-(** This is just a flipped version of what's above. It
-    shouldn't be needed. *)
-
-Instance Cov_Proper3  :
-  Proper (le ==> Included --> flip arrow) Cov.
-Proof.
-unfold Proper, respectful, arrow, flip. intros.
-eapply le_left; try eassumption.
-eapply (monotone _); eassumption.
-Qed.
-
-
-Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
-Proof.
-unfold Proper, respectful. intros x y xy x' y' xy'. subst.
-split; intros. apply (monotone x'). 
-apply Included_subrelation. assumption. assumption.
-apply (monotone y'). apply Included_subrelation. symmetry. assumption.
-assumption.
-Qed.
+Existing Instances Cov_Proper Cov_Proper2 Cov_Proper3.
 
 Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
