@@ -54,6 +54,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
        (@fst_strong _ _ _) (@snd_strong _ _ _ _ _ _)
        (@stream_hd _ _ _) (@stream_tl _ _ _)
     : cat_db.
+
+
+  Notation "'LAM'<< Γ | E >> x => f" := (makeFun1E (fun Γ E x => f))
+                                        (at level 120, right associativity). 
+  
+  Notation "x <- e ;<< Γ | E >> f" := (Bind e (makeFun1E (fun Γ E x => f))) 
+                                      (at level 120, right associativity).
+
   
   Definition swap {A B : U} : A * B ~~> B * A :=
     ⟨snd, fst⟩.
@@ -87,6 +95,13 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Proof. intros Γ A B C f h k. unfold emap. rewrite map_compose.
          rewrite <- (compose_assoc _ (map snd)).
          rewrite snd_strong. rewrite <- (compose_assoc _ snd). rewrite pair_snd. reflexivity.
+  Defined.
+
+  Lemma emap_snd : forall {Γ A B : U} (h : A ~~> Γ) (k : A ~~> Prob B),
+      (emap snd) ∘ ⟨h, k⟩ == k.
+  Proof. intros Γ A B h k. rewrite <- (compose_id_left snd).
+         rewrite emap_snd_pair.
+         autorewrite with cat_db. reflexivity.
   Defined.
 
   Theorem map_Ret : forall {Γ A B : U} (f : Γ ~~> A) (h : A ~~> B),
@@ -149,12 +164,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          autorewrite with cat_db.
          reflexivity.
   Defined.
-
-  Axiom whatever : forall {A}, A.
-    
+   
 
   Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> B),
-      Bind m (Ret (makeFun1E f)) ==  (emap (makeFun1E f)) ∘ ⟨id, m⟩.
+      (x <- m ;<< Δ | ext >> (Ret (f Δ ext x))) ==  (emap (makeFun1E f)) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m f.
          apply Bind_m_Ret.
   Defined.
@@ -248,6 +261,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
              rewrite compose_assoc; autorewrite with cat_db. reflexivity.
            + rewrite !compose_assoc; autorewrite with cat_db. reflexivity.
   Qed.
+
+  Axiom whatever : forall {A}, A.
+
+  Ltac simpl_ext := unfold liftF, Lift, Extend_Prod, Extend_Refl, extend;
+                    repeat rewrite compose_id_right.
+        
+         
+
          
     
   Theorem Bind_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> Prob C),
@@ -262,7 +283,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite <- (compose_assoc _ _ (map f)).
          rewrite <- (compose_assoc _ _ strong).
          rewrite parallel_pair.
-         autorewrite with cat_db.
+         rewrite compose_id_left.
          rewrite !compose_assoc; reflexivity.
   Qed.
   
@@ -311,23 +332,20 @@ Proof. Abort.
   rewrite <- !(compose_assoc _ _ strong).
   apply compose_Proper. reflexivity.
   rewrite map_id. 
-  rewrite parallel_pair. autorewrite with cat_db.
+  rewrite parallel_pair.
   rewrite pair_f. autorewrite with cat_db. reflexivity.
   Qed.
 
-(*
-  Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
-    (f : Δ * A ~~> A -> Δ * A ~~> Prob B), (a <- x; f a) ∘ g == (b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩).
-  Proof.
-    intros.
-    rewrite Bind_ext. apply Bind_Proper; try reflexivity.
-    unfold makeFun1E. apply compose_Proper; try reflexivity.
-    apply proj_eq.
-    - rewrite parallel_fst. autorewrite with cat_db. reflexivity.
-    - rewrite parallel_snd. autorewrite with cat_db. reflexivity.
-  Qed.
-*)
 
+  Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
+                        (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> Prob B),
+      ((a <- x;<< Δ' | eΔ >>  (f Δ' eΔ a)) ∘ g) == (a <- x ∘ g ;<< Γ' | eΓ >> (f Γ' (g ∘ eΓ) a)).
+  (*b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩). *)
+  Proof.
+    intros. 
+    rewrite Bind_ext. apply Bind_Proper; try reflexivity. (* Here we need to use: lam_eval_ext. *)
+    admit.
+Admitted.
 
   Theorem call_inv {A B C : U} (f : forall Δ, Δ ~~> A -> Δ ~~> B -> Δ ~~> C)
   (f_ext1 : forall Δ, Proper (eq ==> eq ==> eq) (f Δ))
@@ -348,7 +366,6 @@ Proof. Abort.
   reflexivity. unfold makeFun1E. 
   rewrite Bind_ext.
   apply Bind_Proper. unfold Lift, Extend_Prod, Extend_Refl.
-  autorewrite with cat_db. 
   rewrite <- !(compose_assoc _ _ y). 
   apply compose_Proper. reflexivity.
   unfold parallel, extend. autorewrite with cat_db. reflexivity.
@@ -359,7 +376,7 @@ Proof. Abort.
   autorewrite with cat_db.
   rewrite <- compose_assoc. autorewrite with cat_db.
   rewrite compose_assoc. autorewrite with cat_db. reflexivity.
-  unfold parallel. autorewrite with cat_db. reflexivity.
+  autorewrite with cat_db. reflexivity.
   Qed.
 
   Theorem call_indep : forall Γ A B (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
@@ -387,8 +404,7 @@ Proof. Abort.
            rewrite <- ret_Ret.
            (* NB at this point we've reduced one Bind ... Ret ... to a Ret ... *)
            rewrite Bind_m_Ret.
-           rewrite <- (compose_id_left snd). (* A bit silly, maybe make this special later? *)
-           rewrite emap_snd_pair.
+           rewrite emap_snd.
            autorewrite with cat_db.
            reflexivity.
            
@@ -517,9 +533,6 @@ Admitted.
 
 (** We'll prove the rest from these. *)
 
-Ltac simpl_ext := unfold liftF, Lift, Extend_Prod, Extend_Refl, extend;
-  repeat rewrite compose_id_right.
-
 Lemma lam_eval_ext {Γ Γ' A' A B : U} (f : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> B)
   (x : A' ~~> A) (ext : Γ' ~~> Γ)
  : makeFun1E f ∘ ext ⊗ x == makeFun1E (fun Δ e z => f _ (ext ∘ e) (! (x ∘ z))).
@@ -543,7 +556,30 @@ Proof.
 rewrite lam_eval_ext. unfold makeFun1E.
 simpl_ext. apply lam_Proper; autorewrite with cat_db; reflexivity.
 Qed.
+
+Lemma lam_id : forall {P Q : U}, ('LAM'<< _ | _ >> x => x) == snd (A:=P)(B:=Q).
+Proof. intros P Q. unfold makeFun1E. reflexivity.
+Defined.
+
+
+Theorem Bind'_Bind' : forall {Δ A B C : U} (m : Δ ~~> Prob A)
+                        (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> Prob B)
+                        (g : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> B -> Δ0 ~~> Prob C),
+    (x <- (y <- m ;<< Δ' | eΔ >> (f Δ' eΔ y));<< Δ'' | eΔ' >> (g Δ'' eΔ' x)) ==
+    (y <- m ;<< Δ' | eΔ >> x <- (f Δ' eΔ y);<< Δ'' | eΔ' >> (g Δ'' (eΔ ∘ eΔ') x)).
+Proof. intros. 
+       rewrite Bind_Bind.
+       repeat (apply Bind_Proper; try reflexivity).
+       rewrite lam_eval_ext.
+       apply lam_extensional.
+       intros. simpl_ext.
+       (* Need to use properness of g somehow here, don't quite know how to apply lam_Proper. *)
+       admit.
+Admitted.
+       
+
   
+
   Theorem constant_unfold : forall {Γ A : U} (mu : Γ ~~> Prob A),
       (constant_stream mu) == (constant_unfold_prog mu).
   Proof. intros Γ A mu.
@@ -561,7 +597,7 @@ Qed.
          unfold Ret. remove_eq_left. apply cons_Proper.
          simpl_ext. unfold add_unit_right. 
          rewrite <- !compose_assoc. rewrite compose_assoc.
-         rewrite pair_fst. autorewrite with cat_db. reflexivity.
+         autorewrite with cat_db. reflexivity.
          reflexivity.
   Qed.
            
@@ -571,26 +607,9 @@ Qed.
   
   Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
     (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
-  Proof. intros Γ A B mu nu. remember (Fubini mu nu id) as H0.
-         assert ( (x <- mu; y <- ! nu; Ret (id ∘ ⟨ ! x, y ⟩))
-              ==  (x <- mu; y <- ! nu; Ret ⟨ ! x, y ⟩)) as H1.
-         {
-           apply Bind_Proper; try reflexivity.
-           apply lam_extensional; intros ? ? a.
-           apply Bind_Proper; try reflexivity.
-           apply lam_extensional; intros ? ? b.
-           rewrite compose_id_left. reflexivity.
-         }
-         assert ( ((y <- nu; x <- ! mu; Ret (id ∘ ⟨ x, ! y ⟩))) ==
-                  ((y <- nu; x <- ! mu; Ret ⟨ x, ! y ⟩) ) ) as H2.
-         {
-           apply Bind_Proper; try reflexivity.
-           apply lam_extensional; intros ? ? b.
-           apply Bind_Proper; try reflexivity.
-           apply lam_extensional; intros ? ? a.
-           rewrite compose_id_left. reflexivity.
-         }
-         rewrite <- H1, H0, H2. reflexivity.
+  Proof. intros Γ A B mu nu.
+         refine (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
+         intros. reflexivity.         
   Qed.                
 
   Existing Instance Streamprops.
@@ -601,12 +620,6 @@ Lemma lam_postcompose {Γ A B C : U} (f : forall Δ (ext : Extend Γ Δ), Δ ~~>
 Proof.
  reflexivity.
 Qed.
-
-Notation "'LAM'< Γ | E > x => f" := (makeFun1E (fun Γ E x => f))
-  (at level 120, right associativity).
-
-Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f))) 
-  (at level 120, right associativity).
 
 
   Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
@@ -671,20 +684,54 @@ Notation "x <- e ;< Γ | E > f" := (Bind e (makeFun1E (fun Γ E x => f)))
          refine (b <- DB ∘ ⟨e, a⟩; _).
          refine (Ret b).
   Defined.
+  
 
+  Lemma Map_program : forall {Δ A S : U} (DS : Δ ~~> Prob S) (SA : Δ * S ~~> S * A),
+      (Map SA DS) == (s <- DS;<< _ | e >> Ret (ap2 SA e s)).
+  Proof. intros.
+         unfold Map.
+         rewrite Bind'_m_Ret.
+         remove_eq_right. apply map_Proper.
+         unfold makeFun1E, ap2, extend, Extend_Prod, Extend_Refl.
+         assert (forall {P Q : U}, ⟨id ∘ fst, snd⟩ == id (A:=P*Q)).
+         { intros. apply proj_eq; (autorewrite with cat_db; reflexivity). }
+         rewrite H, compose_id_right. reflexivity.
+  Qed.
 
+  Lemma ap2_ext_eval : forall {Δ A B : U} (f : forall Δ' (ext : Extend Δ Δ'), Δ' ~~> A -> Δ' ~~> B)
+      (Δ0 : U) (e0 : Extend Δ Δ0) (a0 : Δ0 ~~> A),
+      (ap2 ('LAM'<< Δ' | e >> a => f Δ' e a) e0 a0) == f Δ0 e0 a0.
+  Proof. intros Δ A B f Δ0 e0 a0. unfold ap2. 
+         apply lam_eval.
+  Qed.
+  
   Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
       Sampler DS (bind_sampler_prog DS DA DB).
   Proof. intros [SA samplesA] [SB samplesB].
          refine (sampler _ _).
          Unshelve. Focus 2.
-         refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩).
+         refine ('LAM'<< Δ' | e >> s =>
+                               let s':= fst ∘ (ap2 SA e s) in
+                               let a := snd ∘ (ap2 SA e s)
+                               in (ap3 SB e a s)).
+         rewrite Map_program. 
 
+         assert ((s <- DS;<< Δ0 | e >>
+    Ret
+      (ap2
+         ('LAM'<< Δ' | e0 >> s0 =>
+                       (let s' := fst ∘ ap2 SA e0 s0 in let a := snd ∘ ap2 SA e0 s0 in ap3 SB e0 a s0)) e s)) ==
+                 (s <- DS;<< Δ0 | e >>
+     Ret (ap3 SB e (snd ∘ ap2 SA e s) s))).
+         { apply bind_extensional; intros. rewrite ap2_ext_eval. reflexivity. }
+         rewrite H.
+         
+         (* refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩). *)
+   
 (*         unfold bind_sampler_prog. (* Just Bind DA DB *)
          setoid_rewrite Bind_m_Ret.
          rewrite <- (compose_id_left snd). rewrite emap_snd_pair.
          simpl_ext.
          autorewrite with cat_db. *)
          unfold indep.
-         unfold bind_sampler_prog. simpl_ext.
