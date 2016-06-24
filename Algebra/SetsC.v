@@ -1,4 +1,4 @@
-Require Import Coq.Classes.CRelationClasses.
+Require Import Prob.StdLib Coq.Classes.CRelationClasses.
 
 Set Universe Polymorphism.
 

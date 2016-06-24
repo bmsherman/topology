@@ -1,4 +1,4 @@
-Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC 
+Require Import Prob.StdLib FormTopC.FormTop Algebra.FrameC Algebra.SetsC 
   FormTopC.Cont.
 
 Set Universe Polymorphism.
@@ -19,14 +19,14 @@ Variable IT : T -> Type.
 Variable CS : forall s, IS s -> Subset S.
 Variable CT : forall t, IT t -> Subset T.
 
-Definition Ix (p : S * T) : Type := match p with
-  (s, t) => (IS s * T + S * IT t)%type end.
+Definition Ix (p : S * T) : Type := let (s, t) := p in
+   (IS s * T + S * IT t)%type.
 
 Definition C (p : S * T) : Ix p -> Subset (S * T)
-  := match p as p' return Ix p' -> Subset (S * T) with (a, b) =>
+  := match p as p' return Ix p' -> Subset (S * T) with pair a b =>
   fun pI open => let (z, w) := open in match pI with
-    | inl (sI, t) => CS a sI z * (w = b)
-    | inr (s, tI) => (z = a) * CT b tI w
+    | inl (pair sI t) => CS a sI z * (w = b)
+    | inr (pair s tI) => (z = a) * CT b tI w
     end%type
   end.
 

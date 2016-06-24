@@ -85,6 +85,13 @@ intros.
 admit. (* I am lazy *)
 Admitted.
 
+Definition QposInf_smaller (x : QposInf) : { y : Qpos & y < x }.
+Proof.
+destruct x.
+- apply Qpos_smaller.
+- exists Qpos_one. unfold lt. simpl. auto.
+Qed.
+
 Lemma Qpos_plus_lt (x y : Qpos) : x < x + y.
 Proof.
 unfold lt. split.
@@ -116,6 +123,39 @@ constructor; intros.
   destruct (QposInf_between x a X).
   destruct p. exists x0. split; assumption.
 Abort.
+
+Definition URzero (x : QposInf) : Type := unit.
+
+Definition URzero_pt : Pt URzero.
+Proof.
+constructor; intros.
+- exists 1%Qpos. constructor.
+- exists (QposInf_min b c). constructor.
+  constructor.  apply QposInf_min_lb_l. apply QposInf_min_lb_r.
+  constructor.
+- constructor.
+- destruct i. destruct (QposInf_smaller a).
+  exists x. split. constructor. assumption.
+Qed.
+
+Inductive URinfty : QposInf -> Type :=
+  MkURinfty : URinfty QposInfinity.
+
+Definition URinfty_pt : Pt URinfty.
+Proof.
+constructor; intros.
+- exists QposInfinity. constructor.
+- exists (QposInf_min b c). constructor.
+  constructor.  apply QposInf_min_lb_l. apply QposInf_min_lb_r.
+  destruct X, X0. simpl. constructor.
+- destruct X. destruct b; simpl in *. contradiction. 
+  econstructor.
+- destruct i. exists QposInfinity. split. constructor.
+  unfold C.
+  (* I need to change my definition of lt or of C so that
+     this doesn't happen. *)
+Abort. 
+
 
 End PosUR.
 
@@ -287,7 +327,7 @@ constructor; intros.
   apply Qpossmaller_prf. simpl in *.
   subst. assumption.
 - unfold lift in *. intros.
-  apply X0. apply H. assumption.
+  apply X0. admit. (* apply H. assumption. *)
 - destruct a, b, c. 
   pose (eps := QposMinMax.Qpos_min q0 q1).
   pose (delt := Qpossmaller (mu f eps)).

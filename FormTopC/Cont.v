@@ -559,7 +559,7 @@ Context {CS : forall a, IxS a -> Subset S}.
 
 Let CovS := FormTop.GCovL leS CS.
 Instance FTS : FormTop.t leS CovS := 
-  FormTop.GCovL_formtop CS.
+  FormTop.GCovL_formtop leS CS.
 
 Context {T : Type} {leT : crelation T} {POT : PreO.t leT}.
 Context {CovT : T -> Subset T -> Type}.
@@ -580,11 +580,11 @@ Definition C1 (a : S) (i : Ix1 a) : Subset S := match i with
   | Img t Fat => FormTop.downset leS (F t)
   end.
 
-Definition Ix := FormTop.IxL (le := leS) (Ix := Ix1).
-Definition C := FormTop.CL (le := leS) (Ix := Ix1) C1.
+Definition Ix := FormTop.IxL leS (Ix := Ix1).
+Definition C := FormTop.CL leS (Ix := Ix1) C1.
 
 Definition loc : FormTop.localized leS C
-  := FormTop.Llocalized C1.
+  := FormTop.Llocalized leS C1.
 
 Definition Cov := FormTop.GCov leS C.
 

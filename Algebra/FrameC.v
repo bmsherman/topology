@@ -1,4 +1,4 @@
-Require Import Coq.Classes.CMorphisms Coq.Classes.CRelationClasses.
+Require Import Prob.StdLib Coq.Classes.CMorphisms Coq.Classes.CRelationClasses.
 
 Set Universe Polymorphism.
 Generalizable All Variables.
@@ -781,7 +781,7 @@ Module MeetLat.
   intros.
   apply PO.min_unique with a (min b c).
   - apply min_ok.
-  - eapply (snd (PreO.min_assoc _ a b c _ _ _ _ _)). apply min_ok.
+  - eapply (Datatypes.snd (PreO.min_assoc _ a b c _ _ _ _ _)). apply min_ok.
   Unshelve. apply min_ok. apply min_ok.
   Qed.
 

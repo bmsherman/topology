@@ -1,7 +1,9 @@
 Require Import FormTopC.FormTop 
   FormTopC.Cont
   Algebra.FrameC FormTopC.Product FormTopC.InfoBase 
-  Algebra.SetsC.
+  FormTopC.Discrete
+  Algebra.SetsC
+  Prob.StdLib.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
