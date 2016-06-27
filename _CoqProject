@@ -45,6 +45,9 @@ Spec/Stream.v
 Spec/Sum.v
 Spec/Lift.v
 
+Spec/CCC/CCC.v
+Spec/CCC/Presheaf.v
+
 clement/SmallPowers.v
 
 alea/BinCoeff.v
