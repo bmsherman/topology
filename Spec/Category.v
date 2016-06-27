@@ -118,6 +118,11 @@ Definition ap2 {Γ A B C : U}
   (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
   f ∘ ⟨x, y⟩.
 
+Definition ap3 {Γ A B C D : U} 
+  (f : A * B * C ~~> D) (x : Γ ~~> A) (y : Γ ~~> B) (z : Γ ~~> C) : Γ ~~> D := 
+  f ∘ ⟨⟨x, y⟩, z⟩.
+
+
 Definition add_unit_left {A : U} : A ~~> unit * A
   := ⟨tt, id⟩.
 
