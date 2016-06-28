@@ -29,6 +29,6 @@ Class CCCProps : Prop :=
 
 End CCC.
 
-Infix "==>" := Func (at level 55, right associativity) : Ty_scope.
+Infix "==>" := Func (at level 55, right associativity) : obj_scope.
 
 End CCC.

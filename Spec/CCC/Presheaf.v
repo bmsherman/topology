@@ -157,6 +157,21 @@ refine (
   split; apply psh_morph_compose.
 Defined.
 
+(** Yoneda embedding *)
+Definition Y (X : U) : PSh.
+Proof.
+refine (
+  {| psh_obj := fun Γ => cmap_Setoid Γ X
+   ; psh_morph := fun Γ Δ f x => x ∘ f
+  |}
+).
+- intros. unfold Proper, respectful.
+  simpl. intros. apply compose_Proper; assumption.
+- simpl. intros. apply compose_id_right.
+- simpl. intros. rewrite compose_assoc.
+  reflexivity.
+Defined.
+
 Definition id_PSh {A : PSh} : NatTrns A A.
 Proof.
 refine (
@@ -377,6 +392,335 @@ apply nattrns_Proper. simpl. split.
 rewrite psh_morph_id. assumption.
 assumption.
 Qed. 
+
+Ltac build_CFunc := match goal with
+ | [  |- CFunc ?A ?B ?Γ ] => 
+    simple refine (Build_CFunc A B Γ _ _ _)
+ end.
+
+Definition Const (A : PSh) := NatTrns unit A.
+
+Definition toConst {A : PSh} (x : A unit)
+  : Const A.
+Proof.
+simpl. simple refine (Build_NatTrns _ _ _ _ _).
+- intros. eapply psh_morph. 2: eassumption.
+  apply tt.
+- unfold Proper, respectful. intros. apply psh_morph_Proper;
+  reflexivity.
+- simpl. intros. rewrite psh_morph_compose.
+  apply psh_morph_Proper. apply unit_uniq.
+  reflexivity.
+Defined.
+
+Lemma internalize {A B : PSh} (f : NatTrns A B)
+  : Const (A ==> B).
+Proof.
+apply toConst. simpl. build_CFunc.
+- intros. apply (nattrns _ _ f). assumption.
+- simpl. unfold Proper, respectful.
+  intros.  apply nattrns_Proper. assumption.
+- simpl.  intros. apply nattrns_ok. assumption.
+Defined.
+
+Definition Y_Prod1 {A B : U} : 
+  NatTrns (Y A * Y B) (Y (A * B)).
+Proof.
+simple refine (Build_NatTrns _ _ _ _ _).
++ simpl. intros. destruct X. apply pair; assumption.
++ simpl. unfold Proper, respectful. intros.
+  destruct x, y, H. simpl in *. apply pair_Proper; assumption.
++ simpl. intros.
+  destruct x, x', H. simpl in *.
+  rewrite <- pair_f. apply compose_Proper.
+  apply pair_Proper; assumption. reflexivity.
+Defined.
+
+Definition Y_Prod2 {A B} : NatTrns (Y (A * B)) (Y A * Y B).
+Proof.
+simple refine (Build_NatTrns _ _ _ _ _).
++ simpl. intros. split. exact (fst ∘ X).
+  exact (snd ∘ X).
++ simpl. intros. unfold Proper, respectful.
+  intros. simpl. split; rewrite H; reflexivity.
++ simpl. intros. split; rewrite H, compose_assoc; reflexivity.
+Defined.
+
+Definition Y_Func1 {A B} Γ : (Y A ==> B) Γ -> B (Γ * A).
+Proof.
+simpl. intros. eapply psh_morph. Focus 2.
+apply X. eapply fst. simpl. apply snd. apply id.
+Defined.
+
+Definition Y_Func2 {A} {B : PSh} Γ : B (Γ * A) -> (Y A ==> B) Γ.
+Proof.
+simpl. intros. build_CFunc.
+- simpl. intros. eapply psh_morph. 2: eassumption.
+  apply pair; assumption.
+- simpl. unfold Proper, respectful. intros.
+  apply psh_morph_Proper. apply pair_Proper; assumption.
+  reflexivity.
+- simpl. intros. rewrite psh_morph_compose.
+  apply psh_morph_Proper. rewrite <- pair_f. rewrite H.
+  reflexivity. reflexivity.
+Defined.
+
+Definition apply {A B : PSh} Γ : (A ==> B) Γ -> A Γ -> B Γ.
+Proof.
+simpl. intros. apply X. apply id. assumption.
+Defined.
+
+Inductive Basic : U -> PSh -> Type :=
+  | Basic_Base : forall A : U, Basic A (Y A)
+  | Basic_Prod : forall a A b B, Basic a A -> Basic b B -> 
+      Basic (a * b) (A * B).
+
+Lemma Y_Basic1 {a A} (b : Basic a A)
+  : NatTrns (Y a) A.
+Proof.
+induction b. 
+- apply id_PSh.
+- refine (compose_PSh _ Y_Prod2).
+  apply pair_PSh. 
+  + refine (compose_PSh IHb1 fst_Psh).
+  + refine (compose_PSh IHb2 snd_Psh).
+Defined.
+
+Lemma Y_Basic2 {a A} (b : Basic a A)
+  : NatTrns A (Y a).
+Proof.
+induction b.
+- apply id_PSh.
+- refine (compose_PSh Y_Prod1 _).
+  apply pair_PSh.
+  + refine (compose_PSh IHb1 fst_Psh).
+  + refine (compose_PSh IHb2 snd_Psh).
+Defined.
+
+Definition Y_ctxt (Δ A : U) : PSh.
+Proof.
+refine (
+  {| psh_obj := fun Γ => cmap_Setoid (Γ * Δ) A
+   ; psh_morph := fun Γ Γ' (ext : Γ' ~~> Γ) (f : Γ * Δ ~~> A) =>
+      f ∘ (ext ⊗ id)
+  |}).
+- intros. unfold Proper, respectful.
+  simpl. intros.
+  rewrite H, H0. reflexivity.
+- simpl. intros. unfold parallel.
+  rewrite !compose_id_left.
+  rewrite <- (compose_id_right fst).
+  rewrite <- (compose_id_right snd).
+  rewrite <- pair_uniq. apply compose_id_right.
+- simpl. intros. rewrite <- !compose_assoc. 
+  apply compose_Proper. reflexivity.
+  unfold parallel. rewrite pair_f. apply pair_Proper.
+  rewrite <- !compose_assoc. apply compose_Proper.
+  reflexivity. rewrite pair_fst.  reflexivity.
+  rewrite <- !compose_assoc. apply compose_Proper.
+  reflexivity. rewrite pair_snd. apply compose_id_left.
+Defined.
+
+
+Lemma extract_Basic {Γ} {a A} (b : Basic a A)
+  : A Γ -> Γ ~~> a.
+Proof.
+intros. apply (nattrns _ _ (Y_Basic2 b)). assumption.
+Defined.
+
+Lemma unextract_Basic {Γ a A} (b : Basic a A)
+  : (Γ ~~> a) -> A Γ.
+Proof.
+intros. apply (nattrns _ _ (Y_Basic1 b)). assumption.
+Defined.
+
+Inductive FirstOrder : U -> U -> PSh -> Type :=
+  | FO_Basic : forall {a A}, Basic a A -> FirstOrder unit a A
+  | FO_Func : forall {arg args ret A B}, 
+     Basic arg A -> FirstOrder args ret  B 
+    -> FirstOrder (arg * args) ret (A ==> B).
+
+Lemma basic_arg Γ {a A} (b : Basic a A)
+  : A (Γ * a).
+Proof.
+eapply unextract_Basic. eassumption.
+apply snd.
+Defined.
+
+Lemma Y_ctxt1 {A B : U} : 
+  NatTrns (Y A ==> Y B) (Y_ctxt A B).
+Proof. simpl.
+simple refine (Build_NatTrns _ _ _ _ _).
+- simpl. intros.
+  apply X. apply fst.  simpl. apply snd.
+- intros. unfold Proper, respectful.
+  simpl. intros.
+  apply H. reflexivity.
+- simpl. intros. 
+  pose proof (Func_ok x) as H'. simpl in H'.
+  rewrite H'. rewrite H. apply (Func_Proper x').
+  apply parallel_fst. simpl. reflexivity.
+  2: reflexivity. rewrite parallel_snd.
+  apply compose_id_left.
+Defined.
+
+Lemma Y_ctxt2 {A B : U} :
+  NatTrns (Y_ctxt A B) (Y A ==> Y B).
+Proof.
+simpl. simple refine (Build_NatTrns _ _ _ _ _).
+- simpl. intros.
+  build_CFunc. 
+  + simpl. intros. 
+    refine (compose X _). apply pair; assumption.
+  + unfold Proper, respectful. simpl. intros.
+    rewrite H, H0; reflexivity.
+  + simpl. intros. rewrite H.
+    rewrite <- pair_f. rewrite compose_assoc.
+    reflexivity.
+- unfold Proper, respectful. simpl. intros.
+  rewrite H, H0; reflexivity.
+- simpl. intros. rewrite H, H0.
+  rewrite <- !compose_assoc.
+  rewrite parallel_pair. rewrite compose_id_left.
+  reflexivity.
+Defined.
+  
+
+Lemma Y_Y_ctxt1 {A : U} : NatTrns (Y A) (Y_ctxt unit A).
+Proof.
+simple refine (Build_NatTrns _ _ _ _ _).
+- simpl. intros. refine (_ ∘ fst). assumption.
+- simpl. intros. unfold Proper, respectful.
+  intros. rewrite H; reflexivity.
+- simpl.  intros. 
+  rewrite <- !compose_assoc.
+  rewrite parallel_fst. rewrite H.
+  reflexivity.
+Defined.
+
+Lemma Y_Y_ctxt2 {A : U} : NatTrns (Y_ctxt unit A) (Y A).
+Proof.
+simple refine (Build_NatTrns _ _ _ _ _).
+- simpl. intros.
+  refine (_ ∘ ⟨ id , tt ⟩). assumption.
+- unfold Proper, respectful. simpl. intros.
+  rewrite H; reflexivity.
+- simpl. intros. 
+  rewrite H. rewrite <- !compose_assoc. 
+  rewrite parallel_pair.
+  rewrite pair_f. rewrite !compose_id_left, !compose_id_right.
+  rewrite unit_uniq. reflexivity.
+Defined.
+
+Definition parallel_Psh {A B X Y : PSh}
+  (f : NatTrns A X) (g : NatTrns B Y)
+  : NatTrns (A * B) (X * Y).
+Proof.
+apply pair_PSh. 
+refine (compose_PSh f fst_Psh).
+refine (compose_PSh g snd_Psh).
+Defined.
+
+Lemma prod_assoc_l_PSh {A B C : PSh} :
+  NatTrns (A * (B * C)) ((A * B) * C).
+Proof.
+apply pair_PSh. apply pair_PSh.
+apply fst_Psh. refine (compose_PSh _ snd_Psh).
+apply fst_Psh.
+apply (compose_PSh snd_Psh snd_Psh).
+Defined.
+
+Lemma prod_assoc_r_PSh {A B C : PSh} :
+  NatTrns ((A * B) * C) (A * (B * C)).
+Proof.
+apply pair_PSh. apply (compose_PSh fst_Psh fst_Psh). 
+apply pair_PSh.
+refine (compose_PSh _ fst_Psh). apply snd_Psh.
+apply snd_Psh.
+Defined.
+
+Lemma extract_FirstOrder {args ret A} 
+  (fo : FirstOrder args ret A) :
+  NatTrns A (Y_ctxt args ret).
+Proof.
+induction fo.
+- refine (compose_PSh _ (Y_Basic2 b)).
+  apply Y_Y_ctxt1.
+- refine (compose_PSh Y_ctxt1 _).
+  apply abstract_PSh.
+  refine (compose_PSh _ (parallel_Psh id_PSh 
+     (compose_PSh (parallel_Psh (Y_Basic1 b) id_PSh) Y_Prod2))).
+  refine (compose_PSh _ prod_assoc_l_PSh).
+  refine (compose_PSh _ (parallel_Psh eval_PSh id_PSh)).
+  pose proof (compose_PSh Y_ctxt2 IHfo).
+  refine (compose_PSh eval_PSh _).
+  eapply pair_PSh. refine (compose_PSh X fst_Psh).
+  apply snd_Psh.
+Defined.
+
+Lemma postcompose {A A' B} (f : NatTrns A' A)
+  : NatTrns (A ==> B) (A' ==> B).
+Proof.
+eapply abstract_PSh.
+refine (compose_PSh _ (parallel_Psh id_PSh f)).
+apply eval_PSh.
+Defined.
+
+Lemma precompose {A B B'} (f : NatTrns B B')
+  : NatTrns (A ==> B) (A ==> B').
+Proof.
+eapply abstract_PSh.
+refine (compose_PSh f _).
+apply eval_PSh.
+Defined.
+
+Lemma unextract_FirstOrder {args ret A}
+  (fo : FirstOrder args ret A) :
+  NatTrns (Y_ctxt args ret) A.
+Proof.
+induction fo.
+- refine (compose_PSh (Y_Basic1 b) _).
+  apply Y_Y_ctxt2.
+- refine (compose_PSh _ Y_ctxt2).
+  eapply compose_PSh. Focus 2.
+  apply (postcompose (A' := A * Y args)). 
+  eapply compose_PSh.
+  apply Y_Prod1. apply parallel_Psh.
+  apply Y_Basic2. assumption. apply id_PSh.
+  apply abstract_PSh.
+  eapply compose_PSh. eassumption.
+  eapply compose_PSh. apply Y_ctxt1.
+  apply abstract_PSh.
+  eapply compose_PSh.
+  Focus 2. apply prod_assoc_r_PSh.
+  apply eval_PSh.
+Defined.
+
+Lemma extract_basic_fully_abstract {Γ} {a A} (b : Basic a A)
+  (e e' : A Γ)
+  : seq (A Γ) e e'
+  -> (extract_Basic b e == extract_Basic b e')%morph.
+Proof.
+generalize dependent Γ. induction b; simpl; intros.
+- assumption.
+- destruct e, e', H. simpl in *. 
+  unfold extract_Basic.
+  rewrite nattrns_Proper. reflexivity.
+  simpl. split; assumption.
+Qed.
+
+Lemma extract_FO_fully_abstract {Γ} {args ret A}
+  (fo : FirstOrder args ret A)
+  (e e' : A Γ)
+  : seq (A Γ) e e'
+  -> (extract_FirstOrder fo Γ e == extract_FirstOrder fo Γ e')%morph.
+Proof.
+generalize dependent Γ. induction fo; intros.
+- apply compose_Proper; try reflexivity.
+  apply extract_basic_fully_abstract; assumption.
+- simpl. apply compose_Proper; try reflexivity.
+  apply IHfo. apply H. reflexivity.
+Qed.
 
 End Presheaf.
 
