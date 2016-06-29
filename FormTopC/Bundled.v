@@ -13,7 +13,7 @@ Local Open Scope loc.
 
 Module Bundled.
 
-(* Inductively-generated formal topology *)
+(* Inductively generated formal topology *)
 Record IGT : Type :=
   { S : Type
   ; le : S -> Subset S

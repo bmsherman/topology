@@ -192,6 +192,13 @@ Section BasicProps.
            + rewrite unit_uniq. symmetry. apply unit_uniq.            
   Defined.
 
+  Lemma pair_id {A B : U} :
+    ⟨ fst, snd ⟩ == id (A := A * B).
+  Proof.
+  rewrite (pair_uniq id).
+  rewrite !compose_id_right. reflexivity.
+  Qed.
+
   
   Lemma parallel_pair : forall {A B C D E : U} (f : A ~~> B) (g : A ~~> C) (h : B ~~> D) (k : C ~~> E), (h ⊗ k) ∘ ⟨f, g⟩ == ⟨h ∘ f, k ∘ g⟩.
   Proof. intros A B C D E f g h k.
@@ -245,6 +252,141 @@ Section BasicProps.
            rewrite <- compose_assoc, diagonal_snd, compose_id_right.
            reflexivity.
   Defined.
+
+  Lemma Iso_Refl {A} : A ≅ A.
+  Proof.
+  refine ( {| to := id ; from := id |});
+  rewrite !compose_id_left; reflexivity.
+  Defined.
+
+  Definition Iso_Sym {A B} (i : A ≅ B) : B ≅ A :=
+     {| to := from i
+      ; from := to i
+      ; to_from := from_to i
+      ; from_to := to_from i
+     |}.
+
+  Lemma Iso_Trans {A B C} (ab : A ≅ B) (bc : B ≅ C) : A ≅ C.
+  Proof.
+  refine ({| to := to bc ∘ to ab
+           ; from := from ab ∘ from bc |}).
+  rewrite <- compose_assoc.
+  rewrite (compose_assoc (from bc)).
+  rewrite to_from. rewrite compose_id_left.
+  apply to_from.
+  rewrite <- compose_assoc.
+  rewrite (compose_assoc (to ab)).
+  rewrite from_to. rewrite compose_id_left.
+  apply from_to.
+  Defined.
+
+  Lemma parallel_compose {A B C A' B' C'} 
+   (f' : A ~~> B) (f : B ~~> C) (g' : A' ~~> B') (g : B' ~~> C') :
+   f ⊗ g ∘ f' ⊗ g' == (f ∘ f') ⊗ (g ∘ g').
+  Proof.
+  unfold parallel. rewrite pair_f.
+  apply pair_Proper; rewrite <- !compose_assoc;
+    (apply compose_Proper; [ reflexivity |]).
+  rewrite pair_fst. reflexivity.
+  rewrite pair_snd. reflexivity.
+  Qed.
+
+  Lemma parallel_id A B
+    : id (A := A) ⊗ id (A := B) == id.
+  Proof.
+  unfold parallel.  rewrite !compose_id_left.
+  apply pair_id.
+  Qed.
+
+  Lemma Iso_Prod {A B A' B'} (a : A ≅ A') (b : B ≅ B')
+    : A * B ≅ A' * B'.
+  Proof.
+  refine (
+    {| to := to a ⊗ to b
+     ; from := from a ⊗ from b
+    |}
+  ); rewrite parallel_compose.
+  rewrite !to_from. apply parallel_id.
+  rewrite !from_to. apply parallel_id.
+  Defined.
+
+Definition prod_assoc_left {U} `{CMC U} {A B C : U} 
+  : A * (B * C) ~~> (A * B) * C := 
+  ⟨id ⊗ fst, snd ∘ snd⟩.
+
+Definition prod_assoc_right {U} `{CMC U} {A B C : U} 
+  : (A * B) * C ~~> A * (B * C) := 
+  ⟨fst ∘ fst, snd ⊗ id⟩.
+
+  Lemma Iso_Prod_Assoc {A B C}
+   : A * (B * C) ≅ (A * B) * C.
+  Proof.
+  refine (
+   {| to := prod_assoc_left
+    ; from := prod_assoc_right
+   |}); unfold prod_assoc_left, prod_assoc_right; intros;
+  rewrite pair_f;
+  rewrite <- pair_id; apply pair_Proper.
+  - rewrite parallel_pair.
+    rewrite compose_id_left. unfold parallel.
+    rewrite <- (compose_id_left (fst (A := A * B))) at 3.
+    rewrite <- pair_id.
+    rewrite pair_f. apply pair_Proper. reflexivity.
+    rewrite pair_fst. reflexivity.
+  - rewrite <- compose_assoc. rewrite pair_snd.
+    rewrite parallel_snd. rewrite compose_id_left. reflexivity.
+  - unfold parallel.
+    rewrite <- compose_assoc.
+    rewrite pair_fst. rewrite pair_fst. rewrite compose_id_left.
+    reflexivity.
+  - rewrite parallel_pair.
+    rewrite <- (compose_id_left (snd (B := B * C))) at 2.
+    rewrite <- pair_id.
+    rewrite pair_f. apply pair_Proper. rewrite parallel_snd.
+    reflexivity. rewrite compose_id_left. reflexivity.
+  Defined.
+
+  Lemma Iso_add_unit_left {A}
+    : unit * A ≅ A.
+  Proof.
+  refine (
+    {| to := snd 
+     ; from := add_unit_left
+    |}); unfold add_unit_left.
+  - apply pair_snd.
+  - rewrite pair_f.
+    rewrite unit_uniq. rewrite compose_id_left.
+    rewrite <- (unit_uniq fst).
+    apply pair_id.
+  Defined.
+
+Require Types.Setoid.
+
+Definition Hom_Setoid A B :=
+  {| Setoid.sty := A ~~> B
+   ; Setoid.seq := eq
+  |}.
+
+  Lemma Hom_Setoid_Iso {A A' B B'}
+    (a : A ≅ A') (b : B ≅ B')
+    : Setoid.Iso (Hom_Setoid A B) (Hom_Setoid A' B').
+  Proof.
+  simple refine (Setoid.Build_Iso _ _ _ _ _ _ _ _); simpl.
+  - exact (fun f => to b ∘ f ∘ from a).
+  - exact (fun f => from b ∘ f ∘ to a).
+  - unfold Proper, respectful. intros.
+    rewrite H; reflexivity.
+  - unfold Proper, respectful. intros.
+    rewrite H; reflexivity.
+  - simpl. intros. rewrite !compose_assoc.
+    rewrite (to_from b). rewrite compose_id_left.
+    rewrite <- compose_assoc. rewrite to_from.
+    apply compose_id_right.
+  - simpl. intros. rewrite !compose_assoc.
+    rewrite from_to. rewrite compose_id_left.
+    rewrite <- compose_assoc. rewrite from_to.
+    apply compose_id_right.
+  Defined.
   
   
 End BasicProps.
@@ -261,14 +403,6 @@ Arguments SMonad U {_ _} M : clear implicits.
 
 Notation "A -[ f ]-> B" := (f%morph : (arrow A%obj B%obj)) (at level 60)
   : morph_scope.
-
-Definition prod_assoc_left {U} `{CMC U} {A B C : U} 
-  : A * (B * C) ~~> (A * B) * C := 
-  ⟨id ⊗ fst, snd ∘ snd⟩.
-
-Definition prod_assoc_right {U} `{CMC U} {A B C : U} 
-  : (A * B) * C ~~> A * (B * C) := 
-  ⟨fst ∘ fst, snd ⊗ id⟩.
 
 (** See https://ncatlab.org/nlab/show/strong+monad#alternative_definition
 *)

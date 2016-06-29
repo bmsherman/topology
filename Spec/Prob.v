@@ -31,7 +31,7 @@ Class OpenOps : Type :=
 
 Context {Meas Prob SubProb : U -> U}.
 
-Require Import Prob.ContPL.
+Require Import Prob.Language.ContPL.
 
 Class MeasOps : Type :=
   { MeasMonad : SMonad (ccat := ccat) (cmc := cmc) U Meas
