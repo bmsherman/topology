@@ -17,14 +17,17 @@ Proof.
 apply seq_Equivalence.
 Qed.
 
-Definition unit_Setoid : Setoid.
+Section unit_Setoid.
+Universe i.
+Definition unit_Setoid : Setoid@{i}.
 Proof.
 refine (
-  {| sty := unit
+  {| sty := Datatypes.unit
   ; seq := fun _ _ => True
   |}).
 constructor; unfold Reflexive, Symmetric, Transitive; auto.
 Defined.
+End unit_Setoid.
 
 Definition prod_Setoid (A B : Setoid) : Setoid.
 Proof.
@@ -40,6 +43,8 @@ constructor; unfold Reflexive, Symmetric, Transitive;
 - destruct H, H0; split; etransitivity; eassumption.
 Defined.
 
+
+
 Require Import Prob.Spec.Category.
 Import Category.
 
@@ -49,17 +54,21 @@ Local Open Scope morph.
 
 Section Presheaf.
 
-Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
+Universe Univ.
 
+Context {U : Type@{Univ}} {ccat : CCat U} {cmc : CMC U}.
+
+(** The notion of a setoid *must* depend on the category U.
+    The setoid should live in 1 larger than the universe of 
+    U. *)
 
 Definition cmap_Setoid A B :=
   {| sty := A ~~> B
    ; seq := eq
   |}.
 
-
 Record PSh := 
-  { psh_obj :> U -> Setoid
+  { psh_obj :> U -> Setoid@{Univ}
   ; psh_morph : forall {Γ Δ} (ext : Δ ~~> Γ), psh_obj Γ -> psh_obj Δ
   ; psh_morph_Proper :
      forall Γ Δ, Proper (eq ==> seq _ ==> seq _) (@psh_morph Γ Δ)
@@ -197,7 +206,6 @@ refine (
   apply nattrns_Proper. assumption.
 Defined.
 
-
 Definition unit_PSh : PSh.
 Proof.
 refine (
@@ -287,8 +295,6 @@ constructor 1 with eval_PSh_trns.
   reflexivity. apply psh_morph_Proper. reflexivity.
   symmetry. assumption.
 Defined.
-
-Axiom undefined : forall A, A.
 
 Definition abstract_PSh_trns {X A B : PSh}
  (f : NatTrns (prod_PSh X A) B)
@@ -398,7 +404,7 @@ Ltac build_CFunc := match goal with
     simple refine (Build_CFunc A B Γ _ _ _)
  end.
 
-Definition Const (A : PSh) := NatTrns unit A.
+Definition Const (A : PSh) := unit ~~> A.
 
 Definition toConst {A : PSh} (x : A unit)
   : Const A.
@@ -424,7 +430,7 @@ apply toConst. simpl. build_CFunc.
 Defined.
 
 Definition Y_Prod1 {A B : U} : 
-  NatTrns (Y A * Y B) (Y (A * B)).
+  Y A * Y B ~~> Y (A * B).
 Proof.
 simple refine (Build_NatTrns _ _ _ _ _).
 + simpl. intros. destruct X. apply pair; assumption.
@@ -436,7 +442,7 @@ simple refine (Build_NatTrns _ _ _ _ _).
   apply pair_Proper; assumption. reflexivity.
 Defined.
 
-Definition Y_Prod2 {A B} : NatTrns (Y (A * B)) (Y A * Y B).
+Definition Y_Prod2 {A B} : Y (A * B) ~~> Y A * Y B.
 Proof.
 simple refine (Build_NatTrns _ _ _ _ _).
 + simpl. intros. split. exact (fst ∘ X).
@@ -476,25 +482,25 @@ Inductive Basic : U -> PSh -> Type :=
       Basic (a * b) (A * B).
 
 Lemma Y_Basic1 {a A} (b : Basic a A)
-  : NatTrns (Y a) A.
+  : Y a ~~> A.
 Proof.
 induction b. 
-- apply id_PSh.
-- refine (compose_PSh _ Y_Prod2).
-  apply pair_PSh. 
-  + refine (compose_PSh IHb1 fst_Psh).
-  + refine (compose_PSh IHb2 snd_Psh).
+- apply id.
+- refine (compose _ Y_Prod2).
+  apply pair. 
+  + refine (compose IHb1 fst).
+  + refine (compose IHb2 snd).
 Defined.
 
 Lemma Y_Basic2 {a A} (b : Basic a A)
-  : NatTrns A (Y a).
+  : A ~~> Y a.
 Proof.
 induction b.
 - apply id_PSh.
-- refine (compose_PSh Y_Prod1 _).
-  apply pair_PSh.
-  + refine (compose_PSh IHb1 fst_Psh).
-  + refine (compose_PSh IHb2 snd_Psh).
+- refine (compose Y_Prod1 _).
+  apply pair.
+  + refine (compose IHb1 fst).
+  + refine (compose IHb2 snd).
 Defined.
 
 Definition Y_ctxt (Δ A : U) : PSh.
@@ -548,7 +554,7 @@ apply snd.
 Defined.
 
 Lemma Y_ctxt1 {A B : U} : 
-  NatTrns (Y A ==> Y B) (Y_ctxt A B).
+  Y A ==> Y B ~~> Y_ctxt A B.
 Proof. simpl.
 simple refine (Build_NatTrns _ _ _ _ _).
 - simpl. intros.
@@ -565,7 +571,7 @@ simple refine (Build_NatTrns _ _ _ _ _).
 Defined.
 
 Lemma Y_ctxt2 {A B : U} :
-  NatTrns (Y_ctxt A B) (Y A ==> Y B).
+  Y_ctxt A B ~~> Y A ==> Y B.
 Proof.
 simpl. simple refine (Build_NatTrns _ _ _ _ _).
 - simpl. intros.
@@ -586,7 +592,7 @@ simpl. simple refine (Build_NatTrns _ _ _ _ _).
 Defined.
   
 
-Lemma Y_Y_ctxt1 {A : U} : NatTrns (Y A) (Y_ctxt unit A).
+Lemma Y_Y_ctxt1 {A : U} : Y A ~~> Y_ctxt unit A.
 Proof.
 simple refine (Build_NatTrns _ _ _ _ _).
 - simpl. intros. refine (_ ∘ fst). assumption.
@@ -598,7 +604,7 @@ simple refine (Build_NatTrns _ _ _ _ _).
   reflexivity.
 Defined.
 
-Lemma Y_Y_ctxt2 {A : U} : NatTrns (Y_ctxt unit A) (Y A).
+Lemma Y_Y_ctxt2 {A : U} : Y_ctxt unit A ~~> Y A.
 Proof.
 simple refine (Build_NatTrns _ _ _ _ _).
 - simpl. intros.
@@ -612,88 +618,52 @@ simple refine (Build_NatTrns _ _ _ _ _).
   rewrite unit_uniq. reflexivity.
 Defined.
 
-Definition parallel_Psh {A B X Y : PSh}
-  (f : NatTrns A X) (g : NatTrns B Y)
-  : NatTrns (A * B) (X * Y).
-Proof.
-apply pair_PSh. 
-refine (compose_PSh f fst_Psh).
-refine (compose_PSh g snd_Psh).
-Defined.
-
-Lemma prod_assoc_l_PSh {A B C : PSh} :
-  NatTrns (A * (B * C)) ((A * B) * C).
-Proof.
-apply pair_PSh. apply pair_PSh.
-apply fst_Psh. refine (compose_PSh _ snd_Psh).
-apply fst_Psh.
-apply (compose_PSh snd_Psh snd_Psh).
-Defined.
-
-Lemma prod_assoc_r_PSh {A B C : PSh} :
-  NatTrns ((A * B) * C) (A * (B * C)).
-Proof.
-apply pair_PSh. apply (compose_PSh fst_Psh fst_Psh). 
-apply pair_PSh.
-refine (compose_PSh _ fst_Psh). apply snd_Psh.
-apply snd_Psh.
-Defined.
-
 Lemma extract_FirstOrder {args ret A} 
   (fo : FirstOrder args ret A) :
-  NatTrns A (Y_ctxt args ret).
+  A ~~> Y_ctxt args ret.
 Proof.
 induction fo.
-- refine (compose_PSh _ (Y_Basic2 b)).
+- refine (compose _ (Y_Basic2 b)).
   apply Y_Y_ctxt1.
-- refine (compose_PSh Y_ctxt1 _).
+- refine (compose Y_ctxt1 _).
   apply abstract_PSh.
-  refine (compose_PSh _ (parallel_Psh id_PSh 
-     (compose_PSh (parallel_Psh (Y_Basic1 b) id_PSh) Y_Prod2))).
-  refine (compose_PSh _ prod_assoc_l_PSh).
-  refine (compose_PSh _ (parallel_Psh eval_PSh id_PSh)).
-  pose proof (compose_PSh Y_ctxt2 IHfo).
-  refine (compose_PSh eval_PSh _).
-  eapply pair_PSh. refine (compose_PSh X fst_Psh).
-  apply snd_Psh.
+  refine (compose _ (parallel id_PSh 
+     (compose (parallel (Y_Basic1 b) id_PSh) Y_Prod2))).
+  refine (compose _ prod_assoc_left).
+  refine (compose _ (parallel eval id_PSh)).
+  pose proof (compose Y_ctxt2 IHfo).
+  refine (compose eval _).
+  eapply pair. refine (compose X fst).
+  apply snd.
 Defined.
 
-Lemma postcompose {A A' B} (f : NatTrns A' A)
-  : NatTrns (A ==> B) (A' ==> B).
-Proof.
-eapply abstract_PSh.
-refine (compose_PSh _ (parallel_Psh id_PSh f)).
-apply eval_PSh.
-Defined.
+Definition postcompose {A A' B} (f : A' ~~> A)
+  : A ==> B ~~> A' ==> B
+  := abstract (eval ∘ (id ⊗ f)).
 
-Lemma precompose {A B B'} (f : NatTrns B B')
-  : NatTrns (A ==> B) (A ==> B').
-Proof.
-eapply abstract_PSh.
-refine (compose_PSh f _).
-apply eval_PSh.
-Defined.
+Definition precompose {A B B'} (f : B ~~> B')
+  : A ==> B ~~> A ==> B'
+  := abstract (f ∘ eval).
 
 Lemma unextract_FirstOrder {args ret A}
   (fo : FirstOrder args ret A) :
-  NatTrns (Y_ctxt args ret) A.
+  Y_ctxt args ret ~~> A.
 Proof.
 induction fo.
-- refine (compose_PSh (Y_Basic1 b) _).
-  apply Y_Y_ctxt2.
-- refine (compose_PSh _ Y_ctxt2).
-  eapply compose_PSh. Focus 2.
+- refine (Y_Basic1 b ∘ Y_Y_ctxt2).
+- refine (_ ∘ Y_ctxt2).
+  eapply compose. Focus 2.
   apply (postcompose (A' := A * Y args)). 
-  eapply compose_PSh.
-  apply Y_Prod1. apply parallel_Psh.
+  eapply compose.
+  apply Y_Prod1. apply parallel.
   apply Y_Basic2. assumption. apply id_PSh.
-  apply abstract_PSh.
-  eapply compose_PSh. eassumption.
-  eapply compose_PSh. apply Y_ctxt1.
-  apply abstract_PSh.
-  eapply compose_PSh.
-  Focus 2. apply prod_assoc_r_PSh.
-  apply eval_PSh.
+  apply abstract.
+  eapply compose. eassumption.
+  eapply compose. apply Y_ctxt1.
+  apply abstract.
+  eapply compose.
+  Focus 2. apply prod_assoc_right.
+  apply eval.
 Defined.
 
 Lemma extract_basic_fully_abstract {Γ} {a A} (b : Basic a A)
@@ -722,6 +692,44 @@ generalize dependent Γ. induction fo; intros.
   apply IHfo. apply H. reflexivity.
 Qed.
 
+Lemma to_presheaf {arg ret A} (fo : FirstOrder arg ret A)
+  : arg ~~> ret -> Const A.
+Proof.
+intros. 
+apply toConst.
+apply (nattrns _ _ (unextract_FirstOrder fo)).
+simpl.
+refine (_ ∘ snd). assumption.
+Defined.
+
+Lemma from_presheaf {arg ret A} (fo : FirstOrder arg ret A)
+  : Const A -> arg ~~> ret.
+Proof.
+intros.
+pose proof (nattrns _ _ (extract_FirstOrder fo)).
+simpl in X0.
+specialize (X0 unit).
+unfold Const in X.
+pose proof (nattrns _ _ X unit Datatypes.tt).
+specialize (X0 X1).
+eapply compose. apply X0.
+exact (⟨ tt, id ⟩).
+Defined.
+
+Definition pt_to_presheaf {A : U} : 
+  unit ~~> A -> Const (Y A).
+Proof.
+intros. apply toConst. simpl. assumption.
+Defined.
+
+Definition pt_from_presheaf {A : U}
+  : Const (Y A) -> unit ~~> A.
+Proof.
+intros. apply X. constructor.
+Defined.
+
 End Presheaf.
+
+Arguments PSh U {_ _} : clear implicits.
 
 End Presheaf.

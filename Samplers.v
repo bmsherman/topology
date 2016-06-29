@@ -1,6 +1,6 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
-Require Import ContPL.
+Require Import Language.ContPL.
 Require Import Morphisms.
 Require Import Spec.Category.
 Require Import Spec.Prob.

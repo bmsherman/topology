@@ -31,6 +31,9 @@ Algebra/SetsC.v
 
 Examples/ContPL.v
 
+Language/ContPL.v
+Language/CCCPL.v
+
 Numbers/Qnn.v
 Numbers/LPReal.v
 Numbers/QFacts.v
@@ -53,7 +56,6 @@ clement/SmallPowers.v
 alea/BinCoeff.v
 
 StdLib.v
-ContPL.v
 Sample.v
 FiniteSum.v
 Valuation.v

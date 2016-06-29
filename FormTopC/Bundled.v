@@ -96,12 +96,6 @@ constructor; intros; auto.
   apply FormTop.grefl. econstructor; eauto.
 Qed.
 
-Definition point (A : IGT) (f : S A -> Prop) (fpt : Cont.pt (le A) (Cov A) f)
-  : One ~~> A :=
-  {| mp := fun t _ => f t
-   ; mp_ok := point_mp A f fpt
-  |}.
-
 Definition One_intro_mp {A : IGT} : Contmap A One
   := One.One_intro.
 
@@ -216,9 +210,6 @@ Definition discrete_f_mp_ok {A B} (f : A -> B)
 Definition discrete_f {A B} (f : A -> B) : discrete A ~~> discrete B :=
   {| mp := discrete_f_mp f 
    ; mp_ok := discrete_f_mp_ok f |}.
-
-Definition discrete_pt {A} (x : A) : One ~~> discrete A :=
-  point (discrete A) (eq x) (Discrete.pt_okI x).
 
 Definition discrete_prod_assoc_mp {A B}
   : Contmap (discrete A * discrete B) (discrete (A * B)) := Logic.eq.
@@ -363,6 +354,19 @@ intros. unfold eq. simpl. unfold eq_map.
 - apply undefined.
 Defined.
 
+Local Close Scope loc.
+Local Open Scope obj.
+Local Open Scope morph.
+
+Definition point (A : IGT) (f : S A -> Prop) (fpt : Cont.pt (le A) (Cov A) f)
+  : unit ~~> A :=
+  {| mp := fun t _ => f t
+   ; mp_ok := point_mp A f fpt
+  |}.
+
+Definition discrete_pt {A} (x : A) : unit ~~> discrete A :=
+  point (discrete A) (Logic.eq x) (Discrete.pt_okI x).
+
 Definition runDiscrete {A} (x : One ~~> discrete A) : A.
 pose proof (Cont.here (mp_ok x) I) as H.
 remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
@@ -398,8 +402,68 @@ Definition eight : One ~~> discrete nat :=
 Definition func_1 : discrete nat ~~> discrete nat :=
   ap2 testFunc (ap0 eight) id.
 
-Definition test_computation (n : nat) : nat 
-  := runDiscrete (func_1 ∘ discrete_pt n).
+Require Import Spec.CCC.CCC.
+Require Import Spec.CCC.Presheaf.
+Import Presheaf.
+Import CCC.
+
+Instance CMC_Props_IGT : CMC_Props IGT := undefined _.
+
+Existing Instances 
+  CCat_PSh CCCOps_PSh CMC_Psh CMCProps_PSh CCCProps_PSh.
+
+Hint Constructors FirstOrder Basic : FO_DB.
+
+Lemma func_1_fo : FirstOrder (discrete nat * unit) (discrete nat) 
+  (Y (discrete nat) ==> Y (discrete nat))%obj.
+Proof.
+econstructor 2. econstructor.
+econstructor. econstructor.
+Defined.
+
+Definition func_1_CCC : Const (Y (discrete nat) ==> Y (discrete nat))%obj.
+Proof.
+apply (to_presheaf func_1_fo).
+refine (_ ∘ fst). apply func_1.
+Defined.
+
+Require Import Language.CCCPL.
+
+Definition func1_twice_term : Term (Y (discrete nat) ==> Y (discrete nat))%obj := 
+    ([ λ x => #func_1_CCC @ (#func_1_CCC @ !x) ])%stlc.
+
+  Lemma func1_twiceWF : Wf func1_twice_term.
+  Proof. proveWF.
+  Defined.
+
+Definition func1_twice : 
+  Presheaf.Const (Y (discrete nat) ==> Y (discrete nat))%obj.
+Proof.
+eapply compile_phoas. apply func1_twiceWF.
+Defined.
+
+Definition discrete_pt_CCC {A} (x : A)
+  : Presheaf.Const (Y (discrete A)).
+Proof.
+apply pt_to_presheaf. apply discrete_pt. assumption.
+Defined.
+
+Lemma discrete_fo {A B : Type} : FirstOrder (discrete A * unit) (discrete B)
+  (Y (discrete A) ==> Y (discrete B))%obj.
+Proof.
+repeat econstructor.
+Defined.
+
+Definition runDiscrete_CCC {A B : Type}
+ (f : Presheaf.Const (Y (discrete A) ==> Y (discrete B))%obj) : (A -> B).
+Proof.
+pose proof (from_presheaf (@discrete_fo A B) f).
+intros.
+apply (runDiscrete (X ∘ ⟨ discrete_pt X0 , tt ⟩)).
+Defined.
+
+Definition test_computation : nat -> nat 
+  := runDiscrete_CCC func1_twice.
 
 End Bundled.
 
