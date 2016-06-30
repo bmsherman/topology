@@ -436,7 +436,6 @@ Variable FTS : FormTop.t leS CovS.
 Context {T} `{POT : PreO.t T leT}.
 Context {IT : T -> Type}.
 Variable CT : forall (t : T), IT t -> Subset T.
-Variable locT : FormTop.localized leT CT.
 Let CovT := FormTop.GCov leT CT.
 
 Record t {F_ : Cont.map S T} :=
@@ -543,11 +542,13 @@ intros H. constructor; intros.
 Qed.
 
 End IGCont.
-End IGCont.
 
-Arguments IGCont.t {S} leS CovS
+Arguments pt {T} leT {IT} CT F : clear implicits.
+
+Arguments t {S} leS CovS
                    {T} leT {IT} CT F_ : clear implicits.
-Arguments IGCont.pt {T} leT {IT} CT F : clear implicits.
+
+End IGCont.
 
 
 

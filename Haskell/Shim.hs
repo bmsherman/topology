@@ -11,3 +11,9 @@ fromInt n = S (fromInt (n - 1))
 
 instance Show Nat where
   show = show . toInt
+
+{-
+printPartial :: Partial a -> IO ()
+printPartial (Now _) = putStrLn "Done!"
+printPartial (Later x) = putStrLn "Later..." >> printPartial x
+-}

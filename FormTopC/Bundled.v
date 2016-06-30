@@ -354,15 +354,45 @@ intros. unfold eq. simpl. unfold eq_map.
 - apply undefined.
 Defined.
 
-Local Close Scope loc.
-Local Open Scope obj.
-Local Open Scope morph.
-
-Definition point (A : IGT) (f : S A -> Prop) (fpt : Cont.pt (le A) (Cov A) f)
+Definition point (A : IGT) (f : Subset (S A)) (fpt : Cont.pt (le A) (Cov A) f)
   : unit ~~> A :=
   {| mp := fun t _ => f t
    ; mp_ok := point_mp A f fpt
   |}.
+
+Require Import FormTopC.NatInfty.
+
+Definition NatInfty : IGT.
+Proof. refine (
+  {| S := NatInfty.O
+  ; le := NatInfty.le
+  ; PO := NatInfty.le_PreO
+  ; C := NatInfty.C
+  |}).
+apply FormTop.Llocalized. apply NatInfty.le_PreO.
+Defined.
+
+Definition NatInfty_exactly (n : nat) : unit ~~> NatInfty
+  := point NatInfty (NatInfty.exactly n)
+  (IGCont.pt_cont _ _ (NatInfty.pt_exactly n)).
+
+Definition NatInfty_infty : unit ~~> NatInfty :=
+  point NatInfty (NatInfty.infty) (IGCont.pt_cont _ _
+    (NatInfty.pt_infty)).
+
+Definition NatInfty_checker (f : nat -> bool) : unit ~~> NatInfty
+  := point NatInfty (NatInfty.checkf f)
+    (IGCont.pt_cont _ _ (NatInfty.checkf_cont f)).
+
+Definition run_NatInfty (x : unit ~~> NatInfty) :
+  NatInfty.Partial Datatypes.unit.
+Proof.
+Abort.
+
+
+Local Close Scope loc.
+Local Open Scope obj.
+Local Open Scope morph.
 
 Definition discrete_pt {A} (x : A) : unit ~~> discrete A :=
   point (discrete A) (Logic.eq x) (Discrete.pt_okI x).

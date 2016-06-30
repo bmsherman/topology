@@ -305,13 +305,16 @@ Defined.
 
 Require CMorphisms.
 
-Instance CCat_PSh : CCat PSh :=
+(** The following two typeclass instances loop,
+    so be very careful about adding them to the
+    typeclass database *)
+Local Instance CCat_PSh : CCat PSh :=
   {| arrow := NatTrns
    ; prod := prod_PSh
    ; eq := eq_map
   |}.
 
-Instance CMC_Psh : CMC PSh :=
+Local Instance CMC_Psh : CMC PSh :=
   {| id := fun _ => id_PSh
   ; compose := fun _ _ _ => compose_PSh
   ; unit := unit_PSh

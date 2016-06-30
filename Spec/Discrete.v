@@ -39,6 +39,8 @@ Class DiscreteProps : Type :=
 
 Require Import Spec.CCC.Presheaf.
 Import Presheaf.
+Require Import Spec.CCC.CCC.
+Import CCC.
 Context {cmcprops : CMC_Props U}.
 
 Definition discrete_pt_CCC {A} (x : A) : Const (Y (D A))
@@ -47,6 +49,20 @@ Definition discrete_pt_CCC {A} (x : A) : Const (Y (D A))
 Definition discrete_pt_elim_CCC {A} (x : Const (Y (D A)))
   : A
   := discrete_pt_elim (pt_from_presheaf x).
+
+Hint Constructors FirstOrder Basic : FO_DB.
+
+
+Existing Instances CCat_PSh CMC_Psh CMCProps_PSh CCCOps_PSh.
+
+Definition discrete_func_CCC {A B} (f : A -> Const (Y B))
+  : Const (Y (D A) ==> Y B).
+Proof.
+eapply to_presheaf. eauto with FO_DB.
+refine (_ ∘ fst). apply discrete_func.
+intros. eapply from_presheaf. eauto with FO_DB.
+apply f. assumption.
+Defined.
 
 Context `{DiscreteProps}.
 
@@ -60,6 +76,19 @@ rewrite <- (unit_uniq id). rewrite compose_id_right.
 apply pt_beta.
 Qed.
 
+Lemma pt_eta_CCC : forall {A} (x : Const (Y (D A))),
+  discrete_pt_CCC (discrete_pt_elim_CCC x) == x.
+Proof.
+intros. simpl. unfold eq_map. simpl.
+intros. unfold discrete_pt_elim_CCC, pt_from_presheaf.
+rewrite pt_eta. apply (nattrns_ok _ _ x). simpl.
+constructor.
+Qed.
+
+(* Need a definition of "ap"!
+Lemma func_pt_CCC {A : Type} {B : U} (x : A) (f : A -> Const (Y B))
+  : ap (discrete_func_CCC f) (discrete_pt_CCC x) == f x.
+*)
 
 End Defn.
 End Discrete.
