@@ -43,6 +43,8 @@ Require Import Spec.CCC.CCC.
 Import CCC.
 Context {cmcprops : CMC_Props U}.
 
+Let Y := Y (cmcprops := cmcprops).
+
 Definition discrete_pt_CCC {A} (x : A) : Const (Y (D A))
   := pt_to_presheaf (discrete_pt x).
 
@@ -58,7 +60,8 @@ Existing Instances CCat_PSh CMC_Psh CMCProps_PSh CCCOps_PSh.
 Definition discrete_func_CCC {A B} (f : A -> Const (Y B))
   : Const (Y (D A) ==> Y B).
 Proof.
-eapply to_presheaf. eauto with FO_DB.
+eapply to_presheaf. econstructor 2. econstructor. econstructor. 
+econstructor.
 refine (_ ∘ fst). apply discrete_func.
 intros. eapply from_presheaf. eauto with FO_DB.
 apply f. assumption.

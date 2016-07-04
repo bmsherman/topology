@@ -378,14 +378,17 @@ constructor.
   rewrite H2. reflexivity. reflexivity. 
   rewrite H0, compose_id_right. reflexivity.
   reflexivity.
-Qed. 
+- intros. simpl. unfold eq_map. simpl. intros.
+  unfold abstract_PSh_trns. simpl. apply (nattrns_Proper _ _ e).
+  simpl. split. rewrite (nattrns_ok _ _ f).
+  apply (nattrns_Proper _ _ f). apply psh_morph_Proper. 
+  assumption. reflexivity. assumption. assumption.
+Qed.
 
 Ltac build_CFunc := match goal with
  | [  |- CFunc ?A ?B ?Γ ] => 
     simple refine (Build_CFunc A B Γ _ _ _)
  end.
-
-Definition Const (A : PSh) := unit ~~> A.
 
 Definition toConst {A : PSh} (x : A unit)
   : Const A.
@@ -398,16 +401,6 @@ simpl. simple refine (Build_NatTrns _ _ _ _ _).
 - simpl. intros. rewrite psh_morph_compose.
   apply psh_morph_Proper. apply unit_uniq.
   reflexivity.
-Defined.
-
-Lemma internalize {A B : PSh} (f : NatTrns A B)
-  : Const (A ==> B).
-Proof.
-apply toConst. simpl. build_CFunc.
-- intros. apply (nattrns _ _ f). assumption.
-- simpl. unfold Proper, respectful.
-  intros.  apply nattrns_Proper. assumption.
-- simpl.  intros. apply nattrns_ok. assumption.
 Defined.
 
 Definition Y_Prod1 {A B : U} : 

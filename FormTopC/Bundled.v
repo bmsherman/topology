@@ -467,13 +467,13 @@ Definition func1_twice_term : Term (Y (discrete nat) ==> Y (discrete nat))%obj :
   Defined.
 
 Definition func1_twice : 
-  Presheaf.Const (Y (discrete nat) ==> Y (discrete nat))%obj.
+  CCC.Const (Y (discrete nat) ==> Y (discrete nat))%obj.
 Proof.
 eapply compile_phoas. apply func1_twiceWF.
 Defined.
 
 Definition discrete_pt_CCC {A} (x : A)
-  : Presheaf.Const (Y (discrete A)).
+  : CCC.Const (Y (discrete A)).
 Proof.
 apply pt_to_presheaf. apply discrete_pt. assumption.
 Defined.
@@ -485,7 +485,7 @@ repeat econstructor.
 Defined.
 
 Definition runDiscrete_CCC {A B : Type}
- (f : Presheaf.Const (Y (discrete A) ==> Y (discrete B))%obj) : (A -> B).
+ (f : CCC.Const (Y (discrete A) ==> Y (discrete B))%obj) : (A -> B).
 Proof.
 pose proof (from_presheaf (@discrete_fo A B) f).
 intros.

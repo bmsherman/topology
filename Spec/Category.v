@@ -24,6 +24,11 @@ Delimit Scope morph_scope with morph.
 Local Open Scope morph.
 Infix "==" := eq (at level 70, no associativity) : morph_scope.
 
+Ltac prove_map_Proper := unfold Proper, respectful; intros;
+  repeat match goal with
+  | [ H : (_ == _)%morph |- (_ == _)%morph ] => rewrite H; clear H
+  end; try reflexivity.
+
 (** Cartesian monoidal categories *)
 
 Class CMC {U : Type} {ccat : CCat U} : Type :=
@@ -45,24 +50,16 @@ Class CMC {U : Type} {ccat : CCat U} : Type :=
       f == f' -> g == g' -> pair f g == pair f' g'
   }.
 
+Infix "∘" := compose (at level 40, left associativity) : morph_scope.
+Notation "⟨ f , g ⟩" := (pair f g) : morph_scope.
+
 Definition parallel {U} `{CMC U} {A B C D : U} (f : A ~~> B) (g : C ~~> D) : A * C ~~> B * D :=
-  pair (compose f fst) (compose g snd).
+  ⟨ f ∘ fst , g ∘ snd ⟩.
 
-Theorem parallel_proper `{CMC} : forall {A B C D} (f f' : A ~~> B) (g g' : C ~~> D),
-    f == f' -> g == g' -> parallel f g == parallel f' g'.
-Proof. intros A B C D f f' g g' ff' gg'.
- unfold parallel. apply pair_proper.
-       - apply compose_proper.
-         + apply Equivalence_Reflexive.
-         + apply ff'.
-       - apply compose_proper.
-         + apply Equivalence_Reflexive.
-         + apply gg'.
-Defined.           
+Infix "⊗" := parallel (at level 25) : morph_scope.
 
-Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A :=
-  pair id id.
 
+Require Coq.Setoids.Setoid.
 Global Instance compose_Proper `{CMC} : forall A B C : U,
   Proper (eq (A := B) (B := C) ==> eq ==> eq (A := A)) compose.
 Proof. 
@@ -77,6 +74,14 @@ intros. unfold Proper, respectful.
 intros. apply pair_proper; assumption.
 Qed.
 
+Theorem parallel_proper `{CMC} : forall {A B C D} (f f' : A ~~> B) (g g' : C ~~> D),
+    f == f' -> g == g' -> parallel f g == parallel f' g'.
+Proof. intros A B C D f f' g g' ff' gg'.
+ unfold parallel. rewrite ff', gg'. reflexivity.
+Qed.
+
+Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A := ⟨ id , id ⟩.
+
 Global Instance parallel_Proper `{CMC} : forall A B C D : U,
   Proper (eq (A := A) (B := B) ==> eq (A := C) (B := D) ==> eq) parallel.
 Proof. 
@@ -85,10 +90,6 @@ intros. apply parallel_proper; assumption.
 Qed.
 
 Arguments CMC U {_} : clear implicits.
-
-Infix "∘" := compose (at level 40, left associativity) : morph_scope.
- Notation "⟨ f , g ⟩" := (pair f g) : morph_scope.
- Infix "⊗" := parallel (at level 25) : morph_scope.
 
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
