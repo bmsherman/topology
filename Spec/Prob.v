@@ -83,6 +83,10 @@ Axiom pstream_unfold : forall (Γ A X : U)
          (x <- mu;<< Δ | e >> y <- !nu;<< Δ' | e' >> (f Δ' (e∘e') (!x) y))
       == (y <- nu;<< Δ | e >> x <- !mu;<< Δ' | e' >> (g Δ' (e∘e') x (!y))).
 
+  Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
+    ⟨map fst , map snd⟩.
+  (* 'marg' for 'marginal' *)
+
 
 End Prob.
 

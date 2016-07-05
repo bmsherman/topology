@@ -34,6 +34,7 @@ Examples/ContPL.v
 
 Language/ContPL.v
 Language/CCCPL.v
+Language/ContPLProps.v
 
 Numbers/Qnn.v
 Numbers/LPReal.v
@@ -66,3 +67,4 @@ Frame.v
 Integration.v
 FrameVal.v
 Classical.v
+Samplers.v
