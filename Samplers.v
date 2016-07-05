@@ -57,6 +57,9 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
        (@stream_hd _ _ _) (@stream_tl _ _ _)
     : cat_db.
 
+  (* Theoretically this should be imported from elsewhere, but I don't know how to. *)
+  Ltac simpl_ext := unfold liftF, Lift, Extend_Prod, Extend_Refl, extend;
+                    repeat rewrite compose_id_right.
   
   Notation "'LAM'<< Γ | E >> x => f" := (makeFun1E (fun Γ E x => f))
                                           (at level 120, right associativity). 
@@ -69,9 +72,6 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Proof. refine (A ==> B). exact CCCOps_PSh. Defined.
   Definition konst {A B : PSh U} : PTerm (Fun A (Fun B A)) :=
     [ λ (x : _ A) y => ! x ]%stlc. *)
-
-   
-
   
   Record Sampler {Δ A S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) : Type :=
     sampler
@@ -80,41 +80,44 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
         sampling_cond : indep DS DA == Map sample DS
       }.
 
-      Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
+  Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
+
+  Section Constant.
   
+  Definition const_sampler_prog {Δ A S : U} (x : Δ ~~> A) : Δ * S ~~> S * A :=
+    'LAM'<< _ | _ >> s => ⟨s, !x⟩.
+         
+  
+  Definition const_sampler {Δ A S : U} {D : Δ ~~> Prob S} {x : Δ ~~> A} :
+    Sampler (Δ := Δ) (A := A) (S := S) D (Ret x).
+  Proof. refine (sampler (const_sampler_prog x) _).       
+         unfold indep. 
+         simpl_ext.
+         rewrite bind_extensional. Focus 2. intros.
+         setoid_rewrite Ret_ext.
+         setoid_rewrite Bind'_Ret_f.
+         rewrite lam_eval. rewrite compose_id_right.
+         rewrite <- (compose_id_right ⟨a, x ∘ ext⟩).
+         reflexivity.
+         rewrite Map_program.
+         apply Bind_Proper; try reflexivity.
+         apply lam_extensional; intros.
+         rewrite !ret_Ret. remove_eq_left.
+         autorewrite with cat_db.
+         unfold const_sampler_prog.
+         rewrite ap2_ext_eval.
+         simpl_ext.
+         reflexivity.
+  Qed.
+
+  End Constant.
+
+  Section Infinite.
     
-    Definition const_sampler {Δ A S : U} {D : Δ ~~> Prob S} {x : Δ ~~> A} :
-      Sampler (Δ := Δ) (A := A) (S := S) D (Ret x).
-    Proof. refine (sampler ⟨snd, x ∘ fst⟩ _).       
-           unfold indep. 
-           unfold Lift, Extend_Prod, Extend_Refl. simpl.
-           rewrite bind_extensional. Focus 2.
-           intros a.
-           setoid_rewrite Ret_ext.
-           (* Check Bind'_Ret_f. *)
-           setoid_rewrite Bind'_Ret_f.
-           unfold makeFun1E. intros.
-           rewrite Ret_ext.
-           rewrite pair_f. 
-           reflexivity.
-           simpl.
-           setoid_rewrite Ret_ext. setoid_rewrite pair_f.
-           unfold extend, Extend_Prod, Extend_Refl.
-           autorewrite with cat_db.
-           rewrite <- (compose_assoc _ fst snd). autorewrite with cat_db.
-           rewrite Bind_m_Ret.
-           reflexivity.
-Defined.
- 
-  
-  
-  Definition Boole := unit + unit.
-  Definition Cantor := Stream Boole.
-  
   Definition constant_stream {Γ A : U} (mu : Γ ~~> Prob A) :
     Γ ~~> Prob (Stream A) := 
     pstream (MeasOps := mops) (Γ := Γ) tt (LAM _ => map add_unit_right ∘ !mu).
-
+  
   Theorem constant_stream_ext1 : forall {Γ Δ A : U} (mu : Δ ~~> Prob A) (f : Γ ~~> Δ),
       constant_stream (mu ∘ f) == (constant_stream mu) ∘ f.
   Proof. intros Γ Δ A mu f.
@@ -126,27 +129,19 @@ Defined.
            autorewrite with cat_db.
            rewrite <- !compose_assoc.
            rewrite parallel_fst. reflexivity.
-Qed.
-           
-
+  Qed.
   
-  Definition infinite_coinflips : unit ~~> Prob Cantor := 
-    constant_stream coinflip.
   
   Definition constant_unfold_prog : forall {Γ A : U} (mu : Γ ~~> Prob A), Γ ~~> Prob (Stream A).
   Proof. intros. (* Check (constant_stream mu). *)
-         refine (y <- mu; (zs <- constant_stream (!mu); _)).
+         refine (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
          refine (Ret (cons (!y) zs)).
-         (* Show Proof. *)
+         Show Proof. 
   Defined.
-
-  Existing Instance pstream_Proper.
-
-  (* Theoretically this should be imported from elsewhere, but I don't know how to. *)
-  Ltac simpl_ext := unfold liftF, Lift, Extend_Prod, Extend_Refl, extend;
-                    repeat rewrite compose_id_right.
   
-
+  Existing Instance pstream_Proper.
+  
+  
   Theorem constant_unfold : forall {Γ A : U} (mu : Γ ~~> Prob A),
       (constant_stream mu) == (constant_unfold_prog mu).
   Proof. intros Γ A mu.
@@ -167,56 +162,70 @@ Qed.
          autorewrite with cat_db. reflexivity.
          reflexivity.
   Qed.
-           
+  
 
-
+  
   (* Maybe this should be elsewhere? *)
   
   Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
-    (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
+      (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
   Proof. intros Γ A B mu nu.
          refine (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
          intros. reflexivity.         
   Qed.                
-
+  
   Existing Instance Streamprops.
 
+  Definition infinite_sampler_prog {Δ A : U} : Δ * (Stream A) ~~> (Stream A) * A.
+  Proof. refine ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
+  Defined.
 
+  
   Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
                                                                    (constant_stream D) D.
-  Proof. refine (sampler (⟨tl, hd⟩ ∘ snd) _).
-         unfold Map; rewrite emap_snd_pair.
-         unfold indep. rewrite Fubini_pair.
-         rewrite constant_unfold; unfold constant_unfold_prog.
-
-         rewrite map_Bind. apply Bind_Proper; try reflexivity.
-         rewrite lam_postcompose; apply lam_extensional.
-         intros. simpl.
-
-         rewrite map_Bind. apply Bind_Proper.
-         - simpl_ext. rewrite constant_stream_ext1.
-           reflexivity.
-         - rewrite lam_postcompose; apply lam_extensional.
-           intros. simpl.
-           rewrite map_Ret.
-           apply Ret_Proper.
-           rewrite pair_f.
-           rewrite cons_tl', cons_hd.
-           reflexivity.
+  Proof. refine (sampler infinite_sampler_prog _).
+         rewrite Map_program.
+         unfold indep, infinite_sampler_prog.
+         rewrite constant_unfold at 2; unfold constant_unfold_prog.
+         rewrite Bind'_Bind'.
+         rewrite Fubini_pair.
+         apply Bind_Proper; try reflexivity.
+         apply lam_extensional; intros.
+         rewrite Bind'_Bind'. apply Bind_Proper.
+         simpl_ext. symmetry. apply constant_stream_ext1.
+         apply lam_extensional; intros.
+         rewrite Bind'_Ret_f. rewrite lam_eval.
+         unfold ret; remove_eq_left.
+         rewrite ap2_ext_eval.
+         rewrite pair_f.
+         rewrite cons_tl', cons_hd.
+         reflexivity.
   Qed.
-
+  
+  Section Coinflip.
+    
+  Definition Boole := unit + unit.
+  Definition Cantor := Stream Boole.
+  
+  Definition infinite_coinflips : unit ~~> Prob Cantor := 
+    constant_stream coinflip.
+  
   Definition coinflip_sampler :
     Sampler (Δ := unit) (S := Cantor) (A := Boole) infinite_coinflips coinflip :=
     infinite_sampler _ _ _.
+
+  End Coinflip.
   
-  Definition compose_sampler (Δ S A B : U) (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) :
+  End Infinite.
+  
+  (* Definition compose_sampler (Δ S A B : U) (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) :
     (Sampler DS DA) -> (Sampler DA DB) -> (Sampler DS DB).  (* This is overkill, since the A ~> B could destroy A and we'd still be fine. *)
   Proof. intros [ S0 samples0 ] [S1 samples1].
          refine (sampler _ _).
          Unshelve. Focus 2.
          refine (_ ∘ ⟨fst, S0⟩).
          refine (_ ∘ prod_assoc_right ∘ swap).
-  Abort.
+  Abort. *)
 
   Definition pullback_sampler {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ') :
     (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
@@ -277,6 +286,58 @@ Qed.
          simpl_ext.
          autorewrite with cat_db. *)
          unfold indep.
+         unfold bind_sampler_prog. simpl_ext.
+         assert ((a <- DS;<< Δ0 | ext >>
+                  b <- (a0 <- DA;<< Δ1 | ext0 >>
+                        b <- DB ∘ ⟨ ext0, a0 ⟩;<< Δ2 | _ >>
+                        Ret b) ∘ ext;<< Δ1 | ext0 >>
+                 Ret ⟨ a ∘ ext0, b ⟩) ==
+                 (a <- DS;<< Δ0 | ext >>
+                  b <- (a <- DA ∘ ext;<< Γ' | eΓ >>
+                       b <- DB ∘ ⟨ ext ∘ eΓ, a ⟩;<< Δ2 | _ >>
+                       Ret b);<< Δ1 | ext0 >>                                                                               Ret ⟨ a ∘ ext0, b ⟩)) as change0.
+         { apply bind_extensional. intros. rewrite Bind'_ext. reflexivity. }
+         rewrite change0.
+         assert (( (a <- DS;<< Δ0 | ext >>
+                    b <- a0 <- DA ∘ ext;<< Γ' | eΓ >>
+                         b <- DB ∘ ⟨ ext ∘ eΓ, a0 ⟩;<< Δ2 | _ >>
+                        Ret b;<< Δ1 | ext0 >>
+                    Ret ⟨ a ∘ ext0, b ⟩)) ==
+                  ((a <- DS;<< Δ0 | ext >>
+                    y <- DA ∘ ext;<< Δ' | eΔ >>
+                    x <- b <- DB ∘ ⟨ ext ∘ eΔ, y ⟩;<< Δ2 | _ >>
+                        Ret b;<< Δ'' | eΔ' >>
+                    Ret ⟨ a ∘ (eΔ ∘ eΔ'), x ⟩) )) as change1.
+         { apply bind_extensional. intros. rewrite Bind'_Bind'. reflexivity. }
+         rewrite change1.
+         assert ((a <- DS;<< Δ0 | ext >>
+                    y <- DA ∘ ext;<< Δ' | eΔ >>
+                    x <- b <- DB ∘ ⟨ ext ∘ eΔ, y ⟩;<< Δ2 | _ >>
+                        Ret b;<< Δ'' | eΔ' >>
+                    Ret ⟨ a ∘ (eΔ ∘ eΔ'), x ⟩) ==
+                 (s <- DS;<< Δ0 | ext0 >>
+                  a <- !DA;<< Δ1 | ext1 >>
+                  b <- !(DB ∘ ⟨ !id, a ⟩);<< Δ2 | ext2 >>
+                  Ret ⟨ !(!s) , b ⟩)
+                 ) as change2.
+         { apply bind_extensional; intros. apply bind_extensional; intros.
+           rewrite (Bind'_m_Ret (DB ∘ ⟨ext ∘ ext0, a0⟩)).
+           rewrite lam_id. rewrite emap_snd. simpl_ext. unfold Extend_Compose. autorewrite with cat_db.
+           apply Bind_Proper; try reflexivity. apply lam_extensional; intros. rewrite compose_assoc.
+           reflexivity. }
+         rewrite change2.
+         (* assert ((s <- DS;<< Δ0 | ext0 >>
+                  a <- !DA;<< Δ1 | ext1 >>
+                  b <- !(DB ∘ ⟨ !id, a ⟩);<< Δ2 | ext2 >>
+                  Ret ⟨ !(!s) , b ⟩) ==
+                 (a <- DA;<< Δ0 | ext0 >>
+                  s <- !DS;<<Δ1 | ext1>>
+                  b <- !(DB ∘ ⟨!id, !a⟩);<< Δ2 | ext2>>
+                  Ret ⟨!s, b⟩)) as change3.
+         { admit. (* Fubini DS DA... *) }
+         rewrite change3. *)
+         unfold indep in samplesA.
+         rewrite Map_program in samplesA.
   Abort.
 
   End Samplers.
