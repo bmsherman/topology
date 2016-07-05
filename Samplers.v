@@ -136,7 +136,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Proof. intros. (* Check (constant_stream mu). *)
          refine (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
          refine (Ret (cons (!y) zs)).
-         Show Proof. 
+         (* Show Proof.  *)
   Defined.
   
   Existing Instance pstream_Proper.
@@ -227,25 +227,27 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          refine (_ ∘ prod_assoc_right ∘ swap).
   Abort. *)
 
+  Section Pullback.
+  
   Definition pullback_sampler {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ') :
     (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
   Proof. intros [SA samples]. refine (sampler (SA ∘ (ext ⊗ id)) _).
          unfold Extend in ext.
          rewrite <- indep_ext.
          rewrite samples.
-         unfold Map, emap. (* extract to Map_ext? *)
-         rewrite map_compose.
-         rewrite <- (compose_assoc strong).
-         rewrite <- strong_nat.
-         rewrite <- !compose_assoc.
+         rewrite !Map_program.
+         rewrite Bind'_ext.
+         apply Bind_Proper; try reflexivity.
+         apply lam_extensional; intros.
+         unfold Ret, ap2; remove_eq_left.
          rewrite parallel_pair.
-         autorewrite with cat_db.
-         rewrite <- (compose_id_left ext) at 2.
-         rewrite <- pair_f.
-         rewrite !compose_assoc.
+         rewrite compose_id_left.
          reflexivity.
   Qed.
-            
+
+  End Pullback.
+
+  Section Bind.
 
   Definition bind_sampler_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     (Δ ~~> Prob B).
@@ -340,4 +342,6 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite Map_program in samplesA.
   Abort.
 
+  End Bind. 
+  
   End Samplers.
