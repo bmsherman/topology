@@ -4,18 +4,10 @@ Require Import Morphisms.
 Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Language.ContPL.
-(* Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream *)
 Import Category.
 Import ContPL.
 Import Prob.
 Import Real.
-(* Import Sierp.
-Import Sum.
-Import Lift.
-Import Stream.
-Import CCC.
-Import Discrete.
-Import Presheaf. *)
 
 Local Open Scope morph.
 Local Open Scope obj.
@@ -352,9 +344,11 @@ Proof. Abort.
   (*b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩). *)
   Proof.
     intros. 
-    rewrite Bind_ext. apply Bind_Proper; try reflexivity. (* Here we need to use: lam_eval_ext. *)
-    admit.
-  Admitted.
+    rewrite Bind_ext. apply Bind_Proper; try reflexivity. rewrite lam_eval_ext.
+    simpl_ext.
+    apply lam_extensional; intros.
+    apply (lam_Proper f); autorewrite with cat_db; reflexivity.
+  Qed.
   
   Theorem call_inv {A B C : U} (f : forall Δ, Δ ~~> A -> Δ ~~> B -> Δ ~~> C)
           (f_ext1 : forall Δ, Proper (eq ==> eq ==> eq) (f Δ))
@@ -472,10 +466,8 @@ Proof. Abort.
          rewrite lam_eval_ext.
          apply lam_extensional.
          intros. simpl_ext.
-         (* Need to use properness of g somehow here, don't quite know how to apply lam_Proper. *)
-         admit.
-  Admitted.
-  
+         apply (lam_Proper g); remove_eq_right; autorewrite with cat_db; reflexivity.
+  Qed.  
   
   Lemma lam_postcompose {Γ A B C : U} (f : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> B)
         (g : B ~~> C)
