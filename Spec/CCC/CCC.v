@@ -54,6 +54,16 @@ intros. rewrite <- eval_abstract.
 rewrite H. rewrite eval_abstract. reflexivity.
 Qed.
 
+Definition ap {Γ A B: U} (f : Γ ~~> A ==> B) (x : Γ ~~> A)
+  : Γ ~~> B := (eval ∘ ⟨ f , x ⟩)%morph.
+
+Require Import Morphisms.
+Global Instance ap_Proper Γ A B : Proper (eq ==> eq ==> eq)
+  (@ap Γ A B).
+Proof.
+unfold ap. prove_map_Proper.
+Qed.
+
 Definition postcompose {A A' B} (f : A' ~~> A)
   : A ==> B ~~> A' ==> B
   := abstract (eval ∘ (id ⊗ f)).
@@ -159,14 +169,6 @@ eapply Hom_Setoid_Iso. apply (Category.Iso_Sym Iso_Prod_Assoc).
 apply Category.Iso_Refl.
 Defined.
 
-Definition Adjoint_Iso {F G : Functor U U}
-  : (F -| G)%functor
-  -> forall A B, A ==> G B ≅ F A ==> B.
-Proof.
-intros. unshelve (eapply Category.Build_Iso).
-Abort.
-
-
 Lemma lift_weak_Iso {A B}
   (equiv : forall Γ, (Hom_Setoid Γ A ≅ Hom_Setoid Γ B)%setoid)
   : to (equiv A) id ∘ from (equiv B) id == id 
@@ -194,5 +196,7 @@ simpl. apply undefined.
 Defined.
 
 End Defns.
+
+Infix "@" := ap (at level 19, left associativity) : morph_scope.
 
 End CCC.

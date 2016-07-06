@@ -2,7 +2,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Morphisms.
 Require Import Spec.Category.
-Require Import Spec.Prob.
+Require Import Spec.Prob Spec.SMonad.
 Require Import Language.ContPL.
 Import Category.
 Import ContPL.
@@ -16,8 +16,10 @@ Section ContPLProps.
   
   Context {U : Type}.
   Context `{CMCprops : CMC_Props (U := U)}.
-  Context `{mops : MeasOps U (ccat := ccat) (cmc := cmc)}.
-  Context `{SMDProps : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc) (smd := ProbMonad)}.
+  Context `{mops : MeasOps U (ccat := ccat) (cmc := cmc) (cmcprops := CMCprops) }.
+  Context `{SMDProps : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
+     (cmcprops := CMCprops)
+     (smd := ProbMonad)}.
   
   
   Existing Instance ProbMonad.
@@ -27,10 +29,10 @@ Section ContPLProps.
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
        (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
        (@unit_uniq _ _ _ _)
-       (@map_id _ Prob _ _ _ _)
-       (@join_map_ret _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _)
-       (@strength_ret _ _ _ _ _ _)
-       (@fst_strong _ _ _) (@snd_strong _ _ _ _ _ _)
+       (@map_id _ Prob _ _ _ _ _)
+       (@join_map_ret _ _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _ _)
+       (@strength_ret _ _ _ _ _ _ _)
+       (@fst_strong _ _ _ _) (@snd_strong _ _ _ _ _ _ _)
     : cat_db.
   
   

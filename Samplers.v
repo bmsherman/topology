@@ -4,7 +4,8 @@ Require Import Morphisms.
 Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Language.ContPL Language.ContPLProps.
-Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream.
+Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream
+  Spec.SMonad.
 Import Category.
 Import ContPL.
 Import ContPLProps.
@@ -32,8 +33,10 @@ Section Samplers.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
   Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
   Context `{mops : MeasOps U
-(ccat := ccat) (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
-  Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc) (smd := ProbMonad)}.
+(ccat := ccat) (cmcprops := CMCprops)
+  (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
+  Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
+     (cmcprops := CMCprops) (smd := ProbMonad)}.
 
   Existing Instance ProbMonad.
  (*
@@ -50,10 +53,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
        (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
        (@unit_uniq _ _ _ _)
-       (@map_id _ Prob _ _ _ _)
-       (@join_map_ret _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _)
-       (@strength_ret _ _ _ _ _ _)
-       (@fst_strong _ _ _) (@snd_strong _ _ _ _ _ _)
+       (@map_id _ Prob _ _ _ _ _)
+       (@join_map_ret _ _ _ _ _ _ _) (@join_ret _ _ _ _ _ _ _)
+       (@strength_ret _ _ _ _ _ _ _)
+       (@fst_strong _ _ _ _) (@snd_strong _ _ _ _ _ _ _)
        (@stream_hd _ _ _) (@stream_tl _ _ _)
     : cat_db.
 
@@ -134,8 +137,8 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   
   Definition constant_unfold_prog : forall {Γ A : U} (mu : Γ ~~> Prob A), Γ ~~> Prob (Stream A).
   Proof. intros. (* Check (constant_stream mu). *)
-         refine (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
-         refine (Ret (cons (!y) zs)).
+         unshelve eapply (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
+         unshelve eapply (Ret (cons (!y) zs)).
          (* Show Proof.  *)
   Defined.
   
@@ -170,14 +173,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
       (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
   Proof. intros Γ A B mu nu.
-         refine (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
+         unshelve eapply (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
          intros. reflexivity.         
   Qed.                
   
   Existing Instance Streamprops.
 
   Definition infinite_sampler_prog {Δ A : U} : Δ * (Stream A) ~~> (Stream A) * A.
-  Proof. refine ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
+  Proof. eapply ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
   Defined.
 
   
@@ -267,6 +270,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
       Sampler DS (bind_distr_prog DS DA DB).
   Proof. intros [SA samplesA] [SB samplesB].
+
          refine (sampler (bind_sampler_prog SA SB) _).
          rewrite Map_prog.
          unfold indep, bind_distr_prog, bind_sampler_prog.

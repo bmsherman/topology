@@ -7,9 +7,10 @@ Local Open Scope morph.
 Module Prob.
 Section Prob.
 
-Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
+Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
-Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream.
+Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream 
+  Spec.SMonad.
 Require Import Morphisms.
 Import Sierp.
 Import Real.
@@ -31,7 +32,14 @@ Class OpenOps : Type :=
 
 Context {Meas Prob SubProb : U -> U}.
 
+Require Import Spec.CCC.CCC.
+Require Import Spec.CCC.Presheaf.
 Require Import Prob.Language.ContPL.
+
+Import CCC.
+Import Presheaf.
+
+Existing Instances CCat_PSh CMC_Psh CMCProps_PSh CCCOps_PSh.
 
 Class MeasOps : Type :=
   { MeasMonad : SMonad (ccat := ccat) (cmc := cmc) U Meas
@@ -52,6 +60,10 @@ Class MeasOps : Type :=
       (pstream x f) ∘ g == pstream (x ∘ g) (f ∘ (g ⊗ id))
   ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
   ; fst_strong : forall {A B}, (map fst) ∘ (strong (M:=Prob)(A:=A)(B:=B)) == ret ∘ fst
+
+  ; Pstream : forall {A X : U}, Const (Y X ==> (Y X ==> Y (Prob (A * X))) ==> Y (Prob (Stream A)))
+  ; Coinflip : Const (Y (Prob (unit + unit)))
+  ; Normal : Const (Y (Prob R))
   }.
 
 Context {mops : MeasOps}.

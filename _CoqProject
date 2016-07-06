@@ -47,6 +47,7 @@ Spec/Functor.v
 Spec/Prob.v
 Spec/Real.v
 Spec/Sierpinski.v
+Spec/SMonad.v
 Spec/Stream.v
 Spec/Sum.v
 Spec/Lift.v

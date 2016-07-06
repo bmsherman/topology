@@ -439,8 +439,10 @@ Import CCC.
 
 Instance CMC_Props_IGT : CMC_Props IGT := undefined _.
 
+
 Existing Instances 
   CCat_PSh CCCOps_PSh CMC_Psh CMCProps_PSh CCCProps_PSh.
+
 
 Hint Constructors FirstOrder Basic : FO_DB.
 
@@ -451,7 +453,7 @@ econstructor 2. econstructor.
 econstructor. econstructor.
 Defined.
 
-Definition func_1_CCC : Const (Y (discrete nat) ==> Y (discrete nat))%obj.
+Definition func_1_CCC : unit ~~> (Y (discrete nat) ==> Y (discrete nat))%obj.
 Proof.
 apply (to_presheaf func_1_fo).
 refine (_ ∘ fst). apply func_1.
@@ -459,18 +461,13 @@ Defined.
 
 Require Import Language.CCCPL.
 
-Definition func1_twice_term : Term (Y (discrete nat) ==> Y (discrete nat))%obj := 
-    ([ λ x => #func_1_CCC @ (#func_1_CCC @ !x) ])%stlc.
+Set Printing All.
 
-  Lemma func1_twiceWF : Wf func1_twice_term.
-  Proof. proveWF.
-  Defined.
-
-Definition func1_twice : 
-  CCC.Const (Y (discrete nat) ==> Y (discrete nat))%obj.
-Proof.
-eapply compile_phoas. apply func1_twiceWF.
-Defined.
+(* Why do I need to set these implicits to avoid a typeclass loop? 
+   So frustrating! *)
+Definition func1_twice : unit ~~> (Y (discrete nat) ==> Y (discrete nat))%obj := 
+compile_phoas (U := PSh IGT) (
+  Build_WfTerm (U := PSh IGT) (fun _ => λ x => !x)%stlc (ltac:(proveWF))).
 
 Definition discrete_pt_CCC {A} (x : A)
   : CCC.Const (Y (discrete A)).

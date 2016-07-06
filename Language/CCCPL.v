@@ -46,8 +46,7 @@ induction e.
   apply (IHm ∘ fst). 
 - assumption.
 - apply abstract. simpl in IHe. apply IHe.
-- eapply compose. eapply eval.
-  eapply pair; eassumption.
+- eapply ap; eassumption.
 Defined.
 
 Section Var.
@@ -112,19 +111,29 @@ Section wf.
   - eapply AppDB; eauto.
   Defined.
 
-  Definition phoas_to_DB {A} (E : Term A) (wellformed : Wf E) : termDB nil A.
+  Record WfTerm {A} :=
+    { WfT_Term : forall var, term var A
+    ; WfT_Wf : Wf WfT_Term
+    }.
+
+  Arguments WfTerm : clear implicits.
+
+  Definition phoas_to_DB {A} (E : WfTerm A) : termDB nil A.
   Proof.
+  destruct E as [E wellformed].
   pose proof (phoas_to_DB_helper (E (fun _ => True)) (E (fun _ => True)) nil).
   simpl in X. apply X. apply wellformed.
   Defined.
 
-  Definition compile_phoas {A} (E : Term A) (wellformed : Wf E) 
-    : unit ~~> A :=
-    compile_DB _ (phoas_to_DB E wellformed).
+  Definition compile_phoas {A} (E : WfTerm A) 
+    : unit ~~> A := compile_DB _ (phoas_to_DB E).
 
 End STLC.
 
 Hint Constructors member : member_db.
+
+Arguments WfTerm {U ccat cmc H} A.
+Arguments Build_WfTerm {U ccat cmc H A} _ _.
 
 Ltac proveWF := red; 
   intros; repeat match goal with
@@ -136,19 +145,51 @@ Ltac proveWF := red;
 
   Notation "!" := Var : stlc_scope.
   Notation "#" := Const : stlc_scope.
-  Infix "@" := App (left associativity, at level 50) : stlc_scope.
+  Infix "@" := App (left associativity, at level 19) : stlc_scope.
   Notation "'λ' x .. y => t " := (Abs (fun x => .. (Abs (fun y => t)) .. ))
         (x binder, y binder, at level 200, right associativity)
         : stlc_scope.
-  Notation "[ e ]" := (fun _ => e) : stlc_scope.
 
-(*
-  Definition konst {A B} : Term (A ==> B ==> A) := 
-    [ λ (x : _ A) y => ! x ]%stlc.
+  Notation "[ e ]" := (fun _ => e)%stlc (at level 0) : stlc_scope.
 
-  Lemma konstWF : forall A B, Wf (@konst A B).
-  Proof. proveWF.
-  Defined.
+  Notation "[ e | pf ]" := (Build_WfTerm [ e ]%stlc pf)
+    (at level 0) : stlc_scope.
+
+  Notation "[ e $ pf ]" := (compile_phoas [ e | pf ]%stlc)
+    (at level 0) : stlc_scope.
+
+  Notation "[ e |]" := (Build_WfTerm e _)
+    (at level 0) : stlc_scope.
+
+  Notation "[ e $]" := (compile_phoas [ e |]%stlc)
+    (at level 0) : stlc_scope.
+
+Section Test.
+Context {U : Type} {ccat : CCat U}
+  {cmc : CMC U} {cmcprops : CMC_Props U} `{CCCOps U (ccat := ccat)}.
+  Local Open Scope obj.
+
+  Definition comp {A B C : U} (g : unit ~~> B ==> C)
+  (f : unit ~~> A ==> B) : unit ~~> A ==> C
+  := [ λ x => #g @ (#f @ !x) $ ltac:(proveWF) ]%stlc.
+
+  Lemma app_lem {A B} (f : unit ~~> A ==> B) (x : unit ~~> A) :
+  ([ # f @ # x $ ltac:(proveWF) ]%stlc == f @ x)%morph.
+  Proof.
+  unfold compile_phoas. simpl. rewrite <- !(unit_uniq id).
+  rewrite !compose_id_right. reflexivity.
+  Qed.
+
+  Lemma comp_id {A B} (f : unit ~~> A ==> B) :
+    (comp [ λ x => !x $ ltac:(proveWF) ]%stlc f == f)%morph.
+  Proof.
+  Abort.
+
+  Definition const {A B : U} : WfTerm (A ==> B ==> A) :=
+   [ λ x y => !x | ltac:(proveWF) ]%stlc.
+
+  Definition constS {A B} : unit ~~> A ==> B ==> A :=
+     compile_phoas const.
 
   Axiom M : U -> U.
 
@@ -166,11 +207,9 @@ Ltac proveWF := red;
 
   Definition pair {A B} : unit ~~> (A ==> B ==> A * B) := undefined _.
 
-  Definition testExp : Term (M (Bool * Real)) :=
+  Definition testExp : unit ~~> M (Bool * Real) :=
     [ #Bind @ #coinflip @ (λ x => #Bind @ (#normal @ !x) @
-      (λ y => #Ret @ (#pair @ !x @ !y) )) ]%stlc.
+      (λ y => #Ret @ (#pair @ !x @ !y) )) $ ltac:(proveWF) ]%stlc.
 
-  Definition testExpWF : Wf testExp.
-  Proof. proveWF. Defined.
-*)
+End Test.
   
