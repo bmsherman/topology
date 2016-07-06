@@ -95,15 +95,6 @@ Proof.
 apply (unit_uniq (tt ∘ f)).
 Qed.
 
-Lemma pair_parallel_id {Γ A B C} (f : Γ ~~> A)
-  (g : Γ ~~> B) (h : B ~~> C)
-  : ⟨ f, h ∘ g ⟩ == (id ⊗ h) ∘ ⟨ f , g ⟩.
-Proof.
-rewrite <- (compose_id_left f).
-rewrite parallel_pair.
-rewrite !compose_id_left. reflexivity.
-Qed.
-
 (* What a painful proof! *)
 Theorem cons_tl {Γ A X} (a : Γ ~~> A) (x : Γ ~~> X) (f : X ~~> A * X)
   : tl ∘ cons a (stream x f) == stream x f.

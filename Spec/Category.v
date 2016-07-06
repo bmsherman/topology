@@ -81,6 +81,7 @@ Proof. intros A B C D f f' g g' ff' gg'.
 Qed.
 
 Definition diagonal {U} `{CMC U} {A : U} : A ~~> A * A := ⟨ id , id ⟩.
+Definition swap {U} `{CMC U} {A B : U} : A * B ~~> B * A := ⟨snd, fst⟩.
 
 Global Instance parallel_Proper `{CMC} : forall A B C D : U,
   Proper (eq (A := A) (B := B) ==> eq (A := C) (B := D) ==> eq) parallel.
@@ -144,32 +145,18 @@ Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
 
 Arguments CMC_Props U {_ _} : clear implicits.
 
+Ltac remove_eq_left :=
+  repeat rewrite <- compose_assoc; repeat (apply compose_Proper; try reflexivity).
+Ltac remove_eq_right :=
+  repeat rewrite compose_assoc; repeat (apply compose_Proper; try reflexivity).
+
+
 Section BasicProps.
   Require Coq.Setoids.Setoid.
-  Context {U} {ccat : CCat U} {cmc : CMC U} {cmp : @CMC_Props U ccat cmc}.
+  Context {U} {ccat : CCat U} {cmc : CMC U} {cmp : @CMC_Props U ccat cmc}.  
 
-  Theorem isom_eq_left : forall {A B C : U} (f f' : A ~~> B) (s : B ≅ C), (to s) ∘ f == (to s) ∘ f' -> f == f'.
-  Proof. intros. assert ((from s) ∘ ((to s) ∘ f) == (from s) ∘ ((to s) ∘ f')).
-         { rewrite H. reflexivity.
-         }
-         rewrite -> compose_assoc in H0, H0.
-         rewrite (from_to s) in H0.
-         rewrite compose_id_left in H0, H0.
-         apply H0.
-  Defined.
-
-
-  Theorem isom_eq_right : forall {A B C : U} (f f' : B ~~> C) (s : A ≅ B), f ∘ (to s) == f' ∘ (to s) -> f == f'.
-  Proof. intros. assert ((f ∘ (to s)) ∘ (from s) == (f' ∘ (to s)) ∘ (from s)).
-         { rewrite H. reflexivity.
-         }
-         rewrite <- compose_assoc in H0, H0.
-         rewrite (to_from s) in H0.
-         rewrite compose_id_right in H0, H0.
-         apply H0.
-  Defined.
-  
-  Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C}, (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
+  Theorem proj_eq : forall {A B C : U} {f f' : A ~~> B * C},
+      (fst ∘ f) == (fst ∘ f') -> (snd ∘ f == snd ∘ f') -> f == f'.
   Proof. intros A B C f f' Hfst Hsnd. rewrite (pair_uniq f). rewrite (pair_uniq f').
          rewrite Hfst, Hsnd. reflexivity.
   Defined.
@@ -388,7 +375,16 @@ Definition Hom_Setoid A B :=
     rewrite <- compose_assoc. rewrite from_to.
     apply compose_id_right.
   Defined.
-  
+
+  Lemma pair_parallel_id {Γ A B C} (f : Γ ~~> A)
+        (g : Γ ~~> B) (h : B ~~> C)
+    : ⟨ f, h ∘ g ⟩ == (id ⊗ h) ∘ ⟨ f , g ⟩.
+  Proof.
+    rewrite <- (compose_id_left f).
+    rewrite parallel_pair.
+    rewrite !compose_id_left. reflexivity.
+  Qed.
+ 
   
 End BasicProps.
 
