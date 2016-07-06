@@ -1,5 +1,6 @@
 Require Import Prob.Language.ContPL.
-Require Import Spec.Category Spec.Real Spec.Sierpinski Spec.Prob Spec.Sum.
+Require Import Spec.Category Spec.Real Spec.Sierpinski Spec.Prob 
+  Spec.Sum Spec.SMonad.
 
 Section LangExample.
 

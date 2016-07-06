@@ -47,14 +47,14 @@ Fixpoint unsplay {A} (xs : list A)
   end.
   
 
-Require Import Spec.Category.
+Require Import Spec.Category Spec.SMonad.
 Import Category.
 Local Open Scope morph.
 Local Open Scope obj.
 
 Section ContPL.
 
-Context {U : Type} `{CMC U}.
+Context {U : Type} `{CMC_Props U}.
 
 Fixpoint nprod (xs : list U) : U := match xs with
   | nil => unit
@@ -155,7 +155,7 @@ Section Instances.
 
 (** Instances *)
 
-Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
+Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
   Lemma lam_extensional {Γ A B} 
     (f g : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> B) : 

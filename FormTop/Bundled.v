@@ -339,5 +339,3 @@ Instance IGT_CMC : CMC B.IGT :=
   ; snd := fun _ _ => B.proj2
   |}.
 Admitted.
-
-Axiom MCProb : @SMonad _ _ _ B.Prob. 
