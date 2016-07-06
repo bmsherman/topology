@@ -99,7 +99,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite lam_eval. rewrite compose_id_right.
          rewrite <- (compose_id_right ⟨a, x ∘ ext⟩).
          reflexivity.
-         rewrite Map_program.
+         rewrite Map_prog.
          apply Bind_Proper; try reflexivity.
          apply lam_extensional; intros.
          rewrite !ret_Ret. remove_eq_left.
@@ -184,7 +184,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
                                                                    (constant_stream D) D.
   Proof. refine (sampler infinite_sampler_prog _).
-         rewrite Map_program.
+         rewrite Map_prog.
          unfold indep, infinite_sampler_prog.
          rewrite constant_unfold at 2; unfold constant_unfold_prog.
          rewrite Bind'_Bind'.
@@ -235,7 +235,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          unfold Extend in ext.
          rewrite <- indep_ext.
          rewrite samples.
-         rewrite !Map_program.
+         rewrite !Map_prog.
          rewrite Bind'_ext.
          apply Bind_Proper; try reflexivity.
          apply lam_extensional; intros.
@@ -249,26 +249,30 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Section Bind.
 
-  Definition bind_sampler_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
+  Definition bind_distr_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     (Δ ~~> Prob B).
-  Proof. refine (a <- DA; _).
-         refine (b <- DB ∘ ⟨e, a⟩; _).
-         refine (Ret b).
+  Proof. refine (a <- DA;<< _ | _ >> (b <- DB ∘ ⟨!id, a⟩;<< _ | _ >> (Ret b))).
   Defined.
-  
 
+  Definition bind_sampler_prog {Δ A B S : U} (SA : Δ * S ~~> S * A) (SB : Δ * A * S ~~> S * B)
+    : Δ * S ~~> S * B.
+  Proof. 
+         refine ('LAM'<< Δ' | e >> s => 
+                              let s':= fst ∘ (ap2 SA e s) in
+                              let a := snd ∘ (ap2 SA e s)
+                              in (ap3 SB e a s)).
+  Defined.
   
   Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
-      Sampler DS (bind_sampler_prog DS DA DB).
+      Sampler DS (bind_distr_prog DS DA DB).
   Proof. intros [SA samplesA] [SB samplesB].
-         refine (sampler _ _).
-         Unshelve. Focus 2.
-         refine ('LAM'<< Δ' | e >> s =>
-                               let s':= fst ∘ (ap2 SA e s) in
-                               let a := snd ∘ (ap2 SA e s)
-                               in (ap3 SB e a s)).
-         rewrite Map_program. 
+         refine (sampler (bind_sampler_prog SA SB) _).
+         rewrite Map_prog.
+         unfold indep, bind_distr_prog, bind_sampler_prog.
+         unfold indep in samplesB. rewrite Map_prog in samplesB.
+         unfold indep in samplesA. rewrite Map_prog in samplesA.
+         unfold Lift at 1.
 
          assert ((s <- DS;<< Δ0 | e >>
     Ret
@@ -282,7 +286,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          
          (* refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩). *)
    
-(*         unfold bind_sampler_prog. (* Just Bind DA DB *)
+(*         unfold bind_distr_prog. (* Just Bind DA DB *)
          setoid_rewrite Bind_m_Ret.
          rewrite <- (compose_id_left snd). rewrite emap_snd_pair.
          simpl_ext.
