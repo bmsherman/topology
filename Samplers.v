@@ -137,8 +137,8 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   
   Definition constant_unfold_prog : forall {Γ A : U} (mu : Γ ~~> Prob A), Γ ~~> Prob (Stream A).
   Proof. intros. (* Check (constant_stream mu). *)
-         refine (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
-         refine (Ret (cons (!y) zs)).
+         unshelve eapply (y <- mu;<< _ | _>> (zs <- constant_stream (!mu);<<_ | _>> _)).
+         unshelve eapply (Ret (cons (!y) zs)).
          (* Show Proof.  *)
   Defined.
   
@@ -173,14 +173,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
       (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
   Proof. intros Γ A B mu nu.
-         refine (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
+         unshelve eapply (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
          intros. reflexivity.         
   Qed.                
   
   Existing Instance Streamprops.
 
   Definition infinite_sampler_prog {Δ A : U} : Δ * (Stream A) ~~> (Stream A) * A.
-  Proof. refine ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
+  Proof. eapply ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
   Defined.
 
   
@@ -254,9 +254,9 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Definition bind_sampler_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     (Δ ~~> Prob B).
-  Proof. refine (a <- DA; _).
-         refine (b <- DB ∘ ⟨e, a⟩; _).
-         refine (Ret b).
+  Proof. unshelve eapply (a <- DA; _).
+         unshelve eapply (b <- DB ∘ ⟨e, a⟩; _).
+         eapply (Ret b).
   Defined.
   
 
@@ -265,9 +265,8 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
       Sampler DS (bind_sampler_prog DS DA DB).
   Proof. intros [SA samplesA] [SB samplesB].
-         refine (sampler _ _).
-         Unshelve. Focus 2.
-         refine ('LAM'<< Δ' | e >> s =>
+         unshelve eapply sampler.
+         apply ('LAM'<< Δ' | e >> s =>
                                let s':= fst ∘ (ap2 SA e s) in
                                let a := snd ∘ (ap2 SA e s)
                                in (ap3 SB e a s)).
