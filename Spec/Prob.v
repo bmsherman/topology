@@ -76,28 +76,28 @@ Definition liftF {Γ Δ A B : U}
   f ∘ (ext ⊗ id).
 
 Axiom pstream_unfold : forall (Γ A X : U) 
-  (x : Γ ~~> X) (f : Γ * X ~~> Prob (A * X)),
+ (x : Γ ~~> X) (f : Γ * X ~~> Prob (A * X)),
       pstream x f == (
-         y <-  (f ∘ ⟨ id , x ⟩);
-         zs <- pstream (X := X) (snd ∘ y) (liftF f) ;
+        y <-  (f ∘ ⟨ id , x ⟩);
+        zs <- pstream (X := X) (snd ∘ y) (liftF f) ;
          Ret (cons (fst ∘ !y) zs) 
       ).
 
-  Notation "'LAM'<< Γ | E >> x => f" := (makeFun1E (fun Γ E x => f))
-                                          (at level 120, right associativity). 
-  
-  Notation "x <- e ;<< Γ | E >> f" := (Bind e (makeFun1E (fun Γ E x => f))) 
-                                        (at level 120, right associativity).
-  
-  Axiom Fubini : forall {Γ A B C} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B) 
-                   (f g : forall Δ (ext : Extend Γ Δ), (Δ ~~> A) -> (Δ ~~> B) -> (Δ ~~> Prob C)),
+Notation "'LAM'<< Γ | E >> x => f" := (makeFun1E (fun Γ E x => f))
+                                        (at level 120, right associativity). 
+
+Notation "x <- e ;<< Γ | E >> f" := (Bind e (makeFun1E (fun Γ E x => f))) 
+                                      (at level 120, right associativity).
+
+Axiom Fubini : forall {Γ A B C} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B) 
+                 (f g : forall Δ (ext : Extend Γ Δ), (Δ ~~> A) -> (Δ ~~> B) -> (Δ ~~> Prob C)),
       (forall Δ ext a b, (f Δ ext a b) == (g Δ ext a b) )->
-         (x <- mu;<< Δ | e >> y <- !nu;<< Δ' | e' >> (f Δ' (e∘e') (!x) y))
+      (x <- mu;<< Δ | e >> y <- !nu;<< Δ' | e' >> (f Δ' (e∘e') (!x) y))
       == (y <- nu;<< Δ | e >> x <- !mu;<< Δ' | e' >> (g Δ' (e∘e') x (!y))).
 
-  Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
-    ⟨map fst , map snd⟩.
-  (* 'marg' for 'marginal' *)
+Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
+  ⟨map fst , map snd⟩.
+(* 'marg' for 'marginal' *)
 
 
 End Prob.

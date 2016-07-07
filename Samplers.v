@@ -39,6 +39,7 @@ Section Samplers.
      (cmcprops := CMCprops) (smd := ProbMonad)}.
 
   Existing Instance ProbMonad.
+  Existing Instance Streamops.
  (*
 
 Candidates for below I'm not sure about:
@@ -268,39 +269,6 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          reflexivity.
   Qed.         
          
-  Theorem Bind_Map_indep : forall {Γ A B C : U} (m : Γ ~~> Prob A) (F : Γ * A * C ~~> B) (h : Γ ~~> Prob C),
-      Bind m (Map F (h ∘ fst)) == Map (F ∘ prod_assoc_left) (indep m h).
-  Proof. intros Γ A B C m F h.
-         rewrite !Map_prog.
-         unfold indep.
-         rewrite Bind'_Bind'.
-         apply Bind_Proper; try reflexivity.
-         unfold makeFun1E at 2.
-         simpl_ext. rewrite Bind'_Bind'.
-         apply Bind_Proper. autorewrite with cat_db. reflexivity.
-         apply lam_extensional.
-         intros.
-         rewrite Bind'_Ret_f. unfold makeFun1E at 1.
-         unfold Ret. remove_eq_left.
-         simpl_ext.
-         unfold ap2. remove_eq_left.
-         apply proj_eq.
-         unfold prod_assoc_left. rewrite !compose_assoc.
-         - unfold Extend in ext.
-           autorewrite with cat_db.
-           rewrite parallel_pair; autorewrite with cat_db.
-           rewrite pair_f; autorewrite with cat_db.
-           rewrite <- !compose_assoc; autorewrite with cat_db.
-           rewrite <- pair_f. rewrite pair_id. rewrite compose_id_left.
-           reflexivity.
-         - unfold Extend in ext.
-           unfold prod_assoc_left.
-           autorewrite with cat_db.
-           rewrite !compose_assoc; autorewrite with cat_db.
-           rewrite <- !compose_assoc; autorewrite with cat_db.
-           rewrite pair_f; autorewrite with cat_db.
-           reflexivity.
-  Qed.
       
   
   Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
@@ -330,6 +298,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          unfold indep in samplesA. rewrite Map_prog in samplesA.
          unfold Lift at 1. *)
   
-  End Bind. 
+  End Bind.
+
+  Section Unzip.
+    
+    Theorem constant_unzip : forall {Γ A} (f : Γ ~~> Prob A),
+      (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) == indep (constant_stream f) (constant_stream f).
+    Proof. intros.
+           rewrite constant_unfold at 1. unfold constant_unfold_prog.
+           
   
 End Samplers.

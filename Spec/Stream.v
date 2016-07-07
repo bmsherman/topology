@@ -56,6 +56,7 @@ Context {SProps : StreamProps}.
 Context {cmcprops : CMC_Props U}.
 Context {sumProps : SumProps}.
 
+Existing Instance stream_Proper.
 
 Theorem cons_Proper : forall {Γ A}, Proper (eq ==> eq ==> eq) (@cons Γ A).
 Proof. unfold Proper, respectful.
@@ -218,10 +219,127 @@ Proof. intros Γ X X' A g x f f' f'g_gf.
          rewrite H1. (* Not sure how better to phrase this. *)
          apply IHn. assumption.
 Qed.
-         
 
-         
+Definition smap {A B} (f : A ~~> B) : (Stream A) ~~> (Stream B) :=
+  stream (Γ := (Stream A)) (X := Stream A) id ⟨f ∘ hd, tl⟩.
 
+Theorem smap_idx : forall {n} {A B} (f : A ~~> B), idx n ∘ (smap f) == f ∘ (idx n).
+Proof. intros n A B f. induction n.
+       - simpl. unfold smap. rewrite stream_hd. rewrite pair_fst.
+         rewrite compose_id_right. reflexivity.
+       - simpl. unfold smap. rewrite <- compose_assoc,  stream_tl.
+         rewrite pair_snd, compose_id_right.
+         unfold smap in IHn.
+         rewrite <- (compose_id_left tl).
+         rewrite stream_ext1.
+         rewrite ! compose_assoc.
+         rewrite compose_id_left.
+         rewrite IHn.
+         rewrite compose_id_right.
+         reflexivity.
+Qed.
+
+Theorem smap_cons : forall {Γ A B} (f : A ~~> B) (x : Γ ~~> A) (h : Γ ~~> Stream A),
+    (smap f) ∘ (cons x h) == cons (f ∘ x) (smap f ∘ h).
+Proof. intros Γ A B f x h. apply stream_bisim.
+       intros n.
+       rewrite compose_assoc, smap_idx.
+       destruct n.
+       - simpl. rewrite cons_hd. remove_eq_left. apply cons_hd.
+       - simpl. rewrite <- !compose_assoc, !cons_tl'. remove_eq_right.
+         symmetry. apply smap_idx.
+Qed.
+
+
+Definition zip {A B} : Stream A * Stream B ~~> Stream (A * B) :=
+  stream (Γ := Stream A * Stream B) (X := Stream A * Stream B) id ⟨hd ⊗ hd, tl ⊗ tl⟩.
+
+Theorem zip_idx : forall {n} {A B}, idx n ∘ zip (A:=A)(B:=B) == (idx n ⊗ idx n).
+Proof. intros n A B. induction n.
+       - unfold zip. simpl.
+         rewrite stream_hd.
+         rewrite pair_fst, compose_id_right. reflexivity.
+       - simpl. unfold zip. rewrite <- compose_assoc, stream_tl.
+         rewrite pair_snd, compose_id_right. rewrite <- (compose_id_left (tl ⊗ tl)).
+         rewrite stream_ext1. unfold zip in IHn.
+         rewrite !compose_assoc, compose_id_left.
+         rewrite IHn.
+         apply proj_eq; rewrite !compose_assoc.
+         repeat (rewrite !parallel_fst; remove_eq_left).
+         repeat (rewrite !parallel_snd; remove_eq_left).
+Qed.
+       
+
+Theorem Stream_Prod : forall {A B}, Stream (A * B) ≅ Stream A * Stream B.
+  intros A B; eapply (Build_Iso _ _ _ _ _ ⟨smap fst, smap snd⟩ zip).
+
+  apply proj_eq.
+
+  - rewrite compose_assoc, compose_id_right, pair_fst.
+    apply stream_bisim. intros n.
+    rewrite compose_assoc. rewrite smap_idx.
+    rewrite <- compose_assoc. rewrite zip_idx.
+    rewrite parallel_fst. reflexivity.
+    
+  - rewrite compose_assoc, compose_id_right, pair_snd.
+    apply stream_bisim. intros n.
+    rewrite compose_assoc. rewrite smap_idx.
+    rewrite <- compose_assoc. rewrite zip_idx.
+    rewrite parallel_snd. reflexivity.
+
+  - apply stream_bisim.
+    intros n.
+    rewrite compose_assoc, compose_id_right.
+    rewrite zip_idx.
+    rewrite parallel_pair.
+    rewrite !smap_idx.
+    rewrite <- pair_f, pair_id.
+    rewrite compose_id_left.
+    reflexivity.
+Qed.
+
+
+Definition unspool {A} : Stream A ~~> Stream (A * A) :=
+  stream (Γ := Stream A) (X:=Stream A) id ⟨⟨hd, hd ∘ tl⟩, tl ∘ tl⟩.
+
+Theorem unspool_cons : forall {A}, unspool (A:=A) == cons ⟨hd, hd∘tl⟩ (unspool ∘ tl ∘ tl).
+Proof. intros A.
+       apply stream_bisim.
+       intros n. unfold unspool.
+       induction n.
+       - simpl. rewrite stream_hd, pair_fst, compose_id_right.
+         rewrite cons_hd. reflexivity.
+       - simpl. rewrite <- !compose_assoc.
+         rewrite stream_tl. rewrite pair_snd.  rewrite compose_id_right. rewrite cons_tl'.
+         rewrite <- (compose_id_left (tl ∘ tl)) at 1.
+         rewrite stream_ext1. remove_eq_left.
+Qed.
+         
+Definition unzip {A} : Stream A ~~> Stream A * Stream A :=
+  ⟨smap fst, smap snd⟩ ∘ unspool.
+
+Existing Instance cons_Proper.
+
+Theorem unzip_cons : forall {A}, unzip (A:=A) == let (a, b) := (fst ∘ (unzip ∘ (tl ∘ tl)),
+                                                           snd ∘ (unzip ∘ (tl ∘ tl))) in
+                                            ⟨cons hd a, cons (hd ∘ tl) b⟩.
+Proof. intros.
+       unfold unzip.
+       rewrite !compose_assoc. rewrite pair_fst, pair_snd.
+       apply proj_eq.
+       rewrite !compose_assoc, !pair_fst.
+       rewrite unspool_cons at 1.
+       rewrite smap_cons.
+       apply cons_Proper. apply pair_fst.
+       rewrite !compose_assoc; reflexivity.
+       rewrite !compose_assoc, !pair_snd.
+       rewrite unspool_cons at 1.
+       rewrite smap_cons.
+       apply cons_Proper.
+       apply pair_snd.
+       rewrite !compose_assoc; reflexivity.
+Qed.
+       
 End Stream.
 
 End Stream.
