@@ -106,7 +106,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          apply Bind_Proper; try reflexivity.
          apply lam_extensional; intros.
          rewrite !ret_Ret. remove_eq_left.
-         autorewrite with cat_db.
+         rewrite compose_id_right.
          unfold const_sampler_prog.
          rewrite ap2_ext_eval.
          simpl_ext.
@@ -168,19 +168,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   
 
   
-  (* Maybe this should be elsewhere? *)
-  
-  Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
-      (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
-  Proof. intros Γ A B mu nu.
-         unshelve eapply (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
-         intros. reflexivity.         
-  Qed.                
-  
   Existing Instance Streamprops.
 
   Definition infinite_sampler_prog {Δ A : U} : Δ * (Stream A) ~~> (Stream A) * A.
-  Proof. eapply ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). Show Proof.
+  Proof. eapply ('LAM'<< Δ' | e >> aa => ⟨tl, hd⟩ ∘ aa). (* Show Proof. *)
   Defined.
 
   
@@ -252,104 +243,93 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Section Bind.
 
-  Definition bind_distr_prog {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
+  Definition bind_distr_prog {Δ A B : U} (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     (Δ ~~> Prob B).
   Proof. refine (a <- DA;<< _ | _ >> (b <- DB ∘ ⟨!id, a⟩;<< _ | _ >> (Ret b))).
   Defined.
 
   Definition bind_sampler_prog {Δ A B S : U} (SA : Δ * S ~~> S * A) (SB : Δ * A * S ~~> S * B)
     : Δ * S ~~> S * B.
-  Proof. 
-         refine ('LAM'<< Δ' | e >> s => 
+  Proof. refine (SB ∘ prod_assoc_left ∘ ⟨fst , swap ∘ SA⟩).
+        (* refine ('LAM'<< Δ' | e >> s => 
                               let s':= fst ∘ (ap2 SA e s) in
                               let a := snd ∘ (ap2 SA e s)
-                              in (ap3 SB e a s)).
+                              in (ap3 SB e a s)). *)
   Defined.
+
+  Theorem bind_distr_prog_spec : forall {Δ A B : U} (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B),
+      bind_distr_prog DA DB == Bind DA DB.
+  Proof. intros Δ A B DA DB. unfold bind_distr_prog.
+         setoid_rewrite Bind_m_Ret.
+         rewrite emap_snd.
+         simpl_ext.
+         autorewrite with cat_db.
+         rewrite pair_id, compose_id_right.
+         reflexivity.
+  Qed.         
+         
+  Theorem Bind_Map_indep : forall {Γ A B C : U} (m : Γ ~~> Prob A) (F : Γ * A * C ~~> B) (h : Γ ~~> Prob C),
+      Bind m (Map F (h ∘ fst)) == Map (F ∘ prod_assoc_left) (indep m h).
+  Proof. intros Γ A B C m F h.
+         rewrite !Map_prog.
+         unfold indep.
+         rewrite Bind'_Bind'.
+         apply Bind_Proper; try reflexivity.
+         unfold makeFun1E at 2.
+         simpl_ext. rewrite Bind'_Bind'.
+         apply Bind_Proper. autorewrite with cat_db. reflexivity.
+         apply lam_extensional.
+         intros.
+         rewrite Bind'_Ret_f. unfold makeFun1E at 1.
+         unfold Ret. remove_eq_left.
+         simpl_ext.
+         unfold ap2. remove_eq_left.
+         apply proj_eq.
+         unfold prod_assoc_left. rewrite !compose_assoc.
+         - unfold Extend in ext.
+           autorewrite with cat_db.
+           rewrite parallel_pair; autorewrite with cat_db.
+           rewrite pair_f; autorewrite with cat_db.
+           rewrite <- !compose_assoc; autorewrite with cat_db.
+           rewrite <- pair_f. rewrite pair_id. rewrite compose_id_left.
+           reflexivity.
+         - unfold Extend in ext.
+           unfold prod_assoc_left.
+           autorewrite with cat_db.
+           rewrite !compose_assoc; autorewrite with cat_db.
+           rewrite <- !compose_assoc; autorewrite with cat_db.
+           rewrite pair_f; autorewrite with cat_db.
+           reflexivity.
+  Qed.
+      
   
   Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
     forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
-      Sampler DS (bind_distr_prog DS DA DB).
+      Sampler DS (bind_distr_prog DA DB).
   Proof. intros [SA samplesA] [SB samplesB].
 
          refine (sampler (bind_sampler_prog SA SB) _).
+         pose proof (Bind_Proper DA DA (Equivalence_Reflexive DA) _ _ samplesB) as samplesB'.
+         rewrite indep_integral_right in samplesB'.
+         rewrite Bind_Map_indep in samplesB'.
+         unfold bind_sampler_prog.
+         rewrite <- Map_compose.
+         assert (Map (SB ∘ prod_assoc_left) (Map (swap ∘ SA) DS)
+                 == Map (SB ∘ prod_assoc_left) ((map swap) ∘ (indep DS DA))).
+         { apply Map_Proper; try reflexivity. rewrite Map_post. rewrite samplesA. reflexivity. }
+         rewrite H.
+         rewrite bind_distr_prog_spec. rewrite samplesB'.
+         apply Map_Proper; try reflexivity.
+         rewrite swap_indep. reflexivity.
+  Qed.
+  
+  (* Program transforms. 
          rewrite Map_prog.
          unfold indep, bind_distr_prog, bind_sampler_prog.
          unfold indep in samplesB. rewrite Map_prog in samplesB.
          unfold indep in samplesA. rewrite Map_prog in samplesA.
-         unfold Lift at 1.
-
-         assert ((s <- DS;<< Δ0 | e >>
-    Ret
-      (ap2
-         ('LAM'<< Δ' | e0 >> s0 =>
-                       (let s' := fst ∘ ap2 SA e0 s0 in let a := snd ∘ ap2 SA e0 s0 in ap3 SB e0 a s0)) e s)) ==
-                 (s <- DS;<< Δ0 | e >>
-     Ret (ap3 SB e (snd ∘ ap2 SA e s) s))).
-         { apply bind_extensional; intros. rewrite ap2_ext_eval. reflexivity. }
-         rewrite H.
-         
-         (* refine (SB ∘ (prod_assoc_left ∘ id ⊗ swap) ∘ ⟨fst, SA⟩). *)
-   
-(*         unfold bind_distr_prog. (* Just Bind DA DB *)
-         setoid_rewrite Bind_m_Ret.
-         rewrite <- (compose_id_left snd). rewrite emap_snd_pair.
-         simpl_ext.
-         autorewrite with cat_db. *)
-         unfold indep.
-         unfold bind_sampler_prog. simpl_ext.
-         assert ((a <- DS;<< Δ0 | ext >>
-                  b <- (a0 <- DA;<< Δ1 | ext0 >>
-                        b <- DB ∘ ⟨ ext0, a0 ⟩;<< Δ2 | _ >>
-                        Ret b) ∘ ext;<< Δ1 | ext0 >>
-                 Ret ⟨ a ∘ ext0, b ⟩) ==
-                 (a <- DS;<< Δ0 | ext >>
-                  b <- (a <- DA ∘ ext;<< Γ' | eΓ >>
-                       b <- DB ∘ ⟨ ext ∘ eΓ, a ⟩;<< Δ2 | _ >>
-                       Ret b);<< Δ1 | ext0 >>                                                                               Ret ⟨ a ∘ ext0, b ⟩)) as change0.
-         { apply bind_extensional. intros. rewrite Bind'_ext. reflexivity. }
-         rewrite change0.
-         assert (( (a <- DS;<< Δ0 | ext >>
-                    b <- a0 <- DA ∘ ext;<< Γ' | eΓ >>
-                         b <- DB ∘ ⟨ ext ∘ eΓ, a0 ⟩;<< Δ2 | _ >>
-                        Ret b;<< Δ1 | ext0 >>
-                    Ret ⟨ a ∘ ext0, b ⟩)) ==
-                  ((a <- DS;<< Δ0 | ext >>
-                    y <- DA ∘ ext;<< Δ' | eΔ >>
-                    x <- b <- DB ∘ ⟨ ext ∘ eΔ, y ⟩;<< Δ2 | _ >>
-                        Ret b;<< Δ'' | eΔ' >>
-                    Ret ⟨ a ∘ (eΔ ∘ eΔ'), x ⟩) )) as change1.
-         { apply bind_extensional. intros. rewrite Bind'_Bind'. reflexivity. }
-         rewrite change1.
-         assert ((a <- DS;<< Δ0 | ext >>
-                    y <- DA ∘ ext;<< Δ' | eΔ >>
-                    x <- b <- DB ∘ ⟨ ext ∘ eΔ, y ⟩;<< Δ2 | _ >>
-                        Ret b;<< Δ'' | eΔ' >>
-                    Ret ⟨ a ∘ (eΔ ∘ eΔ'), x ⟩) ==
-                 (s <- DS;<< Δ0 | ext0 >>
-                  a <- !DA;<< Δ1 | ext1 >>
-                  b <- !(DB ∘ ⟨ !id, a ⟩);<< Δ2 | ext2 >>
-                  Ret ⟨ !(!s) , b ⟩)
-                 ) as change2.
-         { apply bind_extensional; intros. apply bind_extensional; intros.
-           rewrite (Bind'_m_Ret (DB ∘ ⟨ext ∘ ext0, a0⟩)).
-           rewrite lam_id. rewrite emap_snd. simpl_ext. unfold Extend_Compose. autorewrite with cat_db.
-           apply Bind_Proper; try reflexivity. apply lam_extensional; intros. rewrite compose_assoc.
-           reflexivity. }
-         rewrite change2.
-         (* assert ((s <- DS;<< Δ0 | ext0 >>
-                  a <- !DA;<< Δ1 | ext1 >>
-                  b <- !(DB ∘ ⟨ !id, a ⟩);<< Δ2 | ext2 >>
-                  Ret ⟨ !(!s) , b ⟩) ==
-                 (a <- DA;<< Δ0 | ext0 >>
-                  s <- !DS;<<Δ1 | ext1>>
-                  b <- !(DB ∘ ⟨!id, !a⟩);<< Δ2 | ext2>>
-                  Ret ⟨!s, b⟩)) as change3.
-         { admit. (* Fubini DS DA... *) }
-         rewrite change3. *)
-         unfold indep in samplesA.
-         rewrite Map_program in samplesA.
-  Abort.
-
+         unfold Lift at 1. *)
+  
   End Bind. 
   
-  End Samplers.
+End Samplers.
