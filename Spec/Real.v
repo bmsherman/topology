@@ -37,8 +37,8 @@ Local Close Scope Q.
 Import Discrete.
 Import Sierp.
 
-Variable D : Type -> U.
-Context {dops : DiscreteOps D}.
+Variable D : Type -> U. Variable pow : Type -> U -> U.
+Context {dops : DiscreteOps D pow}.
 Context `{sigops : ΣOps (U := U) (ccat := ccat) (cmc := cmc)}.
 
 (** Real numbers *)

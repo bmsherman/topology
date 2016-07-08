@@ -36,8 +36,14 @@ Section Samplers.
 (ccat := ccat) (cmcprops := CMCprops)
   (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
-     (cmcprops := CMCprops) (smd := ProbMonad)}.
+                                    (cmcprops := CMCprops) (smd := ProbMonad)}.
+  Context {discrete : Type -> U}.
+  Context {pow : Type -> U -> U}.
+  Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete pow}.
+  Context {DProps : (@DiscreteProps U ccat cmc discrete pow DOps)}.
 
+  Infix "-~>" := pow (at level 30) : obj_scope. 
+  
   Existing Instance ProbMonad.
   Existing Instance Streamops.
  (*
@@ -306,6 +312,35 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) == indep (constant_stream f) (constant_stream f).
     Proof. intros.
            rewrite constant_unfold at 1. unfold constant_unfold_prog.
-           
+    Abort.
+
+  End Unzip.
+
+  Section Geometric.
+
+    Existing Instance DProps.
+
+    Notation "| A |" := (unit ~~> A) (at level 90).
+
+    Definition natlist_to_stream {A} : (nat -> |A|) -> |Stream A|.
+    Proof. intros L.  refine (stream (X := (nat -~> A)) (A:=A) _ _).
+           - refine (pow_app2' _ _ L).  (* initial *)
+           - refine ⟨_, _⟩. (* step *)
+             + apply (pow_app1  _ _ 0).
+             + apply (pmap _ _ S id).
+           (* Show Proof. *)
+    Defined.
+    
+    Definition stream_to_natlist {A} : (unit ~~> Stream A) -> (nat -> (unit ~~> A)) :=
+      fun s n => idx n ∘ s.
+
+    Theorem stream_to_stream : forall {A} (s : unit ~~> Stream A),
+        natlist_to_stream (stream_to_natlist s) == s.
+    Proof. 
+    Abort.
+
+
+    
+  End Geometric.
   
 End Samplers.
