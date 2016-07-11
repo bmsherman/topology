@@ -9,13 +9,14 @@ Section Prob.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
-Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream 
+Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream Spec.Discrete
   Spec.SMonad.
 Require Import Morphisms.
 Import Sierp.
 Import Real.
 Import Sum.
 Import Stream.
+Import Discrete.
 
 Context `{sierpops : ΣOps U (ccat := ccat) (cmc := cmc)}.
 Context `{lrnnops : LRnnOps U (ccat := ccat) (cmc := cmc) 
@@ -31,6 +32,11 @@ Class OpenOps : Type :=
   { open_abstract : forall {Γ A : U}, Γ * A ~~> Σ -> Γ ~~> Open A }.
 
 Context {Meas Prob SubProb : U -> U}.
+Context {discrete : Type -> U}.
+Context {pow : Type -> U -> U}.
+Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete pow}.
+Context {DProps : (@DiscreteProps U ccat cmc discrete pow DOps)}.
+
 
 Require Import Spec.CCC.CCC.
 Require Import Spec.CCC.Presheaf.
@@ -64,6 +70,8 @@ Class MeasOps : Type :=
   ; Pstream : forall {A X : U}, Const (Y X ==> (Y X ==> Y (Prob (A * X))) ==> Y (Prob (Stream A)))
   ; Coinflip : Const (Y (Prob (unit + unit)))
   ; Normal : Const (Y (Prob R))
+  ; Prob_discrete : forall {A}, (Prob (discrete A)) ~~> pow A LRnn
+  ; Prob_discrete_mono : forall {A}, Mono (Prob_discrete (A:=A))                                             
   }.
 
 Context {mops : MeasOps}.

@@ -60,21 +60,28 @@ Definition dfs_fro : forall {X A}, (D X ~~> A) -> |X ~> A| :=
      in   pow_app2' F').
 
 
+Definition pb_eq {X : Type} {A B : U} : (X -> (A ~~> B)) -> (X -> (A ~~> B)) -> Prop :=
+  fun f g => forall (x : X), (f x) == (g x).
+
+Notation "A === B" := (pb_eq A B) (at level 60).
+
+
 Require Import Morphisms.
 Class DiscreteProps : Type :=
   { unit_discrete : unit ≅ D True
   ; discrete_pt_elim_Proper :> forall X,
       Proper (eq ==> Logic.eq) (discrete_pt_elim (X := X))
   ; dmap_Proper : forall X Y, Proper (Logic.eq ==> eq) (dmap (X:=X)(Y:=Y))
+  ; pmap_Proper : forall X Y A B, Proper (Logic.eq ==> eq ==> eq) (pmap (X:=X) (Y:=Y) (A:=A) (B:=B))                ; pmap_Proper' : forall X A B C D, Proper (pb_eq ==> eq ==> eq) (pmap (X:=X) (Y:=(C ~~> D)) (A:=A) (B:=B))
   ; prod_discrete : forall {X Y}, D X * D Y ≅ D (X * Y)
   ; pt_beta : forall {X} (x : X),
      discrete_pt_elim (discrete_pt x) = x
   ; pt_eta : forall {X} (x : unit ~~> D X),
       discrete_pt (discrete_pt_elim x) == x
 (*  ; func_pt : forall {X A} {f : D X ~~> A}, (discrete_func' (discrete_pt' f)) == f
-  ; pt_func : forall {X A} {f : X -> |A| }, (discrete_pt' (discrete_func' f)) = f
-  ; app21 : forall {A X B} {f : A ~~> (X ~> B)}, pow_app2' (pow_app1' f) == f
-  ; app12 : forall {A X B} {f : X  -> (A ~~> B)}, pow_app1' (pow_app2' f) = f
+  ; pt_func : forall {X A} {f : X -> |A| }, (discrete_pt' (discrete_func' f)) = f *)
+  ; app21 : forall {A X B} {f : A ~~> (X ~> B)}, pow_app2' (pow_app1' f) == f 
+  ; app12 : forall {A X B} {f : X  -> (A ~~> B)}, pow_app1' (pow_app2' f) === f (*
   ; dpt_nat : forall {X Y} {h : X -> Y} {x : X}, discrete_pt (h x) == (dmap h) ∘ discrete_pt x 
    Axioms that might come in handy later but I don't know if are useful now ^*)
   ; func_pt : forall {A B} (x : A) (f : A -> unit ~~> B),
