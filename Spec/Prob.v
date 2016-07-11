@@ -10,11 +10,12 @@ Section Prob.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
 Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream Spec.Discrete
-  Spec.SMonad.
+  Spec.SMonad Spec.Vec.
 Require Import Morphisms.
 Import Sierp.
 Import Real.
 Import Sum.
+Import Vec.
 Import Stream.
 Import Discrete.
 
@@ -90,6 +91,18 @@ Axiom pstream_unfold : forall (Γ A X : U)
         zs <- pstream (X := X) (snd ∘ y) (liftF f) ;
          Ret (cons (fst ∘ !y) zs) 
       ).
+
+Definition Prob_Stream_eq_type : forall {Γ A} {s t : Γ ~~> Prob (Stream A)}, Prop.
+(*    (forall n, (map (prefix n)) ∘ s == (map (prefix n)) ∘ t) -> (s == t). *)
+Proof. intros.
+       assert (Prop -> Prop -> Prop) as implies. { intros P Q. exact (P -> Q). }
+       refine (implies _ (s == t)).
+       refine (forall n, (map (prefix n)) ∘ s == (map (prefix n)) ∘ t).
+       (* Show Proof. *)
+Defined.
+
+Axiom Prob_Stream_eq : forall {Γ A} {s t : Γ ~~> Prob (Stream A)},
+    Prob_Stream_eq_type (Γ:=Γ) (A:=A) (s:=s) (t:=t).
 
 Notation "'LAM'<< Γ | E >> x => f" := (makeFun1E (fun Γ E x => f))
                                         (at level 120, right associativity). 
