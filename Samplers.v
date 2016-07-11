@@ -37,8 +37,6 @@ Section Samplers.
   (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
                                     (cmcprops := CMCprops) (smd := ProbMonad)}.
-  Context {discrete : Type -> U}.
-  Context {pow : Type -> U -> U}.
   Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete pow}.
   Context {DProps : (@DiscreteProps U ccat cmc discrete pow DOps)}.
 
@@ -136,9 +134,9 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          apply pstream_Proper.
          - symmetry. apply unit_uniq.
          - unfold makeFun1E, Lift, Extend_Prod, Extend_Refl, extend.
+           remove_eq_left.
            autorewrite with cat_db.
-           rewrite <- !compose_assoc.
-           rewrite parallel_fst. reflexivity.
+           reflexivity.
   Qed.
   
   
@@ -309,7 +307,8 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Section Unzip.
     
     Theorem constant_unzip : forall {Γ A} (f : Γ ~~> Prob A),
-      (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) == indep (constant_stream f) (constant_stream f).
+      (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) ==
+      indep (constant_stream f) (constant_stream f).
     Proof. intros.
            rewrite constant_unfold at 1. unfold constant_unfold_prog.
     Abort.
@@ -318,27 +317,22 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Section Geometric.
 
-    Existing Instance DProps.
-
     Notation "| A |" := (unit ~~> A) (at level 90).
 
-    Definition natlist_to_stream {A} : (nat -> |A|) -> |Stream A|.
-    Proof. intros L.  refine (stream (X := (nat -~> A)) (A:=A) _ _).
-           - refine (pow_app2' _ _ L).  (* initial *)
-           - refine ⟨_, _⟩. (* step *)
-             + apply (pow_app1  _ _ 0).
-             + apply (pmap _ _ S id).
-           (* Show Proof. *)
+    Definition Geo_spec : |Prob (discrete nat)| -> Prop.
+    Proof. intros P. assert (discrete nat ~~> LRnn) as f.
+           {
+             apply (discrete_func' _ pow).  
+             intros n. apply (Qnn_to_LRnn (Σ:=Σ)). exact lrnnops.
+             induction n.
+             - (* n = 0 *) exact Qnn.Qnnone.
+             - (* n = S m *) exact (Qnn.Qnnmult Qnn.Qnnonehalf IHn).
+           }
+           refine (_ == f).
+           apply (@dfs_to _ _ _ _ pow). exact DOps.
+           refine (Prob_discrete ∘ _).
+           exact P.
     Defined.
-    
-    Definition stream_to_natlist {A} : (unit ~~> Stream A) -> (nat -> (unit ~~> A)) :=
-      fun s n => idx n ∘ s.
-
-    Theorem stream_to_stream : forall {A} (s : unit ~~> Stream A),
-        natlist_to_stream (stream_to_natlist s) == s.
-    Proof. 
-    Abort.
-
 
     
   End Geometric.
