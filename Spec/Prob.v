@@ -79,6 +79,15 @@ Context {mops : MeasOps}.
 
 Existing Instance ProbMonad.
 
+Lemma Prob_unit_Iso : Prob unit ≅ unit.
+Proof. eapply Build_Iso. Unshelve.
+       Focus 3. exact tt.
+       Focus 3. exact ret.
+       rewrite unit_uniq, (unit_uniq id).
+       reflexivity.
+       symmetry. exact unit_Prob.
+Defined.
+
 (* This should probably get moved somewhere else *)
 Definition liftF {Γ Δ A B : U} 
   {ext : Extend Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=

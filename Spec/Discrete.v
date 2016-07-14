@@ -72,7 +72,9 @@ Class DiscreteProps : Type :=
   ; discrete_pt_elim_Proper :> forall X,
       Proper (eq ==> Logic.eq) (discrete_pt_elim (X := X))
   ; dmap_Proper : forall X Y, Proper (Logic.eq ==> eq) (dmap (X:=X)(Y:=Y))
-  ; pmap_Proper : forall X Y A B, Proper (Logic.eq ==> eq ==> eq) (pmap (X:=X) (Y:=Y) (A:=A) (B:=B))                ; pmap_Proper' : forall X A B C D, Proper (pb_eq ==> eq ==> eq) (pmap (X:=X) (Y:=(C ~~> D)) (A:=A) (B:=B))
+  ; pmap_Proper : forall X Y A B, Proper (Logic.eq ==> eq ==> eq) (pmap (X:=X) (Y:=Y) (A:=A) (B:=B))
+  ; pmap_Proper' : forall X A B C D, Proper (pb_eq ==> eq ==> eq) (pmap (X:=X) (Y:=(C ~~> D)) (A:=A) (B:=B))
+                                       (* Useful for proving equality of dλ-terms. *)
   ; prod_discrete : forall {X Y}, D X * D Y ≅ D (X * Y)
   ; pt_beta : forall {X} (x : X),
      discrete_pt_elim (discrete_pt x) = x
@@ -80,19 +82,63 @@ Class DiscreteProps : Type :=
       discrete_pt (discrete_pt_elim x) == x
 (*  ; func_pt : forall {X A} {f : D X ~~> A}, (discrete_func' (discrete_pt' f)) == f
   ; pt_func : forall {X A} {f : X -> |A| }, (discrete_pt' (discrete_func' f)) = f *)
-  ; app21 : forall {A X B} {f : A ~~> (X ~> B)}, pow_app2' (pow_app1' f) == f 
-  ; app12 : forall {A X B} {f : X  -> (A ~~> B)}, pow_app1' (pow_app2' f) === f (*
+  ; app21 : forall {A X B} (f : A ~~> (X ~> B)), pow_app2' (pow_app1' f) == f 
+  ; app12 : forall {A X B} (f : X  -> (A ~~> B)), pow_app1' (pow_app2' f) === f (*
   ; dpt_nat : forall {X Y} {h : X -> Y} {x : X}, discrete_pt (h x) == (dmap h) ∘ discrete_pt x 
    Axioms that might come in handy later but I don't know if are useful now ^*)
+  ; pow_app1_nat1 : forall {X X'} {A} (x : X) (h : X -> X'), (pow_app1 x) ∘ (pmap h id(A:=A)) == (pow_app1 (h x))
   ; func_pt : forall {A B} (x : A) (f : A -> unit ~~> B),
-     discrete_func' f ∘ discrete_pt x == f x
+      discrete_func' f ∘ discrete_pt x == f x
+  ; pow_app2'_Proper : forall {X} {A B}, Proper (pb_eq ==> eq) (pow_app2' (A:=A) (B:=B) (X:=X))
+  ; pow_app2'_pre : forall {X} {A A' B} (f : A ~~> A') (g : X -> (A' ~~> B)),
+      (pow_app2' g) ∘ f == (pow_app2' (fun x => (g x) ∘ f))
+  ; pmap_compose1 : forall {A} {X Y Z} (f : X -> Y) (g : Y -> Z),
+      (pmap f id) ∘ (pmap g id) == pmap (fun x => (g (f x))) (id(A:=A))
+  ; pmap_id : forall {A} {X}, pmap (fun x : X => x) (id(A:=A)) == id                                        
   }.
+
+Context {dps:DiscreteProps}.
+
+Notation "'dλ' x => h" := (pow_app2' (fun x => h)) (at level 20).
+Context {cmcprops : CMC_Props U}.
+
+Lemma pow_False : forall A, False ~> A ≅ unit.
+Proof. intros A.
+       refine (Build_Iso _ _ _ _ _ _ _ _ _).
+       Unshelve.
+       Focus 3. exact tt.
+       Focus 3. refine (dλ wish => _). inversion wish.
+       - rewrite !unit_uniq. symmetry. apply unit_uniq.
+       - simpl.
+         rewrite <- (app21 id).
+         rewrite pow_app2'_pre.
+         apply pow_app2'_Proper.
+         unfold pb_eq. intros wish.
+         inversion wish.
+Defined.
+
+Lemma pow_Iso : forall {X Y} {A} (f : X -> Y) (g : Y -> X),
+    (fun x => g (f x)) = (fun x => x) -> (fun y => f (g y)) = (fun y => y) -> X ~> A ≅ Y ~> A.
+Proof. intros X Y A f g gf fg.
+       eapply Build_Iso.
+       Unshelve.
+       Focus 3. exact (pmap g id).
+       Focus 3. exact (pmap f id).
+       rewrite pmap_compose1.
+       rewrite fg. rewrite pmap_id.
+       reflexivity.
+       rewrite pmap_compose1.
+       rewrite gf. rewrite pmap_id.
+       reflexivity.
+Defined.
+
+       
 
 Require Import Spec.CCC.Presheaf.
 Import Presheaf.
 Require Import Spec.CCC.CCC.
 Import CCC.
-Context {cmcprops : CMC_Props U}.
+
 
 Let Y := Y (cmcprops := cmcprops).
 
