@@ -160,6 +160,91 @@ Qed.
 
 End DirectedSup.
 
+(** Construct a continuous map by pasting together local
+    continuous maps using a sheaf.
+
+    This will be useful, for instance, for definining
+    multiplication of real numbers, where I have a family
+    of functions which do bounded multiplication which is
+    valid only on a subset of the whole space.
+
+    For now, I am assuming that the map is given for every open
+    set. That's valid at least for multiplication, and simplifies things. *)
+Section SheafMap.
+
+Variable (f : S -> Cont.map S T).
+Hypothesis f_cont : forall a, Cont.t (f a).
+Hypothesis f_restrict : forall a b, leS a b ->
+  forall s, leS s a ->
+  forall t, iffT (f a t s) (f b t s).
+(** This implies f_restrict...*)
+Hypothesis f_paste : forall a U, CovS a U ->
+  forall b, In U b -> forall s, leS s a ->
+  forall t, iffT (f a t s) (f b t s).
+
+
+
+Inductive f_pasted : Cont.map S T :=
+  Mkf_pasted : forall s t s', leS s s' -> f s' t s -> f_pasted t s.
+
+Theorem cont_f_pasted : Cont.t f_pasted.
+Proof.
+constructor; intros.
+- pose proof (here (f_cont a)).
+  eapply (FormTop.trans (X a)); clear X; intros.
+  destruct X.
+  pose proof (le_left (f_cont a)).
+  eapply FormTop.le_left. Focus 2.
+  apply FormTop.refl. econstructor.
+  Focus 2.
+  econstructor. admit. admit. admit. admit.
+- induction X0. pose proof (le_left (f_cont s')).
+   apply (X0 _ _ _ X) in f0. 
+  econstructor. 2: eassumption. etransitivity; eassumption.
+- induction X. induction X0.
+  admit.
+- destruct X.
+  admit.
+Abort.
+
+
+Inductive f_pasted' : Cont.map S T :=
+  Mkf_pasted' : forall s t, f s t s -> f_pasted' t s.
+
+Theorem cont_f_pasted' : Cont.t f_pasted'.
+Proof.
+constructor; intros.
+- pose proof (here (f_cont a)).
+  eapply (FormTop.trans (X a)); clear X; intros.
+  destruct X.
+  pose proof (le_left (f_cont a)).
+  eapply FormTop.le_left. Focus 2.
+  apply FormTop.refl. econstructor.
+  Focus 2.
+  econstructor. admit. admit. admit.
+- induction X0. econstructor.
+  pose proof (le_left (f_cont s)).
+  apply X0 with a _ _ in f0. 2: eassumption.
+  apply (f_restrict _ _ X) in f0. assumption.
+  reflexivity.
+- induction X. induction X0.
+  pose proof (local (f_cont s) f0 f1).
+  eapply (FormTop.trans X); clear X; intros.
+  destruct X.
+  apply FormTop.refl. econstructor. eassumption.
+  econstructor. admit.
+- destruct X.
+  pose proof (cov (f_cont s) _ f0 X0).
+  eapply (FormTop.trans X); clear X; intros. destruct X.
+  apply FormTop.refl. econstructor. eassumption.
+  constructor.
+  admit.
+
+
+Abort.
+
+End SheafMap.
+
 Let FrameS := FormTop.Frame leS CovS.
 Let FrameT := FormTop.Frame leT CovT.
 
@@ -547,6 +632,40 @@ Arguments pt {T} leT {IT} CT F : clear implicits.
 
 Arguments t {S} leS CovS
                    {T} leT {IT} CT F_ : clear implicits.
+
+
+Section Localization.
+Generalizable All Variables.
+Context {S} `{POS : PreO.t S leS}.
+Context {CovS : S -> Subset S -> Type}.
+Variable FTS : FormTop.t leS CovS.
+
+Context {T} `{POT : PreO.t T leT}.
+Context {IT : T -> Type}.
+Variable CT : forall (t : T), IT t -> Subset T.
+Let CovT := FormTop.GCov leT CT.
+
+Theorem t_loc (F_ : Cont.map S T) : 
+  t leS CovS leT CT F_ -> 
+  t leS CovS leT (FormTop.CL leT CT) F_.
+Proof.
+intros. constructor; intros.
+- apply (here _ X).
+- apply (local _ X); assumption.
+- eapply (le_left _ X); eassumption.
+- eapply (le_right _ X); eassumption.
+- destruct j. destruct x.  simpl.
+  assert (F_ x a). eapply (le_right _ X); eassumption.
+  pose proof (ax_right _ X a _ i X1).
+  eapply (FormTop.trans X2); clear X2; intros.
+  destruct X2. 
+  apply FormTop.refl. econstructor. 2: eassumption.
+  unfold In. exists a1. split.  assumption.
+  split. 
+Abort.
+  
+
+End Localization.
 
 End IGCont.
 

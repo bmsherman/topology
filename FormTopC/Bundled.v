@@ -363,7 +363,7 @@ Definition point (A : IGT) (f : Subset (S A)) (fpt : Cont.pt (le A) (Cov A) f)
 Require Import FormTopC.NatInfty.
 
 Definition NatInfty : IGT.
-Proof. refine (
+Proof. unshelve eapply (
   {| S := NatInfty.O
   ; le := NatInfty.le
   ; PO := NatInfty.le_PreO
@@ -387,6 +387,12 @@ Definition NatInfty_checker (f : nat -> bool) : unit ~~> NatInfty
 Definition run_NatInfty (x : unit ~~> NatInfty) :
   NatInfty.Partial Datatypes.unit.
 Proof.
+eapply NatInfty.pt_to_Partial.
+unfold NatInfty.is_pt.
+eapply IGCont.pt_cont_converse.
+
+pose proof (mp_ok NatInfty_infty).
+unfold Contprf in X. simpl in X.
 Abort.
 
 
@@ -397,7 +403,7 @@ Local Open Scope morph.
 Definition discrete_pt {A} (x : A) : unit ~~> discrete A :=
   point (discrete A) (Logic.eq x) (Discrete.pt_okI x).
 
-Definition runDiscrete {A} (x : One ~~> discrete A) : A.
+Definition runDiscrete {A} (x : unit ~~> discrete A) : A.
 pose proof (Cont.here (mp_ok x) I) as H.
 remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
 induction H; subst. destruct u. destruct i.

@@ -183,6 +183,7 @@ Context {U : Type} {ccat : CCat U}
   Lemma comp_id {A B} (f : unit ~~> A ==> B) :
     (comp [ λ x => !x $ ltac:(proveWF) ]%stlc f == f)%morph.
   Proof.
+  unfold comp. unfold compile_phoas. simpl compile_DB at 2.
   Abort.
 
   Definition const {A B : U} : WfTerm (A ==> B ==> A) :=
