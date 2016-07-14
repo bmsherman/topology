@@ -251,52 +251,63 @@ Proof. intros Γ A B f x h. apply stream_bisim.
 Qed.
 
 
-Definition zip {A B} : Stream A * Stream B ~~> Stream (A * B) :=
+Definition squeeze {A B} : Stream A * Stream B ~~> Stream (A * B) :=
   stream (Γ := Stream A * Stream B) (X := Stream A * Stream B) id ⟨hd ⊗ hd, tl ⊗ tl⟩.
 
-Theorem zip_idx : forall {n} {A B}, idx n ∘ zip (A:=A)(B:=B) == (idx n ⊗ idx n).
-Proof. intros n A B. induction n.
-       - unfold zip. simpl.
-         rewrite stream_hd.
-         rewrite pair_fst, compose_id_right. reflexivity.
-       - simpl. unfold zip. rewrite <- compose_assoc, stream_tl.
-         rewrite pair_snd, compose_id_right. rewrite <- (compose_id_left (tl ⊗ tl)).
-         rewrite stream_ext1. unfold zip in IHn.
-         rewrite !compose_assoc, compose_id_left.
-         rewrite IHn.
-         apply proj_eq; rewrite !compose_assoc.
-         repeat (rewrite !parallel_fst; remove_eq_left).
-         repeat (rewrite !parallel_snd; remove_eq_left).
+Theorem squeeze_hd : forall {A B}, hd ∘ squeeze (A:=A)(B:=B) == (hd ⊗ hd).
+Proof. intros A B.
+       unfold squeeze.
+       rewrite stream_hd.
+       rewrite pair_fst, compose_id_right. reflexivity.
 Qed.
-       
+
+Theorem squeeze_tl : forall {A B}, tl ∘ squeeze (A:=A)(B:=B) == squeeze ∘ (tl ⊗ tl).
+Proof. intros A B.
+       unfold squeeze.
+       rewrite stream_tl.
+       rewrite <- stream_ext1.
+       apply stream_Proper; try reflexivity.
+       rewrite pair_snd, compose_id_left, compose_id_right.
+       reflexivity.
+Qed.
+
+Theorem squeeze_idx : forall {n} {A B}, idx n ∘ squeeze (A:=A)(B:=B) == (idx n ⊗ idx n).
+Proof. intros n A B. induction n.
+       - simpl.
+         apply squeeze_hd.
+       - simpl. rewrite <- compose_assoc, squeeze_tl.
+         rewrite !compose_assoc.
+         rewrite IHn.
+         apply parallel_compose.
+Qed.       
 
 Theorem Stream_Prod : forall {A B}, Stream (A * B) ≅ Stream A * Stream B.
-  intros A B; eapply (Build_Iso _ _ _ _ _ ⟨smap fst, smap snd⟩ zip).
+  intros A B; eapply (Build_Iso _ _ _ _ _ ⟨smap fst, smap snd⟩ squeeze).
 
   apply proj_eq.
 
   - rewrite compose_assoc, compose_id_right, pair_fst.
     apply stream_bisim. intros n.
     rewrite compose_assoc. rewrite smap_idx.
-    rewrite <- compose_assoc. rewrite zip_idx.
+    rewrite <- compose_assoc. rewrite squeeze_idx.
     rewrite parallel_fst. reflexivity.
     
   - rewrite compose_assoc, compose_id_right, pair_snd.
     apply stream_bisim. intros n.
     rewrite compose_assoc. rewrite smap_idx.
-    rewrite <- compose_assoc. rewrite zip_idx.
+    rewrite <- compose_assoc. rewrite squeeze_idx.
     rewrite parallel_snd. reflexivity.
 
   - apply stream_bisim.
     intros n.
     rewrite compose_assoc, compose_id_right.
-    rewrite zip_idx.
+    rewrite squeeze_idx.
     rewrite parallel_pair.
     rewrite !smap_idx.
     rewrite <- pair_f, pair_id.
     rewrite compose_id_left.
     reflexivity.
-Qed.
+Defined.
 
 
 Definition unspool {A} : Stream A ~~> Stream (A * A) :=
@@ -314,7 +325,38 @@ Proof. intros A.
          rewrite <- (compose_id_left (tl ∘ tl)) at 1.
          rewrite stream_ext1. remove_eq_left.
 Qed.
-         
+
+Theorem unspool_step : forall {Γ A} (f g : Γ ~~> A) (s : Γ ~~> Stream A),
+    unspool ∘ (cons f (cons g s)) == cons ⟨f, g⟩ (unspool ∘ s).
+Proof. intros Γ A f g s.
+       unfold unspool.
+       apply stream_bisim.
+       intros n. destruct n.
+       - simpl. rewrite cons_hd.
+         rewrite compose_assoc, stream_hd.
+         rewrite pair_fst, compose_id_right.
+         rewrite pair_f. rewrite cons_hd.
+         rewrite <- compose_assoc. rewrite cons_tl'.
+         rewrite cons_hd. reflexivity.
+       - simpl. rewrite <- !(compose_assoc _ _ (idx n)).
+         rewrite cons_tl'. rewrite (compose_assoc _ _ tl).
+         rewrite stream_tl. rewrite pair_snd.
+         rewrite <- (compose_id_left (tl ∘ tl ∘ id)).
+         rewrite stream_ext1. remove_eq_left.
+         rewrite compose_id_left.
+         rewrite !cons_tl'. reflexivity.
+Qed.
+
+Theorem unspool_hd : forall {A}, hd ∘ unspool (A:=A) == ⟨hd, hd ∘ tl⟩.
+Proof. intros A. rewrite unspool_cons at 1. rewrite cons_hd.
+       reflexivity.
+Qed.
+
+Theorem unspool_tl : forall {A}, tl ∘ unspool (A:=A) == unspool ∘ (tl ∘ tl).
+Proof. intros A.  rewrite unspool_cons at 1. rewrite cons_tl'.
+       symmetry. apply compose_assoc.
+Qed.
+
 Definition unzip {A} : Stream A ~~> Stream A * Stream A :=
   ⟨smap fst, smap snd⟩ ∘ unspool.
 
@@ -339,7 +381,7 @@ Proof. intros.
        apply pair_snd.
        rewrite !compose_assoc; reflexivity.
 Qed.
-       
+
 End Stream.
 
 End Stream.

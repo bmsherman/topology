@@ -241,6 +241,16 @@ Section BasicProps.
            reflexivity.
   Defined.
 
+  Lemma Iso_Mono : forall {A B} (x : A ≅ B), Mono (to x).
+  Proof. intros A B x. destruct x as [f g fg gf].
+         simpl. unfold Mono.
+         intros X h k fhfk.
+         rewrite <- (compose_id_left h), <- (compose_id_left k).
+         rewrite <- !gf.
+         rewrite <- !compose_assoc.
+         apply compose_Proper; try reflexivity; try assumption.
+  Qed.
+
   Lemma Iso_Refl {A} : A ≅ A.
   Proof.
   refine ( {| to := id ; from := id |});

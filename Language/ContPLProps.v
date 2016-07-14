@@ -711,5 +711,95 @@ Proof. Abort.
            reflexivity.
   Qed.
 
+     Lemma parallel_indep : forall {Γ A B A' B'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+                             (h : A ~~> A') (k : B ~~> B'),
+        (map (h ⊗ k)) ∘ (indep f g) == (indep ((map h) ∘ f) ((map k) ∘ g)).
+    Proof. intros Γ A B A' B' f g h k.
+           unfold indep.
+           rewrite map_Bind'; rewrite lam_postcompose.
+           rewrite Bind_map_f.
+           apply Bind_Proper; try reflexivity.
+           rewrite lam_eval_par.
+           apply lam_extensional; intros.
+
+           simpl_ext. rewrite <- !compose_assoc.
+           
+           rewrite map_Bind'; rewrite lam_postcompose.
+           rewrite Bind_map_f.
+           apply Bind_Proper; try reflexivity.
+           rewrite lam_eval_par.
+           apply lam_extensional; intros.
+
+           rewrite map_Ret.
+           apply Ret_Proper.
+
+           rewrite parallel_pair. rewrite compose_assoc.
+           reflexivity.
+    Qed.
+
+    Corollary parallel_indep_right : forall {Γ A B B'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+                                       (k : B ~~> B'),
+        (map (id ⊗ k)) ∘ (indep f g) == (indep f ((map k) ∘ g)).
+    Proof. intros Γ A B B' f g k.
+           pose proof (parallel_indep f g id k). rewrite H.
+           apply indep_Proper; try reflexivity.
+           autorewrite with cat_db. reflexivity.
+    Qed.
+
+    Corollary parallel_indep_left : forall {Γ A B A'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+                                       (h : A ~~> A'),
+        (map (h ⊗ id)) ∘ (indep f g) == (indep ((map h) ∘ f) g).
+    Proof. intros Γ A B B' f g h.
+           pose proof (parallel_indep f g h id). rewrite H.
+           apply indep_Proper; try reflexivity.
+           autorewrite with cat_db. reflexivity.
+    Qed.
+
+
+    Theorem indep_assoc : forall {Γ A B C} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B) (h : Γ ~~> Prob C),
+        indep (indep f g) h == map prod_assoc_left ∘ indep f (indep g h).
+    Proof.
+      intros Γ A B C f g h.
+      unfold indep.
+      rewrite Bind'_Bind'.
+      rewrite map_Bind'; rewrite lam_postcompose.
+      apply Bind_Proper; try reflexivity.
+
+      apply lam_extensional; intros.
+      rewrite map_Bind'; rewrite lam_postcompose.
+      simpl_ext.
+      rewrite Bind'_ext.
+      rewrite !Bind'_Bind'.
+      apply Bind_Proper; try reflexivity.
+
+      apply lam_extensional; intros.
+      rewrite Bind'_Ret_f.
+      rewrite lam_eval.
+      rewrite Bind'_Bind'.
+      apply Bind_Proper; try reflexivity.
+
+      remove_eq_left. apply compose_id_right.
+
+      apply lam_extensional; intros.
+      rewrite Bind'_Ret_f.
+      rewrite lam_eval.
+      rewrite map_Ret. apply Ret_Proper.
+      unfold Extend in ext, ext0, ext1.
+      unfold prod_assoc_left.
+      autorewrite with cat_db. rewrite !pair_f.
+      rewrite parallel_pair, <- !compose_assoc.
+      autorewrite with cat_db. reflexivity.
+    Qed.
+
+    Corollary indep_assoc' : forall {Γ A B C} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B) (h : Γ ~~> Prob C),
+        indep f (indep g h) == map prod_assoc_right ∘ indep (indep f g) h.
+    Proof. intros Γ A B C f g h.
+           rewrite indep_assoc.
+           rewrite <- compose_id_left at 1.
+           remove_eq_right.
+           rewrite <- map_compose, <- map_id. apply map_Proper.
+           pose proof (from_to (Iso_Prod_Assoc (A:=A) (B:=B)(C:=C))). simpl in H.
+           symmetry. apply H.
+    Qed.
   
 End ContPLProps.

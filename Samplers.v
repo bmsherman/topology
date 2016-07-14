@@ -5,7 +5,7 @@ Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Language.ContPL Language.ContPLProps.
 Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream
-  Spec.SMonad.
+  Spec.SMonad Spec.Vec.
 Import Category.
 Import ContPL.
 Import ContPLProps.
@@ -13,6 +13,7 @@ Import Prob.
 Import Real.
 Import Sierp.
 Import Sum.
+Import Vec.
 Import Lift.
 Import Stream.
 Import CCC.
@@ -305,14 +306,121 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   End Bind.
 
   Section Unzip.
-    
+
+    Fixpoint indeps {Γ A} (n : nat) (f : Γ ~~> Prob A) : Γ ~~> Prob (Vec n A) :=
+      match n with
+      | O => Ret (tt)
+      | (S m) => indep f (indeps m f)
+      end.
+
+    Theorem constant_prefix_stmnt : forall {Γ A} {n : nat} {f : Γ ~~> Prob A}, Prop.
+    Proof. intros Γ A n f. refine (_ == _).
+           refine (_ ∘ _).
+           refine (map (prefix n)). Focus 2.
+           refine (constant_stream f). refine (indeps n f).
+    Defined.
+
+    Theorem constant_prefix : forall {Γ A} {n : nat} {f : Γ ~~> Prob A}, @constant_prefix_stmnt Γ A n f.
+    Proof.
+      intros Γ A n f.
+      unfold constant_prefix_stmnt.
+      induction n.
+      - (* 0 *)
+        simpl.
+        apply (Iso_Mono Prob_unit_Iso).
+        simpl. rewrite unit_uniq; symmetry; apply unit_uniq.
+      - (* S _ *)
+        simpl.
+        rewrite <- IHn.
+        unfold indep.
+        rewrite constant_unfold.
+        unfold constant_unfold_prog.
+        rewrite map_Bind'; rewrite lam_postcompose.
+        apply Bind_Proper; try reflexivity.
+        apply lam_extensional; intros Γ' ext a.
+        simpl_ext.
+        rewrite map_Bind'; rewrite lam_postcompose.
+        rewrite <- !compose_assoc. rewrite Bind_map_f.
+        apply Bind_Proper. apply constant_stream_ext1.
+        rewrite lam_eval_par. apply lam_extensional; intros Γ'' ext' s.
+        rewrite map_Ret. apply Ret_Proper.
+        apply proj_eq.
+        rewrite compose_assoc. rewrite !pair_fst.
+        rewrite cons_hd. reflexivity.
+        rewrite compose_assoc. rewrite !pair_snd.
+        remove_eq_left. rewrite cons_tl'.
+        reflexivity.
+    Qed.
+
     Theorem constant_unzip : forall {Γ A} (f : Γ ~~> Prob A),
       (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) ==
       indep (constant_stream f) (constant_stream f).
     Proof. intros.
-           rewrite constant_unfold at 1. unfold constant_unfold_prog.
-    Abort.
+           apply (Iso_Mono (Iso_Sym (M_iso (Stream_Prod (A:=A)(B:=A))))).
+           simpl.
+           apply Prob_Stream_eq.
+           intros n.
+           rewrite !compose_assoc.
+           rewrite <- !map_compose.
+           rewrite squeeze_vsqueeze. rewrite <- compose_assoc. rewrite unzip_vnzip.
+           rewrite !map_compose.
+           rewrite <- !compose_assoc.
+           rewrite parallel_indep.
+           rewrite !constant_prefix.
+           remove_eq_left.
 
+           (* map vnzip ∘ indeps (n * 2) f == indep (indeps n f) (indeps n f) *)
+
+           induction n.
+
+           - (* 0 *)
+             simpl. unfold indep.
+             rewrite Bind_Ret_f. rewrite lam_eval. simpl_ext.
+             rewrite Bind_Ret_f. rewrite lam_eval. rewrite map_Ret.
+             apply Ret_Proper. apply proj_eq; try rewrite unit_uniq; symmetry; apply unit_uniq.
+           - (* S _ *) 
+             simpl indeps.
+             rewrite (indep_assoc f (indeps n f)).
+             rewrite <- (swap_indep (indep f (indeps n f))).
+             rewrite <- parallel_indep_right.
+             rewrite indep_assoc.
+             rewrite <- (swap_indep (indeps n f)). (* This appears useless, but it is necessary for the deterministic transformations to line up exactly. *)
+             rewrite <- !parallel_indep_right.
+             rewrite <- IHn.
+             rewrite <- !parallel_indep_right.
+             remove_eq_right.
+             (* This now looks horrible, but it's all deterministic! *)
+             rewrite <- !map_compose.
+             apply map_Proper.
+             simpl. unfold prod_assoc_left, swap.
+             (* apply proj_eq. *)
+             rewrite !pair_f, !parallel_compose.
+             autorewrite with cat_db.
+             rewrite <- !compose_assoc.
+             rewrite !parallel_compose.
+             autorewrite with cat_db.
+             rewrite !pair_f.
+             autorewrite with cat_db.
+             unfold parallel.
+             rewrite !pair_f.
+             autorewrite with cat_db.
+             rewrite <- !compose_assoc.
+             rewrite !pair_f.
+             autorewrite with cat_db.
+             rewrite !compose_assoc.
+             reflexivity.
+    Qed.
+
+    Theorem Unzip_Sampler : forall {Γ A : U} (f : Γ ~~> Prob A),
+        Sampler (Δ := Γ) (S:=Stream A) (A:=Stream A) (constant_stream f) (constant_stream f).
+    Proof. intros Γ A f.
+           refine (sampler (unzip ∘ snd) _).
+           unfold Map.
+           rewrite emap_snd_pair.
+           symmetry.
+           apply constant_unzip.
+    Defined.           
+                     
   End Unzip.
 
   Section Geometric.
