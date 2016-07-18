@@ -141,6 +141,20 @@ refine (
   reflexivity.
 Defined.
 
+(** Constant presheaf for setoids *)
+Definition KStd (A : Setoid) : PSh.
+Proof.
+unshelve eapply (
+  {| psh_obj := fun _ => A
+   ; psh_morph := fun _ _ _ x => x
+  |}).
+- prove_map_Proper. assumption.
+- simpl. intros. reflexivity.
+- simpl. intros. reflexivity.
+Defined.
+
+Definition K (A : Type) : PSh := KStd (Leibniz A).
+
 Definition id_PSh {A : PSh} : NatTrns A A.
 Proof.
 refine (

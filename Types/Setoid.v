@@ -105,3 +105,10 @@ constructor; unfold Reflexive, Transitive, Symmetric; intros.
 apply Iso_Refl. apply Iso_Sym. assumption. 
 eapply Iso_Trans; eassumption.
 Defined.
+
+Definition Leibniz (A : Type) : Setoid.
+Proof.
+unshelve eapply (
+  {| sty := A
+   ; seq := eq |}).
+Defined.
