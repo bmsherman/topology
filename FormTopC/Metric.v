@@ -453,14 +453,16 @@ rewrite Qplus_comm. eapply Qadd_lt.
 eassumption.
 Qed.
 
-Definition Ix (x : Ball) : Type := 
+Definition IxUL (x : Ball) : Type := 
   option Qpos.
 
-Definition C (b : Ball) (i : Ix b) : Subset Ball := 
+Definition CUL (b : Ball) (i : IxUL b) : Subset Ball := 
   match i with
   | None         => fun b' => lt_ball b' b
   | Some epsilon => fun b' => snd b' = epsilon
   end.
+
+Definition C := FormTop.CL le_ball CUL.
 
 Definition Cov := FormTop.GCovL le_ball C.
 
@@ -482,6 +484,14 @@ Proof.
 intros H. induction H.
 eapply ball_weak_le. apply Qlt_le_weak. eassumption. 
 assumption.
+Qed.
+
+Lemma o_ball_shrink {X : MetricSpace} {eps : Qpos} {a b : X}
+  : o_ball eps a b -> { eps' : Qpos & ((eps' < eps) * o_ball eps' a b)%type }.
+Proof.
+intros. destruct H.
+destruct (Qpos_between q) as (mid & midl & midh).
+exists mid. split. assumption. eapply In_o_ball; eassumption.
 Qed.
 
 Lemma le_ball_applies_o {X : MetricSpace} {a c : Ball X} : 
@@ -536,31 +546,73 @@ intros. unfold QposInf_le, Qpossmaller. destruct q; auto.
 apply Qle_refl.
 Qed.
 
+Lemma o_ball_refl : forall {X : MetricSpace} (x : X) eps,
+  o_ball eps x x.
+Proof.
+intros. destruct (Qpos_smaller eps). 
+econstructor. eassumption. apply ball_refl.
+Qed.
+
+Lemma o_ball_sym : forall {X : MetricSpace} (x y : X) eps,
+  o_ball eps x y -> o_ball eps y x.
+Proof.
+intros. induction H. econstructor; eauto.
+apply ball_sym; assumption.
+Qed.
+
 Section Lipschitz.
 
 Context {X Y : MetricSpace}.
+
+
+(** Yoneda embeddding of a point in its completion *)
+
+Definition Yoneda (x : X) : Subset (Ball X) :=
+  fun B => let (y, eps) := B in o_ball eps x y.
+
+Existing Instance PreO.
+
+Lemma Yoneda_pt (x : X) : IGCont.pt (le_ball X) (C X) (Yoneda x).
+Proof.
+constructor; unfold Yoneda; intros.
+- exists (x, Qpos1). unfold In. apply o_ball_refl.
+- destruct b, c.
+  destruct (o_ball_shrink H) as (eps' & eps'small & H').
+  destruct (o_ball_shrink H0) as (eps0' & eps0'small & H0').
+  destruct (Qpos_lt_plus eps'small) as (del & deld).
+  destruct (Qpos_lt_plus eps0'small) as (del0 & del0d).
+  exists (x, QposMinMax.Qpos_min del del0).
+  split. split; simpl; intros.
+  eexists. split. apply o_ball_ball. eassumption.
+  rewrite deld. rewrite Qplus_assoc. 
+  rewrite (Qplus_comm e eps'). rewrite <- Qplus_assoc.
+  rewrite Qplus_lt_r. eapply Qle_lt_trans.
+  apply QposMinMax.Qpos_min_lb_l.
+  rewrite <- (Qplus_0_l del) at 1. apply Qplus_lt_l. apply Qpos_prf.
+  eexists. split. apply o_ball_ball. eassumption.
+  rewrite del0d. rewrite Qplus_assoc.
+  rewrite (Qplus_comm e eps0'). rewrite <- Qplus_assoc.
+  rewrite Qplus_lt_r. eapply Qle_lt_trans.
+  apply QposMinMax.Qpos_min_lb_r.
+  rewrite <- (Qplus_0_l del0) at 1. apply Qplus_lt_l. apply Qpos_prf.
+  apply o_ball_refl.
+- destruct a, b. apply o_ball_sym. apply (le_ball_applies_o H0).
+  simpl. apply o_ball_sym. assumption.
+- destruct a. destruct i; simpl in *. destruct x0. 
+  destruct i; simpl in *.
+  + exists (x, q0). split. apply o_ball_refl. 
+    exists (x, q0). split. reflexivity.
+    split. admit. reflexivity.
+  + destruct (o_ball_shrink H) as (q' & q'small & H').
+    exists (x, q'). split. apply o_ball_refl.
+    exists (x, q). split. simpl. destruct x0.
+Abort.
+
 Variable f : X -> Y.
 Variable k : Qpos.
 Hypothesis f_lip : forall x x' eps, ball eps x x' -> ball (k * eps) (f x) (f x').
 
-Lemma Qmult_lt_compat_l : forall x y z : Q, 0 < z -> x < y -> z * x < z * y.
-Proof.
-intros. rewrite (Qmult_comm _ x), (Qmult_comm _ y).
-apply Qmult_lt_compat_r; assumption.
-Qed.
 
-Lemma Qmult_lt_compat_l_inv : forall x y z : Q, 
-  0 < z -> z * x < z * y -> x < y.
-Proof.
-intros. rewrite <- (Qmult_1_l x), <- (Qmult_1_l y).
-rewrite <- !(Qmult_inv_r z).
-rewrite (Qmult_comm z).
-rewrite <- !Qmult_assoc. apply Qmult_lt_compat_l.
-apply Qinv_lt_0_compat. assumption. assumption.
-unfold not. intros contra.
-rewrite contra in H.
-eapply Qlt_irrefl. eassumption.
-Qed.
 
 
 Lemma lt_monotone : forall x x' eps eps',
@@ -580,11 +632,6 @@ Proof.
 intros. simpl. rewrite Qmult_assoc. rewrite Qmult_inv_r. 
 ring. unfold not. intros contra.
 eapply Qlt_not_eq. apply Qpos_prf. symmetry. eassumption.
-Qed.
-
-Lemma Qeq_le : forall x y, x == y -> x <= y.
-Proof.
-intros. rewrite H. reflexivity.
 Qed.
 
 Lemma le_monotone : forall x x' eps eps',
@@ -658,8 +705,6 @@ rewrite Qmult_assoc. rewrite (Qmult_comm _ y).
 rewrite <- Qmult_assoc.
 rewrite Qpos_div. assumption.
 Qed.
-
-Existing Instance PreO.
 
 Theorem Cont : IGCont.t (le_ball X) 
   (FormTop.GCovL (le_ball X) (C X)) (le_ball Y)

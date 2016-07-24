@@ -6,7 +6,7 @@ Set Asymmetric Patterns.
 *)
 
 Require Import Spec.Category
-  Spec.CCC.CCC.
+  Spec.CCC.CCC Types.List.
 Import Category.
 Import CCC. 
 
@@ -25,10 +25,6 @@ Fixpoint nprodT (xs : list U) : U := match xs with
  | nil => unit
  | x :: xs' => nprodT xs' * x
  end.
-
-Inductive member {A} : A -> list A -> Type :=
-  | member_here : forall x xs, member x (x :: xs)
-  | memeber_there : forall x y ys, member x ys -> member x (y :: ys).
 
 Inductive termDB : list U -> U -> Type :=
   | VarDB : forall G t, member t G -> termDB G t
@@ -91,13 +87,6 @@ Section wf.
   End wf.
 
   Definition Wf {t} (E : Term t) := forall var1 var2, wf nil (E var1) (E var2).
-
-  Lemma member_map {A B} (f : A -> B) {x : A} {xs : list A}
-   (elem : member x xs)
-  : member (f x) (List.map f xs).
-  Proof.
-  induction elem; simpl. constructor. constructor. assumption.
-  Defined.
 
   Definition phoas_to_DB_helper {A}
    (e1 : term (fun _ => True) A) (e2 : term (fun _ => True) A) Γ

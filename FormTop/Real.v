@@ -88,7 +88,7 @@ intros. unfold Cov'. split; intros.
     * apply (H0 (Qmin a q)). intros. symmetry.
       apply Q.min_r_iff. assumption.
       eapply Qle_lt_trans. apply Q.le_min_l. assumption.
-    * destruct (Qbetween a u H1) as (mid & mida & midu).
+    * destruct (Qbetween H1) as (mid & mida & midu).
       apply H0 with mid; assumption.
 Qed.
 
@@ -100,7 +100,7 @@ constructor; unfold Cov'; intros.
 - apply FormTop.le_left with a.
   apply Qlt_le_weak. assumption. apply FormTop.refl.
   assumption.
-- destruct (Qbetween a u H1) as (mid & mida & midu).
+- destruct (Qbetween H1) as (mid & mida & midu).
   unfold Cov, InfoBase.Cov in *.
   specialize (H mid mida). 
   destruct H as [t Ut lt].
@@ -183,7 +183,7 @@ constructor; intros.
   simpl; apply FormTop.grefl; destruct j; simpl in *.
   + exists (Qmin q b). unfold In. symmetry. apply Q.min_l_iff. assumption.
     eapply Qle_lt_trans. apply Q.le_min_r. assumption.
-  + destruct (Qbetween b (op a1 a2) H) as (mid & between).
+  + destruct (Qbetween H) as (mid & between).
     exists mid. apply between. apply between.
 Qed.
 
@@ -315,13 +315,13 @@ constructor; intros.
     destruct u. destruct H0. subst.
     apply FormTop.grefl.
     destruct (Qlt_le_dec b 0).
-    * destruct (Qbetween b 0 q3) as (mid & (midl & midh)).
+    * destruct (Qbetween q3) as (mid & (midl & midh)).
       exists mid. assumption. intros. rewrite Qnn_truncate_0. 
       rewrite <- Qnn_truncate_0 with b.
       apply Qle_not_lt in H2. contradiction.
       apply Qlt_le_weak; assumption. apply Qlt_le_weak; assumption.
     * specialize (H q3). 
-      destruct (Qbetween b (q * q0)) as (mid & (midl & midh)). 
+      destruct (@Qbetween b (q * q0)) as (mid & (midl & midh)). 
       apply Qnn_truncate_co_inc. rewrite <- Qnn_truncate_mult. apply H.
       exists mid. assumption. intros. 
       eapply Qlt_le_trans. apply Qnn_truncate_inc. assumption.

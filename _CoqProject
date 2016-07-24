@@ -4,6 +4,7 @@ Types/Iso.v
 Types/Finite.v
 Types/Equiv.v
 Types/Setoid.v
+Types/List.v
 
 FormTop/FormTop.v
 FormTop/FormTopM.v
@@ -25,6 +26,7 @@ FormTopC/Bundled.v
 FormTopC/Discrete.v
 FormTopC/NatInfty.v
 FormTopC/Lift.v
+FormTopC/Join.v
 
 Algebra/FrameC.v
 Algebra/Sets.v

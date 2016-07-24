@@ -26,7 +26,7 @@ Section Cont.
 Require Import Spec.Category Spec.Discrete.
 Import Category.
 Import Discrete.
-Require Import Spec.CCC.CCC.
+Require Import Spec.CCC.CCC Types.List.
 Import CCC.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}
   {ccc : CCCOps U}
@@ -209,10 +209,6 @@ unshelve econstructor.
   rewrite compose_id_right. apply x.
 Defined.
 
-Inductive member {A} : A -> list A -> Type :=
-  | member_here : forall {x xs}, member x (x :: xs)
-  | member_there : forall {x y ys}, member x ys -> member x (y :: ys).
-
 Inductive termDB {G : list Ty} : Ty -> Type :=
   | VarDB : forall {t}, member t G -> termDB t
   | ConstDB : forall {A : Ty}, Constant G A -> termDB A
@@ -223,15 +219,6 @@ Arguments termDB : clear implicits.
 
 Ltac inv H := inversion H; clear H; subst.
 
-Definition swap_member {X : Type} {A B C : X} {Γ : list X}
-  (x : member C (A :: B :: Γ))
-  : member C (B :: A :: Γ).
-Proof.
-inv x. apply member_there. apply member_here.
-inv X0. apply member_here. apply member_there. apply member_there.
-assumption.
-Defined.
-
 Fixpoint swapDB {Γ A B C} (e : termDB (A :: B :: Γ) C)
   : termDB (B :: A :: Γ) C
   := match e with
@@ -240,27 +227,6 @@ Fixpoint swapDB {Γ A B C} (e : termDB (A :: B :: Γ) C)
  | AbsDB f => undefined _
  | AppDB f x => AppDB (swapDB f) (swapDB x)
 end.
-
-Lemma member_rect1 :
-forall (A : Type) (P : forall (a : A) (b : A) (l : list A), member a (b :: l) -> Type),
-(forall (x : A) (xs : list A), P x x xs member_here) ->
-(forall (x y b : A) (ys : list A) (m : member x (b :: ys)),
- P x b ys m -> P x y (b :: ys) (member_there m)) ->
-forall (y : A) (b : A) (l : list A) (m : member y (b :: l)), P y b l m.
-Proof.
-intros A P X X0.
-pose (fun l : list A => match l as ll return forall (a : A), member a ll -> Type with
- | [] => fun a mem => False
- | x :: xs => fun a => P a x xs
- end) as P'.
-assert (forall l a mem, P' l a mem).
-intros.
-induction mem. 
-- simpl. auto.
-- simpl. destruct ys. simpl in *. contradiction. 
-  apply X0.  simpl in IHmem. assumption.
-- intros. apply (X1 (b :: l) y m).
-Defined.
 
 Lemma termDB_rect1 :
 forall P : forall (A : Ty) (G : list Ty) (t : Ty), termDB (A :: G) t -> Type,
@@ -302,8 +268,8 @@ Fixpoint substDB {Γ A B} (e : termDB (A :: Γ) B)
   : Constant Γ A -> termDB Γ B :=
  match e with
  | VarDB m => match m with
-   | member_here => fun k => ConstDB k
-   | member_there next => fun _ => VarDB next
+   | here => fun k => ConstDB k
+   | there next => fun _ => VarDB next
    end
  | ConstDB c => fun k => ConstDB (Constant_subst c k)
  | AbsDB f => undefined _

@@ -25,7 +25,7 @@ Definition LRQ (x : Q) : LReal.
 Proof.
 refine ( {| lbound := fun q' => q' < x |}); intros.
 - eapply Qle_lt_trans; eassumption.
-- destruct (Qbetween q x H) as (mid & between).
+- destruct (Qbetween H) as (mid & between).
   exists mid. apply between.
 - exists (x - 1). apply Qlt_minus_iff.
   ring_simplify. reflexivity.
