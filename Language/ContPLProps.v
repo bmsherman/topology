@@ -144,6 +144,16 @@ Section ContPLProps.
   Defined.
 
   
+  Theorem Bind_innermap : forall {Γ A B C} (m : Γ ~~> M A) (f : Γ * B ~~> M C) (g : A ~~> B),
+      Bind ((map g) ∘ m) f == (Bind m (f ∘ (id ⊗ g))).
+  Proof.
+    intros Γ A B C m f g.
+    unfold Bind, bind.
+    rewrite map_compose; remove_eq_left.
+    rewrite pair_parallel_id; remove_eq_right.
+    apply strong_nat.
+  Qed.
+      
   Theorem Bind_emap : forall {Γ A B} (m : Γ ~~> M A)(f : Γ * A ~~> M B),
       (Bind m f) == join ∘ (emap f) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m f.
@@ -442,6 +452,14 @@ Proof. Abort.
          rewrite H. rewrite H0.
          reflexivity.
   Qed.
+
+  Lemma Map_snd : forall {Γ A B : U} (f : A ~~> B) (mu : Γ ~~> M A),
+      Map (f ∘ snd) mu == (map f) ∘ mu.
+  Proof. intros Γ A B f mu.
+         unfold Map.
+         apply emap_snd_pair.
+  Qed.
+         
   
   Lemma Bind_iso {Γ A A' B : U} (p : A ~~> A') 
         (mu : Γ ~~> M A) (mu' : Γ ~~> M A')
