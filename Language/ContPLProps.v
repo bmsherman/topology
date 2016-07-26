@@ -2,12 +2,10 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Morphisms.
 Require Import Spec.Category.
-Require Import Spec.Prob Spec.SMonad.
+Require Import Spec.SMonad.
 Require Import Language.ContPL.
 Import Category.
 Import ContPL.
-Import Prob.
-Import Real.
 
 Local Open Scope morph.
 Local Open Scope obj.
@@ -16,23 +14,23 @@ Section ContPLProps.
   
   Context {U : Type}.
   Context `{CMCprops : CMC_Props (U := U)}.
-  Context `{mops : MeasOps U (ccat := ccat) (cmc := cmc) (cmcprops := CMCprops) }.
-  Context `{SMDProps : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
+  (* Context `{mops : MeasOps U (ccat := ccat) (cmc := cmc) (cmcprops := CMCprops) }. *)
+  Context `{SMDProps : SMonad_Props (U := U) (ccat := ccat) (cmc := cmc)
      (cmcprops := CMCprops)
-     (smd := ProbMonad)}.
+     }.
   
   
-  Existing Instance ProbMonad.
+  Existing Instance smd.
   
   Hint Rewrite
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
        (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
        (@unit_uniq _ _ _ _)
-       (@map_id _ Prob _ _ _ _ _)
+       (@map_id _ M _ _ _ _ _)
        (@join_map_ret _ _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _ _)
        (@strength_ret _ _ _ _ _ _ _)
-       (@fst_strong _ _ _ _) (@snd_strong _ _ _ _ _ _ _)
+       (*@fst_strong _ _ _ _*) (@snd_strong _ _ _ _ _ _ _)
     : cat_db.
   
   
@@ -93,30 +91,30 @@ Section ContPLProps.
     ('LAM'<< _ | _ >> x =>
                  let a := fst ∘ x in let b := snd ∘ x in ⟨b, a⟩) ∘ add_unit_left.
   
-  Definition indep {Γ A B : U} (DA : Γ ~~> Prob A) (DB : Γ ~~> Prob B) : (Γ ~~> Prob (A * B)) :=
+  Definition indep {Γ A B : U} (DA : Γ ~~> M A) (DB : Γ ~~> M B) : (Γ ~~> M (A * B)) :=
       ( a <-  DA;<< _ | _ >>
                          b <- !DB;<< _ | _ >>
                                           Ret ⟨!a, b⟩).
   
-  Definition inner_indep {A B : U} : (Prob A) * (Prob B) ~~> Prob (A * B) :=
-    indep (Γ := Prob A * Prob B) fst snd.
-  Lemma emap_fst_pair : forall {Γ A B C : U} (f : Γ ~~> C) (h : A ~~> Γ) (k : A ~~> Prob B),
+  Definition inner_indep {A B : U} : (M A) * (M B) ~~> M (A * B) :=
+    indep (Γ := M A * M B) fst snd.
+  Lemma emap_fst_pair : forall {Γ A B C : U} (f : Γ ~~> C) (h : A ~~> Γ) (k : A ~~> M B),
       (emap (f ∘ fst)) ∘ ⟨h , k⟩ == ret ∘ f ∘ h.
   Proof. intros Γ A B C f h k. unfold emap. rewrite map_compose.
-         rewrite <- (compose_assoc strong).
+         rewrite <- (compose_assoc strong). Abort. (*
          rewrite fst_strong. rewrite -> compose_assoc.
          rewrite ret_nat. rewrite <- (compose_assoc _ fst). rewrite pair_fst.
-         reflexivity.
-  Defined.
-  
-  Lemma emap_snd_pair : forall {Γ A B C : U} (f : B ~~> C) (h : A ~~> Γ) (k : A ~~> Prob B),
+         reflexivity. *)
+
+         
+  Lemma emap_snd_pair : forall {Γ A B C : U} (f : B ~~> C) (h : A ~~> Γ) (k : A ~~> M B),
       (emap (f ∘ snd)) ∘ ⟨h , k⟩ == (map f) ∘ k.
   Proof. intros Γ A B C f h k. unfold emap. rewrite map_compose.
          rewrite <- (compose_assoc _ (map snd)).
          rewrite snd_strong. rewrite <- (compose_assoc _ snd). rewrite pair_snd. reflexivity.
   Defined.
   
-  Lemma emap_snd : forall {Γ A B : U} (h : A ~~> Γ) (k : A ~~> Prob B),
+  Lemma emap_snd : forall {Γ A B : U} (h : A ~~> Γ) (k : A ~~> M B),
       (emap snd) ∘ ⟨h, k⟩ == k.
   Proof. intros Γ A B h k. rewrite <- (compose_id_left snd).
          rewrite emap_snd_pair.
@@ -130,7 +128,7 @@ Section ContPLProps.
          reflexivity.
   Defined.
 
-  Theorem map_Bind : forall {Γ A B C} (f : Γ * A ~~> Prob B) (m : Γ ~~> Prob A) (g : B ~~> C),
+  Theorem map_Bind : forall {Γ A B C} (f : Γ * A ~~> M B) (m : Γ ~~> M A) (g : B ~~> C),
       (map g) ∘ (Bind m f) == Bind m ((map g) ∘ f).
   Proof.
     intros Γ A B C f m g.
@@ -139,22 +137,23 @@ Section ContPLProps.
   Defined.
   
   Theorem map_Bind' : forall {Γ A B C}
-      (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> Prob B) (e : Γ ~~> Prob A) (g : B ~~> C),
+      (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> M B) (e : Γ ~~> M A) (g : B ~~> C),
       (map g) ∘ Bind e (makeFun1E f) == Bind e (map g ∘ makeFun1E f).
     intros Γ A B C f e g.
     apply map_Bind.
   Defined.
+
   
-  Theorem Bind_emap : forall {Γ A B} (m : Γ ~~> Prob A)(f : Γ * A ~~> Prob B),
+  Theorem Bind_emap : forall {Γ A B} (m : Γ ~~> M A)(f : Γ * A ~~> M B),
       (Bind m f) == join ∘ (emap f) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m f.
          unfold Bind, bind, emap. rewrite compose_assoc, compose_assoc. reflexivity.
   Defined.
 
-  Definition jmap {Γ A B} (f : Γ * A ~~> Prob B) : Γ * Prob A ~~> Prob B :=
+  Definition jmap {Γ A B} (f : Γ * A ~~> M B) : Γ * M A ~~> M B :=
     join ∘ (emap f).
   
-  Theorem Bind_push : forall {Γ Δ A B} (m : Γ ~~> Prob A) (f : Γ * A ~~> Prob B) (g : Δ ~~> Γ),
+  Theorem Bind_push : forall {Γ Δ A B} (m : Γ ~~> M A) (f : Γ * A ~~> M B) (g : Δ ~~> Γ),
       (Bind m f) ∘ g == (jmap f) ∘ ⟨g, m ∘ g⟩.
   Proof. intros Γ Δ A B m f g.
          unfold Bind, bind, jmap, emap. rewrite compose_assoc, compose_assoc.
@@ -162,14 +161,14 @@ Section ContPLProps.
          reflexivity.
   Defined.
  
-  Theorem Bind_m_Ret : forall {Γ A B} (m : Γ ~~> Prob A) (x : Γ * A ~~> B),
+  Theorem Bind_m_Ret : forall {Γ A B} (m : Γ ~~> M A) (x : Γ * A ~~> B),
       (Bind m (Ret x)) == (emap x) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m x.
          unfold Bind, Ret, emap, bind. rewrite map_compose. rewrite (compose_assoc (map x)).
          rewrite join_map_ret, compose_id_left. rewrite compose_assoc. reflexivity.
   Defined.
 
-  Theorem Bind_Ret_f : forall {Γ A B} (x : Γ ~~> A) (f : Γ * A ~~> Prob B),
+  Theorem Bind_Ret_f : forall {Γ A B} (x : Γ ~~> A) (f : Γ * A ~~> M B),
       (Bind (Ret x) f) == f ∘ ⟨id, x⟩.
   Proof. intros Γ A B x f.
          unfold Bind, Ret, bind.
@@ -185,7 +184,7 @@ Section ContPLProps.
   Defined.
    
 
-  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> Prob A) (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> B),
+  Theorem Bind'_m_Ret : forall {Γ A B}  (m : Γ ~~> M A) (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> B),
       (x <- m ;<< Δ | ext >> (Ret (f Δ ext x))) ==  (emap (makeFun1E f)) ∘ ⟨id, m⟩.
   Proof. intros Γ A B m f.
          apply Bind_m_Ret.
@@ -193,12 +192,12 @@ Section ContPLProps.
 
 
   Theorem Bind'_Ret_f : forall {Γ A B} (x : Γ ~~> A) 
-  (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> Prob B),
+  (f : forall Δ, Extend Γ Δ -> Δ ~~> A -> Δ ~~> M B),
       Bind (Ret x) (makeFun1E f) == (makeFun1E f) ∘ ⟨id, x⟩.
   Proof. intros Γ A B x f. apply Bind_Ret_f.
   Defined.
   
-  Theorem Bind_Bind : forall {Γ A B C : U} (m : Γ ~~> Prob A) (f : Γ * A ~~> Prob B) (g : Γ * B ~~> Prob C),
+  Theorem Bind_Bind : forall {Γ A B C : U} (m : Γ ~~> M A) (f : Γ * A ~~> M B) (g : Γ * B ~~> M C),
       Bind (Bind m f) g == Bind m (Bind f (g ∘ (fst ⊗ id))).
   Proof. intros Γ A B C m f g.
          unfold Bind, bind.
@@ -249,7 +248,7 @@ Section ContPLProps.
          }
          rewrite <- !compose_assoc. rewrite Δ1 at 1.
          remove_eq_right.
-         assert (prod_assoc_left ∘ ⟨fst, id⟩ == diagonal (A:=Γ) ⊗ id(A:=Prob A)) as Δ2.
+         assert (prod_assoc_left ∘ ⟨fst, id⟩ == diagonal (A:=Γ) ⊗ id(A:=M A)) as Δ2.
          {
            unfold prod_assoc_left, parallel, diagonal.
            rewrite !pair_f. autorewrite with cat_db.
@@ -275,7 +274,7 @@ Section ContPLProps.
            + rewrite !compose_assoc; autorewrite with cat_db. reflexivity.
   Qed.        
     
-  Theorem Bind_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> Prob C),
+  Theorem Bind_map_f : forall {Γ A B C} (m : Γ ~~> M A) (g : A ~~> B) (f : Γ * B ~~> M C),
       (Bind ((map g) ∘ m) f) == (Bind m (f ∘ (id ⊗ g))).
   Proof. intros Γ A B C m g f.
          unfold Bind, bind.
@@ -292,18 +291,9 @@ Section ContPLProps.
   Qed.
 
 
-  (* Maybe this should be elsewhere? *)
-  
-  Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
-      (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
-  Proof. intros Γ A B mu nu.
-         unshelve eapply (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
-         intros. reflexivity.         
-  Qed.                
-  
   
   (*
-  Theorem Bind'_map_f : forall {Γ A B C} (m : Γ ~~> Prob A) (g : A ~~> B) (f : Γ * B ~~> B -> Γ * B ~~> Prob C),
+  Theorem Bind'_map_f : forall {Γ A B C} (m : Γ ~~> M A) (g : A ~~> B) (f : Γ * B ~~> B -> Γ * B ~~> M C),
       (x <- (map g) ∘ m; (f x)) == (x <- m; (f snd) ∘ (id ⊗ g)).
   Proof. intros Γ A B C m g f.
          apply  Bind_map_f. 
@@ -335,8 +325,8 @@ Proof. Abort.
     assumption. reflexivity.  reflexivity.
   Qed.
   
-  Lemma Bind_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
-                     (f : Δ * A ~~> Prob B), Bind x f ∘ g == Bind (x ∘ g) (f ∘ (g ⊗ id)).
+  Lemma Bind_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> M A)
+                     (f : Δ * A ~~> M B), Bind x f ∘ g == Bind (x ∘ g) (f ∘ (g ⊗ id)).
   Proof.
     intros. unfold Bind. unfold bind. rewrite <- !(compose_assoc _ _ join).
     apply compose_Proper. reflexivity. rewrite map_compose.
@@ -351,8 +341,8 @@ Proof. Abort.
   Qed.
   
   
-  Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
-                        (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> Prob B),
+  Theorem Bind'_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> M A)
+                        (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> M B),
       ((a <- x;<< Δ' | eΔ >>  (f Δ' eΔ a)) ∘ g) == (a <- x ∘ g ;<< Γ' | eΓ >> (f Γ' (g ∘ eΓ) a)).
   (*b <- x ∘ g; (f snd) ∘ ⟨g ∘ fst, b⟩). *)
   Proof.
@@ -375,8 +365,8 @@ Proof. Abort.
     autorewrite with cat_db. reflexivity.
   Qed.
   
-  Theorem indep_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> Prob A)
-                        (y : Δ ~~> Prob B), indep x y ∘ g == indep (x ∘ g) (y ∘ g).
+  Theorem indep_ext : forall Γ Δ A B (g : Γ ~~> Δ) (x : Δ ~~> M A)
+                        (y : Δ ~~> M B), indep x y ∘ g == indep (x ∘ g) (y ∘ g).
   Proof.
     intros. unfold indep. rewrite Bind_ext. apply Bind_Proper. 
     reflexivity. unfold makeFun1E. 
@@ -395,15 +385,15 @@ Proof. Abort.
     autorewrite with cat_db. reflexivity.
   Qed.
   
-  Theorem call_indep : forall Γ A B (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
-      Call (makeFun [Prob A; Prob B] (fun _ => indep)) mu nu == indep mu nu.
+  Theorem call_indep : forall Γ A B (mu : Γ ~~> M A) (nu : Γ ~~> M B),
+      Call (makeFun [M A; M B] (fun _ => indep)) mu nu == indep mu nu.
   Proof.
     intros. apply (call_inv (fun _ => indep)).
     - intros. typeclasses eauto.
     - intros. apply indep_ext.
   Qed.
   
-  Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
+(* Abort.  Theorem marg_inner_indep : forall {A B : U}, (marg (A:=A)(B:=B)) ∘ inner_indep == id.
   Proof. intros A B.
          unfold marg. apply proj_eq.
          - rewrite compose_assoc. autorewrite with cat_db.
@@ -441,10 +431,10 @@ Proof. Abort.
            autorewrite with cat_db.
            reflexivity.
            
-  Defined.
+  Defined. *)
   
-  Definition Map {Γ A B : U} (f : Γ * A ~~> B) (mu : Γ ~~> Prob A)
-    : Γ ~~> Prob B := emap f ∘ ⟨ id , mu ⟩.
+  Definition Map {Γ A B : U} (f : Γ * A ~~> B) (mu : Γ ~~> M A)
+    : Γ ~~> M B := emap f ∘ ⟨ id , mu ⟩.
 
   Global Instance Map_Proper {Γ A B : U} : Proper (eq (A:=Γ*A)(B:=B) ==> eq ==> eq) Map.
   Proof. unfold Proper, respectful.
@@ -454,8 +444,8 @@ Proof. Abort.
   Qed.
   
   Lemma Bind_iso {Γ A A' B : U} (p : A ~~> A') 
-        (mu : Γ ~~> Prob A) (mu' : Γ ~~> Prob A')
-        (f : Γ * A ~~> Prob B) (f' : Γ * A' ~~> Prob B)
+        (mu : Γ ~~> M A) (mu' : Γ ~~> M A')
+        (f : Γ * A ~~> M B) (f' : Γ * A' ~~> M B)
     : map p ∘ mu == mu'
       -> f == f' ∘ (id ⊗ p)
       -> Bind mu f == Bind mu' f'.
@@ -475,9 +465,9 @@ Proof. Abort.
          rewrite lam_eval. autorewrite with cat_db. reflexivity.
   Defined.
 
-  Theorem Bind'_Bind' : forall {Δ A B C : U} (m : Δ ~~> Prob A)
-                          (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> Prob B)
-                          (g : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> B -> Δ0 ~~> Prob C),
+  Theorem Bind'_Bind' : forall {Δ A B C : U} (m : Δ ~~> M A)
+                          (f : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> A -> Δ0 ~~> M B)
+                          (g : forall Δ0 (ext : Extend Δ Δ0), Δ0 ~~> B -> Δ0 ~~> M C),
       (x <- (y <- m ;<< Δ' | eΔ >> (f Δ' eΔ y));<< Δ'' | eΔ' >> (g Δ'' eΔ' x)) ==
       (y <- m ;<< Δ' | eΔ >> x <- (f Δ' eΔ y);<< Δ'' | eΔ' >> (g Δ'' (eΔ ∘ eΔ') x)).
   Proof. intros. 
@@ -496,7 +486,7 @@ Proof. Abort.
     reflexivity.
   Qed.
   
-  Lemma Map_prog : forall {Δ A S : U} (DS : Δ ~~> Prob S) (SA : Δ * S ~~> A),
+  Lemma Map_prog : forall {Δ A S : U} (DS : Δ ~~> M S) (SA : Δ * S ~~> A),
       (Map SA DS) == (s <- DS;<< _ | e >> Ret (ap2 SA e s)).
   Proof. intros.
          unfold Map.
@@ -515,100 +505,16 @@ Proof. Abort.
          apply lam_eval.
   Qed.
 
+         
+         
   
-  Theorem Fubini_Bind : forall {Δ A B C : U} (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) (h : Δ * A * B ~~> Prob C),
-      (Bind DA (Bind (DB ∘ fst) h)) ==
-      (Bind DB (Bind (DA ∘ fst) (h ∘ prod_assoc_left ∘ (id ⊗ swap) ∘ prod_assoc_right))).
-  Proof. intros Δ A B C DA DB h.
-         pose proof (Fubini (C := C) DA DB
-                            (fun Δ0 e a b => h ∘ ⟨⟨e, a⟩, b⟩)
-                            (fun Δ0 e a b => h ∘ ⟨⟨e, a⟩, b⟩)) as given.
-         simpl in given.
-         unfold makeFun1E in given.
-         unfold Lift, extend, Extend_Prod, Extend_Refl in given.
-         assert ( Bind DA (Bind (DB ∘ (id ∘ fst)) (h ∘ ⟨ ⟨ id ∘ fst ∘ (id ∘ fst), snd ∘ (id ∘ fst) ⟩, snd ⟩)) ==
-          Bind DB (Bind (DA ∘ (id ∘ fst)) (h ∘ ⟨ ⟨ id ∘ fst ∘ (id ∘ fst), snd ⟩, snd ∘ (id ∘ fst) ⟩)))
-           as given'.
-         { eapply given. reflexivity. }
-         autorewrite with cat_db in given'.
-         rewrite <- pair_f in given'.
-         repeat (rewrite pair_id in given'; autorewrite with cat_db in given').
-         unfold prod_assoc_right, prod_assoc_left, swap, parallel.
-         autorewrite with cat_db.
-         rewrite given'.
-         repeat (apply Bind_Proper; try reflexivity).
-         remove_eq_left.
-         apply proj_eq.
-         - rewrite compose_assoc.
-           autorewrite with cat_db. rewrite pair_f.
-           rewrite !compose_assoc. autorewrite with cat_db.
-           rewrite <- (compose_assoc _ snd).
-           autorewrite with cat_db.
-           rewrite !compose_assoc.
-           autorewrite with cat_db.
-           rewrite <- compose_assoc.
-           autorewrite with cat_db. reflexivity.
-         - rewrite compose_assoc. autorewrite with cat_db.
-           rewrite pair_f. autorewrite with cat_db.
-           rewrite <- compose_assoc. autorewrite with cat_db.
-           rewrite !pair_f. autorewrite with cat_db.
-           rewrite <- compose_assoc. autorewrite with cat_db.
-           reflexivity.
-  Qed.
-             
-         
-         
-  Theorem indep_integral_right : forall {Δ A B C : U}
-                             (DA : Δ ~~> Prob A) (DB : Δ  ~~> Prob B) (DC : Δ * A ~~> Prob C),
-      Bind DA (indep (DB ∘ fst) DC) == indep DB (Bind DA DC).
-  Proof. intros Δ A B C DA DB DC.
-         unfold indep. unfold makeFun1E.
-         simpl_ext. autorewrite with cat_db.
-         rewrite (Bind_ext _ _ _ _ fst).
-         rewrite Bind_Bind.
-         rewrite Fubini_Bind.
-         repeat (apply Bind_Proper; try reflexivity).
-         rewrite !Bind_ext.
-         apply Bind_Proper.
-         - remove_eq_left.
-           unfold prod_assoc_left. rewrite compose_assoc.
-           rewrite pair_fst.
-           unfold prod_assoc_right. rewrite !parallel_pair.
-           autorewrite with cat_db.
-           unfold swap. rewrite pair_f.
-           autorewrite with cat_db.
-           apply proj_eq; autorewrite with cat_db; reflexivity.
-         - unfold Ret; remove_eq_left.
-           apply proj_eq.
-           + rewrite !compose_assoc. autorewrite with cat_db.
-             rewrite <- !(compose_assoc _ _ snd).
-             rewrite !parallel_fst.
-             unfold prod_assoc_left.
-             rewrite !compose_assoc; autorewrite with cat_db.
-             unfold swap, prod_assoc_right.
-             rewrite <- !compose_assoc.
-             rewrite (compose_assoc _ _ fst).
-             rewrite parallel_fst.
-             rewrite <- compose_assoc.
-             rewrite parallel_fst.
-             rewrite pair_f. rewrite parallel_pair.
-             autorewrite with cat_db.
-             rewrite pair_f.
-             rewrite !compose_assoc.
-             autorewrite with cat_db.
-             reflexivity.
-           + rewrite !compose_assoc; autorewrite with cat_db.
-             reflexivity.
-  Qed.
-
-
-  Definition Map_post : forall {Γ A B C : U} (F : Γ * A ~~> B) (h : Γ ~~> Prob A) (g : B ~~> C),
+  Definition Map_post : forall {Γ A B C : U} (F : Γ * A ~~> B) (h : Γ ~~> M A) (g : B ~~> C),
       Map (g ∘ F) h == (map g) ∘ Map F h.
   Proof. intros. unfold Map, emap. remove_eq_right. apply map_compose.
   Qed.
 
 
-    Theorem Map_compose : forall {Γ A B C : U} (f0 : Γ * A ~~> B) (f1 : Γ * B ~~> C) (h : Γ ~~> Prob A),
+    Theorem Map_compose : forall {Γ A B C : U} (f0 : Γ * A ~~> B) (f1 : Γ * B ~~> C) (h : Γ ~~> M A),
       Map f1 (Map f0 h) == Map (f1 ∘ ⟨fst, f0⟩) h.
   Proof. intros Γ A B C f0 f1 h.
          unfold Map.
@@ -663,21 +569,9 @@ Proof. Abort.
          unfold Lift. rewrite H0. reflexivity.
   Qed.
 
-  Theorem swap_indep : forall {Γ A B : U} (DA : Γ ~~> Prob A) (DB : Γ ~~> Prob B),
-      (map swap) ∘ (indep DA DB) == (indep DB DA).
-  Proof. intros Γ A B DA DB.
-         unfold indep. rewrite Fubini_pair at 1.
-         rewrite map_Bind. apply Bind_Proper; try reflexivity.
-         rewrite lam_postcompose; apply lam_extensional; intros.
-         rewrite map_Bind. apply Bind_Proper; try reflexivity.
-         rewrite lam_postcompose; apply lam_extensional. intros.
-         rewrite map_Ret. apply Ret_Proper. unfold swap.
-         rewrite pair_f; autorewrite with cat_db.
-         reflexivity.
-  Qed.
-
   
-  Theorem Bind_Map_indep : forall {Γ A B C : U} (m : Γ ~~> Prob A) (F : Γ * A * C ~~> B) (h : Γ ~~> Prob C),
+  
+  Theorem Bind_Map_indep : forall {Γ A B C : U} (m : Γ ~~> M A) (F : Γ * A * C ~~> B) (h : Γ ~~> M C),
       Bind m (Map F (h ∘ fst)) == Map (F ∘ prod_assoc_left) (indep m h).
   Proof. intros Γ A B C m F h.
          rewrite !Map_prog.
@@ -711,7 +605,7 @@ Proof. Abort.
            reflexivity.
   Qed.
 
-     Lemma parallel_indep : forall {Γ A B A' B'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+     Lemma parallel_indep : forall {Γ A B A' B'} (f : Γ ~~> M A) (g : Γ ~~> M B)
                              (h : A ~~> A') (k : B ~~> B'),
         (map (h ⊗ k)) ∘ (indep f g) == (indep ((map h) ∘ f) ((map k) ∘ g)).
     Proof. intros Γ A B A' B' f g h k.
@@ -737,7 +631,7 @@ Proof. Abort.
            reflexivity.
     Qed.
 
-    Corollary parallel_indep_right : forall {Γ A B B'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+    Corollary parallel_indep_right : forall {Γ A B B'} (f : Γ ~~> M A) (g : Γ ~~> M B)
                                        (k : B ~~> B'),
         (map (id ⊗ k)) ∘ (indep f g) == (indep f ((map k) ∘ g)).
     Proof. intros Γ A B B' f g k.
@@ -746,7 +640,7 @@ Proof. Abort.
            autorewrite with cat_db. reflexivity.
     Qed.
 
-    Corollary parallel_indep_left : forall {Γ A B A'} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B)
+    Corollary parallel_indep_left : forall {Γ A B A'} (f : Γ ~~> M A) (g : Γ ~~> M B)
                                        (h : A ~~> A'),
         (map (h ⊗ id)) ∘ (indep f g) == (indep ((map h) ∘ f) g).
     Proof. intros Γ A B B' f g h.
@@ -756,7 +650,7 @@ Proof. Abort.
     Qed.
 
 
-    Theorem indep_assoc : forall {Γ A B C} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B) (h : Γ ~~> Prob C),
+    Theorem indep_assoc : forall {Γ A B C} (f : Γ ~~> M A) (g : Γ ~~> M B) (h : Γ ~~> M C),
         indep (indep f g) h == map prod_assoc_left ∘ indep f (indep g h).
     Proof.
       intros Γ A B C f g h.
@@ -791,7 +685,7 @@ Proof. Abort.
       autorewrite with cat_db. reflexivity.
     Qed.
 
-    Corollary indep_assoc' : forall {Γ A B C} (f : Γ ~~> Prob A) (g : Γ ~~> Prob B) (h : Γ ~~> Prob C),
+    Corollary indep_assoc' : forall {Γ A B C} (f : Γ ~~> M A) (g : Γ ~~> M B) (h : Γ ~~> M C),
         indep f (indep g h) == map prod_assoc_right ∘ indep (indep f g) h.
     Proof. intros Γ A B C f g h.
            rewrite indep_assoc.

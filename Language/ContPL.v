@@ -128,6 +128,10 @@ Global Instance Extend_Compose {A B C : U}
 Definition Lift {Γ Δ A} `{f : Extend Γ Δ} (x : Γ ~~> A) 
   : Δ ~~> A := x ∘ f.
 
+Definition liftF {Γ Δ A B : U} 
+  {ext : Extend Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=
+  f ∘ (ext ⊗ id).
+
 Definition makeFun1E {Γ arg ret : U} 
   (f : forall Δ (ext : Extend Γ Δ), Δ ~~> arg -> Δ ~~> ret)
   : Γ * arg ~~> ret := f _ extend snd.

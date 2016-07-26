@@ -88,10 +88,6 @@ Proof. eapply Build_Iso. Unshelve.
        symmetry. exact unit_Prob.
 Defined.
 
-(* This should probably get moved somewhere else *)
-Definition liftF {Γ Δ A B : U} 
-  {ext : Extend Γ Δ} (f : Γ * A ~~> B) : Δ * A ~~> B :=
-  f ∘ (ext ⊗ id).
 
 Axiom pstream_unfold : forall (Γ A X : U) 
  (x : Γ ~~> X) (f : Γ * X ~~> Prob (A * X)),
@@ -124,6 +120,17 @@ Axiom Fubini : forall {Γ A B C} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B)
       (forall Δ ext a b, (f Δ ext a b) == (g Δ ext a b) )->
       (x <- mu;<< Δ | e >> y <- !nu;<< Δ' | e' >> (f Δ' (e∘e') (!x) y))
       == (y <- nu;<< Δ | e >> x <- !mu;<< Δ' | e' >> (g Δ' (e∘e') x (!y))).
+
+
+  (* Maybe this should be elsewhere? *)
+  
+Theorem Fubini_pair : forall {Γ A B} (mu : Γ ~~> Prob A) (nu : Γ ~~> Prob B),
+    (x <- mu; y <- !nu; Ret ⟨!x, y⟩) == (y <- nu; x <- !mu; Ret ⟨x, !y⟩).
+Proof. intros Γ A B mu nu.  
+         unshelve eapply (Fubini mu nu (fun _ _ a b => Ret ⟨a, b⟩) (fun _ _ a b => Ret ⟨a, b⟩) _).
+         intros. reflexivity.         
+Qed.
+
 
 Definition marg {A B : U} : Prob (A * B) ~~> (Prob A) * (Prob B) :=
   ⟨map fst , map snd⟩.

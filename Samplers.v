@@ -91,6 +91,106 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
 
+    Theorem Fubini_Bind : forall {Δ A B C : U} (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) (h : Δ * A * B ~~> Prob C),
+      (Bind DA (Bind (DB ∘ fst) h)) ==
+      (Bind DB (Bind (DA ∘ fst) (h ∘ prod_assoc_left ∘ (id ⊗ swap) ∘ prod_assoc_right))).
+  Proof. intros Δ A B C DA DB h.  
+         pose proof (Fubini (C := C) DA DB
+                            (fun Δ0 e a b => h ∘ ⟨⟨e, a⟩, b⟩)
+                            (fun Δ0 e a b => h ∘ ⟨⟨e, a⟩, b⟩)) as given.
+         simpl in given.
+         unfold makeFun1E in given.
+         unfold Lift, extend, Extend_Prod, Extend_Refl in given.
+         assert ( Bind DA (Bind (DB ∘ (id ∘ fst)) (h ∘ ⟨ ⟨ id ∘ fst ∘ (id ∘ fst), snd ∘ (id ∘ fst) ⟩, snd ⟩)) ==
+          Bind DB (Bind (DA ∘ (id ∘ fst)) (h ∘ ⟨ ⟨ id ∘ fst ∘ (id ∘ fst), snd ⟩, snd ∘ (id ∘ fst) ⟩)))
+           as given'.
+         { eapply given. reflexivity. }
+         autorewrite with cat_db in given'.
+         rewrite <- pair_f in given'.
+         repeat (rewrite pair_id in given'; autorewrite with cat_db in given').
+         unfold prod_assoc_right, prod_assoc_left, swap, parallel.
+         autorewrite with cat_db.
+         rewrite given'.
+         repeat (apply Bind_Proper; try reflexivity).
+         remove_eq_left.
+         apply proj_eq.
+         - rewrite compose_assoc.
+           autorewrite with cat_db. rewrite pair_f.
+           rewrite !compose_assoc. autorewrite with cat_db.
+           rewrite <- (compose_assoc _ snd).
+           autorewrite with cat_db.
+           rewrite !compose_assoc.
+           autorewrite with cat_db.
+           rewrite <- compose_assoc.
+           autorewrite with cat_db. reflexivity.
+         - rewrite compose_assoc. autorewrite with cat_db.
+           rewrite pair_f. autorewrite with cat_db.
+           rewrite <- compose_assoc. autorewrite with cat_db.
+           rewrite !pair_f. autorewrite with cat_db.
+           rewrite <- compose_assoc. autorewrite with cat_db.
+           reflexivity.
+  Qed.
+
+  Theorem indep_integral_right : forall {Δ A B C : U}
+                                   (DA : Δ ~~> Prob A) (DB : Δ  ~~> Prob B) (DC : Δ * A ~~> Prob C),
+      Bind DA (indep (DB ∘ fst) DC) == indep DB (Bind DA DC).
+  Proof. intros Δ A B C DA DB DC.
+         unfold indep. unfold makeFun1E.
+         simpl_ext. autorewrite with cat_db.
+         rewrite (Bind_ext _ _ _ _ fst).
+         rewrite Bind_Bind.
+         rewrite Fubini_Bind.
+         repeat (apply Bind_Proper; try reflexivity).
+         rewrite !Bind_ext.
+         apply Bind_Proper.
+         - remove_eq_left.
+           unfold prod_assoc_left. rewrite compose_assoc.
+           rewrite pair_fst.
+           unfold prod_assoc_right. rewrite !parallel_pair.
+           autorewrite with cat_db.
+           unfold swap. rewrite pair_f.
+           autorewrite with cat_db.
+           apply proj_eq; autorewrite with cat_db; reflexivity.
+         - unfold Ret; remove_eq_left.
+           apply proj_eq.
+           + rewrite !compose_assoc. autorewrite with cat_db.
+             rewrite <- !(compose_assoc _ _ snd).
+             rewrite !parallel_fst.
+             unfold prod_assoc_left.
+             rewrite !compose_assoc; autorewrite with cat_db.
+             unfold swap, prod_assoc_right.
+             rewrite <- !compose_assoc.
+             rewrite (compose_assoc _ _ fst).
+             rewrite parallel_fst.
+             rewrite <- compose_assoc.
+             rewrite parallel_fst.
+             rewrite pair_f. rewrite parallel_pair.
+             autorewrite with cat_db.
+             rewrite pair_f.
+             rewrite !compose_assoc.
+             autorewrite with cat_db.
+             reflexivity.
+           + rewrite !compose_assoc; autorewrite with cat_db.
+             reflexivity.
+  Qed.
+
+  
+  Theorem swap_indep : forall {Γ A B : U} (DA : Γ ~~> Prob A) (DB : Γ ~~> Prob B),
+      (map swap) ∘ (indep DA DB) == (indep DB DA).
+  Proof. intros Γ A B DA DB.
+         unfold indep. rewrite Fubini_pair at 1.
+         rewrite map_Bind. apply Bind_Proper; try reflexivity.
+         rewrite lam_postcompose; apply lam_extensional; intros.
+         rewrite map_Bind. apply Bind_Proper; try reflexivity.
+         rewrite lam_postcompose; apply lam_extensional. intros.
+         rewrite map_Ret. apply Ret_Proper. unfold swap.
+         rewrite pair_f; autorewrite with cat_db.
+         reflexivity.
+  Qed.
+
+
+
+
   Section Constant.
   
   Definition const_sampler_prog {Δ A S : U} (x : Δ ~~> A) : Δ * S ~~> S * A :=
