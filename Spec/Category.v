@@ -96,6 +96,9 @@ Arguments CMC U {_} : clear implicits.
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
   forall X (g1 g2 : X ~~> A), f ∘ g1 == f ∘ g2 -> g1 == g2.
 
+Definition Epi {U} `{CMC U} {A B : U} (f : B ~~> A) :=
+  forall X (g1 g2 : A ~~> X), g1 ∘ f == g2 ∘ f -> g1 == g2.
+
 Record Iso {U} `{CMC U} {A B : U} : Type :=
   { to   : A ~~> B
   ; from : B ~~> A
@@ -230,6 +233,18 @@ Section BasicProps.
   Proof. intros A. unfold diagonal. apply pair_snd.
   Defined.
 
+  Lemma fst_Epi : forall {A B}, (A ~~> B) -> Epi (fst (A:=A)(B:=B)).
+  Proof. intros A B f.
+         assert (fst (A:=A)(B:=B) ∘ (⟨id, f⟩) == id).
+         { rewrite pair_fst. reflexivity. }
+         unfold Epi. intros X g1 g2 K.
+         rewrite <- (compose_id_right g1), <- (compose_id_right g2).
+         rewrite <- H.
+         rewrite !compose_assoc.
+         rewrite K.
+         reflexivity.
+  Qed.
+         
   Lemma pair_parallel_diagonal : forall {A B C : U} (f : A ~~> B) (g : A ~~> C),
       ⟨f, g⟩ == (f ⊗ g) ∘ diagonal.
   Proof. intros A B C f g. apply proj_eq.
