@@ -1,5 +1,5 @@
-Require Import Spec.Category Spec.Stream Spec.Discrete Spec.Sum.
-Import Category. Import Stream. Import Discrete. Import Sum.
+Require Import Spec.Category Spec.Stream Spec.Discrete Spec.Sum Spec.Power.
+Import Category. Import Stream. Import Discrete. Import Sum. Import Power.
 Local Open Scope obj.
 Local Open Scope morph.
 
@@ -8,26 +8,18 @@ Module Vec.
     
     Context {U : Type} {disc : Type -> U} {pow : Type -> U -> U} {ccat : CCat U} {cmc : CMC U}.
     Context `{sos : StreamOps (U:=U) (ccat:=ccat)}.
+    Context `{pos : PowOps (U:=U) (ccat:=ccat) pow}.
+    Context {pps : PowProps pow}.
     Context {cmp : CMC_Props U}.
-    Context {dos : DiscreteOps disc pow}.
+    Context {dos : DiscreteOps disc}.
     Context {sps : StreamProps}.
-    Context {dps : DiscreteProps disc pow}.
+    Context {dps : DiscreteProps disc}.
     Context `{suos : SumOps (U:=U) (ccat:=ccat)}.
     Context {sups : SumProps (U:=U) (ccat:=ccat) (cmc:=cmc)}.
     
-    Notation "A ~> B" := (pow A B) (at level 40).
-    
-    Arguments pow_app1 {U} {ccat} {cmc} {D} {power} {_} {X} {A} x.
-    Arguments pow_app2 {U} {ccat} {cmc} {D} {power} {_} {A} {B}.
-    Arguments pmap {U} {ccat} {cmc} {D} {power} {_} {X} {Y} {A} {B} f g.
-    Arguments pow_app1' {U} {ccat} {cmc} {D} {power} {_} {A} {X} {B} f x.
-    Arguments pow_app2' {U} {ccat} {cmc} {D} {power} {_} {X} {A} {B} f.
-    Arguments app12 {U} {ccat} {cmc} {D} {power} {H} {_} {A} {X} {B} f x.
-    Arguments app21 {U} {ccat} {cmc} {D} {power} {H} {_} {A} {X} {B} f.
-    Arguments pmap_Proper' {U} {ccat} {cmc} {D} {power} {H} {_} {X} {A} {B} {C} {D0}  _ _ y0 x0  _ _.
-    Arguments pow_app2'_pre {U} {ccat} {cmc} {D} {power} {H} {_} {X} {A} {A'} {B} {f} {g}.
-
-    Notation "'dλ' x => h" := (pow_app2' (power:=pow) (fun x => h)) (at level 20).
+    Notation "A ~> B" := (pow A B) (at level 40).    
+   
+    Notation "'pλ' x => h" := (pow_app2' (power:=pow) (fun x => h)) (at level 20).
     
     Section Stream'.
       
@@ -41,25 +33,25 @@ Module Vec.
         idx' 0.
 
       Definition tl' {A : U} : Stream' A ~~> Stream' A :=
-        dλ n => idx' (S n).
+        pλ n => idx' (S n).
       
       Definition Stream'Stream {A : U} : (Stream' A) ~~> (Stream A) :=
         stream id ⟨hd', tl'⟩. (* X := Stream' A. *)
       
       Definition StreamStream' {A : U} : (Stream A) ~~> (Stream' A) :=
-        dλ n => idx n.
+        pλ n => idx n.
       
       Notation "A === B" := (pb_eq A B) (at level 60).
       
-      Lemma idx'_dλ : forall {A B : U} (f : nat -> (A ~~> B)), (fun n : nat => idx' n ∘ dλ m => f m) === f.
+      Lemma idx'_pλ : forall {A B : U} (f : nat -> (A ~~> B)), (fun n : nat => idx' n ∘ pλ m => f m) === f.
       Proof. intros A B f.
            apply app12.
       Defined.
       
-      Theorem idx'_eval :  forall {A B : U} (f : nat -> (A ~~> B)) (n : nat), idx' n ∘ dλ m => f m == f n.
+      Theorem idx'_eval :  forall {A B : U} (f : nat -> (A ~~> B)) (n : nat), idx' n ∘ pλ m => f m == f n.
       Proof.
         intros A B f n.
-        pose proof (idx'_dλ f) as H.
+        pose proof (idx'_pλ f) as H.
         apply (H n).
       Defined.
       

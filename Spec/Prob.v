@@ -10,9 +10,10 @@ Section Prob.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
 Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Stream Spec.Discrete
-  Spec.SMonad Spec.Vec.
+  Spec.SMonad Spec.Vec Spec.Power Spec.Fix.
 Require Import Morphisms.
 Import Sierp.
+Import Power.
 Import Real.
 Import Sum.
 Import Vec.
@@ -26,6 +27,7 @@ Context `{realops : ROps U (ccat := ccat) (cmc := cmc)
   (Σ := Σ)}.
 Context `{sumops : SumOps U (ccat := ccat)}.
 Context `{streamops : StreamOps U (ccat := ccat)}.
+Context `{pos : PowOps (U:=U) (ccat:=ccat)}.
 
 Context {Open : U -> U}.
 
@@ -38,6 +40,8 @@ Context {pow : Type -> U -> U}.
 Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete pow}.
 Context {DProps : (@DiscreteProps U ccat cmc discrete pow DOps)}.
 
+Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete}.
+Context {DProps : (@DiscreteProps U ccat cmc discrete DOps)}.
 
 Require Import Spec.CCC.CCC.
 Require Import Spec.CCC.Presheaf.

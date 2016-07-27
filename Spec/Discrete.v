@@ -9,9 +9,9 @@ Section Defn.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-Variable D : Type -> U. (* D X ~~> B ≃ X -> (unit ~~> B) *)
-Variable power : Type -> U -> U. (* CF https://ncatlab.org/nlab/show/power *)
-Infix "~>" := power (at level 30). 
+Variable D : Type -> U.
+
+
 Notation "| A |" := (unit ~~> A) (at level 90).
 
 (* To minimize confusion: Γ, A, B, etc = objects; X, Y, Z etc = types. *)
@@ -26,14 +26,7 @@ Class DiscreteOps : Type :=
   ; discrete_pt_elim : forall {X}, |D X| -> X
   ; discrete_func :  forall {A}, D (|A|) ~~> A
   ; dmap : forall {X Y}, (X -> Y) -> (D X ~~> D Y)
-  ; pow_app1 : forall {X A}, X -> ((X ~> A) ~~> A)
-  ; pow_app2 : forall {A B}, A ~~> ((A ~~> B) ~> B)
-  ; pmap : forall {X Y} {A B}, (X -> Y) -> (A ~~> B) -> (Y ~> A) ~~> (X ~> B)
   }.
-
-(* One ought to have Γ ~~> (X ~> B) ≃ X -> (Γ ~~> B).
- In case Γ = unit this says precisely that unit ~~> (A ~> B) ≃ A -> (unit ~~> B), and this latter ≃
- D A ~~> B by previous. *)
 
 Context `{DiscreteOps}.
 
@@ -43,38 +36,12 @@ Definition discrete_pt' : forall {A B}, (D A ~~> B) -> (A -> |B|) :=
 Definition discrete_func' : forall {A B}, (A -> |B|) -> D A ~~> B :=
   fun _ _ F => discrete_func ∘ (dmap F).
 
-Definition pow_app1' : forall {A X B}, A ~~> (X ~> B) -> (X -> (A ~~> B)) :=
-  fun _ _ _ f x => (pow_app1 x) ∘ f.
-
-Definition pow_app2' : forall {X A B}, (X -> (A ~~> B)) -> A ~~> (X ~> B) :=
-  fun _ _ _ f => (pmap f id) ∘ pow_app2.
-
-Definition dfs_to : forall {X A}, |X ~> A| -> (D X ~~> A) :=
-  (fun X A (F : |X ~> A|) =>
-     let  F' := pow_app1' F : X -> |A|
-     in   discrete_func' F').
-
-Definition dfs_fro : forall {X A}, (D X ~~> A) -> |X ~> A| :=
-  (fun X A (F : D X ~~> A) =>
-     let  F' := discrete_pt' F : X -> |A|
-     in   pow_app2' F').
-
-
-Definition pb_eq {X : Type} {A B : U} : (X -> (A ~~> B)) -> (X -> (A ~~> B)) -> Prop :=
-  fun f g => forall (x : X), (f x) == (g x).
-
-Notation "A === B" := (pb_eq A B) (at level 60).
-
-
 Require Import Morphisms.
 Class DiscreteProps : Type :=
   { unit_discrete : unit ≅ D True
   ; discrete_pt_elim_Proper :> forall X,
       Proper (eq ==> Logic.eq) (discrete_pt_elim (X := X))
   ; dmap_Proper : forall X Y, Proper (Logic.eq ==> eq) (dmap (X:=X)(Y:=Y))
-  ; pmap_Proper : forall X Y A B, Proper (Logic.eq ==> eq ==> eq) (pmap (X:=X) (Y:=Y) (A:=A) (B:=B))
-  ; pmap_Proper' : forall X A B C D, Proper (pb_eq ==> eq ==> eq) (pmap (X:=X) (Y:=(C ~~> D)) (A:=A) (B:=B))
-                                       (* Useful for proving equality of dλ-terms. *)
   ; prod_discrete : forall {X Y}, D X * D Y ≅ D (X * Y)
   ; pt_beta : forall {X} (x : X),
      discrete_pt_elim (discrete_pt x) = x
@@ -82,63 +49,16 @@ Class DiscreteProps : Type :=
       discrete_pt (discrete_pt_elim x) == x
 (*  ; func_pt : forall {X A} {f : D X ~~> A}, (discrete_func' (discrete_pt' f)) == f
   ; pt_func : forall {X A} {f : X -> |A| }, (discrete_pt' (discrete_func' f)) = f *)
-  ; app21 : forall {A X B} (f : A ~~> (X ~> B)), pow_app2' (pow_app1' f) == f 
-  ; app12 : forall {A X B} (f : X  -> (A ~~> B)), pow_app1' (pow_app2' f) === f (*
-  ; dpt_nat : forall {X Y} {h : X -> Y} {x : X}, discrete_pt (h x) == (dmap h) ∘ discrete_pt x 
-   Axioms that might come in handy later but I don't know if are useful now ^*)
-  ; pow_app1_nat1 : forall {X X'} {A} (x : X) (h : X -> X'), (pow_app1 x) ∘ (pmap h id(A:=A)) == (pow_app1 (h x))
   ; func_pt : forall {A B} (x : A) (f : A -> unit ~~> B),
       discrete_func' f ∘ discrete_pt x == f x
-  ; pow_app2'_Proper : forall {X} {A B}, Proper (pb_eq ==> eq) (pow_app2' (A:=A) (B:=B) (X:=X))
-  ; pow_app2'_pre : forall {X} {A A' B} (f : A ~~> A') (g : X -> (A' ~~> B)),
-      (pow_app2' g) ∘ f == (pow_app2' (fun x => (g x) ∘ f))
-  ; pmap_compose1 : forall {A} {X Y Z} (f : X -> Y) (g : Y -> Z),
-      (pmap f id) ∘ (pmap g id) == pmap (fun x => (g (f x))) (id(A:=A))
-  ; pmap_id : forall {A} {X}, pmap (fun x : X => x) (id(A:=A)) == id                                        
   }.
-
-Context {dps:DiscreteProps}.
-
-Notation "'dλ' x => h" := (pow_app2' (fun x => h)) (at level 20).
-Context {cmcprops : CMC_Props U}.
-
-Lemma pow_False : forall A, False ~> A ≅ unit.
-Proof. intros A.
-       refine (Build_Iso _ _ _ _ _ _ _ _ _).
-       Unshelve.
-       Focus 3. exact tt.
-       Focus 3. refine (dλ wish => _). inversion wish.
-       - rewrite !unit_uniq. symmetry. apply unit_uniq.
-       - simpl.
-         rewrite <- (app21 id).
-         rewrite pow_app2'_pre.
-         apply pow_app2'_Proper.
-         unfold pb_eq. intros wish.
-         inversion wish.
-Defined.
-
-Lemma pow_Iso : forall {X Y} {A} (f : X -> Y) (g : Y -> X),
-    (fun x => g (f x)) = (fun x => x) -> (fun y => f (g y)) = (fun y => y) -> X ~> A ≅ Y ~> A.
-Proof. intros X Y A f g gf fg.
-       eapply Build_Iso.
-       Unshelve.
-       Focus 3. exact (pmap g id).
-       Focus 3. exact (pmap f id).
-       rewrite pmap_compose1.
-       rewrite fg. rewrite pmap_id.
-       reflexivity.
-       rewrite pmap_compose1.
-       rewrite gf. rewrite pmap_id.
-       reflexivity.
-Defined.
-
        
 
 Require Import Spec.CCC.Presheaf.
 Import Presheaf.
 Require Import Spec.CCC.CCC.
 Import CCC.
-
+Context `{cmcprops : CMC_Props (U:=U) (ccat:=ccat) (cmc:=cmc)}.
 
 Let Y := Y (cmcprops := cmcprops).
 
@@ -191,4 +111,9 @@ Lemma func_pt_CCC {A : Type} {B : U} (x : A) (f : A -> Const (Y B))
 *)
 
 End Defn.
+
+Arguments discrete_func' {U} {ccat} {cmc} {D} {_} {A} {B} f.
+Arguments discrete_pt {U} {ccat}{ cmc} {D} {_} {X} x.
+Arguments discrete_pt' {U} {ccat} {cmc} {D} {_} {A} {B} f _.
+
 End Discrete.
