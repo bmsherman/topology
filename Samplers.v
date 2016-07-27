@@ -5,7 +5,7 @@ Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Language.ContPL Language.ContPLProps.
 Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream
-  Spec.SMonad Spec.Vec.
+  Spec.SMonad Spec.Vec Spec.Power.
 Import Category.
 Import ContPL.
 Import ContPLProps.
@@ -15,6 +15,7 @@ Import Sierp.
 Import Sum.
 Import Vec.
 Import Lift.
+Import Power.
 Import Stream.
 Import CCC.
 Import Discrete.
@@ -35,13 +36,15 @@ Section Samplers.
   Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
   Context `{mops : MeasOps U
 (ccat := ccat) (cmcprops := CMCprops)
-  (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
+  (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts) (Σ:=Σ)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
                                     (cmcprops := CMCprops) (smd := ProbMonad)}.
-  Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete pow}.
-  Context {DProps : (@DiscreteProps U ccat cmc discrete pow DOps)}.
-
-  Infix "-~>" := pow (at level 30) : obj_scope. 
+  Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete}.
+  Context {DProps : (@DiscreteProps U ccat cmc discrete DOps)}.
+  Context `{pos : PowOps (U:=U) (ccat:=ccat)(power:=power)}.
+  Context `{oos : OpenOps (U:=U)(ccat:=ccat)(Σ:=Σ)(sts:=sts)(Open:=Open)}.
+  
+  Infix "-~>" := power (at level 90). 
   
   Existing Instance ProbMonad.
   Existing Instance Streamops.
@@ -197,9 +200,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     'LAM'<< _ | _ >> s => ⟨s, !x⟩.
          
   
-  Definition const_sampler {Δ A S : U} {D : Δ ~~> Prob S} {x : Δ ~~> A} :
-    Sampler (Δ := Δ) (A := A) (S := S) D (Ret x).
-  Proof. refine (sampler (const_sampler_prog x) _).       
+  Theorem const_sampler : forall {Δ A S : U} (D : Δ ~~> Prob S) (x : Δ ~~> A),
+      Sampler (Δ := Δ) (A := A) (S := S) D (Ret x).
+  Proof. intros Δ A S D x.
+         refine (sampler (const_sampler_prog x) _).       
          unfold indep. 
          simpl_ext.
          rewrite bind_extensional. Focus 2. intros.
@@ -217,7 +221,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite ap2_ext_eval.
          simpl_ext.
          reflexivity.
-  Qed.
+  Defined.
 
   End Constant.
 
@@ -281,9 +285,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Defined.
 
   
-  Definition infinite_sampler (Δ A : U) (D : Δ ~~> Prob A) : Sampler (Δ := Δ)(S := Stream A)(A :=A)
-                                                                   (constant_stream D) D.
-  Proof. refine (sampler infinite_sampler_prog _).
+  Theorem infinite_sampler : forall {Δ A : U} (D : Δ ~~> Prob A),
+      Sampler (Δ := Δ)(S := Stream A)(A :=A) (constant_stream D) D.
+  Proof. intros Δ A D.
+         refine (sampler infinite_sampler_prog _).
          rewrite Map_prog.
          unfold indep, infinite_sampler_prog.
          rewrite constant_unfold at 2; unfold constant_unfold_prog.
@@ -300,7 +305,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite pair_f.
          rewrite cons_tl', cons_hd.
          reflexivity.
-  Qed.
+  Defined.
   
   Section Coinflip.
     
@@ -312,7 +317,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   
   Definition coinflip_sampler :
     Sampler (Δ := unit) (S := Cantor) (A := Boole) infinite_coinflips coinflip :=
-    infinite_sampler _ _ _.
+    infinite_sampler _.
 
   End Coinflip.
   
@@ -329,9 +334,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Section Pullback.
   
-  Definition pullback_sampler {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ') :
-    (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
-  Proof. intros [SA samples]. refine (sampler (SA ∘ (ext ⊗ id)) _).
+  Theorem pullback_sampler : forall {Δ Δ' S A : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (ext : Extend Δ Δ'),
+      (Sampler (Δ := Δ) DS DA) -> (Sampler (Δ := Δ') (DS ∘ ext) (DA ∘ ext)).
+  Proof. intros Δ Δ' S A DS DA ext.
+         intros [SA samples]. refine (sampler (SA ∘ (ext ⊗ id)) _).
          unfold Extend in ext.
          rewrite <- indep_ext.
          rewrite samples.
@@ -343,7 +349,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite parallel_pair.
          rewrite compose_id_left.
          reflexivity.
-  Qed.
+  Defined.
 
   End Pullback.
 
@@ -376,11 +382,11 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          
       
   
-  Definition bind_sampler {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B) :
-    forall (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
+  Theorem bind_sampler : forall {Δ A B S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) (DB : Δ * A ~~> Prob B)
+                           (SA : Sampler DS DA) (SB : Sampler (Δ := Δ * A) (DS ∘ fst) DB),
       Sampler DS (bind_distr_prog DA DB).
-  Proof. intros [SA samplesA] [SB samplesB].
-
+  Proof. intros Δ A B S DS DA DB.
+         intros [SA samplesA] [SB samplesB].
          refine (sampler (bind_sampler_prog SA SB) _).
          pose proof (Bind_Proper DA DA (Equivalence_Reflexive DA) _ _ samplesB) as samplesB'.
          rewrite indep_integral_right in samplesB'.
@@ -394,7 +400,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          rewrite bind_distr_prog_spec. rewrite samplesB'.
          apply Map_Proper; try reflexivity.
          rewrite swap_indep. reflexivity.
-  Qed.
+  Defined.
   
   (* Program transforms. 
          rewrite Map_prog.
@@ -413,11 +419,11 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       | (S m) => indep f (indeps m f)
       end.
 
-    Theorem constant_prefix_stmnt : forall {Γ A} {n : nat} {f : Γ ~~> Prob A}, Prop.
+    Definition constant_prefix_stmnt : forall {Γ A} {n : nat} {f : Γ ~~> Prob A}, Prop.
     Proof. intros Γ A n f. refine (_ == _).
            refine (_ ∘ _).
            refine (map (prefix n)). Focus 2.
-           refine (constant_stream f). refine (indeps n f).
+           refine (constant_stream f). refine (indeps n f). 
     Defined.
 
     Theorem constant_prefix : forall {Γ A} {n : nat} {f : Γ ~~> Prob A}, @constant_prefix_stmnt Γ A n f.
@@ -511,7 +517,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
              reflexivity.
     Qed.
 
-    Theorem Unzip_Sampler : forall {Γ A : U} (f : Γ ~~> Prob A),
+    Theorem unzip_sampler : forall {Γ A : U} (f : Γ ~~> Prob A),
         Sampler (Δ := Γ) (S:=Stream A) (A:=Stream A) (constant_stream f) (constant_stream f).
     Proof. intros Γ A f.
            refine (sampler (unzip ∘ snd) _).
@@ -525,21 +531,61 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Section Geometric.
 
+    Import Qnn.
+    Import Lift.
+    Variable L : U -> U.
+    Context `{los : LiftOps (U:=U) (ccat:=ccat)(Stream:=Stream)(cmc:=cmc)(sts:=sts)(Lift:=L)}.
+
     Notation "| A |" := (unit ~~> A) (at level 90).
+
+    Fixpoint Qnnpow (q : Qnn) (n : nat) : Qnn :=
+       (match n with
+        | O => 1
+        | (S m) => (q * (Qnnpow q m))
+        end)%Qnn.
+
+    Notation "A ^ B" := (Qnnpow A B) : qnn_scope.
 
     Definition Geo_spec : |Prob (discrete nat)| -> Prop.
     Proof. intros P. assert (discrete nat ~~> LRnn) as f.
            {
-             apply (discrete_func' _ pow).  
+             apply discrete_func'.  
              intros n. apply (Qnn_to_LRnn (Σ:=Σ)). exact lrnnops.
-             induction n.
-             - (* n = 0 *) exact Qnn.Qnnone.
-             - (* n = S m *) exact (Qnn.Qnnmult Qnn.Qnnonehalf IHn).
+             exact (Qnnonehalf ^ n)%Qnn.
            }
            refine (_ == f).
-           apply (@dfs_to _ _ _ _ pow). exact DOps.
+           apply dfs_to.
            refine (Prob_discrete ∘ _).
            exact P.
+    Defined.
+
+    Notation "'dλ' x => f" := (discrete_func' (fun x => f)) (at level 93).
+    Notation "∙ A" := (discrete_pt A) (at level 9).
+    
+    Definition diverge_if_zero_else_pred {Γ} : Γ ~~> (discrete nat) -> Γ ~~> (L (discrete nat)).
+    Proof. intros n. eapply (recursion (Γ := Γ) (A := discrete nat) (X := discrete nat)).
+           - (* Initial state. *) exact n.
+           - (* Step. 
+Use `throw' to have a final answer or `recall' to call this function on another argument. *)
+             refine (dλ m => _).
+             refine (match m with
+                     | O => recall ∙O
+                     | (S k) => throw ∙k
+                     end).
+             Show Proof.
+    Defined.
+
+    Notation "'Match' A 'Left' B 'Right' C" := (copair B C ∘ A) (at level 80).
+
+    Definition geom : unit ~~> (Prob (L ( discrete nat))).
+    Proof. eapply (precursion (Γ := unit) (A := discrete nat) (X := discrete nat)).
+           - (* initial state *) exact (∙0).
+           - refine (_ ∘ snd). refine (dλ m => _).
+             refine (x <- coinflip; _).
+             apply (
+                 Match x Left (Ret (throw ∙m)) Right (Ret (recall ∙(S m)))      
+               ).
+               Show Proof.
     Defined.
 
     

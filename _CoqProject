@@ -54,7 +54,9 @@ Spec/SMonad.v
 Spec/Stream.v
 Spec/Sum.v
 Spec/Lift.v
+Spec/Power.v
 Spec/Vec.v
+Spec/Fix.v
 
 Spec/CCC/CCC.v
 Spec/CCC/Presheaf.v
@@ -73,3 +75,4 @@ Integration.v
 FrameVal.v
 Classical.v
 Samplers.v
+PartialSamplers.v

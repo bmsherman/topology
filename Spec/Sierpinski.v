@@ -25,6 +25,7 @@ Context `{ΣOps}.
 
 Class ΣProps : Type :=
   { apart : ~ (true == false)
+  ; not_false_then_true : forall (y : unit ~~> Σ), ~ (y == false) -> y == true            
   ; and_comm : forall {Γ} (x y : Γ ~~> Σ), (x && y) == (y && x)
   ; or_comm : forall {Γ} (x y : Γ ~~> Σ), (x || y) == (y || x)
   ; and_true : forall {Γ} (x : Γ ~~> Σ), (ap0 true && x) == x

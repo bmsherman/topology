@@ -98,11 +98,14 @@ Class LRnnOps : Type :=
   ; LRnnmin : LRnn * LRnn ~~> LRnn
   ; LRnnmax : LRnn * LRnn ~~> LRnn
   ; LRnnind : Σ ~~> LRnn
+  ; LRnnlt : forall {Γ}, Γ ~~> LRnn -> Γ ~~> LRnn -> Prop
+  ; LRnnlt_Proper : forall {Γ}, Proper (eq (A:=Γ) ==> eq ==> Logic.iff) LRnnlt
   }.
 
 Context `{LRnnOps}.
 Definition LRnnzero : unit ~~> LRnn := Qnn_to_LRnn 0%Qnn.
 Definition LRnnone : unit ~~> LRnn := Qnn_to_LRnn 1%Qnn.
+Definition LRnnonehalf : unit ~~> LRnn := Qnn_to_LRnn Qnnonehalf.
 
 Class LRnnProps : Prop :=
   { Lrnnsemiring : SemiRing LRnnzero LRnnone LRnnplus LRnnmult
