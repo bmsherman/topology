@@ -3,12 +3,11 @@ Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC.
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
 
-Add Rec LoadPath "/Users/Sherman/Documents/Projects/corn/" as CoRN.
 Require Import CoRN.metric2.Metric
   CoRN.model.structures.Qpossec
   Coq.QArith.QArith_base
+  CoRN.model.structures.QposInf
   CMorphisms.
-Require Import CoRN.model.structures.QposInf.
 
 (** Positive upper-real numbers *)
 
@@ -53,7 +52,7 @@ Definition Qpos_between {x y : Qpos} :
   x < y -> { mid : Qpos & x < mid /\ mid < y }.
 Proof.
 intros H.
-destruct (Qbetween x y H) as (mid & midl & midh).
+destruct (Qbetween H) as (mid & midl & midh).
 assert (0 < mid) as H'.
 eapply Qlt_trans. apply Qpos_prf. apply midl.
 exists (exist _ mid H'). simpl. split; assumption.
@@ -462,6 +461,7 @@ Definition CUL (b : Ball) (i : IxUL b) : Subset Ball :=
   | Some epsilon => fun b' => snd b' = epsilon
   end.
 
+Definition Ix := FormTop.IxL le_ball (Ix := IxUL).
 Definition C := FormTop.CL le_ball CUL.
 
 Definition Cov := FormTop.GCovL le_ball C.
@@ -707,8 +707,8 @@ rewrite Qpos_div. assumption.
 Qed.
 
 Theorem Cont : IGCont.t (le_ball X) 
-  (FormTop.GCovL (le_ball X) (C X)) (le_ball Y)
- (FormTop.CL (le_ball Y) (C Y)) lift.
+  (FormTop.GCovL (le_ball X) (CUL X)) (le_ball Y)
+ (FormTop.CL (le_ball Y) (CUL Y)) lift.
 Proof.
 constructor; intros.
 - apply FormTop.glrefl. apply true_union'.
@@ -725,7 +725,7 @@ constructor; intros.
   destruct (Qpos_lt_plus q2).
   destruct (Qpos_lt_plus q3).
   destruct (Qpos_smaller (QposMinMax.Qpos_min x1 x2)).
-  apply (fun U => FormTop.gle_infinity (Ix X) (C X) (m, q) 
+  apply (fun U => FormTop.gle_infinity _ (CUL X) (m, q) 
   U (m, q) (Some (Qpos_inv k * x3))%Qpos (PreO.le_refl (m, q))).
   intros. destruct X0. simpl in p. destruct p. 
   destruct x4 as [m4 d4]. simpl in *. subst.
@@ -790,7 +790,7 @@ constructor; intros.
 - destruct j; simpl in *. destruct x.
   destruct i.
   + simpl. clear x y. destruct (Qpos_smaller (Qpos_inv k * q)%Qpos).
-    apply (FormTop.gle_infinity (Ix X) (C X) a _ a (Some x)).
+    apply (FormTop.gle_infinity _ (CUL X) a _ a (Some x)).
     reflexivity.
     intros. destruct X0. simpl in p.
     destruct p. subst. destruct d.

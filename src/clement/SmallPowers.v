@@ -1,6 +1,6 @@
-Require Import Qcanon QArith_base Qring.
+Require Import Coq.QArith.Qcanon Coq.QArith.QArith_base Coq.QArith.Qring.
 Open Scope Q_scope.
-Require Import Psatz.
+Require Import Coq.micromega.Psatz.
 
 Lemma Qlt_inverse_iff :
   forall a b,

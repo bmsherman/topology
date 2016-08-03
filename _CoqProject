@@ -1,78 +1,80 @@
--R . Prob
+-R src/ Prob
+-R corn/ CoRN
 
-Types/Iso.v
-Types/Finite.v
-Types/Equiv.v
-Types/Setoid.v
-Types/List.v
+src/Types/Iso.v
+src/Types/Finite.v
+src/Types/Equiv.v
+src/Types/Setoid.v
+src/Types/List.v
 
-FormTop/FormTop.v
-FormTop/FormTopM.v
-FormTop/FTVal.v
-FormTop/Real.v
-FormTop/Join.v
-FormTop/Product.v
-FormTop/InfoBase.v
-FormTop/Bundled.v
-FormTop/Cont.v
-FormTop/Concrete.v
-FormTop/Alexandroff.v
+src/FormTop/FormTop.v
+src/FormTop/FormTopM.v
+src/FormTop/FTVal.v
+src/FormTop/Real.v
+src/FormTop/Join.v
+src/FormTop/Product.v
+src/FormTop/InfoBase.v
+src/FormTop/Bundled.v
+src/FormTop/Cont.v
+src/FormTop/Concrete.v
+src/FormTop/Alexandroff.v
 
-FormTopC/FormTop.v
-FormTopC/Cont.v
-FormTopC/Product.v
-FormTopC/InfoBase.v
-FormTopC/Bundled.v
-FormTopC/Discrete.v
-FormTopC/NatInfty.v
-FormTopC/Lift.v
-FormTopC/Join.v
+src/FormTopC/FormTop.v
+src/FormTopC/Cont.v
+src/FormTopC/Product.v
+src/FormTopC/InfoBase.v
+src/FormTopC/Bundled.v
+src/FormTopC/Discrete.v
+src/FormTopC/NatInfty.v
+src/FormTopC/Lift.v
+src/FormTopC/Join.v
+src/FormTopC/Metric.v
 
-Algebra/FrameC.v
-Algebra/Sets.v
-Algebra/SetsC.v
+src/Algebra/FrameC.v
+src/Algebra/Sets.v
+src/Algebra/SetsC.v
 
-Examples/ContPL.v
+src/Examples/ContPL.v
 
-Language/ContPL.v
-Language/CCCPL.v
-Language/ContPLProps.v
-Language/Reflect.v
+src/Language/ContPL.v
+src/Language/CCCPL.v
+src/Language/ContPLProps.v
+src/Language/Reflect.v
 
-Numbers/Qnn.v
-Numbers/LPReal.v
-Numbers/QFacts.v
-Numbers/LReal.v
+src/Numbers/Qnn.v
+src/Numbers/LPReal.v
+src/Numbers/QFacts.v
+src/Numbers/LReal.v
 
-Spec/Category.v
-Spec/Discrete.v
-Spec/Functor.v
-Spec/Prob.v
-Spec/Real.v
-Spec/Sierpinski.v
-Spec/SMonad.v
-Spec/Stream.v
-Spec/Sum.v
-Spec/Lift.v
-Spec/Power.v
-Spec/Vec.v
-Spec/Fix.v
+src/Spec/Category.v
+src/Spec/Discrete.v
+src/Spec/Functor.v
+src/Spec/Prob.v
+src/Spec/Real.v
+src/Spec/Sierpinski.v
+src/Spec/SMonad.v
+src/Spec/Stream.v
+src/Spec/Sum.v
+src/Spec/Lift.v
+src/Spec/Power.v
+src/Spec/Vec.v
+src/Spec/Fix.v
 
-Spec/CCC/CCC.v
-Spec/CCC/Presheaf.v
+src/Spec/CCC/CCC.v
+src/Spec/CCC/Presheaf.v
 
-clement/SmallPowers.v
+src/clement/SmallPowers.v
 
-alea/BinCoeff.v
+src/alea/BinCoeff.v
 
-StdLib.v
-Sample.v
-FiniteSum.v
-Valuation.v
-PDF.v
-Frame.v
-Integration.v
-FrameVal.v
-Classical.v
-Samplers.v
-PartialSamplers.v
+src/StdLib.v
+src/Sample.v
+src/FiniteSum.v
+src/Valuation.v
+src/PDF.v
+src/Frame.v
+src/Integration.v
+src/FrameVal.v
+src/Classical.v
+src/Samplers.v
+src/PartialSamplers.v
