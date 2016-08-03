@@ -161,7 +161,7 @@ Qed.
 End DirectedSup.
 
 (** Construct a continuous map by pasting together local
-    continuous maps using a sheaf.
+    continuous maps in a sheaf-like manner.
 
     This will be useful, for instance, for definining
     multiplication of real numbers, where I have a family
@@ -173,75 +173,55 @@ End DirectedSup.
 Section SheafMap.
 
 Variable (f : S -> Cont.map S T).
+
+Inductive f_pasted {t : T} {s : S} : Type :=
+  Mkf_pasted : forall s', leS s s' -> f s' t s -> f_pasted.
+
+Arguments f_pasted : clear implicits.
+
 Hypothesis f_cont : forall a, Cont.t (f a).
-Hypothesis f_restrict : forall a b, leS a b ->
-  forall s, leS s a ->
-  forall t, iffT (f a t s) (f b t s).
-(** This implies f_restrict...*)
-Hypothesis f_paste : forall a U, CovS a U ->
-  forall b, In U b -> forall s, leS s a ->
-  forall t, iffT (f a t s) (f b t s).
+(* Not sure if the following is too strong. *)
+Hypothesis f_intersect : forall (a : S) (b c : T),
+ f_pasted b a -> f_pasted c a ->
+  { t : T & (f_pasted t a * FormTop.down leT b c t)%type }.
 
 
-
-Inductive f_pasted : Cont.map S T :=
-  Mkf_pasted : forall s t s', leS s s' -> f s' t s -> f_pasted t s.
+Lemma Cov_intersect : forall a U, CovS a U ->
+  CovS a (FormTop.downset leS (eq a) ∩ FormTop.downset leS U).
+Proof.
+intros.
+apply FormTop.le_right. apply FormTop.refl. reflexivity. assumption.
+Qed.
 
 Theorem cont_f_pasted : Cont.t f_pasted.
 Proof.
 constructor; intros.
 - pose proof (here (f_cont a)).
-  eapply (FormTop.trans (X a)); clear X; intros.
-  destruct X.
-  pose proof (le_left (f_cont a)).
+  specialize (X a). apply Cov_intersect in X.
+  eapply (FormTop.trans X); clear X; intros.
+  destruct X. destruct d, d0. unfold In in i. subst.
+  destruct i0. destruct i.
+  pose proof (le_left (f_cont a1)).
   eapply FormTop.le_left. Focus 2.
   apply FormTop.refl. econstructor.
   Focus 2.
-  econstructor. admit. admit. admit. admit.
+  econstructor. 2: eapply X. eassumption. eassumption. eassumption.
+  constructor. reflexivity.
 - induction X0. pose proof (le_left (f_cont s')).
    apply (X0 _ _ _ X) in f0. 
   econstructor. 2: eassumption. etransitivity; eassumption.
-- induction X. induction X0.
-  admit.
+- pose proof (f_intersect a b c X X0).
+  destruct X1. destruct p. 
+  apply FormTop.refl. exists x; eassumption. 
 - destruct X.
-  admit.
-Abort.
-
-
-Inductive f_pasted' : Cont.map S T :=
-  Mkf_pasted' : forall s t, f s t s -> f_pasted' t s.
-
-Theorem cont_f_pasted' : Cont.t f_pasted'.
-Proof.
-constructor; intros.
-- pose proof (here (f_cont a)).
-  eapply (FormTop.trans (X a)); clear X; intros.
-  destruct X.
-  pose proof (le_left (f_cont a)).
-  eapply FormTop.le_left. Focus 2.
-  apply FormTop.refl. econstructor.
-  Focus 2.
-  econstructor. admit. admit. admit.
-- induction X0. econstructor.
-  pose proof (le_left (f_cont s)).
-  apply X0 with a _ _ in f0. 2: eassumption.
-  apply (f_restrict _ _ X) in f0. assumption.
-  reflexivity.
-- induction X. induction X0.
-  pose proof (local (f_cont s) f0 f1).
-  eapply (FormTop.trans X); clear X; intros.
-  destruct X.
-  apply FormTop.refl. econstructor. eassumption.
-  econstructor. admit.
-- destruct X.
-  pose proof (cov (f_cont s) _ f0 X0).
+  pose proof (cov (f_cont s') V f0 X0).
+  apply Cov_intersect in X.
   eapply (FormTop.trans X); clear X; intros. destruct X.
-  apply FormTop.refl. econstructor. eassumption.
-  constructor.
-  admit.
-
-
-Abort.
+  destruct d, d0. unfold In in i. subst. destruct i0.
+  apply FormTop.refl. exists a. assumption.
+  econstructor. 2: eapply (le_left (f_cont s')).
+  transitivity a1; eassumption. 2: eassumption. eassumption.
+Qed.
 
 End SheafMap.
 
