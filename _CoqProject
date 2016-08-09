@@ -29,6 +29,7 @@ src/FormTopC/NatInfty.v
 src/FormTopC/Lift.v
 src/FormTopC/Join.v
 src/FormTopC/Metric.v
+src/FormTopC/Compact.v
 
 src/Algebra/FrameC.v
 src/Algebra/Sets.v
