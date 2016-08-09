@@ -79,12 +79,23 @@ Class t : Type :=
 Arguments t : clear implicits.
 
 (** Definition of a formal cover that also has a positivity predicate. *)
-Record tPos {Pos : Subset S} :=
-  { mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
+(** We bundle the positivity predicate, because if there is one,
+    it's unique. *)
+Class tPos :=
+  { Pos : Subset S
+  ; mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
   ; positive : forall a U, (Pos a -> a <| U) -> a <| U
   }.
 
 Arguments tPos : clear implicits.
+
+Lemma mono_le `{t} `{tPos} : forall a b, le a b -> Pos a -> Pos b.
+Proof.
+intros. 
+destruct (mono a (eq b) X0).
+eapply le_left. eassumption. apply refl.
+reflexivity. destruct i. subst. assumption.
+Qed.
 
 Definition stable :=
   forall a b U V, a <| U -> b <| V
@@ -109,7 +120,7 @@ Qed.
 End Defn.
 
 Arguments t {S} le Cov : clear implicits.
-Arguments tPos {S} Cov Pos : clear implicits.
+Arguments tPos {S} Cov : clear implicits.
 Arguments down {S} le a b c : clear implicits.
 Arguments downset {S} le U _ : clear implicits.
 Arguments stable {S} le Cov : clear implicits.
@@ -138,8 +149,8 @@ Context `{PO : PreO.t S le}.
 (** Inductively generated formal topologies. See section
     3 of [1]. *)
 
-Variable I : S -> Type.
-Variable C : forall (s : S), I s -> Subset S.
+Context {I : S -> Type}.
+Context {C : forall (s : S), I s -> Subset S}.
 
 (** Given the axiom set [I] and [C], this generates the
     formal cover corresponding to that axiom set. *)
@@ -191,6 +202,25 @@ Lemma gsubset_equiv (U V : Subset S) : U === V
   -> forall a, iffT (GCov a U) (GCov a V).
 Proof.
 intros UV a. split; apply gmonotone; intros; rewrite UV; reflexivity.
+Qed.
+
+Class gtPos :=
+  { gPos : Subset S
+  ; gmono_le : forall a b, le a b -> gPos a -> gPos b
+  ; gmono_ax : forall a (i : I a), gPos a -> Inhabited (C a i ∩ gPos)
+  ; gpositive : forall a U, (gPos a -> GCov a U) -> GCov a U
+  }.
+
+Lemma GCov_Pos `{gtPos} : tPos GCov.
+Proof.
+unshelve econstructor.
+- exact gPos.
+- intros. induction X0.
+  + exists a. split; assumption.
+  + apply IHX0. eapply gmono_le; eassumption.
+  + destruct (gmono_ax a i X). destruct i0.
+    eapply X0; eassumption.
+- apply gpositive.
 Qed.
 
 Class localized := 
@@ -267,12 +297,12 @@ constructor.
   eapply GCov_stable; (eassumption || reflexivity).
 Qed.
 
-
 End IGDefn.
 
 Arguments localized {S} le {I} C : clear implicits.
 Arguments GCov {S} le {I} C _ _ : clear implicits.
 Arguments GCovL {S} le {I} C _ _ : clear implicits.
+Arguments gtPos {S} le {I} C : clear implicits.
 
 Section AxiomSetRefine.
 
@@ -427,7 +457,7 @@ Definition CL (a : S) : IxL a -> Subset S :=
 
 Context {PO : PreO.t le}.
 
-Theorem Llocalized : localized le CL.
+Local Instance Llocalized : localized le CL.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *. destruct x.
@@ -461,7 +491,7 @@ intros a U. split; intros H.
   + apply glle_left with b; assumption.
   + destruct i as ((c & i) & ac).
     simpl in *.
-    apply (gle_infinity _ _ a _ c i). assumption.
+    apply (gle_infinity a _ c i). assumption.
     intros. auto.
 Qed.
 
@@ -469,14 +499,13 @@ Local Instance GCov_Proper : Proper (le --> Included ==> arrow)
   (GCov le CL). 
 Proof. 
 apply Cov_Proper. apply GCov_formtop.
-apply Llocalized.
 Qed.
 
 Theorem GCovL_formtop : t le (GCovL le C).
 Proof.
 eapply t_proper. reflexivity.
 unfold Proper, respectful; intros.
-2: apply GCov_formtop. 2: apply Llocalized.
+2: apply GCov_formtop.
 split; intros; subst.
 eapply GCov_Proper. reflexivity. rewrite <- X. reflexivity.
 apply cov_equiv. assumption.
@@ -738,7 +767,7 @@ intros. unfold Cov. split; intros H.
   + apply FormTop.glle_left with b. assumption.
     assumption.
   + destruct i.
-    * apply (FormTop.gle_infinity _ _ a _ b i).
+    * apply (FormTop.gle_infinity a _ b i).
       assumption. intros. apply X. simpl. apply X0.
     * destruct s. apply FormTop.glle_left with b. assumption.
       apply FormTop.glrefl. left. assumption.
@@ -746,7 +775,7 @@ intros. unfold Cov. split; intros H.
   + destruct u.
     * eapply FormTop.gmonotoneL. Focus 2.
     pose proof (PreO.le_refl a) as aa.
-    pose proof (FormTop.gle_infinity SIx SC a (fun _ => False) a (inr (existT (fun _ => V a) I v))
+    pose proof (FormTop.gle_infinity (I := SIx) (C := SC) a (fun _ => False) a (inr (existT (fun _ => V a) I v))
        aa) as H0.
     apply H0. intros u H1. simpl in *.
     destruct H1 as (u' & bot & downau). contradiction. 
@@ -754,7 +783,7 @@ intros. unfold Cov. split; intros H.
     * apply FormTop.glrefl. assumption.
   + apply FormTop.glle_left with b. assumption. apply IHGCovL.
     reflexivity.
-  + apply (FormTop.gle_infinity _ SC a _ b (inl i)).
+  + apply (FormTop.gle_infinity (C := SC) a _ b (inl i)).
     assumption. intros.
     apply X. apply X0. reflexivity.
 Qed.

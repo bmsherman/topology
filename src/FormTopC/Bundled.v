@@ -36,7 +36,7 @@ Local Instance local `(X : IGT) : FormTop.localized (le X) (C X)
   := localized X.
 
 Local Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
-  FormTop.GCov_formtop _ _.
+  FormTop.GCov_formtop.
 
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   (ML : MeetLat.t A ops) : IGT :=

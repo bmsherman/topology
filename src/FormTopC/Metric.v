@@ -727,7 +727,7 @@ constructor; intros.
   destruct (Qpos_lt_plus q2).
   destruct (Qpos_lt_plus q3).
   destruct (Qpos_smaller (QposMinMax.Qpos_min x1 x2)).
-  apply (fun U => FormTop.gle_infinity _ CUL (m, q) 
+  apply (fun U => FormTop.gle_infinity (C := CUL) (m, q) 
   U (m, q) (Some (Qpos_inv k * x3))%Qpos (PreO.le_refl (m, q))).
   intros. destruct X0. simpl in p. destruct p. 
   destruct x4 as [m4 d4]. simpl in *. subst.
@@ -792,7 +792,7 @@ constructor; intros.
 - destruct j; simpl in *. destruct x.
   destruct i.
   + simpl. clear x y. destruct (Qpos_smaller (Qpos_inv k * q)%Qpos).
-    apply (FormTop.gle_infinity _ CUL a _ a (Some x)).
+    apply (FormTop.gle_infinity (C := CUL) a _ a (Some x)).
     reflexivity.
     intros. destruct X0. simpl in p.
     destruct p. subst. destruct d.

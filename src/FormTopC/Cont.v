@@ -683,14 +683,14 @@ Definition C1 (a : S) (i : Ix1 a) : Subset S := match i with
 Definition Ix := FormTop.IxL leS (Ix := Ix1).
 Definition C := FormTop.CL leS (Ix := Ix1) C1.
 
-Definition loc : FormTop.localized leS C
+Local Instance loc : FormTop.localized leS C
   := FormTop.Llocalized leS C1.
 
 Definition Cov := FormTop.GCov leS C.
 
 Instance Cov_isCov : FormTop.t leS Cov.
 Proof.
-apply FormTop.GCov_formtop. apply loc.
+apply FormTop.GCov_formtop.
 Qed.
 
 Context {U : Type} {leU : U -> U -> Prop} {POU : PreO.t leU}.
