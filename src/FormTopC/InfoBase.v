@@ -90,6 +90,13 @@ simpl_crelation. apply CovEquiv.
 Fail (rewrite <- X; apply isCovG).
 Admitted.
 
+Lemma Overt : FormTop.gtPos leS C.
+Proof.
+apply FormTop.gall_Pos.
+intros. destruct i. simpl. exists t.
+unfold In. reflexivity.
+Qed.
+
 End InfoBase.
 End InfoBase.
 

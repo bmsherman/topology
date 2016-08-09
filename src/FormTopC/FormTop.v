@@ -97,6 +97,17 @@ eapply le_left. eassumption. apply refl.
 reflexivity. destruct i. subst. assumption.
 Qed.
 
+Lemma all_Pos : 
+  (forall a U, a <| U -> Inhabited U) -> tPos.
+Proof.
+unshelve econstructor.
+- exact (fun _ => True).
+- simpl. intros.
+  destruct (X a U X0) as [x P].
+  exists x. split. assumption. auto.
+- simpl. intros. auto.
+Qed.
+
 Definition stable :=
   forall a b U V, a <| U -> b <| V
   -> forall c, c <= a -> c <= b ->
@@ -221,6 +232,18 @@ unshelve econstructor.
   + destruct (gmono_ax a i X). destruct i0.
     eapply X0; eassumption.
 - apply gpositive.
+Qed.
+
+Lemma gall_Pos : 
+  (forall a (i : I a), Inhabited (C a i)) -> gtPos.
+Proof.
+intros H.
+unshelve econstructor.
+- exact (fun _ => True).
+- simpl. auto.
+- simpl. intros. destruct (H a i) as [x P].
+  exists x. split. assumption. auto.
+- simpl. intros. auto.
 Qed.
 
 Class localized := 

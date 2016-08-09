@@ -1,3 +1,4 @@
+Set Universe Polymorphism.
 (** The template-polymorphic 'prod' from the standard
     library just ain't good enough! *)
 Inductive prod {A B : Type} : Type :=
