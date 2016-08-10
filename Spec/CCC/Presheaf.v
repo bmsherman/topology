@@ -628,7 +628,7 @@ refine (
   ; from := Y_Y_ctxt2
   |}); simpl; unfold eq_map; simpl; intros.
 rewrite <- compose_assoc. rewrite pair_f.
-rewrite unit_uniq. rewrite <- (unit_uniq snd). 
+rewrite (unit_uniq _ snd).
 rewrite compose_id_left. rewrite pair_id.
 rewrite compose_id_right. assumption.
 rewrite <- compose_assoc. rewrite pair_fst.
@@ -726,7 +726,7 @@ simple refine (Setoid.Build_Iso _ _ _ _ _ _ _ _).
 - simpl. intros. unfold parallel.
   rewrite <- (compose_id_right b) at 2.
   rewrite <- pair_id.
-  rewrite unit_uniq. rewrite <- (unit_uniq fst).
+  rewrite (unit_uniq _ fst).
   rewrite compose_id_left. reflexivity.
 Defined.
 

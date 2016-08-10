@@ -1,11 +1,12 @@
 (** Definition of "lifted" spaces, which are spaces with a "bottom"
     (think non-termination) element adjoined. *)
 
-Require Import Spec.Category Spec.Stream Spec.Sum Spec.Fix Spec.Sierpinski.
+Require Import Spec.Category Spec.Stream Spec.Sum Spec.Pullback Spec.Sup Fix Spec.Sierpinski.
 
 Import Category.
 Import Stream.
-Import Sum.
+Import Sum Pullback.
+Import Sup.
 Import Fix.
 Import Sierp.
 Local Open Scope obj.
@@ -29,7 +30,8 @@ Class LiftOps : Type :=
   { strict : forall {A}, A ~~> Lift A
     ; bottom : forall {A}, unit ~~> Lift A
     ; gen_recursion : forall {A}, Stream (unit + A) ~~> Lift A
-    ; bottom_min : forall {A}, isBot (Σ:=Σ) (fun _ => bottom (A:=A) ∘ tt)
+    ; bottom_min : forall {A B}, isBot (Σ:=Σ) (bottom (A:=A) ∘ tt(Γ:=B))
+    ; apart : forall {X A} (f : X ~~> unit) (g : X ~~> A), ~ (bottom ∘ f == strict ∘ g)
   }.
 
 
@@ -82,7 +84,7 @@ Context `{lps : LiftProps}.
 Section Prob.
   Require Import Spec.Prob.
   Import Prob. Import SMonad.
-  Context `{mos : MeasOps (U:=U)(ccat:=ccat)(cmc:=cmc)(sts:=sts)(Stream:=Stream)(Embedding:=@Embedding)}.
+  Context `{mos : MeasOps (U:=U)(Σ:=Σ)(ccat:=ccat)(cmc:=cmc)(sts:=sts)(Stream:=Stream)(Embedding:=@Embedding)}.
   Existing Instance ProbMonad. Existing Instance MeasMonad.
   
   Definition precursion {Γ X A : U} : Γ ~~> X -> Γ * X ~~> Prob (A + X) -> Γ ~~> Prob (Lift A).
@@ -101,11 +103,52 @@ Section Prob.
   Definition unlift {A} : Meas (Lift A) ~~> Meas A :=
     Meas_Embed _ (strict_embedding).
 
-  Lemma unlift_map : forall {A}, unlift ∘ (map strict) == id (A:=Meas A).
+  Context {mps : SMonad_Props (M:=Meas)} `{sumps : SumProps(U:=U)(ccat:=ccat)(cmc:=cmc)(sts:=sts)}.
+
+  Lemma unlift_strict : forall {A}, unlift ∘ (map strict) == id (A:=Meas A).
   Proof. intros A. unfold unlift. apply Embed_map.
   Qed.
 
-  (* Axiom ev_bot : forall {A}, Meas (Lift A) ~~> LRnn. maybe? *)
+  Lemma unlift_bot : forall {A : U}, unlift ∘ (map bottom) == zero(A:=A).
+  Proof.
+    intros A. unfold unlift. etransitivity.
+    apply (Embed_nat tt bottom False_elim (strict(A:=A)) zero_one_embedding strict_embedding).
+
+    unfold Pullback. split. split.
+    - apply False_elim_unique.
+
+    - unfold Mono; intros.
+      apply (Embed_Mono (Embedding:=@Embedding) zero_one_embedding).
+      rewrite (unit_uniq (tt ∘ g1)), (unit_uniq (tt ∘ g2)). reflexivity.
+
+    - intros X j k stricteqbot. (* This is a kind of "inequality of distinct constructors" for Lift. *)
+      exfalso.
+      apply (apart _ _ stricteqbot).
+    
+    -  assert (forall {X}, map (M:=Meas) False_elim == zero(A:=X)). {
+         intros X. rewrite <- (zero_scale (f:=(map False_elim))).
+         rewrite (unit_uniq tt (tt ∘ (map(B:=X) False_elim))).
+         rewrite -> compose_assoc.
+         rewrite <- (compose_id_left (map False_elim)) at 3.
+         rewrite <- pair_f.
+         rewrite !compose_assoc.
+         pose (map_scale (B:=X) (r:=Real.Real.LRnnzero _)(f:=False_elim)).
+         etransitivity; symmetry; etransitivity. apply e.
+         rewrite <- (compose_id_right (map False_elim)) at 2.
+         remove_eq_left.
+         rewrite <- compose_id_left.
+         rewrite <- (from_to Meas_false) at 1.
+         rewrite <- (from_to Meas_false) at 2.
+         rewrite <- !compose_assoc.
+         apply compose_Proper; try reflexivity.
+         apply unit_uniq.
+         reflexivity.
+         remove_eq_right. remove_eq_left.
+         unfold add_unit_left. rewrite parallel_pair, compose_id_left. reflexivity.
+       }
+       rewrite H0. rewrite zero_ext. reflexivity.
+       Grab Existential Variables. apply tt. (* no idea why this is necessary. *)
+  Qed.
 
   End Prob.
 

@@ -185,7 +185,7 @@ Module Vec.
           (prefix n) ∘ squeeze(A:=A)(B:=B) == vsqueeze ∘ ((prefix n) ⊗ (prefix n)).
       Proof. intros A B n.
              induction n.
-             - (* 0 *) simpl.  rewrite !unit_uniq. symmetry. apply unit_uniq.
+             - (* 0 *) simpl. apply unit_uniq.
              - (* S _ *) simpl.
                          rewrite !pair_f.
                          rewrite <- (compose_assoc _ _ vsqueeze).
@@ -237,7 +237,7 @@ Module Vec.
                apply proj_eq; rewrite !compose_assoc;
                  try rewrite parallel_fst, pair_fst;
                  try rewrite parallel_snd, pair_snd;
-                 rewrite unit_uniq; symmetry; apply unit_uniq.
+                 apply unit_uniq.
              - (* S _ *)
                simpl prefix at 3. rewrite !pair_f. rewrite vnzip_step.
                simpl prefix. rewrite !(compose_assoc tl).

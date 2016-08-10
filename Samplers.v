@@ -30,12 +30,12 @@ Section Samplers.
   Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
   Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) (Σ := Σ) U}.
   Context `{sumops : SumOps (U:=U) (ccat := ccat)}.
-  Context `{sumprops : SumProps (U:=U) (ccat:=ccat) (cmc:=cmc) (sts:=sts)(H:=sumops)}.
+  Context `{sumprops : SumProps (U:=U) (ccat:=ccat) (cmc:=cmc) (sts:=sts)(sos:=sumops)}.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
   Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
   Context `{mops : MeasOps U
-(ccat := ccat) (cmcprops := CMCprops)
+(ccat := ccat) (cmcprops := CMCprops)(lrnnops:=lrnnops)(sumops:=sumops)
   (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts) (Σ:=Σ)}.
   Context `{SMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
                                     (cmcprops := CMCprops) (smd := ProbMonad)}.
@@ -61,7 +61,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
        (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
-       (@unit_uniq _ _ _ _)
+       (*@unit_uniq _ _ _ _*)
        (@map_id _ Prob _ _ _ _ _)
        (@join_map_ret _ _ _ _ _ _ _) (@join_ret _ _ _ _ _ _ _)
        (@strength_ret _ _ _ _ _ _ _)
@@ -93,7 +93,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       }.
 
   Arguments sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
-
+  
     Theorem Fubini_Bind : forall {Δ A B C : U} (DA : Δ ~~> Prob A) (DB : Δ ~~> Prob B) (h : Δ * A * B ~~> Prob C),
       (Bind DA (Bind (DB ∘ fst) h)) ==
       (Bind DB (Bind (DA ∘ fst) (h ∘ prod_assoc_left ∘ (id ⊗ swap) ∘ prod_assoc_right))).
@@ -237,11 +237,20 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          unfold constant_stream.
          rewrite pstream_ext1.
          apply pstream_Proper.
-         - symmetry. apply unit_uniq.
+         - apply unit_uniq.
          - unfold makeFun1E, Lift, Extend_Prod, Extend_Refl, extend.
            remove_eq_left.
            autorewrite with cat_db.
            reflexivity.
+  Qed.
+
+  Theorem constant_stream_Proper : forall {Γ A}, Proper (eq ==> eq) (constant_stream (Γ:=Γ)(A:=A)).
+  Proof. intros Γ A. unfold Proper, respectful. intros x y H.
+         unfold constant_stream.
+         apply pstream_Proper; try reflexivity.
+         apply lam_extensional; intros.
+         apply compose_Proper; try reflexivity.
+         unfold Lift; apply compose_Proper; try assumption; try reflexivity.
   Qed.
   
   
@@ -275,8 +284,38 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          autorewrite with cat_db. reflexivity.
          reflexivity.
   Qed.
-  
 
+  Existing Instance constant_stream_Proper.
+
+  Lemma Bind_m_fst : forall {Γ A B} {m : Γ ~~> Prob A} {f : Γ ~~> Prob B},
+      Bind m (f ∘ fst) == f.
+  Proof. intros Γ A B m f.
+         unfold Bind, bind.
+         rewrite map_compose.
+         rewrite <- !compose_assoc.
+         rewrite (compose_assoc _ strong).
+         rewrite fst_strong.
+         rewrite <- compose_assoc.
+         rewrite -> pair_fst, -> compose_id_right, <- ret_nat,
+         -> compose_assoc, -> join_ret, -> compose_id_left.
+         reflexivity.
+  Qed.                                                      
+  
+  Lemma tail_constant_stream : forall {Γ A} (f : Γ ~~> Prob A),
+      (map (M:=Prob) tl) ∘ (constant_stream f) == (constant_stream f).
+  Proof. intros Γ A f.
+         rewrite -> constant_unfold at 1; unfold constant_unfold_prog.
+         rewrite map_Bind', lam_postcompose.
+         setoid_rewrite map_Bind'.
+         setoid_rewrite lam_postcompose.
+         setoid_rewrite map_Ret.
+         setoid_rewrite cons_tl'.
+         rewrite Bind_m_Ret.
+         rewrite emap_snd. unfold Lift, extend, Extend_Prod, Extend_Refl.
+         rewrite compose_id_left. rewrite constant_stream_ext1.
+         rewrite Bind_m_fst. reflexivity.
+  Qed.
+         
   
   Existing Instance Streamprops.
 
@@ -434,7 +473,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       - (* 0 *)
         simpl.
         apply (Iso_Mono Prob_unit_Iso).
-        simpl. rewrite unit_uniq; symmetry; apply unit_uniq.
+        simpl. apply unit_uniq.
       - (* S _ *)
         simpl.
         rewrite <- IHn.
@@ -457,7 +496,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
         remove_eq_left. rewrite cons_tl'.
         reflexivity.
     Qed.
-
+    
     Theorem constant_unzip : forall {Γ A} (f : Γ ~~> Prob A),
       (map (unzip (sps:=Streamops)(A:=A)) ∘ (constant_stream f)) ==
       indep (constant_stream f) (constant_stream f).
@@ -483,7 +522,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
              simpl. unfold indep.
              rewrite Bind_Ret_f. rewrite lam_eval. simpl_ext.
              rewrite Bind_Ret_f. rewrite lam_eval. rewrite map_Ret.
-             apply Ret_Proper. apply proj_eq; try rewrite unit_uniq; symmetry; apply unit_uniq.
+             apply Ret_Proper. apply proj_eq; apply unit_uniq.
            - (* S _ *) 
              simpl indeps.
              rewrite (indep_assoc f (indeps n f)).
@@ -534,7 +573,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
     Import Qnn.
     Import Lift.
     Variable L : U -> U.
-    Context `{los : LiftOps (U:=U) (ccat:=ccat)(Stream:=Stream)(cmc:=cmc)(sts:=sts)(Lift:=L)}.
+    Context `{los : LiftOps (U:=U) (ccat:=ccat)(Stream:=Stream)(cmc:=cmc)(sts:=sts)(Σ:=Σ)(Lift:=L)}.
 
     Notation "| A |" := (unit ~~> A) (at level 90).
 
@@ -559,6 +598,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            exact P.
     Defined.
 
+    
     Notation "'dλ' x => f" := (discrete_func' (fun x => f)) (at level 93).
     Notation "∙ A" := (discrete_pt A) (at level 9).
     
@@ -585,7 +625,7 @@ Use `throw' to have a final answer or `recall' to call this function on another 
              apply (
                  Match x Left (Ret (throw ∙m)) Right (Ret (recall ∙(S m)))      
                ).
-               Show Proof.
+             Show Proof.
     Defined.
 
     

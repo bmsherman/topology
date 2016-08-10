@@ -19,11 +19,9 @@ Local Open Scope morph.
 
 Context {U : Type}.
 Context `{mops : MeasOps U}.
-Context `{lrnnops : LRnnOps (ccat := ccat) (cmc := cmc) U 
-   (LRnn := LRnn)}.
+
 Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (R := R)
   (Σ := Σ)}.
-Context {sumops : SumOps}.
 Context `{sigmaops : ΣOps (U := U) (ccat := ccat) (cmc := cmc)
   (Σ := Σ)}.
 

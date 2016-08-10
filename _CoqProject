@@ -53,10 +53,13 @@ Spec/Sierpinski.v
 Spec/SMonad.v
 Spec/Stream.v
 Spec/Sum.v
+Spec/Pullback.v
 Spec/Lift.v
 Spec/Power.v
+Spec/Sup.v
+Fix.v
+Sums.v
 Spec/Vec.v
-Spec/Fix.v
 
 Spec/CCC/CCC.v
 Spec/CCC/Presheaf.v

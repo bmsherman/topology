@@ -80,7 +80,7 @@ Section Defn.
          Unshelve.
          Focus 3. exact tt.
          Focus 3. refine (pλ wish => _). inversion wish.
-         - rewrite !unit_uniq. symmetry. apply unit_uniq.
+         - apply unit_uniq.
          - simpl.
            rewrite <- (app21 id).
            rewrite pow_app2'_pre.
