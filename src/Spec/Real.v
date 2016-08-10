@@ -1,6 +1,6 @@
-Require Import Spec.Category.
+Require Import Spec.Category Spec.Sup Spec.Sierpinski.
 
-Import Category.
+Import Category Sup Sierp.
 
 Local Open Scope obj.
 Local Open Scope morph.
@@ -9,7 +9,7 @@ Module Real.
 
 Section Defn.
 
-Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
+Context {U : Type} {ccat : CCat U} {cmc : CMC U} {Σ:U}{Σos:ΣOps (Σ:=Σ)}.
 
 Section Ring.
 
@@ -109,6 +109,7 @@ Definition LRnnonehalf : unit ~~> LRnn := Qnn_to_LRnn Qnnonehalf.
 
 Class LRnnProps : Prop :=
   { Lrnnsemiring : SemiRing LRnnzero LRnnone LRnnplus LRnnmult
+  ; LRnnzerobot : forall {Γ}, isBot (Σ:=Σ) (LRnnzero ∘ (tt(Γ:=Γ)))
   }.
 
 (** Lower reals *)

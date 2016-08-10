@@ -143,7 +143,7 @@ Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
   ; pair_uniq : forall {A B C} (h : A ~~> B * C), h == ⟨fst ∘ h, snd ∘ h⟩
   ; pair_fst : forall {A B C} (f : A ~~> B) (g : A ~~> C), fst ∘ ⟨f, g⟩ == f
   ; pair_snd : forall {A B C} (f : A ~~> B) (g : A ~~> C), snd ∘ ⟨f, g⟩ == g
-  ; unit_uniq : forall {A} (h : A ~~> unit), h == tt
+  ; unit_uniq : forall {A} (h k : A ~~> unit), h == k
   }.
 
 Arguments CMC_Props U {_ _} : clear implicits.
@@ -169,7 +169,7 @@ Section BasicProps.
   Proof. intros A. refine (@Build_Iso U ccat cmc (unit * A) A snd ⟨tt, id⟩ _ _).
          - rewrite pair_snd. reflexivity.
          - apply proj_eq.
-           + rewrite unit_uniq. symmetry. apply unit_uniq.
+           + apply unit_uniq.
            + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_snd. rewrite compose_id_left.
              reflexivity.
   Defined.
@@ -180,7 +180,7 @@ Section BasicProps.
          - apply proj_eq.
            + rewrite compose_id_right. rewrite compose_assoc. rewrite pair_fst. rewrite compose_id_left.
              reflexivity.
-           + rewrite unit_uniq. symmetry. apply unit_uniq.            
+           + apply unit_uniq.            
   Defined.
 
   Lemma pair_id {A B : U} :
@@ -256,6 +256,29 @@ Section BasicProps.
            reflexivity.
   Defined.
 
+  Lemma Mono_Proper : forall {A B}, Proper (eq ==> Logic.iff) (Mono  (A:=A) (B:=B)).
+  Proof. intros. unfold Proper, respectful. intros.
+         split.
+         - intros Mx.
+           unfold Mono; intros.
+           rewrite <- !H in H0.
+           apply Mx. assumption.
+         - intros My.
+           unfold Mono; intros.
+           rewrite -> !H in H0.
+           apply My. assumption.
+  Qed.
+
+  Lemma Mono_Compose : forall {A B C} {f : A ~~> B} {g : B ~~> C},
+      Mono f -> Mono g -> Mono (g ∘ f).
+  Proof.
+    intros A B C f g Mf Mg.
+    unfold Mono; intros X h1 h2 H.
+    rewrite <- !compose_assoc in H.
+    apply Mg in H. apply Mf in H. exact H.
+  Qed.
+
+  
   Lemma Iso_Mono : forall {A B} (x : A ≅ B), Mono (to x).
   Proof. intros A B x. destruct x as [f g fg gf].
          simpl. unfold Mono.
@@ -263,6 +286,16 @@ Section BasicProps.
          rewrite <- (compose_id_left h), <- (compose_id_left k).
          rewrite <- !gf.
          rewrite <- !compose_assoc.
+         apply compose_Proper; try reflexivity; try assumption.
+  Qed.
+  
+  Lemma Iso_Epi : forall {A B} (x : A ≅ B), Epi (to x).
+  Proof. intros A B x. destruct x as [f g fg gf].
+         simpl. unfold Epi.
+         intros X h k fhfk.
+         rewrite <- (compose_id_right h), <- (compose_id_right k).
+         rewrite <- !fg.
+         rewrite -> !compose_assoc.
          apply compose_Proper; try reflexivity; try assumption.
   Qed.
 
@@ -368,10 +401,24 @@ Definition prod_assoc_right {U} `{CMC U} {A B C : U}
     |}); unfold add_unit_left.
   - apply pair_snd.
   - rewrite pair_f.
-    rewrite unit_uniq. rewrite compose_id_left.
-    rewrite <- (unit_uniq fst).
+    rewrite (unit_uniq _ fst). rewrite compose_id_left.
     apply pair_id.
   Defined.
+
+  Lemma swap_sym : forall {A B}, swap (B:=B)(A:=A) ∘ swap == id.
+  Proof.
+    intros A B.
+    unfold swap.
+    rewrite !pair_f.
+    rewrite pair_fst, pair_snd.
+    apply pair_id.
+  Qed.
+
+  Lemma Iso_Prod_Symm : forall {A B}, A * B ≅ B * A.
+  Proof. intros A B.
+         unshelve eapply Build_Iso; try apply swap; try apply swap_sym.
+  Defined.
+         
 
 Require Types.Setoid.
 
@@ -409,8 +456,7 @@ Definition Hom_Setoid A B :=
     rewrite parallel_pair.
     rewrite !compose_id_left. reflexivity.
   Qed.
- 
-  
+
 End BasicProps.
 
 

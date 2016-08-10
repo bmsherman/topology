@@ -56,12 +56,15 @@ src/Spec/Prob.v
 src/Spec/Real.v
 src/Spec/Sierpinski.v
 src/Spec/SMonad.v
+src/Spec/Pullback.v
 src/Spec/Stream.v
 src/Spec/Sum.v
+src/Spec/Sup.v
 src/Spec/Lift.v
 src/Spec/Power.v
 src/Spec/Vec.v
-src/Spec/Fix.v
+src/Fix.v
+src/Sums.v
 
 src/Spec/CCC/CCC.v
 src/Spec/CCC/Presheaf.v

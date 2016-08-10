@@ -26,7 +26,7 @@ Section ContPLProps.
        (@compose_id_left _ _ _ _) (@compose_id_right _ _ _ _)
        (@pair_fst _ _ _ _) (@pair_snd _ _ _ _)
        (@parallel_fst _ _ _ _) (@parallel_snd _ _ _ _)
-       (@unit_uniq _ _ _ _)
+       (*@unit_uniq _ _ _ _*)
        (@map_id _ M _ _ _ _ _)
        (@join_map_ret _ _ _ _ _ _ _) (@join_ret  _ _ _ _ _ _ _)
        (@strength_ret _ _ _ _ _ _ _)

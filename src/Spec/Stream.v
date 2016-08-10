@@ -281,6 +281,22 @@ Proof. intros n A B. induction n.
          apply parallel_compose.
 Qed.       
 
+Theorem Stream_Iso : forall {A}, Stream A ≅ A * Stream A.
+Proof. intros A.
+       unshelve eapply Build_Iso.
+       - apply ⟨hd, tl⟩.
+       - apply (cons fst snd).
+       - rewrite pair_f. rewrite cons_hd, cons_tl'.
+         rewrite pair_id. reflexivity.
+       - rewrite cons_ext.
+         etransitivity. apply cons_Proper; try apply pair_fst; try apply pair_snd.
+         apply stream_bisim. destruct n.
+         + simpl. rewrite cons_hd, compose_id_right. reflexivity.
+         + simpl. rewrite <- compose_assoc, cons_tl', compose_id_right. reflexivity.
+Defined.
+         
+         
+
 Theorem Stream_Prod : forall {A B}, Stream (A * B) ≅ Stream A * Stream B.
   intros A B; eapply (Build_Iso _ _ _ _ _ ⟨smap fst, smap snd⟩ squeeze).
 
