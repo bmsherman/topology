@@ -144,4 +144,16 @@ Proof.
 unfold Lipschitz. intros.
 destruct x, x', H. unfold binop. simpl.
 simpl in *.
-simpl in H5, H6.
+eapply ball_weak_le. eapply Qle_eq. simpl. ring_simplify.
+reflexivity.
+apply Q.max_case_strong.
+intros. rewrite <- H1.  assumption.
+apply Q.max_case_strong. intros. rewrite <- H1.
+auto. auto. intros.
+eapply Qball_between.
+admit. admit.
+apply Q.max_case_strong. intros. rewrite <- H1. auto.
+intros. 
+admit. 
+auto.
+Abort.

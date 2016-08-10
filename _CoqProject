@@ -30,6 +30,8 @@ src/FormTopC/Lift.v
 src/FormTopC/Join.v
 src/FormTopC/Metric.v
 src/FormTopC/Compact.v
+src/FormTopC/MReal.v
+src/FormTopC/Truncate.v
 
 src/Algebra/FrameC.v
 src/Algebra/Sets.v

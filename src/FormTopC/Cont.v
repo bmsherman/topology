@@ -650,7 +650,13 @@ End Localization.
 End IGCont.
 
 
-
+(** This is WRONG!
+    It does not produce the image space.
+    It just produces a space homeomorphic to the original one.
+    It is a special (degenerate case) of an equalizer.
+    c.f. my email conversation with Luke
+        August 9, 2016 "Image Spaces"
+*)
 Module ImageSpace.
 Section Defn.
 Context {S : Type} {leS : crelation S} {POS : PreO.t leS}.
