@@ -612,7 +612,7 @@ Use `throw' to have a final answer or `recall' to call this function on another 
                      | O => recall ∙O
                      | (S k) => throw ∙k
                      end).
-             Show Proof.
+             (* Show Proof. *)
     Defined.
 
     Notation "'Match' A 'Left' B 'Right' C" := (copair B C ∘ A) (at level 80).
@@ -625,7 +625,7 @@ Use `throw' to have a final answer or `recall' to call this function on another 
              apply (
                  Match x Left (Ret (throw ∙m)) Right (Ret (recall ∙(S m)))      
                ).
-             Show Proof.
+             (* Show Proof.*)
     Defined.
 
     
