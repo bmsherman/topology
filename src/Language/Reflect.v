@@ -31,10 +31,10 @@ Import CCC.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}
   {ccc : CCCOps U}
   {D : Type -> U} {power : Type -> U -> U} 
-  {Dops : DiscreteOps D power}
+  {Dops : DiscreteOps D}
   {cmcprops : CMC_Props U}
   {cccprops : CCCProps U}
-  {discrete_props : DiscreteProps D power}.
+  {discrete_props : DiscreteProps D}.
 
 Local Open Scope obj.
 Local Open Scope morph.
@@ -49,7 +49,7 @@ end.
 Definition dcontTG Γ A := dcontT (prodTy Γ) ~~> dcontT A.
 
 Fixpoint Rel {ty : Ty} : dcoqT ty -> unit ~~> dcontT ty -> Prop := match ty with
-| TDiscrete A => fun e1 e2 => e2 == discrete_pt _ _ e1
+| TDiscrete A => fun e1 e2 => e2 == discrete_pt e1
 | Tunit => fun _ _ => True
 | Tpair _ _ => fun e1 e2 => Rel (Datatypes.fst e1) (fst ∘ e2)
     /\ Rel (Datatypes.snd e1) (snd ∘ e2)

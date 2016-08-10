@@ -5,11 +5,11 @@ Set Universe Polymorphism.
 (* The Alexandroff compactification of the natural numbers. *)
 Module NatInfty. 
 
-Inductive O : Type := 
+Inductive O : Set := 
   | MoreThan : nat -> O
   | Exactly : nat -> O.
 
-Inductive le : O -> O -> Type :=
+Inductive le : O -> O -> Set :=
   | MoreThan_le : forall n m, m <= n -> le (MoreThan n) (MoreThan m)
   | Eventually_le : forall n m, n < m -> le (Exactly m) (MoreThan n)
   | Exactly_le : forall n m, m = n -> le (Exactly m) (Exactly n).
@@ -27,7 +27,7 @@ constructor; intros.
   subst. assumption.
 Qed.
 
-Inductive Next {n : nat} : O -> Type :=
+Inductive Next {n : nat} : O -> Set :=
   | Next_Later : Next (MoreThan (S n))
   | Next_Now : Next (Exactly (S n)).
 
@@ -36,7 +36,7 @@ Arguments Next : clear implicits.
 (** This axiom set is not localized. However,
     doing the localization procedure will
     generate the right thing! *)
-Definition IxUL (a : O) : Type := match a with
+Definition IxUL (a : O) : Set := match a with
   | MoreThan _ => unit
   | Exactly _ => Empty_set
   end. 
@@ -104,9 +104,25 @@ constructor; unfold exactly; intros.
     * assumption.
 Qed.
 
+Lemma Overt : FormTop.gtPos le C.
+Proof.
+apply FormTop.gall_Pos.
+intros a. destruct a.
+- (** MoreThan n - take the point infty as an example. *)
+  intros i.
+  rewrite <- (Intersection_Included_r _ infty (C (MoreThan n) i)).
+  apply (IGCont.pt_cov _ pt_infty).
+  constructor.
+- (** Exactly n - take the point (exactly n) as an example. *)
+  intros i.
+  rewrite <- (Intersection_Included_r _ (exactly n) (C (Exactly n) i)).
+  apply (IGCont.pt_cov _ (pt_exactly n)).
+  constructor. reflexivity.
+Qed.
+
 Require Import FormTopC.InfoBase.
 
-(** The (open) injection of the natural numbers into
+(** The (open) embedding of the natural numbers into
     its Alexandroff compactification. *)
 Definition inj : Cont.map nat O := fun o n =>
   exactly n o.
@@ -141,12 +157,12 @@ unfold is_pt. constructor.
   + exists (MoreThan 0). unfold In, checkf.
     intros. apply Le.le_n_0_eq in H. subst.
     assumption.
-- intros. destruct b. destruct c.
+- intros b c X X0. destruct b. destruct c.
   exists (MoreThan (max n n0)). constructor.
   constructor; constructor. apply Max.le_max_l. apply Max.le_max_r.
   unfold checkf in *.
   apply Max.max_case_strong.
-  intros.  apply X. assumption. intros.
+  intros. apply X. assumption. intros.
   apply X0. assumption.
   + destruct (Compare_dec.le_lt_dec n0 n).
     exfalso. unfold checkf in *. destruct X0.
@@ -166,29 +182,29 @@ unfold is_pt. constructor.
     constructor; constructor; reflexivity.
     assumption. exfalso. destruct X, X0.
     specialize (H _ l). congruence.
-- intros. induction H; unfold checkf in *.
+- intros a b X H. induction H; unfold checkf in *.
   + intros. apply X. eapply Le.le_trans; eassumption.
   + intros. destruct X. apply H0.
     eapply Lt.le_lt_trans; eassumption.
   + subst. assumption.
 - intros. induction i.
   + destruct x. induction x; simpl in *. destruct i.
-    inv p. destruct (Compare_dec.le_lt_eq_dec _ _ H1).
+    inv p. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
     exists (MoreThan n0). split. assumption.
     exists (MoreThan (S n)). split. constructor.
     split; constructor. reflexivity. assumption.
-    subst. clear H1.
+    subst. clear H2.
     destruct (f (S n0)) eqn:fSn.
     exists (Exactly (S n0)). split.  unfold checkf. split. 
-    intros. apply X. apply Lt.lt_n_Sm_le; assumption.
+    intros. apply H. apply Lt.lt_n_Sm_le; assumption.
     assumption. exists (Exactly (S n0)). split. constructor.
     split; constructor. constructor. reflexivity.
     exists (MoreThan (S n0)). split. unfold checkf. intros.
-    inv H. assumption. apply X. assumption.
+    inv H0. assumption. apply H. assumption.
     exists (MoreThan (S n0)). split. constructor.
     split; constructor. constructor. reflexivity.
     reflexivity. exists (Exactly m). split.  assumption.
-    destruct (Compare_dec.le_lt_eq_dec _ _ H1).
+    destruct (Compare_dec.le_lt_eq_dec _ _ H2).
     exists (MoreThan (S n)). split. constructor.
     split; constructor. reflexivity. assumption.
     subst. exists (Exactly (S n)). split.  constructor.
@@ -215,7 +231,7 @@ generalize dependent n. cofix.
 intros.
 pose proof (IGCont.pt_cov _ ptx i 
    (existT (fun i : {x : O & IxUL x} => let (c, _) := i in le (MoreThan n) c)
- (existT _ (MoreThan n) tt) (PreO.le_refl (MoreThan n))) ).
+ (existT _ (MoreThan n) tt) (PreO.le_refl (MoreThan n))) ) as X.
 simpl in X. destruct X. destruct i0. destruct s.
 destruct p. destruct d. induction n0.
 - induction a.

@@ -28,13 +28,13 @@ Context {locT : FormTop.localized leT CT}.
 
 Let CovT := FormTop.GCov leT CT.
 
-Context {PosS : Subset S} {tPosS : FormTop.tPos CovS PosS}.
-Context {PosT : Subset T} {tPosT : FormTop.tPos CovT PosT}.
+Context {tPosS : FormTop.gtPos leS CS}.
+Context {tPosT : FormTop.gtPos leT CT}.
 
 
 Variable f : S -> T.
 Hypothesis fmono : forall x y, leS x y -> leT (f x) (f y).
-Hypothesis fPos : forall x, PosS x -> PosT (f x).
+Hypothesis fPos : forall x, FormTop.gPos x -> FormTop.gPos (f x).
 
 Definition lift : Cont.map S T := fun t s => leT (f s) t.
 
@@ -45,7 +45,7 @@ apply FormTop.grefl. reflexivity.
 Qed.
 
 Local Instance FTT : FormTop.t leT CovT := 
-  FormTop.GCov_formtop _ _.
+  FormTop.GCov_formtop.
 
 Local Open Scope Subset. 
 
@@ -69,14 +69,11 @@ constructor; intros.
 - unfold lift in *. rewrite <- X0. apply fmono. assumption.
 - unfold lift in *. etransitivity; eassumption.
 - unfold lift in *.
-  apply (FormTop.positive (Pos := PosS)). assumption.
+  apply (FormTop.gpositive).
   intros pa. pose proof (fPos _ pa) as pfa.
-  assert (Inhabited (CT b j ∩ PosT)).
-  eapply FormTop.mono. eassumption. eassumption.
-  eapply FormTop.le_left. eassumption. apply FormTop.ginfinity with j.
-  intros. apply FormTop.grefl. assumption.
-  destruct X0. destruct i.
-  apply FormTop.grefl. exists a0. assumption.
+  assert (Inhabited (CT b j ∩ FormTop.gPos)).
+  eapply FormTop.gmono_ax. 
+  eapply FormTop.gmono_le; eassumption.
   admit. (* This is a big hole. *)
 Abort. 
 

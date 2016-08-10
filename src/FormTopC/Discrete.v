@@ -181,11 +181,13 @@ constructor; unfold Cov; intros.
 - subst. apply FormTop.grefl. constructor 1 with a; try reflexivity.
   induction X. assumption. destruct a, b. destruct l.
   simpl in *. subst. assumption.
-  destruct a. destruct i. 
-  apply X. simpl. destruct p. split. destruct i. subst.
-  constructor. reflexivity.
-  apply X. simpl.  destruct p. split.  reflexivity. destruct i.
-  subst. constructor.
+  destruct a.
+  destruct i; subst; apply X; split;
+  repeat match goal with
+  | [ H : Ix _ _ |- _ ] => destruct H; subst
+  | [  |- _ = _ ] => reflexivity
+  | [ |- C _ _ _ _ ] => constructor
+  end.
 Qed.
 
 

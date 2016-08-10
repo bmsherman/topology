@@ -403,7 +403,6 @@ Definition toEquiv' {A B : Type} (x : T A B) :
 (forall a : A, to x # from_to x a = to_from x (to x a)) -> Equiv.T A B :=
   Equiv.Build_T A B (to x) (from x) (from_to x) (to_from x).
 
-Require Import Setoid.
 Lemma toEquiv {A B} (x : T A B) : Equiv.T A B.
 Proof.
 destruct x as [f g eta eps].

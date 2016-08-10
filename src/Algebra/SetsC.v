@@ -273,3 +273,13 @@ Proof.
 unfold Proper, respectful, flip, arrow. intros.
 subst.  apply X. assumption.
 Qed.
+
+Lemma Inhabited_mono {A} {U V : Subset A} : U ⊆ V -> Inhabited U -> Inhabited V.
+Proof.
+intros. destruct X0. exists a.  apply X. assumption.
+Qed.
+
+Instance Inhabited_Proper_le {A} : Proper (Included ==> arrow) (@Inhabited A).
+Proof.
+unfold Proper, respectful, arrow. intros. eapply Inhabited_mono; eassumption.
+Qed.

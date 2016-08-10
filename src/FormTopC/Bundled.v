@@ -21,6 +21,7 @@ Record IGT : Type :=
   ; Ix : S -> Type
   ; C : forall s, Ix s -> Subset S
   ; localized : FormTop.localized le C
+  ; pos : FormTop.gtPos le C
   }.
 
 Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
@@ -36,13 +37,14 @@ Local Instance local `(X : IGT) : FormTop.localized (le X) (C X)
   := localized X.
 
 Local Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
-  FormTop.GCov_formtop _ _.
+  FormTop.GCov_formtop.
 
 Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   (ML : MeetLat.t A ops) : IGT :=
   {| S := A 
   ; PO := PO.PreO
   ; localized := @InfoBase.loc _ _ _ MeetLat.PO
+  ; pos := InfoBase.Overt
   |}.
 
 Definition One : IGT := InfoBase MeetLat.one.
@@ -51,6 +53,7 @@ Definition times `(LA : IGT) `(LB : IGT) : IGT :=
   let PO1 := PO LA in let PO2 := PO LB in
   {| PO := Product.PO (S LA) (S LB)
   ; localized := Product.loc _ _ _ _ _ _ (localized LA) (localized LB)
+  ; pos := Product.Overt (S LA) (S LB) _ _ _ _ _ (OvertS := pos LA) (OvertT := pos LB) _
   |}.
 
 Infix "*" := times : loc_scope.
@@ -196,6 +199,7 @@ Definition discrete (A : Type) : IGT :=
   {| S := A 
   ; PO := PreO.discrete A
   ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
+  ; pos := InfoBase.Overt (PO := PO.discrete A)
   |}.
 
 Axiom undefined : forall A, A.
@@ -239,6 +243,7 @@ Definition Open (A : IGT) : IGT :=
    ; Ix := InfoBase.Ix
    ; C := InfoBase.C (leS := LE) (eqS := PO.eq_PreO LE)
    ; localized := InfoBase.loc (PO := PO.fromPreO LE)
+   ; pos := InfoBase.Overt (PO := PO.fromPreO LE)
   |}.
 
 Definition Σ : IGT := InfoBase Sierpinski.SML.
@@ -368,6 +373,7 @@ Proof. unshelve eapply (
   ; le := NatInfty.le
   ; PO := NatInfty.le_PreO
   ; C := NatInfty.C
+  ; pos := NatInfty.Overt
   |}).
 apply FormTop.Llocalized. apply NatInfty.le_PreO.
 Defined.

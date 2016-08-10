@@ -24,20 +24,25 @@ Context {S : Type} `{PO : PO.t S leS eqS}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
-Definition Ix (s : S) : Type := { t : S & leS s t }.
-Definition C (s : S) (s' : Ix s) : Subset S := eqS (projT1 s').
+Inductive Ix {s : S} : Type := 
+  MkIx : forall t, leS s t -> Ix.
+
+Arguments Ix : clear implicits.
+
+Definition C (s : S) (s' : Ix s) : Subset S := match s' with
+  | MkIx t _ => eqS t
+  end.
 
 (** This axiom set is localized. *)
 Local Instance loc : FormTop.localized leS C.
 Proof.
 pose proof (@PO.t_equiv _ _ _ PO) as eqEquiv.
 unfold FormTop.localized. intros. simpl.
-unfold Ix, C in *.
 destruct i. simpl.
 assert (leS a a) as H0 by reflexivity.
-exists (existT _ a H0). 
+exists (MkIx a H0). 
 intros. simpl in *. clear H0.
-exists x. split. reflexivity.
+exists t. split. reflexivity.
 split. 
 rewrite X0. reflexivity. 
 rewrite <- X0. etransitivity; eassumption.
@@ -54,7 +59,7 @@ Theorem CovEquiv : forall s U, iffT (Cov s U) (GCov s U).
 Proof.
 intros. unfold Cov, GCov. split; intros.
 - destruct X as [t Ut st].
-  apply FormTop.ginfinity with (existT _ t st).
+  apply FormTop.ginfinity with (MkIx t st).
   unfold C. simpl. intros.
   apply FormTop.gle_left with t.
   rewrite X. reflexivity.
@@ -64,15 +69,15 @@ intros. unfold Cov, GCov. split; intros.
   + destruct IHX as [t Ut bt].
     exists t. assumption. etransitivity; eassumption.
   + destruct i. unfold C in *. simpl in *.
-    assert (eqS x x) as eqx by reflexivity.
-    specialize (X x eqx).
-    specialize (g x eqx). destruct X as [t Ut xt].
-    exists t. assumption. etransitivity; eassumption.
+    assert (eqS t t) as eqt by reflexivity.
+    specialize (X t eqt).
+    specialize (g t eqt). destruct X as [x Ux tx].
+    exists x. assumption. etransitivity; eassumption.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
 Local Instance isCovG : FormTop.t leS GCov := 
-  FormTop.GCov_formtop _ C.
+  FormTop.GCov_formtop.
 
 Local Instance isCov : FormTop.t leS Cov.
 Proof.
@@ -85,8 +90,17 @@ simpl_crelation. apply CovEquiv.
 Fail (rewrite <- X; apply isCovG).
 Admitted.
 
+Lemma Overt : FormTop.gtPos leS C.
+Proof.
+apply FormTop.gall_Pos.
+intros. destruct i. simpl. exists t.
+unfold In. reflexivity.
+Qed.
+
 End InfoBase.
 End InfoBase.
+
+Arguments InfoBase.Ix {S leS} s : clear implicits.
 
 Module InfoBaseCont.
 Section InfoBaseCont.
@@ -359,7 +373,7 @@ Proof.
 intros. unfold Cov, Cov'. split; intros.
 - apply FormTop.grefl. destruct a; assumption. 
 - induction X; auto. destruct a; auto.
-  destruct a. apply (X I). simpl. constructor.
+  apply (X I). destruct i. constructor.
 Qed.
 
 Theorem CovEquiv : (eq ==> eq ==> iffT)%signature Cov Cov'.
@@ -537,7 +551,6 @@ Definition le_Open (U V : Subset T) :=
 Local Instance FTT : FormTop.t leT CovT.
 Proof. 
 apply FormTop.GCov_formtop.
-assumption.
 Qed.
 
 Lemma Sat_Cov : forall U V,
@@ -588,7 +601,6 @@ Let OpenCov := FormTop.GCov le_Open (InfoBase.C
 Local Instance FTS : FormTop.t leS CovS.
 Proof.
 apply FormTop.GCov_formtop.
-assumption.
 Qed.
 
 Lemma le_Open_mono U V :
@@ -631,8 +643,8 @@ constructor; intros.
     unfold absF in X.
     unfold le_Open in *.
     rewrite l. apply Sat_Cov. assumption.
-  + destruct i; simpl in *. unfold InfoBase.C in *. simpl in *.
-    apply (X0 x). reflexivity.
+  + destruct i; simpl in *.
+    apply (X0 t). reflexivity.
     unfold absF, le_Open in *.
     rewrite l. apply Sat_Cov. assumption.
 Qed.

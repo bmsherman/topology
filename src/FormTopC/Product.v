@@ -19,49 +19,47 @@ Variable IT : T -> Type.
 Variable CS : forall s, IS s -> Subset S.
 Variable CT : forall t, IT t -> Subset T.
 
-Definition Ix (p : S * T) : Type := let (s, t) := p in
-   (IS s * T + S * IT t)%type.
+Inductive Ix : S * T -> Type := 
+  | PLeft : forall {s}, IS s -> forall t, Ix (s, t)
+  | PRight : forall {t}, IT t -> forall s, Ix (s, t).
 
-Definition C (p : S * T) : Ix p -> Subset (S * T)
-  := match p as p' return Ix p' -> Subset (S * T) with pair a b =>
-  fun pI open => let (z, w) := open in match pI with
-    | inl (pair sI t) => CS a sI z * (w = b)
-    | inr (pair s tI) => (z = a) * CT b tI w
-    end%type
-  end.
+Definition C (p : S * T) (i : Ix p) : Subset (S * T)
+  := fun open => let (z, w) := open in (match i with
+  | PLeft _ ixs t => CS _ ixs z * (w = t)
+  | PRight _ ixt s => CT _ ixt w * (z = s)
+  end)%type.
 
 Definition PO := PreO.product POS POT.
 
-Theorem loc : 
+Local Instance loc : 
     FormTop.localized leS CS
   -> FormTop.localized leT CT
   -> FormTop.localized (prod_op leS leT) C.
 Proof.
 intros H H0. unfold FormTop.localized in *.
-intros a c H1 i. destruct a as [sa ta], c as [sc tc]. 
-destruct H1 as (H1 & H2).
-simpl in H1, H2, i.
-destruct i as [[sI t]|[s tI]].
-- specialize (H sa sc H1 sI).
-  destruct H as (x & H). unfold Ix in *.
-  exists (inl (x, t)).
-  intros s H3. destruct s as [su tu].
+intros a c H1 i. destruct H1 as (H1 & H2).
+destruct a as [sa ta].
+destruct i.
+- specialize (H sa s H1 i).
+  destruct H as (x & H).
+  exists (PLeft x ta).
+  intros s0 H3. destruct s0 as [su tu].
   simpl in H3. destruct H3 as (H3 & H4).
   specialize (H _ H3).
   destruct H as [u [CSu downu]].
-  simpl. exists (u, tc). split. split. assumption. reflexivity.
+  simpl. exists (u, t). split. split. assumption. reflexivity.
   subst. destruct downu.
   unfold FormTop.down. split.
   simpl. split. assumption. reflexivity.
   simpl. split; assumption.
-- specialize (H0 ta tc H2 tI).
-  destruct H0 as (x & H0). unfold Ix in *.
-  exists (inr (s, x)).
+- specialize (H0 ta t H2 i).
+  destruct H0 as (x & H0).
+  exists (PRight x sa).
   intros s0 H3. destruct s0 as [su tu].
   simpl in H3. destruct H3 as (H3 & H4).
-  specialize (H0 _ H4).
+  specialize (H0 _ H3).
   destruct H0 as [u [CTu downu]].
-  simpl. exists (sc, u). split. split. reflexivity. assumption.
+  simpl. exists (s, u). split. split. assumption. reflexivity.
   subst. destruct downu.
   unfold FormTop.down. split.
   simpl. split. reflexivity. assumption.
@@ -73,7 +71,7 @@ Definition Cov := FormTop.GCov (prod_op leS leT) C.
 Hypothesis locS : FormTop.localized leS CS.
 Hypothesis locT : FormTop.localized leT CT.
 
-Theorem isCov : FormTop.t (prod_op leS leT) Cov.
+Local Instance isCov : FormTop.t (prod_op leS leT) Cov.
 Proof.
 apply (@FormTop.GCov_formtop (S * T) (prod_op leS leT)
   PO Ix C (loc locS locT)).
@@ -90,13 +88,13 @@ intros H H0. induction H.
   + apply FormTop.grefl. split; assumption.
   + eapply FormTop.gle_left. 2:apply IHGCov.
     split; simpl. apply PreO.le_refl. assumption.
-  + apply FormTop.ginfinity with (inr (IS a * T) (a, i)).
+  + apply (FormTop.ginfinity (C := C)) with (PRight i a).
     intros. simpl in X0. destruct u0. destruct X0. 
     subst. apply X. assumption.
 - apply FormTop.gle_left with (b0, b). split; simpl.
   assumption. reflexivity.
   apply IHGCov.
-- apply FormTop.ginfinity with (inl (S * IT b) (i, b)).
+- apply (FormTop.ginfinity (C := C)) with (PLeft i b).
   intros. simpl in X0. destruct u. destruct X0. 
   subst. apply X. assumption.
 Qed.
@@ -114,12 +112,12 @@ clear a b Heqab. induction H.
   apply FormTop.gle_left with s0. assumption.
   assumption.
 - destruct a. destruct i.
-  + destruct p. apply FormTop.ginfinity with i.
-    intros. apply (X (u, t)). simpl. simpl in X0.
+  + apply FormTop.ginfinity with i.
+    intros. apply (X (u, t0)). simpl. simpl in X0.
     intuition.
-  + destruct p. simpl in *.
-    specialize (H0 t i). destruct H0.
-    apply (X (s, a)). split. reflexivity. assumption.
+  + simpl in *.
+    specialize (H0 t0 i). destruct H0.
+    apply (X (s0, a)). split. assumption. reflexivity.
 Qed.
 
 Lemma unfactors2 a b U : Cov (a, b) U
@@ -134,13 +132,64 @@ clear a b Heqab. induction H.
   apply FormTop.gle_left with t0. assumption.
   assumption.
 - destruct a. destruct i.
-  + destruct p. simpl in *.
-    specialize (H0 s i). destruct H0.
-    apply (X (a, t)). split. assumption. reflexivity.
-  + destruct p. apply FormTop.ginfinity with i.
-    intros. apply (X (s, u)). simpl. simpl in X0.
+  + simpl in *.
+    specialize (H0 s0 i). destruct H0.
+    apply (X (a, t0)). split. assumption. reflexivity.
+  + apply FormTop.ginfinity with i.
+    intros. apply (X (s0, u)). simpl. simpl in X0.
     intuition.
 Qed.
+
+Section Overt.
+
+Context {PosS : Subset S} {OvertS : FormTop.gtPos leS CS}.
+Context {PosT : Subset T} {OvertT : FormTop.gtPos leT CT}.
+
+Definition PosProd : Subset (S * T) :=
+  fun p => let (x, y) := p in (FormTop.gPos x * FormTop.gPos y)%type.
+
+Local Open Scope Subset.
+
+Lemma PosProd_factors (a : S * T) :
+  eq a ∩ PosProd === fun p => let (x, y) := p in
+    ((eq (fst a) ∩ FormTop.gPos) x * (eq (snd a) ∩ FormTop.gPos) y)%type.
+Proof.
+destruct a.
+apply Same_set_iff.
+intros. split; intros.
+- destruct X. subst. simpl. destruct p.
+  split; split; (reflexivity || assumption).
+- destruct x. destruct X. destruct i, i0. subst.
+  simpl in *. split. reflexivity. split; assumption.
+Qed.
+
+Existing Instance FormTop.GCov_formtop.
+
+Lemma Overt : FormTop.gtPos (prod_op leS leT) C.
+Proof.
+unshelve econstructor.
+- exact PosProd.
+- intros. destruct a, b, X. simpl in *.
+  destruct X0. split. eapply OvertS; eassumption.
+  eapply OvertT; eassumption.
+- intros. destruct i, X. 
+  + destruct (FormTop.gmono_ax (gtPos := OvertS) s i g).
+    exists (a, t). destruct i0. split. simpl. 
+    split. assumption. reflexivity.
+    split; assumption.
+  + destruct (FormTop.gmono_ax (gtPos := OvertT) t i g0).
+    exists (s, a). destruct i0. split. simpl. 
+    split. assumption. reflexivity. split; assumption.
+- intros.
+  apply (FormTop.trans (U := eq a ∩ PosProd)).
+  + eapply FormTop.gsubset_equiv.
+    apply PosProd_factors. destruct a.
+    eapply factors; apply FormTop.gpositive; 
+    intros; apply FormTop.grefl; split; (reflexivity || assumption).
+  + intros. destruct X0. subst. apply X. assumption.
+Qed.
+
+End Overt.
 
 End Product.
 End Product.
@@ -159,7 +208,7 @@ Definition diagonal (out : S * S) (p : S) : Type :=
 Lemma t_diagonal : Cont.t leS (prod_op leS leS)
   CovS (@Product.Cov _ _ leS leS IS IS CS CS) diagonal.
 Proof.
-pose proof (FormTop.GCov_formtop _ CS) as FTS.
+pose proof (FormTop.GCov_formtop (C := CS)) as FTS.
 constructor; intros; unfold diagonal, CovS in *.
 - apply FormTop.refl. exists (a, a). split.
   split; reflexivity. 
@@ -175,26 +224,26 @@ constructor; intros; unfold diagonal, CovS in *.
     destruct X. 
     split. transitivity s; eassumption.
     transitivity s0; eassumption.
-  + destruct a. simpl in *. destruct X0. destruct i.
-    * destruct p. unfold FormTop.localized in locS. 
+  + destruct i; simpl in *; destruct X0.
+    * unfold FormTop.localized in locS. 
       specialize (locS a0 s l i).
       destruct locS.
       apply FormTop.ginfinity with x.
       intros.
-      specialize (s2 _ X0).
-      destruct s2. destruct p. 
-      apply X with (x0, s0).
+      specialize (s0 _ X0).
+      destruct s0. destruct p. 
+      apply X with (x0, t). simpl. 
       auto. destruct d. 
       split. assumption. transitivity a0; eassumption.
-    * destruct p. unfold FormTop.localized in locS. 
-      specialize (locS a0 s0 l0 i).
+    * unfold FormTop.localized in locS. 
+      specialize (locS a0 t l0 i).
       destruct locS.
       apply FormTop.ginfinity with x.
       intros.
-      specialize (s2 _ X0).
-      destruct s2. destruct p. 
-      apply X with (s, x0).
-      auto. destruct d.
+      specialize (s0 _ X0).
+      destruct s0. destruct p. 
+      apply X with (s, x0). simpl. auto.
+      destruct d.
       split. transitivity a0; assumption. assumption.
 Qed.
   
@@ -226,7 +275,7 @@ constructor; intros; unfold proj_L in *.
   + unfold FormTop.localized in locS. 
     specialize (locS _ _ X0 i).
     destruct locS.
-    apply FormTop.ginfinity with (inl (x, t)). 
+    apply FormTop.ginfinity with (Product.PLeft _ _ _ _ x t). 
     intros. simpl in *. destruct u. destruct X1.
     subst.
     specialize (s0 _ c). destruct s0 as (u & Caiu & downu).
@@ -260,7 +309,7 @@ constructor; intros; unfold proj_R in *.
   + unfold FormTop.localized in locT. 
     specialize (locT _ _ X0 i).
     destruct locT.
-    apply FormTop.ginfinity with (inr (s, x)). 
+    apply FormTop.ginfinity with (Product.PRight _ _ _ _ x s). 
     intros. simpl in *. destruct u. destruct X1.
     subst.
     specialize (s0 _ c). destruct s0 as (u & Caiu & downu).
@@ -283,13 +332,12 @@ Definition parallelIG (F : Cont.map S A) (G : Cont.map T B)
   let (s, t) := p in let (a, b) := out in
    F a s * G b t.
 
-Existing Instance Product.PO.
+Existing Instances Product.PO Product.loc.
 
 Local Instance product_cov :
   FormTop.t (prod_op leS leT) (@Product.Cov S T leS leT IS IT CS CT).
 Proof.
 apply FormTop.GCov_formtop.
-apply Product.loc; assumption.
 Qed.
 
 Require Import CRelationClasses. 
@@ -337,9 +385,8 @@ intros ContF ContG. constructor; intros.
 - destruct a, b, c. destruct X, X0. simpl in *.
   split. eapply (IGCont.le_right _ ContF); eassumption.
   eapply (IGCont.le_right _ ContG); eassumption.
-- destruct b. simpl in j. destruct j; simpl in *.
-  +
-  destruct p. destruct a.
+- destruct j as [a0 i b | b i a0]; simpl in *.
+  + destruct a.
   destruct X.
   pose proof (IGCont.ax_right _ ContF _ _ i f).
   assert (Product.Cov S T IS (leS := leS) (leT := leT) IT CS CT (s, t)
@@ -351,7 +398,7 @@ intros ContF ContG. constructor; intros.
   destruct u.  exists (a, b). unfold In. split. assumption.
   reflexivity. split; assumption.
   + (** Same thing on this side. Yay! *)
-  destruct p. destruct a.
+  destruct a.
   destruct X.
   pose proof (IGCont.ax_right _ ContG _ _ i g).
   assert (Product.Cov S T IS (leS := leS) (leT := leT) IT CS CT (s, t)
@@ -360,7 +407,7 @@ intros ContF ContG. constructor; intros.
   eapply FormTop.gmonotone. 2: apply X0.
   unfold Included, pointwise_rel, arrow; intros.
   destruct a. destruct X1. subst.
-  destruct u. exists (a0, a). unfold In. split. reflexivity. assumption.
+  destruct u. exists (a0, a). unfold In. split. assumption. reflexivity.
   split; assumption.
 Qed.
 
@@ -377,9 +424,9 @@ Theorem t_parallel (F : Cont.map S A) (G : Cont.map T B)
 Proof.
 intros ContF ContG.
 unfold parallel. apply IGCont.cont. 
-apply FormTop.GCov_formtop. apply Product.loc; eassumption. 
+apply FormTop.GCov_formtop. 
 apply t_parallelIG; apply IGCont.converse; 
-  try apply FormTop.GCov_formtop; try eassumption.
+  try apply FormTop.GCov_formtop; eassumption.
 Qed.
 
 End Products.

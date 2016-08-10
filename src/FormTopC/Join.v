@@ -61,7 +61,7 @@ Instance ops : JoinLat.Ops (list S) := ops'.
 
 Require Import CMorphisms.
 
-Instance joinPreO : @PreO.t (list S) JoinLat.le.
+Instance joinPreO : @PreO.t (list S) leL.
 Proof.
 constructor; intros.
 - simpl. unfold leL. intros. exists x0.
