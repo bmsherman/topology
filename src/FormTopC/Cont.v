@@ -650,10 +650,9 @@ End Localization.
 End IGCont.
 
 
-(** This is WRONG!
-    It does not produce the image space.
-    It just produces a space homeomorphic to the original one.
-    It is a special (degenerate case) of an equalizer.
+(** This is somewhat wrong.
+    It only produces the image space in the case where
+    the map is an idempotent endomorphism.
     c.f. my email conversation with Luke
         August 9, 2016 "Image Spaces"
 *)
