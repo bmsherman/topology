@@ -19,16 +19,18 @@ Context `{SOps : StreamOps}.
 Context {cmc : CMC U}.
 Context `{sumOps : SumOps (U := U) (ccat := ccat)}.
 Context {Lift : U -> U}.
-Context {Embedding : forall A B, A ~~> B -> Prop}.
+(*Context {Embedding : forall A B, A ~~> B -> Prop}.*)
 Context {Σ : U}.
 Context {σos : ΣOps (Σ:=Σ)}.
 Context {σps : ΣProps (Σ:=Σ)}.
 
-Arguments Embedding {A} {B} f.
+(*Arguments Embedding {A} {B} f.*)
 
 Class LiftOps : Type :=
   { strict : forall {A}, A ~~> Lift A
     ; bottom : forall {A}, unit ~~> Lift A
+    ; lift_rec : forall {A X} (x : unit ~~> X) (f : A ~~> X),
+        (forall {a : unit ~~> A}, sleq(Σ:=Σ) x (f ∘ a)) -> Lift A ~~> X
     ; gen_recursion : forall {A}, Stream (unit + A) ~~> Lift A
     ; bottom_min : forall {A B}, isBot (Σ:=Σ) (bottom (A:=A) ∘ tt(Γ:=B))
     ; apart : forall {X A} (f : X ~~> unit) (g : X ~~> A), ~ (bottom ∘ f == strict ∘ g)
@@ -40,19 +42,18 @@ Class LiftOps : Type :=
   a map f from A to B and a global point b of B ("default"), 
   such that for all opens U of B, b in U implies forall a : A, f(a) in U. *)
 
-Context `{LiftOps}.
+Context `{los : LiftOps}.
 
-Definition sum_elim' {A B C : U} (l : A ~~> C) (r : B ~~> C) 
-  : (A + B) ~~> C
-  := sum_elim (l ∘ snd) (r ∘ snd) ∘ add_unit_left.
-
-Class LiftProps : Prop :=
+Class LiftProps : Type :=
   { strict_mono : forall {A}, Mono (strict (A := A))
-  ; strict_embedding : forall {A}, Embedding (strict (A:=A))
+    (*; strict_embedding :  forall {A}, OpenEmbedding (Σ:=Σ) (strict (A:=A))*)
+    ; lift_rec_bottom : forall {A X x f p}, (@lift_rec _ A X x f p) ∘ bottom == x
+    ; lift_rec_strict : forall {A X x f p}, (@lift_rec _ A X x f p) ∘ strict == f
   ; gen_recursion_tl : forall {A},
     gen_recursion (A := A) == sum_elim fst (strict ∘ snd) 
                               ∘ ⟨(gen_recursion ∘ tl (StreamOps := SOps)),  hd (StreamOps := SOps)⟩
   } .
+
 
 Definition recursion {Γ X A : U} : (Γ ~~> X) -> (X ~~> A + X) -> Γ ~~> Lift A.
 Proof. intros x0 h.
@@ -81,10 +82,35 @@ Qed.
 
 Context `{lps : LiftProps}.
 
-Section Prob.
+Existing Instance sleq_Proper.
+
+Definition terminates : forall {A}, Lift A ~~> Σ.
+Proof. intros A. unshelve eapply lift_rec.
+       - exact false.
+       - exact (true ∘ tt).
+       - intros a.
+         rewrite <- compose_assoc, -> (unit_uniq _ id), -> compose_id_right.
+         apply false_sleq_anything.
+Defined.
+
+Axiom Σ_to_Lift : Σ ~~> Lift unit.
+Axiom Σ_to_Σ : terminates ∘ Σ_to_Lift == id.
+Axiom Lift_to_Lift : Σ_to_Lift ∘ terminates == id.
+Axiom true_to_Lift : Σ_to_Lift ∘ true == strict.
+Axiom false_to_Lift : Σ_to_Lift ∘ false == bottom.
+
+Lemma Σ_cong_Lu : Σ ≅ Lift unit.
+Proof. unshelve eapply Build_Iso.
+       exact Σ_to_Lift.
+       exact terminates.
+       exact Lift_to_Lift.
+       exact Σ_to_Σ.
+Defined.
+
+(*Section Prob.
   Require Import Spec.Prob.
   Import Prob. Import SMonad.
-  Context `{mos : MeasOps (U:=U)(Σ:=Σ)(ccat:=ccat)(cmc:=cmc)(sts:=sts)(Stream:=Stream)(Embedding:=@Embedding)}.
+  Context `{mos : MeasOps (U:=U)(Σ:=Σ)(ccat:=ccat)(cmc:=cmc)(sts:=sts)(Stream:=Stream)}.
   Existing Instance ProbMonad. Existing Instance MeasMonad.
   
   Definition precursion {Γ X A : U} : Γ ~~> X -> Γ * X ~~> Prob (A + X) -> Γ ~~> Prob (Lift A).
@@ -100,57 +126,7 @@ Section Prob.
            + exact (⟨inl ∘ tt, id⟩ ∘ snd).
   Defined.
 
-  Definition unlift {A} : Meas (Lift A) ~~> Meas A :=
-    Meas_Embed _ (strict_embedding).
-
-  Context {mps : SMonad_Props (M:=Meas)} `{sumps : SumProps(U:=U)(ccat:=ccat)(cmc:=cmc)(sts:=sts)}.
-
-  Lemma unlift_strict : forall {A}, unlift ∘ (map strict) == id (A:=Meas A).
-  Proof. intros A. unfold unlift. apply Embed_map.
-  Qed.
-
-  Lemma unlift_bot : forall {A : U}, unlift ∘ (map bottom) == zero(A:=A).
-  Proof.
-    intros A. unfold unlift. etransitivity.
-    apply (Embed_nat tt bottom False_elim (strict(A:=A)) zero_one_embedding strict_embedding).
-
-    unfold Pullback. split. split.
-    - apply False_elim_unique.
-
-    - unfold Mono; intros.
-      apply (Embed_Mono (Embedding:=@Embedding) zero_one_embedding).
-      rewrite (unit_uniq (tt ∘ g1)), (unit_uniq (tt ∘ g2)). reflexivity.
-
-    - intros X j k stricteqbot. (* This is a kind of "inequality of distinct constructors" for Lift. *)
-      exfalso.
-      apply (apart _ _ stricteqbot).
-    
-    -  assert (forall {X}, map (M:=Meas) False_elim == zero(A:=X)). {
-         intros X. rewrite <- (zero_scale (f:=(map False_elim))).
-         rewrite (unit_uniq tt (tt ∘ (map(B:=X) False_elim))).
-         rewrite -> compose_assoc.
-         rewrite <- (compose_id_left (map False_elim)) at 3.
-         rewrite <- pair_f.
-         rewrite !compose_assoc.
-         pose (map_scale (B:=X) (r:=Real.Real.LRnnzero _)(f:=False_elim)).
-         etransitivity; symmetry; etransitivity. apply e.
-         rewrite <- (compose_id_right (map False_elim)) at 2.
-         remove_eq_left.
-         rewrite <- compose_id_left.
-         rewrite <- (from_to Meas_false) at 1.
-         rewrite <- (from_to Meas_false) at 2.
-         rewrite <- !compose_assoc.
-         apply compose_Proper; try reflexivity.
-         apply unit_uniq.
-         reflexivity.
-         remove_eq_right. remove_eq_left.
-         unfold add_unit_left. rewrite parallel_pair, compose_id_left. reflexivity.
-       }
-       rewrite H0. rewrite zero_ext. reflexivity.
-       Grab Existential Variables. apply tt. (* no idea why this is necessary. *)
-  Qed.
-
-  End Prob.
+  End Prob. *)
 
 Definition throw {A B C} := fun (f : C ~~> _) => ((inl (A:=A)(B:=B)) ∘ f).
 Definition recall {A B C} := fun (f : C ~~> _) => ((inr (A:=A)(B:=B)) ∘ f).

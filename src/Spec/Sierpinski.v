@@ -16,6 +16,7 @@ Class ΣOps : Type :=
   ; false : unit ~~> Σ
   ; and : Σ * Σ ~~> Σ
   ; or : Σ * Σ ~~> Σ
+(*  ; join : forall {X : Type} X ~> Σ ~~> Σ               *)
   }.
 
 Infix "&&" := (ap2 and) : morph_scope.
@@ -31,7 +32,7 @@ Class ΣProps : Type :=
   ; and_true : forall {Γ} (x : Γ ~~> Σ), (ap0 true && x) == x
   ; and_false : forall {Γ} (x : Γ ~~> Σ), (ap0 false && x) == ap0 false
   ; or_true : forall {Γ} (x : Γ ~~> Σ), (ap0 true || x) == ap0 true
-  ; or_false : forall {Γ} (x : Γ ~~> Σ), (ap0 false || x) == ap0 false
+  ; or_false : forall {Γ} (x : Γ ~~> Σ), (ap0 false || x) == x
   }.
 
 End Sierpinski.

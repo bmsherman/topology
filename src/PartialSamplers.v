@@ -6,7 +6,7 @@ Require Import Spec.Category.
 Require Import Spec.Prob.
 Require Import Language.ContPL Language.ContPLProps.
 Require Import Spec.Real Spec.Sierpinski Spec.Sum Spec.Lift Spec.Discrete Spec.Stream
-        Spec.SMonad Spec.Vec Spec.Power Fix Sums Spec.Sup Spec.Pullback.
+        Spec.SMonad Spec.Vec Spec.Power Fix Sums Spec.Sup Spec.Pullback Spec.OEmbedding.
 Require Import Coq.setoid_ring.Ring_theory.
 Import Category.
 Import ContPL.
@@ -20,6 +20,7 @@ Import Sup.
 Import Vec.
 Import Lift.
 Import Power.
+Import OEmbedding.
 Import Stream.
 Import CCC.
 Import Discrete.
@@ -29,7 +30,7 @@ Local Open Scope morph.
 Local Open Scope obj.
 
 Section PartialSamplers.
-
+  
   Context {U : Type}.
   Context `{sigmaops : ΣOps (U := U)}.
   Context `{rops : ROps U (ccat := ccat) (cmc := cmc) (Σ := Σ)}.
@@ -40,7 +41,7 @@ Section PartialSamplers.
   Context `{CMCprops : CMC_Props (U := U) (ccat := ccat) (cmc := cmc)}.
   Context `{Streamops : StreamOps (U := U) (ccat := ccat)}.
   Context `{Streamprops : StreamProps (U:= U)(ccat:=ccat) (Stream:=Stream)(cmc:=cmc) (sps:=Streamops)}.
-  Context `{mops : MeasOps U (ccat := ccat) (cmcprops := CMCprops)(sumops:=sos)
+  Context `{mops : MeasOps U (ccat := ccat) (cmcprops := CMCprops)(sumops:=sos)(sumprops:=sumprops)
            (lrnnops:=lrnnops) (Σ:=Σ)  (Stream := Stream) (R := R) (LRnn := LRnn) (cmc := cmc) (sts := sts)}.
   Context `{PMDprops : SMonad_Props (U := U) (M := Prob) (ccat := ccat) (cmc := cmc)
                                     (cmcprops := CMCprops) (smd := ProbMonad)}.
@@ -51,7 +52,7 @@ Section PartialSamplers.
   Context `{pos : PowOps (U:=U) (ccat:=ccat)(power:=power)}.
   Variable L : U -> U. 
   Context `{los : LiftOps (U:=U)(Σ:=Σ)(ccat:=ccat)(Stream:=Stream)(cmc:=cmc)(sts:=sts)(Lift:=L)}.
-  Context {lps : LiftProps (Embedding := Embedding)}.
+  Context {lps : LiftProps}.
   Context {Σps : ΣProps}.
   
   Infix "-~>" := power (at level 90).
@@ -97,6 +98,66 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Proof. refine (A ==> B). exact CCCOps_PSh. Defined.
   Definition konst {A B : PSh U} : PTerm (Fun A (Fun B A)) :=
     [ λ (x : _ A) y => ! x ]%stlc. *)
+
+
+  Section Lift_Prob.
+
+
+    Definition unlift {A : U} : Meas (L A) ~~> Meas A.
+    Proof. apply
+             (Meas_Embed _ (strict_open_embedding)).
+    Defined.
+
+    Existing Instance MeasMonad.
+    
+    Lemma unlift_strict : forall {A}, unlift ∘ (map (M:=Meas)strict) == id (A:=Meas A).
+    Proof. intros A. unfold unlift. apply Embed_map.
+    Qed.
+    
+    Lemma unlift_bot : forall {A : U}, unlift ∘ (map (M:=Meas) bottom) == zero(A:=A).
+    Proof.
+      intros A. unfold unlift. etransitivity.
+      apply (Embed_nat False_elim bottom False_elim (strict(A:=A))
+                       zero_open_embedding strict_open_embedding).
+      
+      unfold Pullback. split. split.
+      - apply False_elim_unique.
+        
+      - unfold Mono; intros.
+        apply (Embedding_Mono (zero_open_embedding(A:=unit))).
+        apply unit_uniq.
+        
+      - intros X j k stricteqbot. (* This is a kind of "inequality of distinct constructors" for Lift. *)
+        exfalso.
+        apply (apart _ _ stricteqbot).
+        
+      -  assert (forall {X}, map (M:=Meas) False_elim == zero(A:=X)). {
+           intros X. rewrite <- (zero_scale (f:=(map False_elim))).
+           rewrite (unit_uniq tt (tt ∘ (map(B:=X) False_elim))).
+           rewrite -> compose_assoc.
+           rewrite <- (compose_id_left (map False_elim)) at 3.
+           rewrite <- pair_f.
+           rewrite !compose_assoc.
+           pose (map_scale (B:=X) (r:=Real.Real.LRnnzero _)(f:=False_elim)).
+           etransitivity; symmetry; etransitivity. apply e.
+           rewrite <- (compose_id_right (map False_elim)) at 2.
+           remove_eq_left.
+           rewrite <- compose_id_left.
+           rewrite <- (from_to Meas_false) at 1.
+           rewrite <- (from_to Meas_false) at 2.
+           rewrite <- !compose_assoc.
+           apply compose_Proper; try reflexivity.
+           apply unit_uniq.
+           reflexivity.
+           remove_eq_right. remove_eq_left.
+           unfold add_unit_left. rewrite parallel_pair, compose_id_left. reflexivity.
+         }
+         rewrite H. rewrite zero_ext. reflexivity.
+    Qed.
+    
+    
+  End Lift_Prob.
+  
   
   Record PartialSampler {Δ A S : U} (DS : Δ ~~> Prob S) (DA : Δ ~~> Prob A) : Type :=
     par_sampler
@@ -107,7 +168,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
       }.
 
   Arguments par_sampler {Δ} {A} {S} {DS} {DA} sample sampling_cond.
-
+  
   Existing Instance MeasMonad.
     
   Let Cantor := Samplers.Cantor (Stream:=Stream).
@@ -188,7 +249,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Proof. unfold Cont. intros.
          unfold H at 1.
          rewrite map_Cont. unfold Cantor, Samplers.Cantor, Boole.
-         pose (fun c => precompose_Cont (C:=c) infinite_coinflips) as p.
+         pose (fun c => precompose_Cont (Σ:=Σ)(C:=c) infinite_coinflips) as p.
          unfold Cantor, Samplers.Cantor, Boole in p.
          rewrite p.
          rewrite !postcompose_Cont.
@@ -257,10 +318,10 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
   Existing Instance coparallel_Proper.
   Existing Instance copair_Proper.
 
-  Arguments Meas_Embed {U} {ccat} {cmc} {cmcprops} {Σ} {LRnn} {lrnnops}
-            {R} {sts} {sumops} {Stream} {power} {Embedding} {Open} {Meas} {Prob}
+  Arguments Meas_Embed {U} {ccat} {cmc} {cmcprops} {Σ} {Σos} {LRnn} {lrnnops}
+            {R} {sts} {sumops} {sumprops} {Stream} {power} {Open} {Meas} {Prob}
             {SubProb} {discrete} {MeasOps} {A} {B} f {_}.
-  Arguments embedding_Proper {U} {ccat} {Embedding} {A} {B} {f} {_} {_} {_}.
+(*  Arguments embedding_Proper {U} {ccat} {Embedding} {A} {B} {f} {_} {_} {_}.*)
 
              
   Lemma inverse : (Cantor ~~> (pb (B:=Cantor)(strict ∘ ⟨id, Zero⟩) strict)).
@@ -292,7 +353,14 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            + apply compose_id_left.
            + apply strict_mono. rewrite compose_assoc. assumption.
   Defined.
-           
+
+  Existing Instance MEv_Proper.
+
+  Lemma Bind_unit : forall {Γ A} (h : Γ ~~> Meas unit) (f : Γ * unit ~~> Meas A),
+      Bind h f == Meas_scale ∘ ⟨(to Meas_unit) ∘ h, f ∘ add_unit_right⟩.
+  Proof. admit. (* Not sure if this follows from something simpler. Alternatively, could become the 
+ definition of Meas_scale. *)
+  Admitted.
            
   Theorem HF_GH : forall f, H (F f) == G (H f).
   Proof. intros.     
@@ -304,20 +372,20 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
          pose (pb_is_Pullback f strict) as P1.
          pose (Pullback_sum P0 P1) as P''.
          pose (Pullback_B_Iso Cantor_Iso P'') as P'.
-         assert (Pullback (cons snd fst ∘ copair ⟨ id, Zero ⟩ ⟨ pb_fst f strict, One ⟩)
+         assert (Pullback (to Cantor_Iso ∘ coparallel id (pb_fst f strict))
                           (sum_elim (strict ∘ ⟨ id, Zero ⟩ ∘ fst) (f ∘ fst) ∘ ⟨ tl, hd ⟩)
                           (copair ⟨ id, Zero ⟩ (pb_snd f strict))
                           strict)
            as P.
          {
            unshelve eapply (Pullback_Proper _ _ _ _ P').
-           - rewrite to_Cantor. unfold Cantor, Samplers.Cantor, Boole.
+           - (*rewrite to_Cantor. unfold Cantor, Samplers.Cantor, Boole.
              remove_eq_left.
              rewrite -> coparallel_compose.
              rewrite !pair_f.
              unfold undistrib_left.
              rewrite <- copair_coparallel. rewrite -> !parallel_pair.
-             rewrite !compose_id_left. rewrite !compose_id_right. rewrite (unit_uniq (tt ∘ _) tt).
+             rewrite !compose_id_left. rewrite !compose_id_right. rewrite (unit_uniq (tt ∘ _) tt). *)
              reflexivity.
            - rewrite from_Cantor. unfold Cantor, Samplers.Cantor, Boole.
              remove_eq_right.
@@ -329,12 +397,15 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            - reflexivity.
          }
          clear P'. clear P''.
-         assert (Embedding _ _  (pb_fst f strict)) as Q0. { admit. }
-         assert (Embedding _ _
-          (cons snd fst ∘ copair ⟨ id, Zero ⟩ ⟨ pb_fst f strict, One ⟩)) as Q1.
-         { admit. }
-         pose (Embed_nat _ _ _ _ Q0 strict_embedding P1) as C0.
-         pose (Embed_nat _ _ _ _ Q1 strict_embedding P) as C1.
+         assert (OpenEmbedding (Σ:=Σ)(pb_fst f strict)) as Q0. { admit. }
+         assert (OpenEmbedding (Σ:=Σ)
+          ((to Cantor_Iso) ∘ coparallel id (pb_fst f strict))) as Q1.
+         {
+           apply compose_open_embedding. apply coparallel_open_embedding.
+           apply id_open_embedding. apply Q0. apply Iso_OpenEmbedding.
+         }
+         pose (Embed_nat _ _ _ _ Q0 strict_open_embedding P1) as C0.
+         pose (Embed_nat _ _ _ _ Q1 strict_open_embedding P) as C1.
          unfold Cantor, Samplers.Cantor, Boole in C1. unfold unlift at 1.
          unfold F, Cantor, Samplers.Cantor, Boole. rewrite C1.
          rewrite copair_add.
@@ -346,12 +417,22 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            - reflexivity.
            - unfold Cantor, Samplers.Cantor, Boole.
              rewrite !compose_assoc. rewrite Embed_compose.
-             rewrite <- !compose_assoc. apply compose_Proper.
-             + unshelve eapply (Meas_Embed_Proper _ _ (compose_embedding inl_embedding Q1)).
-               Focus 2.
-               rewrite <- compose_assoc. unfold Cantor, Samplers.Cantor, Boole. rewrite copair_inl.
-               rewrite cons_ext. apply cons_Proper. apply pair_snd. apply pair_fst.
-             + reflexivity. } rewrite Embed_irrel.
+             rewrite <- !compose_assoc. 
+             apply compose_Proper. unshelve eapply Meas_Embed_Proper0. Focus 2.
+             rewrite <- compose_assoc, -> coparallel_inl.
+             rewrite compose_id_right. rewrite to_Cantor.
+             rewrite <- !compose_assoc, -> coparallel_inl.
+             unfold undistrib_left. rewrite (compose_assoc _ inl).
+             rewrite copair_inl. rewrite <- pair_parallel_id.
+             rewrite cons_ext. apply cons_Proper.
+             apply pair_snd. apply pair_fst. reflexivity.
+                          } (*rewrite Embed_irrel.*)
+             etransitivity. apply compose_Proper. reflexivity.
+           apply compose_Proper.
+           unshelve eapply Meas_Embed_Proper1. apply Cons_Zero_OpenEmbedding. apply dir_img_unique.
+           reflexivity.
+           (* probably get rid of `map tl` and `Ret Zero` / `map ⟨id, Zero⟩` right here *)
+           apply MEv_determines.
            admit.
          - rewrite <- !compose_assoc.
            etransitivity. { apply compose_Proper.
@@ -359,11 +440,22 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            - unfold Cantor, Samplers.Cantor, Boole.
              rewrite !compose_assoc. rewrite Embed_compose.
              rewrite <- !compose_assoc. apply compose_Proper.
-             + unshelve eapply (Meas_Embed_Proper _ _ (compose_embedding inr_embedding Q1)).
+             + unshelve eapply (Meas_Embed_Proper0 _ _ (compose_open_embedding inr_open_embedding Q1)).
                Focus 2.
-               rewrite <- compose_assoc. unfold Cantor, Samplers.Cantor, Boole. rewrite copair_inr.
+               rewrite <- compose_assoc. rewrite coparallel_inr.
+               rewrite to_Cantor. rewrite compose_assoc. apply compose_Proper.
+               unfold Cantor, Samplers.Cantor, Boole.
+               rewrite <- !compose_assoc, -> coparallel_inr.
+               unfold undistrib_left. rewrite (compose_assoc _ inr).
+               rewrite copair_inr. rewrite <- pair_parallel_id.               
                rewrite cons_ext. apply cons_Proper. apply pair_snd. apply pair_fst.
-             + reflexivity. } rewrite Embed_irrel.
+             + reflexivity.
+             + reflexivity. }
+                          etransitivity. apply compose_Proper. reflexivity.
+           apply compose_Proper.
+           unshelve eapply Meas_Embed_Proper1.
+           apply compose_open_embedding. apply Q0. apply Cons_One_OpenEmbedding.
+           apply dir_img_unique. reflexivity.
            unfold unlift, Cantor, Samplers.Cantor, Boole.
            rewrite (compose_assoc _ _ Prob_to_Meas).
            rewrite <- Prob_Meas_map. 
@@ -380,19 +472,59 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
            rewrite <- compose_assoc. apply compose_Proper. reflexivity.
            rewrite Embed_scale. reflexivity. reflexivity. reflexivity.
            
-           rewrite <- !compose_assoc.
+           rewrite <- Embed_compose. remove_eq_left. unfold Cantor, Samplers.Cantor, Boole.
+           rewrite !compose_assoc.
+           pose (compose_assoc infinite_coinflips Prob_to_Meas
+                               (Meas_scale ∘ LRnnonehalf ⊗ id ∘ add_unit_left)) as temp;
+             unfold Cantor, Samplers.Cantor, Boole in temp; rewrite <- temp; clear temp.
+           rewrite <- (compose_assoc _ _ (Meas_Embed _ _)).
+           apply MEv_determines. intros V.
+           rewrite MEv_scale. rewrite MEv_embed. unfold dir_img, open_map, Cons_One_OpenEmbedding.
+           unfold infinite_coinflips at 2. rewrite constant_unfold. unfold constant_unfold_prog.
+           rewrite Prob_Meas_Bind; rewrite lam_postcompose.
+           unfold Boole.
+           rewrite MEv_Bind_coprod.
+           (* Now we want to tackle the subexpressions on their own. *)
+           symmetry; etransitivity.
+           apply compose_Proper. reflexivity. apply pair_Proper.
+           assert (Meas_Embed inl inl_open_embedding ∘ (Prob_to_Meas ∘ coinflip) ==
+                   (from Meas_unit ∘ LRnnonehalf)) as C. { admit. } (* Definition of coinflip? *)
+           rewrite C. rewrite Bind_unit. rewrite !compose_assoc.
+           rewrite (to_from Meas_unit), compose_id_left. unfold makeFun1E at 1.
+           rewrite MEv_scale'. apply compose_Proper. reflexivity. apply pair_Proper. reflexivity.
+           rewrite <- (compose_assoc _ _ Prob_to_Meas). rewrite Bind'_ext.
+           rewrite <- (compose_assoc _ _ Prob_to_Meas). rewrite Bind'_ext.
+           rewrite <- !constant_stream_ext1. unfold Lift, extend, Extend_Prod, Extend_Refl.
+           rewrite Prob_Meas_Bind. etransitivity.
+           apply MEv_Proper. apply Bind_Proper.
            apply compose_Proper. reflexivity.
-           symmetry. etransitivity. apply compose_Proper.
-           unshelve eapply Meas_Embed_Proper. refine (cons One id ∘ (pb_fst f strict)).
-           rewrite cons_ext. apply cons_Proper. symmetry; apply One_ext.
-           rewrite compose_id_left; reflexivity. reflexivity.
+           apply constant_stream_Proper. rewrite <- !compose_assoc. rewrite (unit_uniq _ id).
+           apply compose_id_right. rewrite lam_postcompose. apply lam_extensional; intros.
+           etransitivity. rewrite Prob_Meas_Ret. apply Ret_Proper.
+           apply cons_Proper. rewrite !compose_assoc. unfold Extend in ext.
+           rewrite parallel_snd. unfold add_unit_right. rewrite <- compose_assoc.
+           rewrite !pair_f. rewrite <- compose_assoc. rewrite pair_snd.
+           apply compose_Proper. reflexivity. apply (unit_uniq _ tt). reflexivity.
+           Focus 2. reflexivity. Focus 2.
            
-           rewrite Embed_irrel. assert (Embedding _ _ (cons One id)) as H0. { admit. }
-           pose (Embed_compose Q0 H0) as e. 
-           etransitivity. apply compose_Proper.
-           symmetry. etransitivity. apply e.
-           apply Embed_irrel. reflexivity. unfold Cantor, Samplers.Cantor, Boole.
-           rewrite <- !compose_assoc. remove_eq_left.
+           
+           (*unfold MEv at 2.
+           rewrite <- (compose_assoc _ (map _)). rewrite (compose_assoc _ Prob_to_Meas).
+           rewrite Prob_Meas_map. rewrite <- (compose_assoc _ (map _)).
+           unfold infinite_coinflips. unfold Cantor, Samplers.Cantor, Boole.
+           symmetry; etransitivity. apply compose_Proper. reflexivity.
+           apply compose_Proper. reflexivity. rewrite constant_unfold.
+           Unshelve. Focus 3. apply (y <- coinflip;<< Δ | ext >> zs <- constant_stream (! coinflip);<< Δ0 | ext0 >> Ret (sum_elim (false ∘ tt ∘ fst) (V ∘ fst) ∘ ⟨ zs, !y ⟩)).
+           
+           unfold constant_unfold_prog.
+           rewrite map_Bind', lam_postcompose.
+           apply Bind_Proper; try reflexivity. apply lam_extensional; intros.
+           rewrite map_Bind', lam_postcompose.
+           apply Bind_Proper; try reflexivity. apply lam_extensional; intros.
+           rewrite map_Ret. apply Ret_Proper. remove_eq_left. rewrite pair_f, cons_hd, cons_tl'.
+           reflexivity.
+           (* Intuitively the way to prove this is: break it into a linear combination 1/2 p + 1/2 q, one part where y = 0 and one part where y = 1. Then if y = 0 the sum-elim works out to false, and so the weight is 0; if y = 1, the sum-elim works out to the measure of the original subset. *)
+           (* Possibly this can be proven without unfolding MEv. *)           *)
            admit.
   Admitted.
 

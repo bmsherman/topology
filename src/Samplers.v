@@ -617,7 +617,7 @@ Use `throw' to have a final answer or `recall' to call this function on another 
 
     Notation "'Match' A 'Left' B 'Right' C" := (copair B C ∘ A) (at level 80).
 
-    Definition geom : unit ~~> (Prob (L ( discrete nat))).
+    (*Definition geom : unit ~~> (Prob (L ( discrete nat))).
     Proof. eapply (precursion (Γ := unit) (A := discrete nat) (X := discrete nat)).
            - (* initial state *) exact (∙0).
            - refine (_ ∘ snd). refine (dλ m => _).
@@ -626,7 +626,7 @@ Use `throw' to have a final answer or `recall' to call this function on another 
                  Match x Left (Ret (throw ∙m)) Right (Ret (recall ∙(S m)))      
                ).
              (* Show Proof.*)
-    Defined.
+    Defined.*)
 
     
   End Geometric.

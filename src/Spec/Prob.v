@@ -12,7 +12,7 @@ Section Prob.
 Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
 Require Import Spec.Sierpinski Spec.Real Spec.Sum Spec.Pullback Spec.Stream Spec.Discrete
-  Spec.SMonad Spec.Vec Spec.Power Spec.Sup Fix.
+        Spec.SMonad Spec.Vec Spec.Power Spec.Sup Spec.OEmbedding Spec.Lift Fix.
 Require Import Morphisms.
 Import Sierp.
 Import Power.
@@ -23,6 +23,8 @@ Import Stream.
 Import Discrete.
 Import Fix.
 Import Sup.
+Import Lift.
+Import OEmbedding.
 
 Context `{Σos : ΣOps U (ccat := ccat) (cmc := cmc)}.
 Context {Σps : ΣProps (U:=U)}.
@@ -30,12 +32,12 @@ Context `{lrnnops : LRnnOps U (ccat := ccat) (cmc := cmc)
   (Σ := Σ)}.
 Context `{realops : ROps U (ccat := ccat) (cmc := cmc) 
   (Σ := Σ)}.
-Context `{sumops : SumOps U (ccat := ccat)}.
+Context `{sumops : SumOps U (ccat := ccat)}{sumprops : SumProps}.
 Context `{streamops : StreamOps U (ccat := ccat)}.
 Context `{pos : PowOps (U:=U) (ccat:=ccat)}.
-Context {Embedding : (forall {A B : U}, (A ~~> B) -> Prop)}.
+(* Context {Embedding : (forall {A B : U}, (A ~~> B) -> Prop)}. *)
 
-Axiom inl_embedding : forall {A B : U}, Embedding _ _ (inl(A:=A)(B:=B)).
+(*Axiom inl_embedding : forall {A B : U}, Embedding _ _ (inl(A:=A)(B:=B)).
 Axiom inr_embedding : forall {A B : U}, Embedding _ _ (inr(A:=A)(B:=B)).
 Axiom id_embedding : forall {A : U}, Embedding _ _ (id (A:=A)).
 Axiom compose_embedding : forall {A B C : U} {f : A ~~> B} {g : B ~~> C},
@@ -43,7 +45,7 @@ Axiom compose_embedding : forall {A B C : U} {f : A ~~> B} {g : B ~~> C},
 Axiom embedding_Proper : forall {A B} {f g : A ~~> B}, (f == g) -> Embedding _ _ f -> Embedding _ _ g.
 Axiom zero_one_embedding : Embedding _ _ (tt (Γ:=False)).
 
-Axiom emb_generic : forall {A B : U} {f : A ~~> B} {e : Embedding _ _ f}, Embedding _ _ f.
+Axiom emb_generic : forall {A B : U} {f : A ~~> B} {e : Embedding _ _ f}, Embedding _ _ f.*)
 
 Context {Open : U -> U}.
 
@@ -57,6 +59,7 @@ Context {Meas Prob SubProb : U -> U}.
 Context {discrete : Type -> U}.
 Context {DOps : DiscreteOps (U:=U) (ccat:=ccat)(cmc:=cmc) discrete}.
 Context {DProps : (@DiscreteProps U ccat cmc discrete DOps)}.
+Context {L : U -> U} {los : LiftOps(Lift:=L)(Σ:=Σ)(Stream:=Stream)}{lps : LiftProps}.
 
 Require Import Spec.CCC.CCC.
 Require Import Spec.CCC.Presheaf.
@@ -102,20 +105,24 @@ Class MeasOps : Type :=
       (pstream x f) ∘ g == pstream (x ∘ g) (f ∘ (g ⊗ id))
   ; unit_Prob : (id (A := Prob unit)) == ret ∘ tt
   ; fst_strong : forall {A B}, (map fst) ∘ (strong (M:=Prob)(A:=A)(B:=B)) == ret ∘ fst
-  ; Meas_Embed : forall {A B} (f : A ~~> B), Embedding _ _ f -> (Meas B) ~~> (Meas A)
-  ; Meas_Embed_Proper : forall {A B} (f g : A ~~> B) (e : Embedding _ _ f) (p : (f == g)),
-      Meas_Embed f e == Meas_Embed g (embedding_Proper p e)
-  ; Embed_irrel : forall {A B} (f : A ~~> B) (e e' : Embedding _ _ f), (Meas_Embed f e) ==
-                                                             (Meas_Embed f (emb_generic (e:=e')))
-  ; Embed_nat : forall {A B C D} (e : A ~~> B) (f : B ~~> D) (g : A ~~> C) (h : C ~~> D)
-      (ee : Embedding _ _ e) (he : Embedding _ _ h), (Pullback e f g h) ->
+  ; Meas_Embed : forall {A B} (f : A ~~> B), OpenEmbedding (Σ:=Σ) f -> (Meas B) ~~> (Meas A)
+  ; Meas_Embed_Proper0 : forall {A B} (f g : A ~~> B) (e : OpenEmbedding f) (p : (f == g)),
+      Meas_Embed f e == Meas_Embed g (OpenEmbedding_Proper p e)
+  ; Meas_Embed_Proper1 : forall {A B} (f : A ~~> B) (e e' : OpenEmbedding f),
+      (forall (R : A ~~> Σ), dir_img (OpenMap:=(open_map (OpenEmbedding:=e))) R ==
+                      dir_img (OpenMap:=(open_map (OpenEmbedding:=e'))) R) -> 
+      Meas_Embed f e == Meas_Embed f e'
+(*  ; Embed_irrel : forall {A B} (f : A ~~> B) (e e' : OpenEmbedding _ _ f), (Meas_Embed f e) ==
+                                                                  (Meas_Embed f (emb_generic (e:=e')))*)
+ ; Embed_nat : forall {A B C D} (e : A ~~> B) (f : B ~~> D) (g : A ~~> C) (h : C ~~> D)
+      (ee : OpenEmbedding  e) (he : OpenEmbedding h), (Pullback e f g h) ->
       (Meas_Embed h he) ∘ (map f) == (map g) ∘ (Meas_Embed e ee)
   ; Pstream : forall {A X : U}, Const (Y X ==> (Y X ==> Y (Prob (A * X))) ==> Y (Prob (Stream A)))
   ; Coinflip : Const (Y (Prob (unit + unit)))
   ; Normal : Const (Y (Prob R))
   ; Prob_discrete : forall {A}, (Prob (discrete A)) ~~> power A LRnn
   ; Prob_discrete_mono : forall {A}, Mono (Prob_discrete (A:=A))
-  ; Meas_unit : LRnn ~~> Meas unit
+  ; Meas_unit : Meas unit ≅ LRnn
   ; Meas_scale : forall {A}, LRnn * Meas A ~~> Meas A
   ; Meas_add : forall {A}, Meas A * Meas A ~~> Meas A
   ; add_zero_right : forall {A}, Meas_add (A:=A) ∘ ⟨id, zero⟩ == id
@@ -138,51 +145,133 @@ Class MeasOps : Type :=
       Meas_scale ∘ ⟨(LRnnmult _) ∘ ⟨f, g⟩, h⟩ == Meas_scale ∘ ⟨f, Meas_scale ∘ ⟨g, h⟩⟩
   ; copair_add : forall {A B C : U} (f : A ~~> C) (g : B ~~> C),
       map (copair f g) ==
-      Meas_add ∘ ⟨ map f ∘ Meas_Embed inl inl_embedding, map g ∘ Meas_Embed inr inr_embedding ⟩
+      Meas_add ∘ ⟨ map f ∘ Meas_Embed inl inl_open_embedding, map g ∘ Meas_Embed inr inr_open_embedding ⟩
   ; map_scale : forall {A B : U} {r : unit ~~> LRnn} {f : A ~~> B},
       (Meas_scale ∘ (r ⊗ id) ∘ add_unit_left) ∘ (map f) ==
       (map f) ∘ (Meas_scale ∘ (r ⊗ id) ∘ add_unit_left)
-  ; Embed_scale : forall {A B : U} {r : unit ~~> LRnn} {f : A ~~> B} {e : Embedding _ _ f},
+  ; Embed_scale : forall {A B : U} {r : unit ~~> LRnn} {f : A ~~> B} {e : OpenEmbedding f},
       (Meas_scale ∘ (r ⊗ id) ∘ add_unit_left) ∘ (Meas_Embed f e) ==
       (Meas_Embed f e) ∘ (Meas_scale ∘ (r ⊗ id) ∘ add_unit_left)
-  ; Meas_false : Meas False ≅ unit                       
+  ; Meas_false : Meas False ≅ unit             
   }.
 
 Context {mops : MeasOps}.
 
 Existing Instances ProbMonad SubProbMonad MeasMonad. 
 
-Section Ev.  
+Section Ev.
+
+  Existing Instance OpenEmbedding_Proper.
+
+  Definition MeasΣ : Meas Σ ~~> Meas unit. (* Restriction along true *)
+  Proof. unshelve eapply Meas_Embed. apply true.
+         unshelve eapply OpenEmbedding_Proper.
+         exact (terminates ∘ strict).
+         unfold terminates. rewrite lift_rec_strict.
+         rewrite <- (compose_id_right true). remove_eq_left. apply unit_uniq.
+         apply compose_open_embedding. apply strict_open_embedding.
+         pose (Iso_OpenEmbedding (Σ:=Σ) (Iso_Sym Σ_cong_Lu)) as P. simpl in P.
+         apply P.
+  Defined.
+   (* A direct proof of the above.
+         unshelve esplit.
+         unshelve esplit.
+         - intros f.
+           eapply compose. Focus 2.
+           unshelve eapply Σ_to_Lift.
+           exact L.
+           unshelve eapply lift_rec.
+           exact false. exact f. intros a; apply false_sleq_anything.
+         - intros V V' H. simpl. apply sub_ext.
+           apply sub_lift. rewrite !lift_rec_bottom. apply sub_reflexive.
+           rewrite !lift_rec_strict. assumption.
+         - intros V W. simpl. split.
+           + intros H. unfold inv_img. apply (sub_ext true) in H.
+             eapply sub_Proper. Focus 3. apply H.
+             rewrite <- compose_assoc, -> true_to_Lift, -> lift_rec_strict.
+             reflexivity. reflexivity.
+           + intros H. unfold inv_img in H.
+             apply sub_Σ.
+             rewrite <- compose_assoc, -> false_to_Lift, -> lift_rec_bottom.
+             eapply sub_Proper. Focus 3. eapply false_smallest.
+             rewrite <- compose_id_right at 1. remove_eq_left. apply unit_uniq. reflexivity.
+             rewrite <- compose_assoc, -> true_to_Lift, -> lift_rec_strict. assumption.
+         - intros V. unfold inv_img, dir_img.
+           rewrite <- compose_assoc, -> true_to_Lift, -> lift_rec_strict. apply sub_reflexive.
+  Defined.
+*)         
   
-  Definition SubProbEval {A} : SubProb A * Open A ~~> LRnn :=
-    MeasEval ∘ (SubProb_to_Meas ⊗ id).
+  Definition MEv : forall {Γ A}, (Γ ~~> Meas A) -> (A ~~> Σ) -> Γ ~~> LRnn :=
+    fun _ _ f g => (to Meas_unit) ∘ MeasΣ ∘ (map g) ∘ f.
 
-  Definition ProbEval {A} : Prob A * Open A ~~> LRnn :=
-    SubProbEval ∘ (Prob_to_SubProb ⊗ id).
+  Axiom MEv_determines : forall {Γ A} (mu nu : Γ ~~> Meas A),
+      (forall V : A ~~> Σ, MEv mu V == MEv nu V) -> mu == nu.
 
-  Axiom SumEval : forall {Γ A B} (mu : Γ ~~> Meas (A + B)) (V : Γ ~~> Open (A + B)),
-      (MeasEval ∘ ⟨mu, V⟩) ==
-      (let V0 := fst ∘ open_sum_prod0 ∘ V in
-       let V1 := snd ∘ open_sum_prod0 ∘ V in
-       let mu0 := Meas_Embed inl inl_embedding ∘ mu in
-       let mu1 := Meas_Embed inr inr_embedding ∘ mu in
-       LRnnplus LRnn ∘ ⟨ MeasEval ∘ ⟨ mu0, V0 ⟩, MeasEval ∘ ⟨ mu1, V1 ⟩ ⟩).
-
+  Axiom MEv_embed : forall {Γ A B} {f : A ~~> B} {e : OpenEmbedding f} (mu : Γ ~~> Meas B) (U : A ~~> Σ),
+      MEv (Meas_Embed _ e ∘ mu) U == MEv mu (dir_img (OpenMap:=open_map(OpenEmbedding:=e)) U).
+  
+  Axiom MEv_scale : forall {Γ A} {mu : Γ ~~> Meas A} {V : A ~~> Σ} (r : unit ~~> LRnn),
+      MEv (Meas_scale ∘ r ⊗ id ∘ add_unit_left ∘ mu) V == (LRnnmult _ ∘ r ⊗ MEv mu V ∘ add_unit_left).
+  
   Context `{mps : SMonad_Props U Meas (ccat:=ccat)(smd:=MeasMonad) (cmc:=cmc)(cmcprops:=cmcprops)}.
 
-  Axiom Embed_id : forall {A : U}, Meas_Embed (id(A:=A)) id_embedding == id.
-  Axiom Embed_Mono : forall {A B} {f : A ~~> B}, Embedding _ _ f -> Mono f.
-  Axiom Embed_compose : forall {A B C : U} {f : A ~~> B} {g : B ~~> C}
-                          (e : Embedding _ _ f)(k : Embedding _ _ g),
-      Meas_Embed f e ∘ Meas_Embed g k == Meas_Embed (g ∘ f) (compose_embedding e k).
-  
-  Lemma Embed_map : forall {A B} (f : A ~~> B) (e : Embedding _ _ f), (Meas_Embed f e) ∘ (map f) == id.
-  Proof. intros A B f e. pose (Embed_nat id f id f id_embedding e).
-         erewrite e0.
-         rewrite map_id. rewrite compose_id_left. rewrite Embed_id. reflexivity.
-         apply pb_Mono_iff. apply (Embed_Mono e).
+  Lemma MEv_Proper : forall {Γ A}, Proper (eq ==> eq ==> eq) (MEv(Γ:=Γ)(A:=A)).
+  Proof. intros Γ A. unfold Proper, respectful.
+         intros x y H x0 y0 H0. unfold MEv.
+         repeat (try apply compose_Proper; try assumption; try reflexivity).
+         eapply map_Proper. assumption.
   Qed.
 
+  Existing Instance MEv_Proper.
+
+    Lemma MEv_scale' : forall {A} {mu : unit ~~> Meas A} {V : A ~~> Σ} (r : unit ~~> LRnn),
+      MEv (Meas_scale ∘ ⟨r, mu⟩) V == (LRnnmult _ ∘ ⟨r, MEv mu V⟩).
+  Proof. intros A mu V r.
+         pose (MEv_scale (mu:=mu) (V:=V) r) as e. etransitivity. symmetry; etransitivity.
+         symmetry; apply e; clear e.
+         apply MEv_Proper. remove_eq_left.
+         apply proj_eq; rewrite ?parallel_fst, ?parallel_snd, ?pair_fst, ?pair_snd.
+         rewrite !compose_assoc. rewrite parallel_fst. rewrite <- (compose_id_right r) at 2.
+         remove_eq_left. apply unit_uniq.
+         rewrite !compose_assoc. rewrite parallel_snd. rewrite <- (compose_id_left mu) at 2.
+         remove_eq_right. rewrite compose_id_left. unfold add_unit_left. rewrite pair_snd. reflexivity.
+         reflexivity.
+         remove_eq_left. apply proj_eq.
+         rewrite pair_fst, compose_assoc, parallel_fst.
+         rewrite <- compose_assoc. unfold add_unit_left. rewrite pair_fst.
+         rewrite (unit_uniq tt id). rewrite compose_id_right. reflexivity.
+         rewrite pair_snd, compose_assoc, parallel_snd.
+         rewrite <- compose_assoc.
+         unfold add_unit_left. rewrite pair_snd. rewrite compose_id_right. reflexivity.
+  Qed.
+  
+  Lemma Embed_id : forall {A : U}, Meas_Embed (id(A:=A)) id_open_embedding == id.
+  Proof. intros A.
+         apply MEv_determines. intros V.
+         rewrite <- (compose_id_right (Meas_Embed id _)).
+         rewrite MEv_embed. apply MEv_Proper. reflexivity.
+         reflexivity.
+  Defined.
+
+  Lemma Embed_compose : forall {A B C : U} {f : A ~~> B} {g : B ~~> C}
+                          (e : OpenEmbedding f)(k : OpenEmbedding g),
+      Meas_Embed f e ∘ Meas_Embed g k == Meas_Embed (g ∘ f) (compose_open_embedding e k).
+  Proof. intros A B C f g e k.
+         apply MEv_determines.
+         intros V.
+         rewrite MEv_embed.
+         rewrite <- (compose_id_right (Meas_Embed g k)), <- (compose_id_right (Meas_Embed (compose g f) _)).
+         rewrite !MEv_embed.
+         apply MEv_Proper. reflexivity.
+         destruct e, k. simpl. reflexivity.
+  Qed.
+  
+  Lemma Embed_map : forall {A B} (f : A ~~> B) (e : OpenEmbedding f), (Meas_Embed f e) ∘ (map f) == id.
+  Proof. intros A B f e. pose (Embed_nat id f id f id_open_embedding e).
+         erewrite e0.
+         rewrite map_id. rewrite compose_id_left. rewrite Embed_id. reflexivity.
+         apply pb_Mono_iff. apply (Embedding_Mono e).
+  Qed.
 
   Definition Prob_to_Meas {A} := SubProb_to_Meas (A:=A) ∘ Prob_to_SubProb.
   
@@ -230,6 +319,23 @@ Section Ev.
          rewrite (map_compose (M:=Prob)). remove_eq_right.
          apply Prob_SubProb_map.
   Qed.
+
+  Lemma Prob_Meas_Bind : forall {Γ A B} (m : Γ ~~> Prob A) (f : Γ * A ~~> Prob B),
+      Prob_to_Meas ∘ Bind m f == Bind (Prob_to_Meas ∘ m) (Prob_to_Meas ∘ f).
+  Proof. intros Γ A B m f.
+         unfold Bind, bind.
+         rewrite !compose_assoc.
+         rewrite Prob_Meas_join. remove_eq_left.
+         rewrite pair_parallel_id. remove_eq_right.
+         rewrite <- !compose_assoc. rewrite Prob_Meas_strong. remove_eq_right.
+         rewrite Prob_Meas_map. remove_eq_left.
+         rewrite map_compose. remove_eq_left.
+  Qed.
+
+  Lemma Prob_Meas_Ret : forall {Γ A} {f : Γ ~~> A}, Prob_to_Meas ∘ Ret f == Ret f.
+  Proof. intros Γ A f. unfold Ret. remove_eq_right. apply Prob_Meas_ret.
+  Defined.
+
   
   Definition Left : forall {Γ A B}, Γ ~~> Open (A + B).
   Proof. intros.
@@ -246,7 +352,18 @@ Section Ev.
          - exact (false ∘ tt).
          - exact (true ∘ tt).
   Defined.
-  
+
+  Axiom MEv_Bind_coprod : forall {Γ A B C} {mu : Γ ~~> Meas (A + B)} {f : Γ * (A + B) ~~> Meas C} (V : C ~~> Σ),
+      MEv (Bind mu f) V == (LRnnplus LRnn
+    ∘ ⟨ (*LRnnmult LRnn
+        ∘ ⟨ MEv mu (copair (true ∘ tt) (false ∘ tt)),*)
+          MEv (Bind (Meas_Embed inl inl_open_embedding ∘ mu) (f ∘ id ⊗ inl)) V (*⟩*),
+      (*LRnnmult LRnn
+      ∘ ⟨ MEv mu (copair (false ∘ tt) (true ∘ tt)),*)
+        MEv (Bind (Meas_Embed inr inr_open_embedding ∘ mu) (f ∘ id ⊗ inr)) V (*⟩*) ⟩).
+(* Maybe this is provable; maybe it's false. The intuition is, in order to see how much measure you assign to V, you see how much measure you assign to V that flows through A --- the first term --- and you see how much measure you assign to V that flows through B --- the second term. *)
+
+    
   (* Axiom Bind_cancel : forall {Γ A B C} (mu : Γ ~~> Meas (A + B))
                         (f f' : Γ * A ~~> Meas C) (g g' : Γ * B ~~> Meas C),
       LRnnlt LRnn (LRnnzero LRnn ∘ tt) (MeasEval ∘ ⟨mu, Left⟩) ->

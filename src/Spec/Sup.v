@@ -73,6 +73,8 @@ Section Suprema.
         (sleq f g).
     
     Axiom sleq_eq : forall {Γ A} (f g : Γ ~~> A), (sleq f g) -> (sleq g f) -> (f == g).
+
+    Axiom false_sleq_anything : forall x, sleq false x.
     
     Lemma sleq_reflexive : forall {Γ A} (mu : Γ ~~> A), sleq mu mu.
     Proof.
@@ -211,15 +213,9 @@ Section Suprema.
              assumption.
     Qed.
 
-    Lemma precompose_Cont : forall {A B C : U} (f : A ~~> B),
+    Axiom precompose_Cont : forall {A B C : U} (f : A ~~> B),
         Cont (fun g : B ~~> C => g ∘ f)
              (fun (x y : B ~~> C) (H : sleq x y) => compose_sleq x y H f f (sleq_reflexive f)).
-    Proof.
-      intros A B C f.
-      unfold Cont. intros.
-      admit.
-    Admitted.
-
 
     Axiom postcompose_Cont : forall {A B C : U} (f : B ~~> A),
         Cont (fun g : C ~~> B => f ∘ g)
