@@ -63,8 +63,7 @@ src/Spec/Sup.v
 src/Spec/Lift.v
 src/Spec/Power.v
 src/Spec/Vec.v
-src/Fix.v
-src/Sums.v
+src/Spec/OEmbedding.v
 
 src/Spec/CCC/CCC.v
 src/Spec/CCC/Presheaf.v
@@ -84,3 +83,5 @@ src/FrameVal.v
 src/Classical.v
 src/Samplers.v
 src/PartialSamplers.v
+src/Fix.v
+src/Sums.v

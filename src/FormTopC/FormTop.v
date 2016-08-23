@@ -469,13 +469,14 @@ Variable (le : crelation S).
 Context {Ix : S -> Type}.
 Variable (C : forall s, Ix s -> Subset S).
 
-Definition IxL (a : S) := 
-  { i : sigT Ix & match i with
-    | existT c _ => le a c end }.
+Inductive IxL {a : S} : Type :=
+  | MkIxL : forall c (ix : Ix c), le a c -> IxL.
 
-Definition CL (a : S) : IxL a -> Subset S := 
-  fun i => match i with
-  | existT (existT c k) _ => fun z => { u : S & C c k u * down le a u z }%type
+Arguments IxL : clear implicits.
+
+Definition CL (a : S) (i : IxL a) : Subset S :=
+  match i with
+  | MkIxL c k _ => fun z => { u : S & C c k u * down le a u z }%type
   end.
 
 Context {PO : PreO.t le}.
@@ -483,9 +484,8 @@ Context {PO : PreO.t le}.
 Local Instance Llocalized : localized le CL.
 Proof.
 unfold localized.
-intros. destruct i. simpl in *. destruct x.
-exists (existT (fun i' => match i' with existT c k => le a c end) 
-  (existT _ x i) (PreO.le_trans _ _ _ X y)).
+intros. destruct i. simpl in *.
+exists (MkIxL c0 ix (PreO.le_trans _ _ _ X l)).
 simpl. intros s X'.
 destruct X' as (u & Cxiu & downaus).
 exists s. split. exists u. split. assumption. unfold down in *.
@@ -502,8 +502,7 @@ intros a U. split; intros H.
 - induction H.
   + apply grefl. assumption.
   + apply gle_left with b; assumption.
-  + pose (existT (fun j : sigT Ix => match j with existT c _ => le a c end)
-       (existT Ix b i) l : IxL a).
+  + pose (MkIxL b i l : IxL a).
   apply ginfinity with i0.
   intros u X0. apply X.
   unfold CL in X0.
@@ -512,7 +511,7 @@ intros a U. split; intros H.
 - induction H.
   + apply glrefl. assumption.
   + apply glle_left with b; assumption.
-  + destruct i as ((c & i) & ac).
+  + destruct i as [c i ac].
     simpl in *.
     apply (gle_infinity a _ c i). assumption.
     intros. auto.
@@ -537,6 +536,8 @@ rewrite X. reflexivity. assumption.
 Qed.
 
 End Localize.
+
+Arguments IxL {S} le Ix a : clear implicits.
 
 Section ToFrame.
 Context {S : Type}.

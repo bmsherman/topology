@@ -46,7 +46,7 @@ Definition CUL (a : O) : IxUL a -> Subset O := match a with
   | Exactly _ => Empty_set_rect _
   end.
 
-Definition Ix := FormTop.IxL le (Ix := IxUL).
+Definition Ix := FormTop.IxL le IxUL.
 Definition C := FormTop.CL le CUL.
 
 Definition Cov := FormTop.GCovL le CUL.
@@ -71,8 +71,8 @@ constructor; intros.
   apply Max.le_max_l. apply Max.le_max_r.
   constructor.
 - destruct H. inv H0. constructor.
-- destruct i. destruct x. simpl. destruct H.
-  inv y. 
+- destruct i. simpl. destruct H.
+  inv l. 
   destruct (Compare_dec.le_lt_eq_dec _ _ H0).
   + exists (MoreThan n). split. constructor.
     exists (MoreThan (S m)). split.  constructor.
@@ -89,7 +89,7 @@ constructor; unfold exactly; intros.
 - exists (Exactly n). split. split; assumption.
   reflexivity.
 - etransitivity; eassumption.
-- destruct i. destruct x. destruct x; simpl in *; 
+- destruct i. destruct c. simpl in *; 
     try contradiction.
   exists (Exactly n). constructor. reflexivity.
   destruct (Compare_dec.lt_eq_lt_dec (S n0) n) as [[LT | EQ] | GT].
@@ -98,10 +98,11 @@ constructor; unfold exactly; intros.
   + subst. exists (Exactly (S n0)).  split. constructor.
       split. assumption. reflexivity.
   + exfalso. eapply Lt.le_not_lt. 2: eassumption. 
-    inv H; inv y.
+    inv H; inv l.
     * transitivity (S n1). apply Le.le_n_S. assumption. 
       assumption.
     * assumption.
+  + simpl in *. contradiction.
 Qed.
 
 Lemma Overt : FormTop.gtPos le C.
@@ -188,8 +189,8 @@ unfold is_pt. constructor.
     eapply Lt.le_lt_trans; eassumption.
   + subst. assumption.
 - intros. induction i.
-  + destruct x. induction x; simpl in *. destruct i.
-    inv p. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
+  + destruct c. simpl in *. destruct ix.
+    inv l. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
     exists (MoreThan n0). split. assumption.
     exists (MoreThan (S n)). split. constructor.
     split; constructor. reflexivity. assumption.
@@ -209,7 +210,7 @@ unfold is_pt. constructor.
     split; constructor. reflexivity. assumption.
     subst. exists (Exactly (S n)). split.  constructor.
     split; constructor; reflexivity.
-    induction i.
+    induction ix.
 Qed.
 
 End Checker.
@@ -230,8 +231,7 @@ Focus 2. apply Now. apply tt.
 generalize dependent n. cofix.
 intros.
 pose proof (IGCont.pt_cov _ ptx i 
-   (existT (fun i : {x : O & IxUL x} => let (c, _) := i in le (MoreThan n) c)
- (existT _ (MoreThan n) tt) (PreO.le_refl (MoreThan n))) ) as X.
+  (FormTop.MkIxL _ (MoreThan n) tt  (PreO.le_refl (MoreThan n)))) as X.
 simpl in X. destruct X. destruct i0. destruct s.
 destruct p. destruct d. induction n0.
 - induction a.

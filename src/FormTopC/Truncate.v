@@ -21,9 +21,9 @@ Context {S} {leS : crelation S}
 
 Let CovS := FormTop.GCov leS CS.
 
-Inductive le {s : S} : Subset S :=
-  | Orig : forall {t}, leS s t -> le t
-  | IPos : forall {t}, FormTop.gPos t -> le t.
+Inductive le {s t : S} : Type :=
+  | Orig : leS s t -> le
+  | IPos : FormTop.gPos t -> le.
 
 Arguments le : clear implicits.
 
@@ -57,19 +57,19 @@ unshelve econstructor.
 - exact (FormTop.gPos (gtPos := OvertS)).
 - intros. destruct X. eapply FormTop.gmono_le; eassumption.
   assumption. 
-- intros. destruct i. destruct x. simpl.
-  destruct y.
-  + destruct (locS a t l i).
+- intros. destruct i. simpl.
+  destruct l.
+  + destruct (locS a c l ix).
     pose proof (FormTop.gmono_ax (gtPos := OvertS)
      a x) as H. simpl.
-    specialize (H X). destruct H. destruct i0.
-    specialize (s a0 c).
+    specialize (H X). destruct H. destruct i.
+    specialize (s a0 c0).
     destruct s. exists a0. split. 
     exists x0. destruct p. split. assumption.
     destruct d. split; apply Orig; assumption.
     assumption.
   + pose proof (FormTop.gmono_ax (gtPos := OvertS)
-      t i g). destruct X0.  destruct i0. 
+      c ix g). destruct X0.  destruct i. 
     exists a0. split. exists a0. split. assumption.
     split. apply IPos. assumption. reflexivity.
     assumption.

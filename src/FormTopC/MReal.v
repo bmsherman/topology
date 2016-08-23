@@ -42,10 +42,10 @@ constructor.
   apply Qpos_min_lb_l. apply Qpos_min_lb_r.
   auto.
 - auto.
-- intros. destruct i. destruct x. 
-  destruct a, x. destruct H. destruct m, m0.
+- intros. destruct i. 
+  destruct a, c. destruct H. destruct m, m0.
   simpl.
-  destruct i; simpl.
+  destruct ix; simpl.
   + exists (tt, Qpos_min q q1). split. auto.
     exists (tt, q1). split. reflexivity.
     split; apply le_ball_center. apply Qpos_min_lb_l.
@@ -53,7 +53,7 @@ constructor.
   + destruct (Qpos_smaller q).
     exists (tt, x). split. auto. 
     exists (tt, x). split. apply lt_ball_center.
-    apply le_ball_radius in y. simpl in y.
+    apply le_ball_radius in l. simpl in l.
     eapply Qlt_le_trans; eassumption.
     split. apply le_ball_center. apply Qlt_le_weak.
     assumption. reflexivity.

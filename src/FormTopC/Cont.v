@@ -634,9 +634,9 @@ intros. constructor; intros.
 - apply (local _ X); assumption.
 - eapply (le_left _ X); eassumption.
 - eapply (le_right _ X); eassumption.
-- destruct j. destruct x.  simpl.
-  assert (F_ x a). eapply (le_right _ X); eassumption.
-  pose proof (ax_right _ X a _ i X1).
+- destruct j. simpl.
+  assert (F_ c a). eapply (le_right _ X); eassumption.
+  pose proof (ax_right _ X a _ ix X1).
   eapply (FormTop.trans X2); clear X2; intros.
   destruct X2. 
   apply FormTop.refl. econstructor. 2: eassumption.
@@ -685,7 +685,7 @@ Definition C1 (a : S) (i : Ix1 a) : Subset S := match i with
   | Img t Fat => FormTop.downset leS (F t)
   end.
 
-Definition Ix := FormTop.IxL leS (Ix := Ix1).
+Definition Ix := FormTop.IxL leS Ix1.
 Definition C := FormTop.CL leS (Ix := Ix1) C1.
 
 Local Instance loc : FormTop.localized leS C

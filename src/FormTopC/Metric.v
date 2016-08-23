@@ -461,7 +461,7 @@ Definition CUL (b : Ball) (i : IxUL b) : Subset Ball :=
   | Some epsilon => fun b' => snd b' = epsilon
   end.
 
-Definition Ix := FormTop.IxL le_ball (Ix := IxUL).
+Definition Ix := FormTop.IxL le_ball IxUL.
 Definition C := FormTop.CL le_ball CUL.
 
 Definition Cov := FormTop.GCovL le_ball C.
@@ -600,14 +600,14 @@ constructor; unfold Yoneda; intros.
   apply o_ball_refl.
 - destruct a, b. apply o_ball_sym. apply (le_ball_applies_o H0).
   simpl. apply o_ball_sym. assumption.
-- destruct a. destruct i; simpl in *. destruct x0. 
-  destruct i; simpl in *.
+- destruct a. destruct i; simpl in *. 
+  destruct ix; simpl in *.
   + exists (x, q0). split. apply o_ball_refl. 
     exists (x, q0). split. reflexivity.
     split. admit. reflexivity.
   + destruct (o_ball_shrink H) as (q' & q'small & H').
     exists (x, q'). split. apply o_ball_refl.
-    exists (x, q). split. simpl. destruct x0.
+    exists (x, q). split. simpl.
 Abort.
 
 Variable f : X -> Y.
@@ -789,9 +789,9 @@ constructor; intros.
   eapply le_monotone. assumption.
 - destruct a. unfold lift. unfold lift in H. 
     eapply lt_le_trans; eassumption.
-- destruct j; simpl in *. destruct x.
-  destruct i.
-  + simpl. clear x y. destruct (Qpos_smaller (Qpos_inv k * q)%Qpos).
+- destruct j; simpl in *.
+  destruct ix.
+  + simpl. clear c l. destruct (Qpos_smaller (Qpos_inv k * q)%Qpos).
     apply (FormTop.gle_infinity (C := CUL) a _ a (Some x)).
     reflexivity.
     intros. destruct X0. simpl in p.
@@ -830,7 +830,7 @@ constructor; intros.
     destruct (lt_ball_grow _ _ _ H).
     destruct p. apply FormTop.glrefl.
     econstructor. unfold In. simpl. 
-    exists (f m, x0). split. 
+    exists (f m, x). split. 
     eapply lt_le_trans. eassumption. eassumption.
     split. apply lt_le_weak. eassumption. reflexivity.
     apply lift_f_ap_lt'. assumption.
