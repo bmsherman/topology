@@ -31,7 +31,6 @@
 \newtheorem{claim}{Claim}
  
 \newcommand{\R}{\mathbb{R}}
-\newcommand{\lowerT}[1]{\overrightarrow{#1}}
 \newcommand{\cov}{\vartriangleleft}
 \newcommand{\Pos}{\mathsf{Pos}}
 \newcommand{\List}[1]{\mathsf{List}\ {#1}}
@@ -59,9 +58,17 @@
 \newcommand{\map}[1]{\mathsf{map}_{#1}}
 \newcommand{\ret}[1]{\mathsf{ret}_{#1}}
 \newcommand{\join}[1]{\mathsf{join}_{#1}}
+\newcommand{\ratint}{\rat_\mathbb{I}}
+
+\newcommand{\lowerT}[1]{\overrightarrow{#1}}
+%\newcommand{\lowerT}[1]{\uparrow {#1}}
 
 \newcommand{\truncate}[1]{\mathsf{trunc}\left({#1}\right)}
 
+\newcommand{\dirsup}{\mathop{\setlength{\unitlength}{.7em}\raisebox{-.2em}%
+    {\begin{picture}(1,1.5)\put(.5,0){\line(-1,3){.48}}
+    \put(.5,0){\vector(1,3){.5}}\end{picture}}}} 
+    
 \newcommand{\ve}[1]{\mathbf{#1}}
 
 \newcommand{\then}{\ ;\ }
@@ -78,6 +85,8 @@
 What are potential applications of my framework for formal topology?
 
 \section{The powerspaces: reasoning with and simulating uncertainty}
+
+\subsubsection{Introduction}
 
 Why do we need a new programming language where types are topological spaces and expressions are continuous maps? After all, if one programs in Martin-Löf type theory (without axioms), then, as Escardó says \cite{escardo4wft}, ``Secretly, types are \emph{spaces} and functions are \emph{continuous}.''
 
@@ -111,6 +120,8 @@ This article explore how these newfound capabilities manifest with ``powerspaces
 
 With these powerspaces, it is possible to both \emph{compute} with and \emph{reason} about non-determinism. The inhabited Vietoris powerspace represents demonic and angelic nondeterminism, while the probabilistic powerspace represents probabilistic non-determinism. In particular, we can lift  computation $f : A_1 \times \cdots \times A_n \to B$ defined on points to the lifted computation $f_\Viet : \Viet(A_1) \times \cdots \times \Viet(A_n) \to \Viet(B)$ which tracks how angelic/demonic uncertainty in inputs affects the output, or similarly, a lifted computation $f_\Prob : \Prob(A_1) \times \cdots \times \Prob(A_n) \to \Prob(B)$ which tracks how (independent) probabilistic uncertainty in inputs results in a probabilistically uncertain output. The ability to define these lifted computations is a straightforward consequence of the monadicity of $\Viet$ and $\Prob$.
 
+\subsubsection{An example task}
+
 Let's be more concrete. We consider the following task from the Uncertain<T> paper \cite{uncertaint}. Somebody is walking with their mobile phone, which has a GPS device. Periodically, the phone polls the GPS and estimate's the user's walking speed. If we think that the user is walking faster than 4 mph, we'd like to sound an alarm to warn the user to slow down, but we'd prefer false negatives (the user is walking faster than 4mph but we don't catch it) to false positives (the user is walking slower than 4mph but we sound the alarm).
 
 The naïve approach this program simply takes point estimates from the GPS and computes the speed with those coordinates, and checks whether it is larger than 4mph to determine whether to alarm the user. We can think of this computation as a function which takes the two position coordinates whose time difference is $\Delta t > 0$ as input and estimates the speed accordingly:
@@ -127,6 +138,8 @@ By modeling such non-determinism with the Vietoris powerspace, we can automatica
 Another way to take into account the uncertainty of the GPS estimates, which is probably more appropriate in this case, is to model the GPS estimates as corrupted with a probabilistic noise. So our real position $\ve{x}$ is obscured with additive noise $\ve{n}$ which is drawn from a normal distribution with mean 0 and variance $\sigma^2$. Now, for each real number $p : \R$ such that $0 \le p < 1$, we can ask whether the probability that the speed is greater than 4mph is greater than $p$, and again, this is computable in the same sense as the previous analogous questions.
 
 The remainder of this article will give a vague and incomplete explanation of how formal topology works, how the powerspaces are defined, and how we can solve the above task with formal topology.
+
+\subsubsection{A taste of formal topology}
 
 In the constructive formulation of topological spaces, spaces are just logical theories in a restricted fragment of logic known as \emph{propositional geometric logic}. In this fragment of logic, we are only allowed to use finite conjunctions and infinitary disjunctions; no implication or negation. The formulae in these theories represent \emph{observable} properties of a space. They are also called \emph{opens}, because they represent what would be the open sets in conventional topology. For instance, the real numbers $\R : \Space$ are defined by the theory with atomic propositions $a < \cdot < b$ for each $a, b : \rat$ such that $a < b$, which are just syntactic objects which represent the proposition that a real number is greater than $a$ and less than $b$. The theory then has the following axioms which relate the propositions:
 
@@ -235,11 +248,11 @@ which says that it must always be acceptable to make one of the choices. It turn
 & \mathsf{both} &\models \mathsf{R}.
 \end{align*}
 
-It is useful to consider the \emph{specialization preorder} $\le$, which is a preorder on the points of any space. We have for any points $x, y : A$
+It is useful to consider the \emph{specialization order} $\le$, which is a preorder on the points of any space. We have for any points $x, y : A$
 \[
 x \le y \defeq \forall P : \Open{A}, x \models P \to y \models P,
 \]
-which means that any property which holds of $x$ must also hold of $y$. For many conventional topological spaces, such as $\R$, the specialization order is discrete, but $\mathsf{Decision}$ has an interesting specialization preorder, as we can draw the Hasse diagram below:
+which means that any property which holds of $x$ must also hold of $y$. For many conventional topological spaces, such as $\R$, the specialization order is discrete, but $\mathsf{Decision}$ has an interesting specialization order, as we can draw the Hasse diagram below:
 \begin{center}
 \begin{tikzpicture}
     \node (top) at (0,0) {$\mathsf{both}$};
@@ -266,20 +279,47 @@ There is a convenient map
   \quad &\Longrightarrow \quad \mathsf{only\_R}
 \end{cases}
 \end{align*}
+which converts two possible observations $\ell$ and $r$, where we know that one or the other must hold, into a $\mathsf{Decision}$. 
 
-which converts two possible observations $\ell$ and $r$, where we know that one or the other must hold, into a $\mathsf{Decision}$. Upon giving the above definition, we are faced with two proof goals to confirm that the definition is well-formed. First, we must prove
+The $\mathsf{cases}$ construct allows one to construct a global definition on a space by providing many local definitions on open subspaces. We can think of it like an overlapping pattern match operation. The syntax of $\mathsf{cases}$, as shown above, suffices to \emph{specify} what the continuous map should do, but we require additional proof to confirm that the local definitions can actually be assimilated into a global definition. These proofs will also determine the computational behavior.
+
+First, the open subspaces of definition must cover the entire space; otherwise, we wouldn't know what to do with the missing parts of the global space! In the example above, this results in the following proof goal
 \[
 \checkmark(\ell \vee_\Sigma r) \vdash \checkmark(\ell) \vee \checkmark(r),
 \]
-for $\ell, r : \Sigma$ to show that the $\mathsf{cases}$ construct covers all possible cases, which is trivial since
+for $\ell, r : \Sigma$, which is trivial since
 \[
 \checkmark(\ell \vee_\Sigma r) = \checkmark(\ell) \vee \checkmark(r)
 \]
-by the definition of $\vee_\Sigma$. We must then prove that overlapping cases can be reconciled. For this definition, the proof goal is effectively to find a point which is the ``maximum'' of $\mathsf{only\_L}$ and $\mathsf{only\_R}$ with respect to the specialization preorder; $\mathsf{both}$ suffices as such a maximum.
+by the definition of $\vee_\Sigma$.
 
-In fact, the two spaces in the type signature of $\mathsf{decide}$ are homeomorphic, with $\mathsf{decide}$ giving one part of that homeomorphism.
+When local definitions overlap, they must be able to be reconciled. That is, suppose we have a point which satisfies several of the possible cases; then, the result should be allowed to behave as if it fell into any of those possible branches. Viewing the specialization order as indicating refinement of possible behaviors, this means that the global result should be the supremum of the results from each of the possible branches.
 
-[[ How to get answers out of a decision? Probe it with the one axiom of the theory]]
+However, it is not possible in general to take a supremum of points (continuous maps). It's only possible when the supremum is over a set which is \emph{directed} with respect to the specialization order. For instance, in Hausdorff spaces (such as $\R$), where the specialization order is discrete, there are no nontrivial suprema of points. Whenever two branches of a $\mathsf{cases}$ construct overlap, the two local definitions, when restricted to their intersection, must have a maximum.
+
+In the above definition, the overlapping cases can indeed be reconciled. Here, the proof goal is effectively to find a point which is the maximum of $\mathsf{only\_L}$ and $\mathsf{only\_R}$; $\mathsf{both}$ suffices as such a maximum. 
+
+For instance, we have that
+\[
+\mathsf{decide}(\mathsf{true}, \mathsf{true}) = \dirsup \{ \mathsf{only\_L} , \mathsf{only\_R} \} = \mathsf{both}
+\]
+since $(\mathsf{true}, \mathsf{true})$ can fall into either branch.
+
+
+In fact, the two spaces in the type signature of $\mathsf{decide}$ are homeomorphic, with $\mathsf{decide}$ giving one part of that homeomorphism. Its inverse is
+\begin{align*}
+\mathsf{undecide} &: \mathsf{Decision} \to \{ (\ell, r) : \Sigma \times \Sigma \suchthat \ell \vee_\Sigma r \}
+\\ \mathsf{undecide}(d) &= \mathsf{cases}(d)
+\begin{cases}
+\mathsf{L}
+  \quad &\Longrightarrow \quad (\mathsf{true}, \mathsf{false})
+\\
+\mathsf{R}
+  \quad &\Longrightarrow \quad (\mathsf{false}, \mathsf{true})
+\end{cases}.
+\end{align*}
+
+We can \emph{compute} with $\mathsf{Decision}$s, as with any other space, using open covers. In particular, any $d : \mathsf{Decision}$ decides on either $\mathsf{L}$ or $\mathsf{R}$ by using the \irule{split-cov} rule with the single axiom of the $\mathsf{Decision}$ space, $\top \vdash \mathsf{L} \vee \mathsf{R}$.
 
 So our decision procedure to sound the alarm might look like this:
 \begin{align*}
@@ -294,6 +334,8 @@ x > 4.1 \vee x < 4.0
 in the context $x : \R$. What happens when a point satisfies multiple possible cases? Then the decision that is made will depend upon the point's computational behavior. Recall that in the \irule{split-cov} rule, a point much choose an open from an open cover which it lies in. If a point lies in more than 1 of those opens, it may choose any of them, and therefore different implementations of the same point may make different computational choices. So depending on the implementation of a point for the real number 4.05, the alarm may or may not sound.
 
 So this represents what the naïve computation might look like in formal topology. Now, let's define the inhabited Vietoris powerspace, and extend the speed estimation example to this sort of non-determinism.
+
+\subsubsection{Non-determinism with the Vietoris powerspace}
 
 The inhabited Vietoris powerspace $\Viet$ represents non-determinism. For a space $A$, the points of a $\Viet(A)$ are certain ``tractable'' nonempty subspaces of $A$. We will call these subspaces which are points of $\Viet(A)$ \emph{compact/overt}. If a space $A : \Space$ has an open $P : \Open{A}$, then the Vietoris powerspace has opens $\square P : \Open{\Viet(A)}$ as well as $\lozenge P : \Open{\Viet(A)}$. \footnote{Notation is borrowed from modal logic.} Viewing $P$ as a proposition that may hold of points of $A$, $\square P$ indicates whether $P$ \emph{necessarily} holds everywhere in the subspace, while $\lozenge P$ indicates whether $P$ \emph{possibly} holds somewhere in the subspace. Therefore, for a point $s : \Viet(A)$, we'll use the following notation for the $\Sigma$-valued continuous maps:
 \begin{align*}
@@ -353,8 +395,13 @@ Let's use the Vietoris powerspace to enable us to compute with uncertain values 
 \]
 is compact/overt because it is the product of two intervals, which are each compact/overt by the Heine-Borel theorem. The fact that the product of two compact/overt subspaces is compact is known as the binary Tychonoff theorem, $\otimes : \Viet(A) \times \Viet(B) \to \Viet(A \times B)$. Noting that the basic opens of a product space are the product of the basic opens, the specification should look something like this:\footnote{This is super sloppy and even though it might intuitively get the idea across, it's probably wrong. The issue (throughout this whole explication) is whether the basis for the Vietoris space is essentially the same size as the basis for the original space. I would need to think about it.}
 \begin{align*}
-s \otimes t &\models \square (P, Q) \qquad \text{iff} \qquad s \models \square P \wedge t \models \square Q
-\\ s \otimes t &\models \lozenge (P, Q) \qquad \text{iff} \qquad s \models \lozenge P \wedge t \models \lozenge Q.
+\forall (a, b) \in s \otimes t, P(a) \wedge Q(b)
+\qquad &\defeq \qquad
+\left( \forall a \in s, P(a) \right) \wedge \left( \forall b \in t, Q(b) \right)
+\\
+\exists (a, b) \in s \otimes t, P(a) \wedge Q(b)
+\qquad &\defeq \qquad
+\left( \exists a \in s, P(a) \right) \wedge \left( \exists b \in t, Q(b) \right)
 \end{align*}
 
 Next, we know that the unit disk is closed, since it is co-classified by the open set
@@ -418,7 +465,7 @@ Once we've extended the above program, we should be able to prove (with much eff
 
 In this case, we can think of the program which explicitly uses the inhabited Vietoris hyperspace as an executable specification, helping understand when we have found a more efficient program which accomplishes the same task. In particular, the program using $\Viet$ at the very least confirms that it is possible in principle to create such a program.
 
-How does this beat existing approaches?
+\subsubsection{How does this beat existing approaches?}
 
 Suppose we simply wanted to program using MLTT, perhaps using data structures for the real numbers from the c-CoRN library. Then one cannot define meaningfully, for instance, the inhabited Vietoris powerspace for $\R$, as notions of continuity and compactness do not interact well, unless one accepts additional axioms. In particular, \cite{waaldijk} proves the following theorem:
 \begin{quote}
@@ -442,7 +489,115 @@ Most of the concepts described thus far are also described in a similar way in P
 
 [What other alternative approaches are there that I should claim are not as good as this approach?]
 
-[Next, I should do the same rigmarole with the probabilistic powerspace.]
+\subsubsection{The probabilistic powerspace}
+
+Likewise, we can form a topological space for all probability distributions over a given space. Let's describe the space $\Prob(A)$ of probability distributions over some space $A$. Let $\ratint = \{q : \rat \suchthat 0 \le q < 1 \}$. For each $P : \Open{A}$ and each $q : \ratint$, the basic open $\cdot(P) > q : \Open{\Prob(A)}$ which indicates whether the probability that the event $P$ occurs is strictly greater than $q$.
+
+We can generalize a bit further: given any topological space $A$, we can form a topological space of its open subspaces $\mathsf{Open}(A)$, whose points consist of open subspaces of $A$, and whose topology is the Scott topology. We can also define a topological space $\lowerT{\R}$ known as the \emph{lower real numbers}, where the basic opens are of the form $\cdot > q : \Open{\lowerT{\R}}$ for $q : \rat$. Interestingly, both $\mathsf{Open}(A)$ and $\lowerT{\R}$ are Scott domains, which means that any open cover has singleton subcover. Thus, being a Scott domain is a sort of ``ultra''-compactness. The probability space $\Prob(A)$ can be seen as a subspace of the function space $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$. \footnote{The function space $X \Rightarrow Y$ does not necessarily exist (in the sense of being the categorical exponential) for arbitrary spaces $X$ and $Y$, but does exist whenever $X$ is a Scott domain (a sufficient but not necessary condition), as it is in this case, where $X = \mathsf{Open}(A)$.}
+
+In particular, viewing $\Prob(A)$ as a subspace of $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$, we additionally require the following rules to hold for any $\mu : \Prob(A)$
+\begin{mathpar}
+\mu(\bot_A) = 0
+\\ \mu(\top_A) = 1
+\\ \frac{P \to Q}{\mu(P) \le \mu(Q)}
+\\ \mu(P \vee Q) + \mu(P \wedge Q) = \mu(P) + \mu(Q).
+\end{mathpar}
+
+It is not at all obvious that these laws can be presented as geometric theories. \cite{vickers2011} gives a geometric presentation.
+
+Perhaps more important than understanding the exact formal phrasing of the axioms is getting a feeling for what kinds of observations one can make on $\Prob(A)$. In particular, we can investigate what open covers one may form on $\Prob{A}$. Given an open cover $\top \vdash \bigvee_{i : I} P_i$ of $A$, and given rational numbers $q_i : \ratint$ for each $i : I$ such that $\sum_{i : I} q_i < 1$, we have the open cover
+\[
+\top \vdash \bigvee_{i : I} \cdot(P_i) > q_i
+\]
+on $\Prob(A)$. Not every open cover looks like this, but this is a particularly useful form, particularly in the context of decision making.
+
+Like the Vietoris powerspace, the probabilistic powerspace is also functorial, meaning that we can apply a continuous map $f : A \to B$ to a probability distribution $\Prob(A)$ to get a probability distribution $\Prob(B)$ (with the expected properties), which can be specified as
+\[
+\map{\Prob}{f}(\mu)(P) > q \qquad \defeq \qquad \mu(f^{-1}P) > q.
+\]
+
+The probabilistic powerspace is also monadic. For a point $x : A$ there is the probability distribution which has all its mass at that single point,
+\[
+\ret{\Prob}(x)(P) > q \qquad \defeq \qquad P(x).
+\]
+
+And we can collapse nested probability distributions via integration in the way we'd expect as well, with $\join{\Prob} : \Prob(\Prob(A)) \to \Prob(A)$:
+\[
+\join{\Prob}(\mu)(P) > q \qquad \defeq \qquad
+   \int_{\nu \in \Prob(A)} \nu(P) d\mu(\nu) > q.
+\]
+
+It's not obvious that the right-hand side of the above definition is in fact an open set; what we're claiming is that the integral results in a lower real number. In fact, integration gives a continuous map $\int : (A \Rightarrow \lowerT{\R}) \times \Prob(A) \to \lowerT{\R}$ \cite{vickersintegral} (whenever the function space $A \Rightarrow \lowerT{\R}$ exists, which is whenever $A$ is locally compact).
+
+The $\map{\Prob}$ function also allows us to define the tensorial strength for $\Prob$, $\mathsf{strength}_\Prob : A \times \Prob(B) \to \Prob(A \times B)$ by
+\[
+\mathsf{strength}_\Prob(x, \mu)
+\qquad \defeq \qquad
+\map{\Prob}(\fun{y}{(x, y)})(\mu).
+\]
+\cite{vickers2011} shows that indeed $\Prob$ forms a commutative monad.
+
+We should be able to form the normal distribution, $\mathcal{N} : \R \times \{ \sigma^2 : \R \suchthat \sigma^2 \ge 0 \} \to \Prob(\R)$. The construction is likely involved and beyond the scope of this article.
+
+With these definitions in place, we can use the probabilistic powerspace to compute with probabilistically uncertain GPS estimates. Recall that we're imagining that the true position $\ve{x}$ is corrupted by some noise $\ve{n}$ drawn from a normal distribution $\mathcal{N}(0, \sigma^2)$ with mean $0$ and variance $\sigma^2$. We can now compute the probability distribution which represents what speed we believe the walker has, by defining
+\begin{align*}
+\mathsf{compute\_speed}_\Prob : \R^2 \times \R^2 &\to \Prob(\R)
+\\ \mathsf{compute\_speed}_\Prob (\ve{x}_1, \ve{x}_2) &= 
+  \ve{n}_1 \leftarrow \mathsf{noise}(\sigma^2)
+  \then
+  \ve{n}_2 \leftarrow \mathsf{noise}(\sigma^2)
+  \then
+  \\ &\ret{\Prob} \left( \mathsf{compute\_speed}(\ve{x}_1 - \ve{n}_1, \ve{x}_2 - \ve{n}_2) \right),
+\end{align*}
+where
+\begin{align*}
+\mathsf{noise} &: \{ \sigma^2 : \R \suchthat \sigma^2 \ge 0 \} \to \Prob \left( \R^2 \right)
+\\ \mathsf{noise}(\sigma^2) &= 
+  x \leftarrow \mathcal{N}(0, \sigma^2)
+  \then
+  y \leftarrow \mathcal{N}(0, \sigma^2)
+  \then
+  \ret{\Prob}(x, y).
+\end{align*}
+
+Note the similarity between this function and $\mathsf{compute\_speed}_\Viet$. We may then wish to decide whether or not to sound the alarm using the procedure
+\begin{align*}
+\mathsf{sound\_alarm?}_\Prob : \Prob(\R) &\to \mathsf{Decision}
+\\ \mathsf{sound\_alarm?}_\Prob(\mu) &= 
+  \mathsf{decide}(\mu(\cdot > 4.0) > 0.9 , \mu(\cdot < 4.1) > 0.05),
+\end{align*}
+which again is fairly conservative: we will only sound the alarm if we're more than 90\% sure that the user's speed is greater than 4mph.
+
+The whole program using the probabilistic approach,
+\[
+\mathsf{sound\_alarm?}_\Prob \circ \mathsf{compute\_speed}_\Prob : \R^2 \times \R^2 \to \mathsf{Decision},
+\]
+requires computing a double integral over two normal distributions, which is not necessarily efficient. We can reduce the computational burden by making a few observations. First, for any $\ve{x}_1, \ve{x}_2, \ve{n}_1, \ve{n}_2 : \R^2 $ we have
+\[
+\mathsf{compute\_speed}(\ve{x}_1 - \ve{n}_1, \ve{x}_2 - \ve{n}_2)
+= 
+\mathsf{compute\_speed}(\ve{x}_1  + (\ve{n}_2 - \ve{n}_1), \ve{x}_2),
+\]
+and secondly, we should be able to prove that
+\[
+  \ve{n}_1 \leftarrow \mathsf{noise}(\sigma^2)
+  \then
+  \ve{n}_2 \leftarrow \mathsf{noise}(\sigma^2)
+  \then
+  \\ \ret{\Prob}(\ve{n}_1 - \ve{n}_2)
+= \mathsf{noise}(2\sigma^2).
+\]
+
+With these facts, we can compute the speed estimate in the following more efficient manner,
+\begin{align*}
+\mathsf{compute\_speed'}_\Prob : \R^2 \times \R^2 &\to \Prob(\R)
+\\ \mathsf{compute\_speed'}_\Prob (\ve{x}_1, \ve{x}_2) &= 
+  \ve{n} \leftarrow \mathsf{noise}(2 \sigma^2)
+  \then
+  \ret{\Prob} \left( \mathsf{compute\_speed}(\ve{x}_1 - \ve{n}, \ve{x}_2) \right).
+\end{align*}
+
+With some more careful statistics, it may be possible to write an even more efficient computation of the decision procedure that doesn't even involve any use of probability distributions.
 
 \section{How much do I need to sample?}
 
@@ -455,31 +610,31 @@ Let $\mathbb{I}$ represent the real numbers between 0 and 1 (inclusive). This is
 
 Let $p : \mathbb{I}$ represent the actual bias of Mike's coin. At first glance, my program looks trivial:
 \begin{align*}
-\mathsf{Mike\_honest?} &: \| \bool\|
-\\ \mathsf{Mike\_honest?} &= \mathsf{cases}
+\mathsf{Mike\_honest?} &: \mathsf{Decision}
+\\ \mathsf{Mike\_honest?} &= \mathsf{cases}(\ret{\Prob}(p))
 \begin{cases}
-\text{Pr}_{x \leftarrow \ret{\Prob}(p)} \left[ x \ne 0.5 \right] > 0.9
+\cdot(\cdot \ne 0.5) > 0.9
   \quad &\Longrightarrow
-   \mathsf{trunc}(\mathsf{false})
+   \mathsf{only\_L}
 \\
-\text{Pr}_{x \leftarrow \ret{\Prob}(p)} \left[ 0.45 < x < 0.55 \right] > 0.05
+\cdot(0.45 < \cdot < 0.55) > 0.05
   \quad &\Longrightarrow
-   \mathsf{trunc}(\mathsf{true}).
+   \mathsf{only\_R}.
 \end{cases}
 \end{align*}
 
 But of course, I can't actually do this, because I don't have access to $p$. If I \emph{did} have access to $p$, there'd be no need for anything probabilistic; I could have just done
 \begin{align*}
-\mathsf{Mike\_honest?}_2 &: \| \bool\|
-\\ \mathsf{Mike\_honest?}_2 &= \mathsf{cases}
+\mathsf{Mike\_honest?}_2 &: \mathsf{Decision}
+\\ \mathsf{Mike\_honest?}_2 &= \mathsf{cases}(p)
 \begin{cases}
-p \ne 0.5 
+\cdot \ne 0.5 
   \quad &\Longrightarrow
-   \mathsf{trunc}(\mathsf{false})
+   \mathsf{only\_L}
 \\
-0.45 < p < 0.55
+0.45 < \cdot < 0.55
   \quad &\Longrightarrow
-   \mathsf{trunc}(\mathsf{true}).
+   \mathsf{only\_R}.
 \end{cases}
 \end{align*}
 
