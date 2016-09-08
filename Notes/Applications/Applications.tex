@@ -53,6 +53,7 @@
 
 \newcommand{\Space}{\mathsf{Space}}
 \newcommand{\Prob}{\mathcal{P}}
+\newcommand{\PLower}{\mathcal{L}^+}
 \newcommand{\Viet}{{\mathcal{V}^+}}
 
 \newcommand{\map}[1]{\mathsf{map}_{#1}}
@@ -60,7 +61,10 @@
 \newcommand{\join}[1]{\mathsf{join}_{#1}}
 \newcommand{\ratint}{\rat_\mathbb{I}}
 
+\newcommand{\HeineBorel}{\mathsf{HB}}
+
 \newcommand{\lowerT}[1]{\overrightarrow{#1}}
+\newcommand{\upperT}[1]{\overleftarrow{#1}}
 %\newcommand{\lowerT}[1]{\uparrow {#1}}
 
 \newcommand{\truncate}[1]{\mathsf{trunc}\left({#1}\right)}
@@ -116,7 +120,7 @@ An issue with adding these axioms (other than violating LEM, which seems to make
 
 My goal, with my programming language for formal topology, is to create a world where types are spaces, and expressions are continuous maps, and it is no secret! Making the topological nature of the programming language overt\footnote{No pun intended.}, and computable, has several advantages. Not only does it provide an alternative way to think about writing programs, but it also opens up new computational and reasoning possibilities that are not available with Martin-Löf type theory with its ``intrinsic topology.''
 
-This article explore how these newfound capabilities manifest with ``powerspaces'', topological spaces whose points are in some sense collections of points of another topological space. If we let $\Space$ denote the type of topological spaces, then the powerspaces have type $\Space \to \Space$. In particular, they are monads. It will focus on two specific powerspaces: the inhabited Vietoris powerspace $\Viet$, and the probabilistic powerspace $\Prob$.
+This article explore how these newfound capabilities manifest with ``powerspaces'', topological spaces whose points are in some sense collections of points of another topological space. If we let $\Space$ denote the type of topological spaces, then the powerspaces have type $\Space \to \Space$. In particular, they are monads. It will focus on two specific powerspaces: the inhabited Vietoris powerspace $\Viet$\footnote{Paul Taylor calls this property \emph{supported} rather than \emph{inhabited}, because he takes ``inhabited'' to mean that the space has points, and rightly points out that there could be a nontrivial space $A$ which has no points, in which one might want to consider the powerspace $\Viet(A)$, as opposed to the $\mathcal{V}(A)$, even though $\Viet(A)$ will have no points as well.}, and the probabilistic powerspace $\Prob$.
 
 With these powerspaces, it is possible to both \emph{compute} with and \emph{reason} about non-determinism. The inhabited Vietoris powerspace represents demonic and angelic nondeterminism, while the probabilistic powerspace represents probabilistic non-determinism. In particular, we can lift  computation $f : A_1 \times \cdots \times A_n \to B$ defined on points to the lifted computation $f_\Viet : \Viet(A_1) \times \cdots \times \Viet(A_n) \to \Viet(B)$ which tracks how angelic/demonic uncertainty in inputs affects the output, or similarly, a lifted computation $f_\Prob : \Prob(A_1) \times \cdots \times \Prob(A_n) \to \Prob(B)$ which tracks how (independent) probabilistic uncertainty in inputs results in a probabilistically uncertain output. The ability to define these lifted computations is a straightforward consequence of the monadicity of $\Viet$ and $\Prob$.
 
@@ -131,11 +135,11 @@ The naïve approach this program simply takes point estimates from the GPS and c
 \end{align*}
 As \cite{uncertaint} points out, this fails to account for the uncertainty in the GPS position estimates, an in particular we are likely to overestimate the user's speed with this strategy, and alarm the user much too frequently.
 
-We can explicitly take into account possible errors in the GPS coordinates in two ways. The simpler one is to model the GPS with non-determinism. For instance, we imagine that there was a real position $\ve{x}$ obscured with some additive noise $\ve{n}$ such that the magnitude of the noise is not too large, i.e., $\| \ve{n} \| \le \varepsilon$ for some $\varepsilon \ge 0$.
+We can model the error in GPS coordinates in two ways: with (worst-case) non-determinism or with probabilistic non-determinism. The simpler one is the worst-case non-determinism. For instance, we imagine that there was a real position $\ve{x}$ obscured with some additive noise $\ve{n}$ such that the magnitude of the noise is not too large, i.e., $\| \ve{n} \| \le \varepsilon$ for some $\varepsilon \ge 0$.
 
 By modeling such non-determinism with the Vietoris powerspace, we can automatically lift the $\mathsf{compute\_speed}$ map to one that operates on uncertain positions to produce an uncertain speed estimate. Then, instead of asking the question whether our speed estimate is greater than 4mph, we can ask: Is the speed \emph{necessarily} greater than 4mph? Is the speed \emph{possibly} greater than 4mph? We can \emph{compute} the answer to these questions, in a strong sense, as we could compute whether a single speed estimate is greater than 4mph.
 
-Another way to take into account the uncertainty of the GPS estimates, which is probably more appropriate in this case, is to model the GPS estimates as corrupted with a probabilistic noise. So our real position $\ve{x}$ is obscured with additive noise $\ve{n}$ which is drawn from a normal distribution with mean 0 and variance $\sigma^2$. Now, for each real number $p : \R$ such that $0 \le p < 1$, we can ask whether the probability that the speed is greater than 4mph is greater than $p$, and again, this is computable in the same sense as the previous analogous questions.
+The second way to take into account the uncertainty of the GPS estimates, which is probably more appropriate in this case, is to model the GPS estimates as corrupted with a probabilistic noise. So our real position $\ve{x}$ is obscured with additive noise $\ve{n}$ which is drawn from a normal distribution with mean 0 and variance $\sigma^2$. Now, for each real number $p : \R$ such that $0 \le p < 1$, we can ask whether the probability that the speed is greater than 4mph is greater than $p$, and again, this is computable in the same sense as the previous analogous questions.
 
 The remainder of this article will give a vague and incomplete explanation of how formal topology works, how the powerspaces are defined, and how we can solve the above task with formal topology.
 
@@ -227,7 +231,7 @@ x < y \defeq \exists q : \rat, x < q \wedge q < y.
 So how can we write the naïve speed estimation program using formal topology? It should come as no surprise that operations such as addition, subtraction, multiplication, and square root can be defined, and so the $\mathsf{compute\_speed}$ function described above can be implemented exactly as written.
 
 \subsubsection{Making Boolean decisions on connected spaces}
-But in the floating-point version of naïve speed estimation program, we can then simply check whether the estimated speed exceeds 4, and decide whether to sound the alarm based on that boolean check. This is not possible for $\R$, and I'd argue that the discrepancy should be viewed as a deficiency in floating point rather than of $\R$. The ordering of two real numbers is undecidable; our estimated speed could be arbitrarily close to 4, and we wouldn't know whether it is exactly 4 or whether it exceeds 4. The topological explanation of this is that $\R$ is connected, and so there is no non-constant continuous map from $\R$ to $\bool$.
+But in the floating-point version of naïve speed estimation program, we can then simply check whether the estimated speed exceeds 4, and decide whether to sound the alarm based on that boolean check. This is not possible for $\R$. The ordering of two real numbers is undecidable; our estimated speed could be arbitrarily close to 4, and we wouldn't know whether it is exactly 4 or whether it exceeds 4. The topological explanation of this is that $\R$ is connected, and so there is no non-constant continuous map from $\R$ to $\bool$.
 
 The more appropriate way to make decisions from $\R$ is to provide an open cover of $\R$, together with an acceptable computation for each open in the open cover. I like to think of this as an overlapping pattern match. In general, we need two local computations to ``agree'' whenever their corresponding opens overlap for a suitable definition of agreement.
 
@@ -333,36 +337,24 @@ x > 4.1 \vee x < 4.0
 \]
 in the context $x : \R$. What happens when a point satisfies multiple possible cases? Then the decision that is made will depend upon the point's computational behavior. Recall that in the \irule{split-cov} rule, a point much choose an open from an open cover which it lies in. If a point lies in more than 1 of those opens, it may choose any of them, and therefore different implementations of the same point may make different computational choices. So depending on the implementation of a point for the real number 4.05, the alarm may or may not sound.
 
-So this represents what the naïve computation might look like in formal topology. Now, let's define the inhabited Vietoris powerspace, and extend the speed estimation example to this sort of non-determinism.
+In comparison with floating point computation, which just branches based on whether $x > 4.0$, computing with $\R$ forces the programmer to explicitly to face the inherent non-determinism inherent in the continuous structure of the real numbers.
+
+So this represents what the naïve computation might look like in formal topology. Now, let's define the inhabited Vietoris powerspace, and accordingly extend the speed estimation example to model worst-case non-determinism.
 
 \subsubsection{Non-determinism with the Vietoris powerspace}
 
-The inhabited Vietoris powerspace $\Viet$ represents non-determinism. For a space $A$, the points of a $\Viet(A)$ are certain ``tractable'' nonempty subspaces of $A$. We will call these subspaces which are points of $\Viet(A)$ \emph{compact/overt}. If a space $A : \Space$ has an open $P : \Open{A}$, then the Vietoris powerspace has opens $\square P : \Open{\Viet(A)}$ as well as $\lozenge P : \Open{\Viet(A)}$. \footnote{Notation is borrowed from modal logic.} Viewing $P$ as a proposition that may hold of points of $A$, $\square P$ indicates whether $P$ \emph{necessarily} holds everywhere in the subspace, while $\lozenge P$ indicates whether $P$ \emph{possibly} holds somewhere in the subspace. Therefore, for a point $s : \Viet(A)$, we'll use the following notation for the $\Sigma$-valued continuous maps:
-\begin{align*}
-\forall x \in s, e &\defeq s \models \square (\fun{x}{e})
-\\ \exists x \in s, e &\defeq s \models \lozenge (\fun{x}{e}),
-\end{align*}
-where the expression $e$ has $x$ as a free variable. 
-
-[[Remove this?:]] The above notation isn't formally meaningful, so perhaps it's better demonstrated with an example:
-\[
-\forall x \in s, x < a \vee x > b
-\quad \defeq \quad 
-s \models \square 
-  \left(\bigvee \{ (p, q) : \rat \times \rat
-     \suchthat q < a \vee p > b \} \right)
-\]
+The inhabited Vietoris powerspace $\Viet$ represents non-determinism. For a space $A$, the points of a $\Viet(A)$ are certain ``tractable'' nonempty subspaces of $A$. We will call these subspaces which are points of $\Viet(A)$ \emph{compact/overt}. If a space $A : \Space$ has an open $P : \Open{A}$, then the Vietoris powerspace has opens $\forall x \in \cdot, P(x) : \Open{\Viet(A)}$ as well as $\exists x \in \cdot, P(x) : \Open{\Viet(A)}$. As the notation suggests, viewing $P$ as a proposition that may hold of points of $A$, $\forall x \in \cdot, P(x)$ indicates whether $P$ \emph{necessarily} holds everywhere in the subspace, while $\exists x \in \cdot, P(x)$ indicates whether $P$ \emph{possibly} holds somewhere in the subspace. 
 
 [ Should give more explanation, should say how these are relatively strong computational properties ]
 
-There is a theorem, which we will call Heine-Borel, as it is analogous to similar theorems of that name, which says that any closed interval of $\R$ is compact/overt. More formally, there is a map
+The Heine-Borel theorem states that closed intervals of $\R$ are compact/overt.  It just holds in formal topology: there exists a map
 \[
-f : \{ (a, b) : \R \times \R \suchthat a < b \} \to \Viet(\R)
+\HeineBorel : \{ (a, b) : \R \times \R \suchthat a < b \} \to \Viet(\R)
 \]
 such that for every $(a, b) : \R \times \R$ such that $a < b$, we have
 \begin{align*}
-\forall x \in f(a, b), p < x < q \qquad &\defeq \qquad a < p \wedge q < b
-\\ \exists x \in f(a, b), p < x < q \qquad &\defeq \qquad p < b \vee a < q.
+\forall x \in \HeineBorel(a, b), p < x < q \qquad &\defeq \qquad a < p \wedge q < b
+\\ \exists x \in \HeineBorel(a, b), p < x < q \qquad &\defeq \qquad p < b \vee a < q.
 \end{align*}
 
 The Heine-Borel theorem has an adjoint: any compact set in $\R$ has a minimum and maximum. So we can define the continuous map $\max : \Viet(\R) \to \R$ as follows:
@@ -393,15 +385,15 @@ Let's use the Vietoris powerspace to enable us to compute with uncertain values 
 \[
 \{ (x, y) : \R \suchthat -1 \le x \le 1 \wedge -1 \le y \le 1 \}
 \]
-is compact/overt because it is the product of two intervals, which are each compact/overt by the Heine-Borel theorem. The fact that the product of two compact/overt subspaces is compact is known as the binary Tychonoff theorem, $\otimes : \Viet(A) \times \Viet(B) \to \Viet(A \times B)$. Noting that the basic opens of a product space are the product of the basic opens, the specification should look something like this:\footnote{This is super sloppy and even though it might intuitively get the idea across, it's probably wrong. The issue (throughout this whole explication) is whether the basis for the Vietoris space is essentially the same size as the basis for the original space. I would need to think about it.}
+is compact/overt because it is the product of two intervals, which are each compact/overt by the Heine-Borel theorem. The fact that the product of two compact/overt subspaces is compact is known as the binary Tychonoff theorem, $\otimes : \Viet(A) \times \Viet(B) \to \Viet(A \times B)$. Its specification is given as
 \begin{align*}
-\forall (a, b) \in s \otimes t, P(a) \wedge Q(b)
+\forall (a, b) \in s \otimes t, P(a, b)
 \qquad &\defeq \qquad
-\left( \forall a \in s, P(a) \right) \wedge \left( \forall b \in t, Q(b) \right)
+\forall a \in s, \forall b \in t, P(a, b)
 \\
-\exists (a, b) \in s \otimes t, P(a) \wedge Q(b)
+\exists (a, b) \in s \otimes t, P(a, b)
 \qquad &\defeq \qquad
-\left( \exists a \in s, P(a) \right) \wedge \left( \exists b \in t, Q(b) \right)
+\exists a \in s, \exists b \in t, P(a, b)
 \end{align*}
 
 Next, we know that the unit disk is closed, since it is co-classified by the open set
@@ -410,11 +402,14 @@ Next, we know that the unit disk is closed, since it is co-classified by the ope
 \]
 The intersection of a compact/overt space with a closed overt space is still compact/overt\footnote{I need to go back and do this better. I should describe the lower and upper powerspace, so that the closed space being overt is being a point of the upper powerspace}. Given a compact/overt set $s : \Viet{A}$ and an open $U : \Open{A}$ co-classifying a desired closed set, the intersection $s \cap U^c$ is specified by
 \begin{align*}
-s \cap U^c &\models \square P \qquad \text{iff} \qquad s \models \square (P \vee U)
-\\ s \cap U^c &\models \lozenge P \qquad \text{iff} \qquad [[\text{BROKEN}]].
+\forall x \in s \cap U^c, P(x) \qquad &\defeq \qquad 
+  \forall x \in s, P(x) \vee U(x)
+\\
+\exists x \in s \cap U^c, P(x) \qquad &\defeq \qquad 
+  [[\text{BROKEN}]].
 \end{align*}
 
-With this, we can imagine that we have the desired term $\mathsf{unit\_disk} : \Viet(\R^2)$. Then our speed estimation program which takes into account the uncertainty can be written like this, using ``syntactic sugar'' for monadic operations:
+This yields the desired term $\mathsf{unit\_disk} : \Viet(\R^2)$. Then our speed estimation program which takes into account the uncertainty can be written like this, using ``syntactic sugar'' for monadic operations:
 \begin{align*}
 \mathsf{compute\_speed}_\Viet : \R^2 \times \R^2 &\to \Viet(\R)
 \\ \mathsf{compute\_speed}_\Viet (\ve{x}_1, \ve{x}_2) &= 
@@ -455,7 +450,7 @@ Note that the $\Viet$ doesn't occur in the types, as it was only used in interme
 \ve{x}_1 - \varepsilon \frac{\ve{d}}{\| \ve{d} \|}, \ve{x}_2 + \varepsilon \frac{\ve{d}}{\| \ve{d} \|}
 \right).
 \end{align*}
-The above program is not defined when $\ve{x}_1 = \ve{x}_2$, but since it is defined on a dense subspace of $\R^2 \times \R^2$, it admits a (unique) continuous extension to the entire space (in this case, the speed estimate when $\ve{x}_1 = \ve{x}_2$ will be $\frac{2\varepsilon}{\Delta t}$).
+The above program is not defined when $\ve{x}_1 = \ve{x}_2$, butadmits a (unique) continuous extension to the entire space (in this case, the speed estimate when $\ve{x}_1 = \ve{x}_2$ will be $\frac{2\varepsilon}{\Delta t}$)\footnote{I don't know how this construction would actually work in formal topology.}.
 Once we've extended the above program, we should be able to prove (with much effort) the equivalence of the programs
 \[
 \mathsf{sound\_alarm?}_\Viet \circ \mathsf{compute\_speed}_\Viet
@@ -487,13 +482,15 @@ Therefore, even \emph{reasoning} about such ideas is difficult in MLTT, and cert
 
 Most of the concepts described thus far are also described in a similar way in Paul Taylor's Abstract Stone Duality (ASD). However, as far as I am aware, there is no notion of the $\mathsf{cases}$ construct in ASD, which is needed to make discrete decisions over connected spaces. The Marshall programming language is capable of doing some of the interesting computation described here, such as universal quantification over the unit disk\footnote{I'm still unsure about existential quantification over the unit disk, in general.}. However, since its only base type is $\R$, it does not have, for instance, the Vietoris powerspace as a first-class object.
 
+[[Compare to dReal]]
+
 [What other alternative approaches are there that I should claim are not as good as this approach?]
 
 \subsubsection{The probabilistic powerspace}
 
 Likewise, we can form a topological space for all probability distributions over a given space. Let's describe the space $\Prob(A)$ of probability distributions over some space $A$. Let $\ratint = \{q : \rat \suchthat 0 \le q < 1 \}$. For each $P : \Open{A}$ and each $q : \ratint$, the basic open $\cdot(P) > q : \Open{\Prob(A)}$ which indicates whether the probability that the event $P$ occurs is strictly greater than $q$.
 
-We can generalize a bit further: given any topological space $A$, we can form a topological space of its open subspaces $\mathsf{Open}(A)$, whose points consist of open subspaces of $A$, and whose topology is the Scott topology. We can also define a topological space $\lowerT{\R}$ known as the \emph{lower real numbers}, where the basic opens are of the form $\cdot > q : \Open{\lowerT{\R}}$ for $q : \rat$. Interestingly, both $\mathsf{Open}(A)$ and $\lowerT{\R}$ are Scott domains, which means that any open cover has singleton subcover. Thus, being a Scott domain is a sort of ``ultra''-compactness. The probability space $\Prob(A)$ can be seen as a subspace of the function space $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$. \footnote{The function space $X \Rightarrow Y$ does not necessarily exist (in the sense of being the categorical exponential) for arbitrary spaces $X$ and $Y$, but does exist whenever $X$ is a Scott domain (a sufficient but not necessary condition), as it is in this case, where $X = \mathsf{Open}(A)$.}
+We can generalize a bit further: given any topological space $A$, we can form a topological space of its open subspaces $\mathsf{Open}(A)$, whose points consist of open subspaces of $A$, and whose topology is the Scott topology. We can also define a topological space $\lowerT{\R}$ known as the \emph{lower real numbers}, where the basic opens are of the form $\cdot > q : \Open{\lowerT{\R}}$ for $q : \rat$. Interestingly, both $\mathsf{Open}(A)$ and $\lowerT{\R}$ are Scott domains, which means that any open cover has singleton subcover [[This seems wrong. What about covers which come from ``below''?]]. Thus, being a Scott domain is a sort of ``ultra''-compactness. The probability space $\Prob(A)$ can be seen as a subspace of the function space $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$. \footnote{The function space $X \Rightarrow Y$ does not necessarily exist (in the sense of being the categorical exponential) for arbitrary spaces $X$ and $Y$, but does exist whenever $X$ is a Scott domain (a sufficient but not necessary condition), as it is in this case, where $X = \mathsf{Open}(A)$.}
 
 In particular, viewing $\Prob(A)$ as a subspace of $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$, we additionally require the following rules to hold for any $\mu : \Prob(A)$
 \begin{mathpar}
@@ -505,7 +502,7 @@ In particular, viewing $\Prob(A)$ as a subspace of $\mathsf{Open}(A) \Rightarrow
 
 It is not at all obvious that these laws can be presented as geometric theories. \cite{vickers2011} gives a geometric presentation.
 
-Perhaps more important than understanding the exact formal phrasing of the axioms is getting a feeling for what kinds of observations one can make on $\Prob(A)$. In particular, we can investigate what open covers one may form on $\Prob{A}$. Given an open cover $\top \vdash \bigvee_{i : I} P_i$ of $A$, and given rational numbers $q_i : \ratint$ for each $i : I$ such that $\sum_{i : I} q_i < 1$, we have the open cover
+Perhaps more important than understanding the exact formal phrasing of the axioms is getting a feeling for what kinds of observations one can make on $\Prob(A)$. In particular, we can investigate what open covers one may form on $\Prob(A)$. Given an open cover $\top \vdash \bigvee_{i : I} P_i$ of $A$, and given rational numbers $q_i : \ratint$ for each $i : I$ such that $\sum_{i : I} q_i < 1$, we have the open cover
 \[
 \top \vdash \bigvee_{i : I} \cdot(P_i) > q_i
 \]
@@ -527,7 +524,7 @@ And we can collapse nested probability distributions via integration in the way 
    \int_{\nu \in \Prob(A)} \nu(P) d\mu(\nu) > q.
 \]
 
-It's not obvious that the right-hand side of the above definition is in fact an open set; what we're claiming is that the integral results in a lower real number. In fact, integration gives a continuous map $\int : (A \Rightarrow \lowerT{\R}) \times \Prob(A) \to \lowerT{\R}$ \cite{vickersintegral} (whenever the function space $A \Rightarrow \lowerT{\R}$ exists, which is whenever $A$ is locally compact).
+It's not obvious that the right-hand side of the above definition is in fact an open set; what we're claiming is that the integral results in a lower real number. In fact, integration gives a continuous map $\int : (X \Rightarrow \lowerT{\R}) \times \Prob(X) \to \lowerT{\R}$ \cite{vickersintegral} (whenever the function space $X \Rightarrow \lowerT{\R}$ exists, which is whenever $X$ is locally compact; here we have $X = \mathsf{Prob}(A)$ which is apparently locally compact).
 
 The $\map{\Prob}$ function also allows us to define the tensorial strength for $\Prob$, $\mathsf{strength}_\Prob : A \times \Prob(B) \to \Prob(A \times B)$ by
 \[
@@ -598,6 +595,262 @@ With these facts, we can compute the speed estimate in the following more effici
 \end{align*}
 
 With some more careful statistics, it may be possible to write an even more efficient computation of the decision procedure that doesn't even involve any use of probability distributions.
+
+\section{Car approaching a traffic light}
+
+Suppose we have a car which is approaching a traffic light which has just turned yellow. Should it stop for the light, or should it go through the intersection?
+
+Concretely, let's imagine that the only variable affecting the car's decision should be its position $y : \R$ at the time the light turns yellow. Let $0 : \R$ indicate the position of the intersection. We require that the car's position $r : \R$ when the light turns red satisfies
+\[
+y + 1< r < y + 2 \quad \wedge \quad r \ne 0,
+\]
+meaning that the car not be exactly at the intersection when the light turns red, and that it must move between 1 and 2 units forward between the yellow and red light. The proposition $r < 0$ indicates choosing to stop, while $r >0$ indicates choosing to go.
+
+Thus, it's safe to stop as long as $y < -1$ and safe to go as long as $y > -2$. So our decision-making procedure is:
+\begin{align*}
+\mathsf{stop?} &: \R \to \PLower(\bool)
+\\ \mathsf{stop?}(y) &= \mathsf{cases}(y)
+\begin{cases}
+\cdot < -1
+  \quad &\Longrightarrow
+   \ret{\PLower} (\mathsf{true})
+\\
+\cdot > -2
+  \quad &\Longrightarrow
+   \ret{\PLower}(\mathsf{false}).
+\end{cases}
+\end{align*}
+
+Since any two (generalized) points of the powerspace $\PLower(A)$ for any space $A$ have a maximum (defined as the union of overt subspaces), we must only check that the cases given indeed cover the full space,
+\[
+\top_\R \quad \vdash \quad \cdot < -1 \quad \vee \quad \cdot > -2.
+\]
+
+However, likely the estimate of the car's position is noisy. If we model with non-deterministic noise, then a first attempt at the stopping decision procedure might be
+\begin{align*}
+\mathsf{stop?} &: \Viet(\R) \to \PLower(\bool)
+\\ \mathsf{stop?}(s) &= \mathsf{cases}(s)
+\begin{cases}
+\forall x \in \cdot, x < -1
+  \quad &\Longrightarrow
+   \ret{\PLower} (\mathsf{true})
+\\
+\forall x \in \cdot, x > -2
+  \quad &\Longrightarrow
+   \ret{\PLower}(\mathsf{false}).
+\end{cases}
+\end{align*}
+
+The argument $s : \Viet(\R)$ to $\mathsf{stop?}$ indicates the (compact/overt) subspace of possible positions of the car. The opens given in the $\mathsf{cases}$ construct use universal quantification to ensure that a decision is made only when it is \emph{necessarily} safe for \emph{any} possible position of the car.
+
+However, it is impossible to satisfy the proof obligation for the above definition, because the cases do not cover the entire space $\Viet(\R)$. For instance, the closed interval $[-3, 0]$ considered as a point of $\Viet(\R)$ satisfies neither of the two propositions.\footnote{It is not always the case that a logical statement which is not provable has a counterexample; for instance, there are nontrivial locales with no (global) points at all.}
+
+A trivial solution is to restrict the input to be exactly which is in the open subspace that is covered, i.e., modify the type signature to
+\[
+\mathsf{stop?} : \{ s : \Viet(\R) \suchthat 
+ \left(\forall x \in s, x < -1 \right) \vee \left(\forall x \in s, x > -2 \right)
+ \} \to \PLower(\bool).
+\]
+
+But perhaps more interesting is to imagine that perhaps the uncertain noise takes a particular form, such as a closed ball of a fixed radius $\delta : \R$ about a center point,
+\begin{align*}
+\mathsf{stop?} &: \R \to \PLower(\bool)
+\\ \mathsf{stop?}(c) &= \mathsf{cases}(\HeineBorel(c - \delta, c + \delta))
+\begin{cases}
+\forall x \in \cdot, x < -1
+  \quad &\Longrightarrow
+   \ret{\PLower} (\mathsf{true})
+\\
+\forall x \in \cdot, x > -2
+  \quad &\Longrightarrow
+   \ret{\PLower}(\mathsf{false}).
+\end{cases}
+\end{align*}
+This first yields the proof goal
+\[
+\top \vdash \cdot - \delta < \cdot + \delta
+\]
+which ensures that the closed interval $[c - \delta, c + \delta]$ is inhabited, and also gives the proof goal in the context $c : \R$
+\[
+\left( \forall x \in \HeineBorel(c - \delta, c + \delta), x < -1 \right)
+\quad \vee \quad
+\left( \forall x \in \HeineBorel(c - \delta, c + \delta), x > -2 \right)
+\]
+which reduces to
+\[
+c + \delta < -1  \quad \vee \quad
+c - \delta > - 2
+\]
+which can be proved as long as $0 < \delta < 1$.
+
+In fact, we need to decide not only whether to stop or go, but also how far the car should move forward between the yellow and red light (which, by our toy laws of physics, must be strictly between 1 and 2 units of distance). 
+\footnote{If we didn't make the ranges narrower, we'd need to make the choice depend on the distance, which is possible, but slightly more complicated. Even when taking into account whether to stop or go, this amount must depend on the car's distance: if a car's position is $-(1 + \varepsilon)$ for some small $\varepsilon > 0$, then it must move forward by some distance $d : \R$ such that $1 < d < 1 + \varepsilon$.} 
+The following program satisfactorily determines how far to move forward
+\begin{align*}
+\mathsf{forward} &: \R \to \PLower(\{ d : \R \suchthat 1 < d < 2 \})
+\\ \mathsf{forward}(c) &= \mathsf{cases}(\HeineBorel(c - \delta, c + \delta))
+\begin{cases}
+\forall x \in \cdot, x < -1.1
+  \quad &\Longrightarrow
+   \ret{\PLower}(1.1)
+\\
+\forall x \in \cdot, x > -1.9
+  \quad &\Longrightarrow
+   \ret{\PLower}(1.9),
+\end{cases}
+\end{align*}
+and is a valid definition as long as $\delta < 0.8$.
+
+[ The following is wrong. I didn't make it the lower powerspace for the distance to move forward. But then the condition is no longer an open subspace, which is annoying.]
+Finally, we may wish to write a program whose type signature captures entirely the requirement that the car's position when the light turns red. The dependent type signature
+\begin{align*}
+\mathsf{stoplight} &: \forall s : \{ s' : \Viet(\R) \suchthat U(s') \},
+  \exists d : \{ d' : \R \suchthat 1 < d' < 2 \},
+  \forall x \in s,  x + d \ne 0
+\end{align*}
+captures all of these aspects (where $U$ ought to be some predicate which makes the above type inhabitable). Note that the first $\forall$ and $\exists$ symbols in the above type are different than the notation used for points of the powerspaces; the usage of the colon rather than $\in$ is meant to signify this difference.
+
+The meaning of the above type is that one must actually produce the simply typed continuous map
+\begin{align*}
+\mathsf{stoplight}' &: \{ s' : \Viet(\R) \suchthat U(s') \}
+  \to \{ (s, d) : \{ s' : \Viet(\R) \suchthat U(s') \} \times \{ d' : \R \suchthat 1 < d' < 2 \}
+                   \suchthat \forall x \in s, x + d \ne 0 \}
+\end{align*}
+with the additional requirement that
+\[
+\mathsf{fst} \circ \mathsf{stoplight}' = \mathsf{id}.
+\]
+This translation is just the categorical interpretation of dependent types as overcategories (also known as slice categories).
+
+\section{Differential equations and thermostats}
+
+\cite{smooth-interp} presents an example where a thermostat controls the temperature of a room by periodically reading the temperature of the room and switching a heater on and off.  Differential equations specify the dynamics of the room's temperature. We will model this example with formal topology.
+
+\subsubsection{Solving differential equations}
+
+The Picard-Lindelöf theorem is probably the simplest theorem which allows for the solution of differential equations. The Picard-Lindelöf construction would consist of several steps.
+
+A key component of Picard-Lindelöf is the contraction mapping principle, a theorem concerning metric spaces. I have completed the ``localic metric completion'' construction, which produces as a topological space the metric completion of a \emph{set} of points $X$ together with a metric $\delta_X : X \times X \to \upperT{\R}$, where $\upperT{\R}$ is the space of non-negative real numbers (including $\infty$) with the upper topology. The metric $\delta_X$ is extended to a continuous map $\delta : \mathfrak{C}(X) \times \mathfrak{C}(X) \to \upperT{\R}$, where $\mathfrak{C}(X)$ is the metric completion of $X$.
+For instance, the space of metric real numbers $\R$ are defined as the completion of the set of rational numbers $\rat$.
+
+An additional construction I would need to add is that any Cauchy net\footnote{A net is a generalization of a sequence from the directed set of natural numbers (with the standard order) to arbitrary directed sets.} has a limit point. This would be phrased as a construction on \emph{generalized} points of the metric space $X$, i.e., continuous maps $\Gamma \to X$ for an arbitrary space $\Gamma$.
+
+For a metric space $X$ with metric $\delta$, a map $T : X \to X$ is defined as a \emph{contraction mapping} if there is some $q : \rat$ such that one can prove for arbitrary $x, y : X$ and every $r : \rat$ the geometric implication
+\[
+\delta(x, y) < r
+\quad \vdash \quad
+\delta(T(x), T(y)) < q r,
+\]
+which in more familiar (classical) language says that $\delta(T(x), T(y)) \le q \delta(x, y)$.\footnote{I might have a difficulty dealing with the fact that $\infty$ is allowed in $\upperT{\R}$.}
+
+The contraction mapping principle says that a contraction mapping $T : X \to X$ has a fixed point $x^*$ such that $T(x) = x$ (assuming $X$ is inhabited). This follows from the fact that, given any point $x_0 : X$, the sequence $x_n \defeq T^n(x_0)$ is Cauchy; in fact, it converges at a geometric rate, as
+\[
+\delta(x^*, x_n) \le \frac{q^n}{1 - q} \delta(x_1, x_0).
+\]
+
+The Picard-Lindelöf theorem states that for any Lipschitz function $f : \R^n \times R$, there is a continuous map $\mathsf{PL}_f : \R^n \times \R \times \R \to \R^n$ such that for any $t_i, t_f : \R$ and $x_0 : \R^n$, $\mathsf{PL}_f(x_0, t_i, t_f)$ is the unique solution $x(t_f)$ of the differential equation specified by
+\begin{align*}
+\frac{dx}{dt} &= f(x, t)
+&
+x(t_i) &= x_0.
+\end{align*}
+Its constructive nature, in using the contraction mapping principle, means that Picard-Lindelöf too is constructive.
+
+\subsubsection{Simulating temperature change}
+
+The temperature change in the room is modeled by Newton's law of cooling. Let $\mathsf{on} : \bool$ indicate whether the heater is currently on, and define $\mathsf{heat} : \bool \to \R$ by
+\begin{align*}
+\mathsf{heat}(\mathsf{true}) &= h
+&
+\mathsf{heat}(\mathsf{false}) &= 0
+\end{align*}
+for some constant $h : \R$. Then the temperature's dynamics are governed by the equation
+\[
+\frac{dT}{dt} = -kT + \mathsf{heat}(\mathsf{on}),
+\]
+that is, the dynamics are governed by the functions
+\begin{align*}
+f_\mathsf{true}(T, t) &= -kT + h
+\\ f_\mathsf{false}(T, t) &= -kT,
+\end{align*}
+where $T$ indicates the temperature (in Kelvin) and $k : \R$ is some positive constant. Clearly this equation is Lipschitz with Lipschitz constant $k$, so we can simulate the temperature's change using the Picard-Lindelöf construction.
+
+Concretely, the temperature's dynamics are given by
+\begin{align*}
+\mathsf{temp} &: \bool \times \R \times R \to \R
+\\ \mathsf{temp}(\mathsf{true}, T_i, t) &= \mathsf{PL}_{f_\mathsf{true}}(T_i, 0, t)
+\\ \mathsf{temp}(\mathsf{false}, T_i, t) &= \mathsf{PL}_{f_\mathsf{false}}(T_i, 0, t),
+\end{align*}
+where the arguments to $\mathsf{temp}$ are the whether the heater is on, the initial temperature $T_i$, and the time $t$ to check the temperature.
+
+Furthermore, we should be able to prove that the solution to this differential equation is
+\[
+T(t_f) = \left( T(t_i) - \frac{\mathsf{heat}(\mathsf{on})}{k}\right) \exp\left(-kT(t_f - t_i) \right) + \frac{\mathsf{heat}(\mathsf{on})}{k}.
+\]
+Using the above definition is likely more efficient than the definition using Picard-Lindelöf.
+
+\subsubsection{Controlling the thermostat}
+
+Periodically, the thermostat decides to switch itself on or off. We imagine that the thermostat reads some temperature $T : \R$ as its input and additionally has access to the variable $\mathsf{on} : \bool$ which indicates whether the heater is currently on. We might imagine that the temperature sensor is not perfect, and use a probabilistic model $\mu : \R \to \Prob(\R)$ which produces a probability distribution expressing our belief in the current temperature given the sensor reading. One way to control the thermostat would be with this definition:
+\begin{align*}
+\mathsf{control} &: \R \times \bool \to \PLower(\bool)
+\\
+\mathsf{control}(T, \mathsf{true}) &= 
+\mathsf{cases}(\mu(T))
+\begin{cases}
+\cdot(\cdot > T_\text{off}) > 0.9
+  \quad &\Longrightarrow
+  \ret{\PLower}(\mathsf{false})
+\\
+\cdot(\cdot < T_\text{off} - \varepsilon) > 0.1
+  \quad &\Longrightarrow
+  \ret{\PLower}(\mathsf{true})
+\end{cases}
+\\
+\mathsf{control}(T, \mathsf{false}) &= 
+\mathsf{cases}(\mu(T))
+\begin{cases}
+\cdot(\cdot < T_\text{on}) > 0.9
+  \quad &\Longrightarrow
+  \ret{\PLower}(\mathsf{true})
+\\
+\cdot(\cdot > T_\text{on} + \varepsilon) > 0.1
+  \quad &\Longrightarrow
+  \ret{\PLower}(\mathsf{false}),
+\end{cases}
+\end{align*}
+where $T_\text{off}$ is the temperature above which we'd like to turn the heater off if it is already on, $T_\text{on}$ is the temperature below which we'd like to turn the heater on if it is currently off, and $\varepsilon > 0$ is a constant indicating the precision (in terms of temperature) with which we'd like to make the decision. It makes sense to set $T_\text{on} <  T_\text{off}$ to avoid switching the heater on and off too frequently.
+
+This decision procedure is relatively ``conservative'' in deciding to switch the heater on or off, in that it must be at least 90\% confident that the threshold has been exceeded. Imagine if the temperature sensor were very inaccurate, such that the distribution $\mu(T)$ is very broad. If we only required a low degree of confidence, say 10\%, then it may be the case the thermostat would unnecessarily turn the heater on and off too frequently due to its inaccurate assessment of the current temperature. The above control procedure avoids such an issue.
+
+Let's put the whole simulation together. We'll assume that the thermostat's control routine $\mathsf{control}$ is called once per unit of time.
+
+\begin{align*}
+\mathsf{sim} :\ & \nat \times \bool \times \R \times \R \to \PLower(\Prob(\R \times \bool))
+\\
+\mathsf{sim}(0, \mathsf{on\_init}, T_i, t) = 
+  &\ret{\PLower \circ \Prob}(\mathsf{temp}(\mathsf{on\_init}, T_i, t), \mathsf{on\_init})
+\\
+\mathsf{sim}(S(n), \mathsf{on\_init}, T_i, t) = 
+&(T, \mathsf{on}) \leftarrow \mathsf{sim}(n, \mathsf{on\_init}, T_i, 1)
+ \then
+ \\&T_\text{meas} \leftarrow \ret{\PLower}(\nu(T))
+ \then
+ \\ &\mathsf{on}' \leftarrow \map{\PLower}(\ret{\Prob})(\mathsf{control}(T_\text{meas}, \mathsf{on}))
+ \then
+ \\ &T_f \leftarrow \mathsf{temp}(\mathsf{on'}, T, t)
+ \then
+ \\ &\ret{\PLower \circ \Prob}(T_f, \mathsf{on'}).
+\end{align*}
+
+The probability distribution $\nu : \R \to \Prob(\R)$ gives the probability distribution of the temperature that the thermostat measures as a function of the actual temperature.
+
+The arguments to $\mathsf{sim}$ are as follows: the first and last arguments are supposed to represent the amount of time since the simulation started, where the first argument $n$ is the number of whole minutes which have elapsed, and the final argument $t$ is the additional fraction of a minute which has elapsed, i.e., we require $0 \le t \le 1$, and imagine that the total time elapsed is $n + t : \R$. Note that, given an arbitrary real number, it is not possible to decompose it into an integral and fractional part, hence, we require them as separate arguments. The middle two arguments, $\mathsf{on_init}$ and $T_i$, are the state of the heater and the temperature of the room at the very beginning of the simulation.
+
+Even though $\mathsf{sim}$ requires that the simulated time be decomposed into an integral and fractional part, this should not be necessary, since in fact the temperature of the room varies continuously with time, even at the moment when the heater switches on or off. It would be possible to stitch together all of the pieces together to get a single simulator function which simply takes a time argument as a real number by proving that the pieces agree on their endpoints,\footnote{I haven't actually thought through the details of how this construction would work. There's a simple way to stick together two pieces, but infinitely many is a bit more complicated.} i.e.,
+\[
+\mathsf{sim}(n, \mathsf{on\_init}, T_i, 1) = \mathsf{sim}(S(n), \mathsf{on\_init}, T_i, 0).
+\]
 
 \section{How much do I need to sample?}
 
