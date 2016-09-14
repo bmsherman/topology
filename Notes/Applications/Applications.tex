@@ -931,6 +931,50 @@ We can compose these approximators together to simulate the thermostat. We can c
 
 This approximator takes two arguments, $\varepsilon$ and $q$, which represent tolerance/approximation parameters. The basic open sets of the underlying space $\R \times \bool$ look like open balls of radius $\varepsilon$ about rational centers, which approximate the temperature, together with boolean values which indicate whether the heater is on. The approximator returns a list of these basic opens, together with weights which lower bound the probability of that open as well as its union with other opens in the list, and for which the total weight is $q$.
 
+\subsubsection{Optimizing thermostat behavior}
+
+We may wish to set the parameter $T_\text{on}$ and $T_\text{off}$ such that the room's temperature is close to the desired temperature. We'll begin by simplifying the thermostat scenario from the model that was posed above. Imagine that there is a function $\mathsf{sim} : \R \times \R \times \R \to \R$, where $\mathsf{sim}(T_\text{on}, T_\text{off}, t)$ returns the temperature of the room at time $t$ if the thermostat is operated with temperature thresholds $T_\text{on}$ and $T_\text{off}$.
+
+Suppose that we have an optimal temperature trajectory $\tau : [0, t_f] \to \R$ which gives the desired temperature as a function of time, up until the end time, $t_f$. We then may wish to choose $T_\text{on}$ and $T_\text{off}$ to minimize the quantity
+\[
+\mathsf{error}(T_\text{on}, T_\text{off}) \defeq \int_0^{t_f} (\mathsf{sim}(T_\text{on}, T_\text{off}, t) - \tau(t))^2 dt.
+\]
+\cite{vickersintegral} explains how the Riemannian integral can be defined such that the above quantity is simply computable. Moreover, suppose we know we will restrict our choices of $T_\text{on}$ and $T_\text{off}$ to the compact/overt sets $\mathsf{on}, \mathsf{off} : \Viet(\R)$. Then we can just compute the minimum error,
+\[
+\mathsf{min\_error} \defeq \min(\map{\Viet}\mathsf{error}(\mathsf{on} \otimes \mathsf{off})).
+\]
+Then, note that for any $\varepsilon > 0$, we can derive
+\[
+\top \quad \vdash \quad \mathsf{min\_error} < \mathsf{min\_error} + \varepsilon,
+\]
+which by reduction gives
+\begin{align*}
+\top \quad \vdash \quad &\min(\map{\Viet}\mathsf{error}(\mathsf{on} \otimes \mathsf{off})) < \mathsf{min\_error} + \varepsilon
+\\ \top \quad \vdash \quad &\exists (T_\text{on}, T_\text{off}) \in (\mathsf{on} \otimes \mathsf{off}), \mathsf{error}(T_\text{on}, T_\text{off}) < \mathsf{min\_error} + \varepsilon.
+\end{align*}
+By the rules of non-deterministic powerspaces, for any space $A$, open $U$ of $A$, and open cover $\bigvee_{i : I} P_i$ of $A$, we have
+\begin{align*}
+\exists x \in \cdot, U(x)
+  \quad \vdash \quad
+  &\exists x \in \cdot, U(x) \wedge \top
+\\
+  \quad \vdash \quad
+  &\exists x \in \cdot, U(x) \wedge \bigvee_{i : I} P_i(x)
+\\
+  \quad \vdash \quad
+  &\exists x \in \cdot, \bigvee_{i : I} U(x) \wedge P_i(x)
+\\
+  \quad \vdash \quad
+  &\bigvee_{i : I} \exists x \in \cdot, U(x) \wedge P_i(x).
+\end{align*}
+The first several steps follow from general rules of geometric logic, while the final rule is an axiom in the geometric theory of the overt powerspaces ($\Viet$ and $\PLower$). Applying the derivation above, taking $U$ to be
+\[
+\{ (T_\text{on}, T_\text{off}) : \R \times \R \suchthat \mathsf{error}(T_\text{on}, T_\text{off}) < \mathsf{min\_error} + \varepsilon \},
+\]
+and considering the open cover $\bigvee_{i : I} P_i$ as an approximator $a : \mathsf{Approx}\ (\R \times \R)\ I$, we observe that we can produce an approximator of $(T_\text{on}, T_\text{off})$ values such that $\mathsf{error}(T_\text{on}, T_\text{off})  < \mathsf{min\_error} + \varepsilon$.
+
+That is, we can find parameters which are arbitrarily close to the optimum. It would be desirable to find optimal parameters, rather than parameters which are only arbitrarily close. However, optimal parameters do not necessarily exist in strictly constructive settings; interpreted classically, it is possible that all optimal parameters are uncomputable.
+
 \section{How much do I need to sample?}
 
 Mike asks, ``Perhaps the task at hand is to identify a space that enables us to ask
