@@ -683,8 +683,7 @@ c - \delta > - 2
 \]
 which can be proved as long as $0 < \delta < 1$.
 
-In fact, we need to decide not only whether to stop or go, but also how far the car should move forward between the yellow and red light (which, by our toy laws of physics, must be strictly between 1 and 2 units of distance). 
-\footnote{If we didn't make the ranges narrower, we'd need to make the choice depend on the distance, which is possible, but slightly more complicated. Even when taking into account whether to stop or go, this amount must depend on the car's distance: if a car's position is $-(1 + \varepsilon)$ for some small $\varepsilon > 0$, then it must move forward by some distance $d : \R$ such that $1 < d < 1 + \varepsilon$.} 
+In fact, we need to decide not only whether to stop or go, but also how far the car should move forward between the yellow and red light (which, by our toy laws of physics, must be strictly between 1 and 2 units of distance).\footnote{If we didn't make the ranges narrower, we'd need to make the choice depend on the distance, which is possible, but slightly more complicated. Even when taking into account whether to stop or go, this amount must depend on the car's distance: if a car's position is $-(1 + \varepsilon)$ for some small $\varepsilon > 0$, then it must move forward by some distance $d : \R$ such that $1 < d < 1 + \varepsilon$.} 
 The following program satisfactorily determines how far to move forward
 \begin{align*}
 \mathsf{forward} &: \R \to \PLower(\{ d : \R \suchthat 1 < d < 2 \})
@@ -787,7 +786,7 @@ Furthermore, we should be able to prove that the solution to this differential e
 \[
 T(t_f) = \left( T(t_i) - \frac{\mathsf{heat}(\mathsf{on})}{k}\right) \exp\left(-kT(t_f - t_i) \right) + \frac{\mathsf{heat}(\mathsf{on})}{k}.
 \]
-Using the above definition is likely more efficient than the definition using Picard-Lindelöf.
+Using the above definition may be more efficient than the definition using Picard-Lindelöf. It might depend on the definition of $\exp$, for which one of the canonical definitions is as the solution of an ODE.
 
 \subsubsection{Controlling the thermostat}
 
@@ -845,12 +844,92 @@ Let's put the whole simulation together. We'll assume that the thermostat's cont
 
 The probability distribution $\nu : \R \to \Prob(\R)$ gives the probability distribution of the temperature that the thermostat measures as a function of the actual temperature.
 
-The arguments to $\mathsf{sim}$ are as follows: the first and last arguments are supposed to represent the amount of time since the simulation started, where the first argument $n$ is the number of whole minutes which have elapsed, and the final argument $t$ is the additional fraction of a minute which has elapsed, i.e., we require $0 \le t \le 1$, and imagine that the total time elapsed is $n + t : \R$. Note that, given an arbitrary real number, it is not possible to decompose it into an integral and fractional part, hence, we require them as separate arguments. The middle two arguments, $\mathsf{on_init}$ and $T_i$, are the state of the heater and the temperature of the room at the very beginning of the simulation.
+The arguments to $\mathsf{sim}$ are as follows: the first and last arguments are supposed to represent the amount of time since the simulation started, where the first argument $n$ is the number of whole minutes which have elapsed, and the final argument $t$ is the additional fraction of a minute which has elapsed, i.e., we require $0 \le t \le 1$, and imagine that the total time elapsed is $n + t : \R$. Note that, given an arbitrary real number, it is not possible to decompose it into an integral and fractional part, hence, we require them as separate arguments. The middle two arguments, $\mathsf{on\_init}$ and $T_i$, are the state of the heater and the temperature of the room at the very beginning of the simulation.
 
 Even though $\mathsf{sim}$ requires that the simulated time be decomposed into an integral and fractional part, this should not be necessary, since in fact the temperature of the room varies continuously with time, even at the moment when the heater switches on or off. It would be possible to stitch together all of the pieces together to get a single simulator function which simply takes a time argument as a real number by proving that the pieces agree on their endpoints,\footnote{I haven't actually thought through the details of how this construction would work. There's a simple way to stick together two pieces, but infinitely many is a bit more complicated.} i.e.,
 \[
 \mathsf{sim}(n, \mathsf{on\_init}, T_i, 1) = \mathsf{sim}(S(n), \mathsf{on\_init}, T_i, 0).
 \]
+
+A final interesting thing to note with the $\mathsf{sim}$ function is the composition of non-determinism and probability monads. [I need to explain why these two monads compose. I believe that consists of giving a commutator.] Note that these monads do not commute with each other. Probability arises because of the probabilistic nature of the thermostat's sensor reading, while non-determinism arises because the thermostat must make a discrete decision over a connected space.
+
+\subsubsection{Running the simulations}
+
+I have yet to discuss in detail how ``run'' continuous maps. First, notice that it only really makes sense to run points of a space, rather than arbitrary continuous maps. That is, a continuous map should first be applied to concrete values of arguments to produce an output value which is just a point of the output space.
+
+The key to ``running'' points is to pick an informative open cover that discriminates the properties you wish to observe, and then use the \irule{split-cov} rule to determine which open holds of the particular point that is being observed. For instance, we can cover $\R$ with open balls of radius $\varepsilon : \rat^+$ centered at every possible rational number. Using the \irule{split-cov} rule with this cover, we can approximate a point $x : \R$ by finding some rational number $q : \rat$ such that $|q - x| < \varepsilon$. Note that there is inherent non-determinism here, in that different representations of the same real number may yield different rational approximations.
+
+We can define a simple type 
+\begin{align*}
+\mathsf{Approx} &: \Space \to \Type \to \Type
+\\ \mathsf{Approx}\ A\  I &= \left\{ P : I \to \Type \suchthat \top \vdash \bigvee_{i : I} P_i \right\}
+\end{align*}
+which is the type of approximations of a given space. For instance, as explained above, there is a function $\mathsf{rat\_approx} : \rat^+ \to \mathsf{Approx}\ \R\ \rat$ which gives rational approximations of real numbers.
+
+There is a simple and natural way to approximate product spaces. Suppose we have two spaces $A$ and $B$. Given an open cover $\bigvee_{i : I} P_i$ of $A$ and an open cover $\bigvee_{j : J} Q_j$ of $B$, we can produce the cover $\bigvee_{(i, j) : I \times J} P_i \times Q_j$ of $A \times B$. Accordingly, given approximators $\mathsf{approx}_A : \mathsf{Approx}\ A\ I$ and $\mathsf{approx}_B : \mathsf{Approx}\ B\ J$, there is the product approximator
+\[
+\mathsf{approx}_A \times \mathsf{approx}_B : \mathsf{Approx}\ (A \times B)\ (I \times J).
+\]
+
+Approximating discrete spaces is easy. If $\mathsf{Disc} : \Type \to \Space$ constructs a discrete space from its underlying set, then $\mathsf{approx\_Disc} : \forall A : \Type, \mathsf{Approx}\ (\mathsf{Disc}\ A)\ A$ converts a point of the space $\mathsf{Disc}\ A$ back into an element of $A$.
+
+It is straightforward to simulate a non-deterministic run of the non-determinstic powerspaces $\PLower$ as well as $\Viet$ (given that $\Viet$ is a subspace of $\PLower$). If we have a space $A$ with an open cover $\bigvee_{i : I} P_i$, then there is the cover
+\[
+\bigvee_{i : I} \exists x \in \cdot, P_i(x)
+\]
+of $\PLower(A)$. So given $a : \mathsf{Approx}\ A\ I$, we have the approximator $\mathsf{possible}(a) : \mathsf{Approx}\ (\PLower(A))\ I$ which returns a \emph{possible} run of the non-determinism.
+
+Simulating probabilistic non-determinism is more complicated. Suppose we have a space $A$ and an open cover $\bigvee_{i : I} P(i)$. What can we do with it?
+
+We might like to compute the probability of each $P(i)$. However, this cannot be done in general. For instance, consider probability distributions over the Sierpínski space $\Sigma$. The probability of landing in the non-trivial open is just a non-negative lower real number, and since the non-negative lower reals have a bottom element (0), it is very weak computationally.
+
+A more realistic ambition is to realize that there must be a way to distribute weight into each open $P_i$ in a consistent manner. That is, we should be able to break the number 1 into a sum $1 = \sum_{i : I} x_i$ of non-negative real numbers $x : I \to \R$ such that each $x_i$ is no greater than the probability of $P_i$. If each of the $P_i$ happen to be clopen, and hence the $P_i$ are pairwise disjoint, then there is only one such decomposition, and indeed each corresponding $x_i$ represents the probability of each $P_i$. However, if there is overlap among the open cover, there is choice in how to distribute the weight which lies in the intersection, and there is no reason to expect that this distribution can be done canonically, that is, different representations of the same probability distribution might result in different decompositions.
+
+Here is a rough sketch of how this decomposition works. Suppose we have $\mu : \Prob(A)$. We have $\mu(\top) = 1$, but by monotonicity, since
+\[
+\top \dashv \vdash \bigvee_{i : I} P_i
+\]
+then $\mu\left( \bigvee_{i : I} P_i \right) = 1$ as well. By continuity, it suffices to consider the supremum of finite joins, so
+\[
+\sup_{\ell : \mathcal{FP}(I)} \mu \left( \bigvee_{x \in \ell} P_x \right) = 1,
+\]
+where $\mathcal{FP}(I)$ denotes the type of lists of elements of $I$, i.e., the Kuratowski-finite powerset of $I$. This means that for all $q : \rat$ such that $q < 1$, there exists some $\ell : \mathcal{FP}(I)$ such that
+\[
+\mu \left( \bigvee_{i \in \ell} P_i \right) > q.
+\]
+
+If the list $\ell$ is nonempty, that is, $\ell = i :: is$ for some $i : I$ and $is : \mathcal{FP}(I)$, then by modularity we have
+\[
+\mu(P_i) +  \mu \left( \bigvee_{j \in is} P_j \right) = 
+ \mu \left( P_i \vee \bigvee_{j \in is} P_j \right) + \mu \left( P_i \wedge \bigvee_{j \in is} P_j \right),
+\]
+hence, combining the above two equations,
+\[
+\mu(P_i) +  \mu \left( \bigvee_{j \in is} P_j \right) > q,
+\]
+and therefore there exist $q_i, q_{is} : \rat$ such that $q_i + q_{is} = q$ and
+\begin{align*}
+\mu(P_i) > q_i \quad \text{and} \quad  \mu \left( \bigvee_{j \in is} P_j \right) > q_{is}.
+\end{align*}
+
+Recursively repeating this process yields rational numbers $q_i : \rat$ for each $i : I$ such that $\mu(P_i) > q_i$ and also $\sum_{i : I} q_i > q$, and this can be done for any $q < 1$. Hence, for every $q < 1$, there is the open cover
+\[
+\top \vdash \bigvee_{\ell : \mathcal{FP}(I \times \rat)} \left(
+\sum_{(i, q_i) \in \ell} q_i = q \quad \wedge \quad \forall \ell' \subseteq \ell, \mu\left( \bigvee_{(i, q_i) \in \ell'} P_i \right) > \sum_{(i, q_i) \in \ell'} q_i \right)
+\]
+(the universal quantification is okay since there are finitely many sublists of a finite list, so it is just a finitary conjunction).
+
+Therefore, for a space $A$ with approximator $a : \mathsf{Approx}\ A\ I$, we have the approximator $\mathsf{prob}(a) : \{ q : \rat \suchthat q < 1 \} \to \mathsf{Approx}\ (\Prob(A))\ (\mathcal{FP}(I \times \rat))$ which returns an approximation to a distribution of the weight of probability amongst the open cover. Though I will not go into the explanation, this should allow one to recover a function $\mathsf{Pt}(A) \to (I \to \R)$ which non-deterministically assigns a real-valued number weight to each open such that the total weight assigned is exactly 1.
+
+We can compose these approximators together to simulate the thermostat. We can compose the approximator
+\begin{align*}
+\mathsf{run\_sim} : \rat \times \rat &\to \mathsf{Approx}\ (\PLower(\Prob(\R \times \bool)))\ (\mathcal{FP}((\rat \times \bool) \times \rat))
+\\
+\mathsf{run\_sim}(\varepsilon, q) &= 
+\mathsf{possible}(\mathsf{prob}(\mathsf{rat\_approx}(\varepsilon) \times \mathsf{approx\_Disc})(q)).
+\end{align*}
+
+This approximator takes two arguments, $\varepsilon$ and $q$, which represent tolerance/approximation parameters. The basic open sets of the underlying space $\R \times \bool$ look like open balls of radius $\varepsilon$ about rational centers, which approximate the temperature, together with boolean values which indicate whether the heater is on. The approximator returns a list of these basic opens, together with weights which lower bound the probability of that open as well as its union with other opens in the list, and for which the total weight is $q$.
 
 \section{How much do I need to sample?}
 
