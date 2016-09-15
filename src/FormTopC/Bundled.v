@@ -16,12 +16,24 @@ Module Bundled.
 (* Inductively generated formal topology *)
 Record IGT : Type :=
   { S : Type
+    (** The type of basic opens, i.e., observable property *)
   ; le : S -> Subset S
+    (** a preorder on [S] which indicates when one basic open lies in another,
+       i.e., one observable property implies another *)
   ; PO :> PreO.t le
+    (** the proof that [le] is a preorder *)
   ; Ix : S -> Type
+    (** For each observable property, a type of indexes or addresses or names of
+        covering axioms for subsets of basic opens which conspire to cover
+        the given observable property. This type should be inductively
+        generated, or similarly phrased, the axioms should be countable *)
   ; C : forall s, Ix s -> Subset S
+    (** For each axiom index/name/address, this gives us a subset of basic
+        opens whose union covers the given basic open *)
   ; localized : FormTop.localized le C
+    (** The axiom set should be localized, as defined in CSSV2003 *)
   ; pos : FormTop.gtPos le C
+    (** The space must be overt, i.e., have a positivity predicate. *)
   }.
 
 Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
