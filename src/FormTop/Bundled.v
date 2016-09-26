@@ -1,6 +1,8 @@
 Require Import FormTop.FormTop 
   FormTop.Cont
-  Frame FormTop.Product FormTop.InfoBase 
+  Algebra.Frame 
+  FormTop.Product
+  FormTop.InfoBase 
   Algebra.Sets.
 
 Delimit Scope loc_scope with loc.

@@ -33,6 +33,7 @@ src/FormTopC/Compact.v
 src/FormTopC/MReal.v
 src/FormTopC/Truncate.v
 
+src/Algebra/Frame.v
 src/Algebra/FrameC.v
 src/Algebra/Sets.v
 src/Algebra/SetsC.v
@@ -77,7 +78,6 @@ src/Sample.v
 src/FiniteSum.v
 src/Valuation.v
 src/PDF.v
-src/Frame.v
 src/Integration.v
 src/FrameVal.v
 src/Classical.v

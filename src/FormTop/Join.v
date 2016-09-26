@@ -1,4 +1,7 @@
-Require Import FormTop.FormTop Frame Algebra.Sets Coq.Program.Basics.
+Require Import FormTop.FormTop 
+  Algebra.Frame 
+  Algebra.Sets 
+  Coq.Program.Basics.
 Module JoinTop.
 
 Section JoinTop.

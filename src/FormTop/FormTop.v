@@ -1,4 +1,4 @@
-Require Import Frame Algebra.Sets Morphisms.
+Require Import Algebra.Frame Algebra.Sets Morphisms.
 Set Asymmetric Patterns.
 
 Require Import Basics.

@@ -1,4 +1,8 @@
-Require Import Frame FormTop.FormTop FormTop.Cont Algebra.Sets.
+Require Import 
+  Algebra.Frame
+  FormTop.FormTop
+  FormTop.Cont
+  Algebra.Sets.
 
 Set Asymmetric Patterns.
 

@@ -2,7 +2,7 @@ Require Import Coq.Program.Basics
   FormTop.FormTop 
   FormTop.Cont
   FormTop.InfoBase FormTop.Product
-  Frame Algebra.Sets.
+  Algebra.Frame Algebra.Sets.
 
 (** Here we intend to define the formal topology for the lower real
     numbers, realizing that the lower real numbers can be made into 

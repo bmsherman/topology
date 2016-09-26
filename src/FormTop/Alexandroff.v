@@ -1,6 +1,6 @@
 Require Import
   Algebra.Sets
-  Frame
+  Algebra.Frame
   FormTop.FormTop
   FormTop.Cont.
 

@@ -1,6 +1,8 @@
 Require Import 
   Basics
-  FormTop.FormTop Algebra.Sets Frame.
+  FormTop.FormTop 
+  Algebra.Sets
+  Algebra.Frame.
 
 Local Open Scope Ensemble.
 

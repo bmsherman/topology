@@ -1,4 +1,4 @@
-Require Import FormTop.FormTop Frame Algebra.Sets 
+Require Import FormTop.FormTop Algebra.Frame Algebra.Sets 
   Coq.Program.Basics.
 
 Local Open Scope Ensemble.

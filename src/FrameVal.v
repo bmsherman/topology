@@ -1,4 +1,4 @@
-Require Import Frame.
+Require Import Algebra.Frame.
 
 Generalizable All Variables.
 

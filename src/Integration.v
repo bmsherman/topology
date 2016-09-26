@@ -1,5 +1,9 @@
-Require Import Frame FrameVal LPReal.
-Require Import Morphisms Ring.
+Require Import 
+  Algebra.Frame
+  FrameVal
+  Numbers.LPReal
+  Morphisms
+  Ring.
 
 Import FrameVal.ValNotation.
 Local Open Scope LPR.

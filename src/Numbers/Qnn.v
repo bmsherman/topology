@@ -749,7 +749,7 @@ Admitted.
 
 Module Instances.
 
-Require Import Frame.
+Require Import Algebra.Frame.
 
 Definition opsU : MeetLat.Ops Qnn := 
   {| MeetLat.le := Qnnle ; MeetLat.eq := Logic.eq; MeetLat.min := Qnnmin |}.

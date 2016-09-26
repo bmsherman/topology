@@ -1,4 +1,4 @@
-Require Import LPReal Frame FormTop.Join.
+Require Import LPReal Algebra.Frame FormTop.Join.
 Local Open Scope LPR.
 
 Module FinVal.

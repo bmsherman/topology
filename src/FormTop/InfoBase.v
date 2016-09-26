@@ -1,5 +1,8 @@
 Require Import Coq.Program.Basics
-  FormTop.FormTop FormTop.Cont Frame Algebra.Sets
+  FormTop.FormTop
+  FormTop.Cont 
+  Algebra.Frame
+  Algebra.Sets
   Morphisms.
 
 Local Open Scope Ensemble.

@@ -1,4 +1,8 @@
-Require Import FormTop.FormTop Frame Algebra.Sets FormTop.Cont.
+Require Import 
+  FormTop.FormTop 
+  Algebra.Frame 
+  Algebra.Sets
+  FormTop.Cont.
 
 (** Product spaces for inductively generated formal topologies.
     See Section 4.3 of [1]. *)
