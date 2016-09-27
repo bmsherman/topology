@@ -652,3 +652,186 @@ Qed.
 End Scott.
 
 End Scott.
+
+
+Require Import
+  Spec.Category
+  FormTopC.Bundled
+  FormTopC.Cont.
+Import Category.
+
+Local Open Scope loc.
+
+Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
+  (ML : MeetLat.t A ops) : IGT :=
+  {| S := A 
+  ; PO := PO.PreO
+  ; localized := @InfoBase.loc _ _ _ MeetLat.PO
+  ; pos := InfoBase.Overt
+  |}.
+
+Definition One : IGT := InfoBase MeetLat.one.
+
+(** Spaces of open sets (using Scott topology *)
+Definition Open (A : IGT) : IGT :=
+  let LE := @Scott.le_Open (S A) (le A) (Ix A) (C A) in 
+  let PreO : PreO.t (le A) := IGT_PreO A in
+  let PO := 
+   @PO.PreO (Subset (S A)) LE _ (Scott.PO_le_eq (POT := PreO)
+  (locT := localized A)) in
+  {| S := Subset (S A)
+   ; le := LE
+   ; PO := PO
+   ; Ix := InfoBase.Ix
+   ; C := InfoBase.C (leS := LE) (eqS := PO.eq_PreO LE)
+   ; localized := InfoBase.loc (PO := PO.fromPreO LE)
+   ; pos := InfoBase.Overt (PO := PO.fromPreO LE)
+  |}.
+
+Definition Σ : IGT := InfoBase Sierpinski.SML.
+
+Definition Σand_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sand.
+
+(** I need to prove that a the information-base product of meet lattices
+    is the same as the product of the information bases
+
+    This will be phrased as a homeomorphism!
+*)
+(** Sierpinski.sand_cont *)
+Definition Σand_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
+  (Cov (Σ * Σ)) (Cov Σ) Σand_mp.
+Proof.
+simpl. unfold Cov. simpl. 
+Admitted.
+
+Definition Σand : Σ * Σ ~~> Σ :=
+  {| mp := Σand_mp
+   ; mp_ok := Σand_mp_ok
+  |}.
+
+Definition Σor_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sor.
+
+(** Sierpinski.sor_cont *)
+Definition Σor_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
+  (Cov (Σ * Σ)) (Cov Σ) Σor_mp.
+Proof.
+simpl. unfold Cov. simpl. 
+Admitted.
+
+Definition Σor : Σ * Σ ~~> Σ :=
+  {| mp := Σor_mp
+   ; mp_ok := Σor_mp_ok
+  |}.
+
+Definition open_abstract_mp {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+     : Cont.map (S Γ) (S (Open A))
+  := Scott.absF (leT := le A) (IxT := Ix A) (CT := C A) f.
+
+Existing Instances Bundled.PO Bundled.local.
+
+Definition open_abstract_mp_ok {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+  : Cont.t (le (Γ * A)) (le Σ) (Cov (Γ * A)) (Cov Σ) f
+  -> Cont.t (le Γ) (le (Open A)) (Cov Γ) (Cov (Open A)) 
+    (open_abstract_mp f).
+Proof.
+intros H.
+apply Scott.absF_cont. apply H.
+Qed.
+
+Definition open_abstract {Γ A : IGT} (f : Γ * A ~~> Σ) : Γ ~~> Open A
+  := 
+  {| mp := open_abstract_mp (mp f)
+   ; mp_ok := open_abstract_mp_ok (mp f) (mp_ok f)
+  |}.
+
+Class Hausdorff {A : IGT} : Type :=
+  { apart : A * A ~~> Σ }.
+
+Arguments Hausdorff A : clear implicits.
+
+
+
+
+
+
+
+
+
+Definition point_mp (A : IGT) (f : Subset (S A))
+  (fpt : Cont.pt (le A) (Cov A) f)
+  : Contprf One A (fun t _ => f t).
+Proof.
+simpl.
+constructor; intros; auto.
+- apply FormTop.grefl. pose proof (Cont.pt_here fpt).
+  destruct X.
+  econstructor. constructor. eassumption.
+- apply FormTop.grefl. pose proof (Cont.pt_local fpt X X0). 
+  destruct X1.  destruct i. econstructor. eassumption.
+  assumption.
+- pose proof (Cont.pt_cov fpt X X0). 
+  destruct X1. destruct i. 
+  apply FormTop.grefl. econstructor; eauto.
+Qed.
+
+Definition One_intro_mp {A : IGT} : Contmap A One
+  := One.One_intro.
+
+Require Import FunctionalExtensionality.
+
+Definition One_intro_mp_ok {A : IGT} : Contprf A One One_intro_mp.
+Proof.
+unfold Contprf.
+constructor; unfold Cov, One_intro_mp, One.One_intro; simpl; intros.
+- apply FormTop.grefl. econstructor. constructor. constructor.
+- constructor.
+- apply FormTop.grefl. econstructor. constructor; constructor. constructor.
+- apply FormTop.grefl. induction X.
+  + econstructor. eassumption. constructor.
+  + assumption.
+  + induction i. eapply X. reflexivity.
+Unshelve. constructor. constructor. constructor.
+Qed.
+
+Definition One_intro `{A : IGT} : A ~~> One :=
+  {| mp := One_intro_mp
+   ; mp_ok := One_intro_mp_ok
+  |}.
+
+Require Import Spec.Category.
+Import Category.
+
+Definition const {Γ A : IGT} (pt : One ~~> A) : Γ ~~> A
+  := pt ∘ One_intro.
+
+
+Instance IGT_Cat : CCat IGT :=
+  {| arrow := cmap
+  ;  prod := times
+  ; eq := fun _ _ => eq_map
+  |}.
+
+Require Import CRelationClasses.
+Lemma truncate_Equiv A (f : crelation A) :
+  Equivalence f -> RelationClasses.Equivalence (fun x y => inhabited (f x y)).
+Proof.
+intros H. constructor;
+  unfold RelationClasses.Reflexive,
+         RelationClasses.Symmetric,
+         RelationClasses.Transitive; intros.
+- constructor. reflexivity.
+- destruct H0. constructor. symmetry. assumption.
+- destruct H0, H1. constructor. etransitivity; eassumption.
+Qed.
+
+Axiom undefined : forall A, A.
+
+Existing Instances Bundled.PO Bundled.local Bundled.IGTFT.
+
+Definition point (A : IGT) (f : Subset (S A)) (fpt : Cont.pt (le A) (Cov A) f)
+  : One ~~> A :=
+  {| mp := fun t _ => f t
+   ; mp_ok := point_mp A f fpt
+  |}.

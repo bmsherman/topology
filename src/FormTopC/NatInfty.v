@@ -2,8 +2,8 @@ Require Import Algebra.SetsC Algebra.FrameC
   FormTopC.FormTop.
 
 Set Universe Polymorphism.
+Module NatInfty.
 (* The Alexandroff compactification of the natural numbers. *)
-Module NatInfty. 
 
 Inductive O : Set := 
   | MoreThan : nat -> O
@@ -242,8 +242,52 @@ Defined.
 
 End NatInfty.
 
+Require Import
+  Spec.Category
+  FormTopC.Bundled
+  FormTopC.Cont
+  FormTopC.InfoBase
+  FormTopC.All.
+Import Category.
 
-Definition test_computation : NatInfty.Partial unit
+Definition NatInfty : IGT.
+Proof. unshelve eapply (
+  {| S := NatInfty.O
+  ; le := NatInfty.le
+  ; PO := NatInfty.le_PreO
+  ; C := NatInfty.C
+  ; pos := NatInfty.Overt
+  |}).
+apply FormTop.Llocalized. apply NatInfty.le_PreO.
+Defined.
+
+Local Open Scope loc.
+
+Definition NatInfty_exactly (n : nat) : unit ~~> NatInfty
+  := point NatInfty (NatInfty.exactly n)
+  (IGCont.pt_cont _ _ (NatInfty.pt_exactly n)).
+
+Definition NatInfty_infty : unit ~~> NatInfty :=
+  point NatInfty (NatInfty.infty) (IGCont.pt_cont _ _
+    (NatInfty.pt_infty)).
+
+Definition NatInfty_checker (f : nat -> bool) : unit ~~> NatInfty
+  := point NatInfty (NatInfty.checkf f)
+    (IGCont.pt_cont _ _ (NatInfty.checkf_cont f)).
+
+Definition run_NatInfty (x : unit ~~> NatInfty) :
+  NatInfty.Partial Datatypes.unit.
+Proof.
+eapply NatInfty.pt_to_Partial.
+unfold NatInfty.is_pt.
+eapply IGCont.pt_cont_converse.
+
+pose proof (mp_ok NatInfty_infty).
+unfold Contprf in X. simpl in X.
+Abort.
+
+
+Definition test_computation : NatInfty.Partial Datatypes.unit
   := NatInfty.pt_to_Partial _ (NatInfty.checkf_cont (fun x => false)).
 
 (*

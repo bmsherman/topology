@@ -195,3 +195,49 @@ End DFunc.
 
 End Discrete.
 
+
+Require Import
+  Spec.Category
+  FormTopC.Bundled
+  FormTopC.Cont
+  FormTopC.Product.
+Import Category.
+
+Local Open Scope loc.
+
+Definition discrete (A : Type) : IGT :=
+  {| S := A 
+  ; PO := PreO.discrete A
+  ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
+  ; pos := InfoBase.Overt (PO := PO.discrete A)
+  |}.
+
+Definition discrete_f_mp {A B} (f : A -> B)
+  : Contmap (discrete A) (discrete B) :=
+  Discrete.discrF f.
+
+Definition discrete_f_mp_ok {A B} (f : A -> B)
+  : Contprf (discrete A) (discrete B) (discrete_f_mp f) := Discrete.fContI f.
+
+Definition discrete_f {A B} (f : A -> B) : discrete A ~~> discrete B :=
+  {| mp := discrete_f_mp f 
+   ; mp_ok := discrete_f_mp_ok f |}.
+
+Definition discrete_prod_assoc_mp {A B}
+  : Contmap (discrete A * discrete B) (discrete (A * B)) := Logic.eq.
+
+Lemma discrete_prod_assoc_mp_ok {A B}
+  : Contprf (discrete A * discrete B) (discrete (A * B)) 
+  discrete_prod_assoc_mp. 
+Proof. apply Discrete.prod_assoc_cont.
+Qed.
+
+Definition discrete_prod_assoc {A B : Type} : 
+  discrete A * discrete B ~~> discrete (A * B) :=
+  {| mp := discrete_prod_assoc_mp
+   ; mp_ok := discrete_prod_assoc_mp_ok
+  |}.
+
+(** Could have used Sierpinski? *)
+Class Discrete {A : IGT} : Type :=
+  { bequal : A * A ~~> discrete bool }.

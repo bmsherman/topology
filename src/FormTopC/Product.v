@@ -1,4 +1,8 @@
-Require Import Prob.StdLib FormTopC.FormTop Algebra.FrameC Algebra.SetsC 
+Require Import 
+  Prob.StdLib 
+  FormTopC.FormTop
+  Algebra.FrameC
+  Algebra.SetsC 
   FormTopC.Cont.
 
 Set Universe Polymorphism.
@@ -431,3 +435,92 @@ Qed.
 
 End Products.
 End ProductMaps.
+
+Require Import
+  Spec.Category
+  FormTopC.Bundled
+  FormTopC.Cont.
+Import Category.
+
+Local Open Scope obj.
+Local Open Scope loc.
+
+Existing Instances Bundled.PO Bundled.local.
+
+Definition times `(LA : IGT) `(LB : IGT) : IGT :=
+  let PO1 := PO LA in let PO2 := PO LB in
+  {| PO := Product.PO (S LA) (S LB)
+  ; localized := Product.loc _ _ _ _ _ _ (localized LA) (localized LB)
+  ; pos := Product.Overt (S LA) (S LB) _ _ _ _ _ (OvertS := pos LA) (OvertT := pos LB) _
+  |}.
+
+Infix "*" := times : loc_scope.
+
+Definition proj1_mp {A B : IGT} : Contmap (A * B) A
+   := ProductMaps.proj_L (leS := le A).
+
+Lemma proj1_mp_ok {A B : IGT} : Contprf (A * B) A proj1_mp.
+Proof.
+simpl.
+pose proof (PO A).
+apply ProductMaps.t_proj_L; try apply localized.
+apply PO.
+Qed.
+
+Definition proj1 {A B : IGT} : A * B ~~> A :=
+  {| mp := proj1_mp
+  ; mp_ok := proj1_mp_ok
+  |}.
+
+Definition proj2_mp {A B : IGT} : Contmap (A * B) B
+  := ProductMaps.proj_R (leT := le B).
+
+Lemma proj2_mp_ok {A B : IGT} : Contprf (A * B) B proj2_mp.
+Proof.
+simpl.
+pose proof (PO A).
+apply ProductMaps.t_proj_R; try apply localized.
+apply PO.
+Qed.
+
+Definition proj2 {A B : IGT} : A * B ~~> B :=
+  {| mp := proj2_mp
+  ; mp_ok := proj2_mp_ok
+  |}.
+
+Definition diagonal_mp {A : IGT} : Contmap A (A * A)
+  := ProductMaps.diagonal (leS := le A).
+
+Definition diagonal_mp_ok {A : IGT} : Contprf A (A * A) diagonal_mp.
+Proof.
+simpl. pose proof (PO A). apply ProductMaps.t_diagonal.
+apply localized.
+Qed.
+
+Definition diagonal {A : IGT} : A ~~> A * A :=
+  {| mp := diagonal_mp
+  ; mp_ok := diagonal_mp_ok
+  |}.
+
+Definition parallel_mp {A B X Y : IGT} 
+  (f : A ~~> X) (g : B ~~> Y) : Contmap (A * B) (X * Y)
+  := ProductMaps.parallel (leS := le A) (CS := C A) 
+      (leT := le B) (CT := C B) (mp f) (mp g).
+
+Definition parallel_mp_ok {A B X Y : IGT}
+  (f : A ~~> X) (g : B ~~> Y) :
+  Contprf (A * B) (X * Y) (parallel_mp f g).
+Proof.
+simpl. apply ProductMaps.t_parallel; try typeclasses eauto.
+apply (mp_ok f). apply (mp_ok g).
+Qed.
+
+Definition parallel {A B X Y : IGT} (f : A ~~> X) (g : B ~~> Y)
+  : A * B ~~> X * Y :=
+  {| mp := parallel_mp f g
+   ; mp_ok := parallel_mp_ok f g
+  |}.
+
+Definition pair {Γ A B : IGT} (f : Γ ~~> A) (g : Γ ~~> B)
+  : Γ ~~> A * B
+  := parallel f g ∘ diagonal.

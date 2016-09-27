@@ -19,6 +19,7 @@ src/FormTop/Cont.v
 src/FormTop/Concrete.v
 src/FormTop/Alexandroff.v
 
+src/FormTopC/All.v
 src/FormTopC/FormTop.v
 src/FormTopC/Cont.v
 src/FormTopC/Product.v
@@ -39,6 +40,7 @@ src/Algebra/Sets.v
 src/Algebra/SetsC.v
 
 src/Examples/ContPL.v
+src/Examples/Comp.v
 
 src/Language/ContPL.v
 src/Language/CCCPL.v

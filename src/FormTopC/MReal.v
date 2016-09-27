@@ -156,4 +156,7 @@ apply Q.max_case_strong. intros. rewrite <- H1. auto.
 intros. 
 admit. 
 auto.
-Abort.
+Admitted.
+
+Lemma min_Lip : Lipschitz (binop Qmin) Qpos1.
+Admitted.
