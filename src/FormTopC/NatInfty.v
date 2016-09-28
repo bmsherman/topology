@@ -130,11 +130,13 @@ Definition inj : Cont.map nat O := fun o n =>
 
 Require Import FormTopC.Discrete.
 
+(*
 Lemma inj_cont : Cont.t Logic.eq le (Discrete.Cov nat) (FormTop.GCov le C) inj.
 Proof.
-apply Discrete.pointwise_cont.
+apply DiscreteFunc.pointwise_cont.
 intros. unfold Cov. apply IGCont.pt_cont. apply pt_exactly.
 Qed.
+*)
 
 (** A little function that checks if a property holds for
     some natural number. *)

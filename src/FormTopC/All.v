@@ -7,8 +7,6 @@ Require Import
 
 Import Category.
 
-Axiom undefined : forall A, A.
-
 Existing Instances Bundled.PO Bundled.local Bundled.IGTFT.
 
 Instance IGT_Cat : CCat IGT :=
@@ -29,7 +27,6 @@ intros H. constructor;
 - destruct H0. constructor. symmetry. assumption.
 - destruct H0, H1. constructor. etransitivity; eassumption.
 Qed.
-
 
 Instance IGT_CMC : CMC IGT :=
   {| Category.id := fun _ => Bundled.id
@@ -54,5 +51,9 @@ intros. unfold eq. simpl. unfold eq_map.
   destruct H, H0. constructor.
   simpl. apply Cont.compose_proper;
     (apply mp_ok || assumption).
-- apply undefined.
+- intros. simpl. unfold eq_map.
+  induction H, H0. constructor.
+  unfold Product.pair. apply EQ_map_compose.
+  reflexivity. apply ProductMaps.parallelIG_Proper_EQ;
+  apply EQ_map_Sat; assumption.
 Defined.

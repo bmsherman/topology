@@ -71,26 +71,40 @@ Definition pt_eval (U : Subset A) (x : Cont.pt eq Cov U)
   end.
 
 End Discrete.
+End Discrete.
 
+Require Import
+  Spec.Category
+  FormTopC.Bundled
+  FormTopC.Cont
+  FormTopC.Product.
+Import Category.
+
+Local Open Scope loc.
+
+Definition discrete (A : Type) : IGT :=
+  {| S := A 
+  ; PO := PreO.discrete A
+  ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
+  ; pos := InfoBase.Overt (PO := PO.discrete A)
+  |}.
+
+Module DiscreteFunc.
 Ltac inv H := inversion H; clear H; subst.
 
 Section Func.
 
 Context {A : Type}.
+Variable B : IGT.
 
-Context {T : Type} {leT : crelation T}
-  {POT : PreO.t leT}
-  {CovT : T -> (Subset T) -> Type}
-  {FTT : FormTop.t leT CovT}.
+Variable (f : A -> Subset (S B)).
 
-Variable (f : A -> Subset T).
+Definition pointwise : Contmap (discrete A) B :=
+  fun (y : S B) (x : A) => In (f x) y.
 
-Definition pointwise : Cont.map A T :=
-  fun (y : T) (x : A) => In (f x) y.
+Hypothesis fpt : forall a, Cont.pt (le B) (Cov B) (f a).
 
-Hypothesis fpt : forall a, Cont.pt leT CovT (f a).
-
-Theorem pointwise_cont : Cont.t Logic.eq leT (Cov A) CovT pointwise.
+Theorem pointwise_cont : Cont.t Logic.eq (le B) (Discrete.Cov A) (Cov B) pointwise.
 Proof.
 constructor; unfold Cov; intros.
 - destruct (Cont.pt_here (fpt a)).
@@ -113,31 +127,31 @@ Definition discrF (f : A -> B) (y : B) (x : A) : Prop := f x = y.
 
 Instance POB : PO.t Logic.eq Logic.eq := PO.discrete B.
 
-
+(*
 Theorem fCont (f : A -> B) :
-  Cont.t Logic.eq Logic.eq (Cov A) (Cov B) (discrF f).
+  Cont.t Logic.eq (le (discrete B)) (Discrete.Cov A) (Discrete.Cov B) (discrF f).
 Proof.
-apply pointwise_cont. intros. apply pt_ok.
+apply pointwise_cont. intros. apply Discrete.pt_ok.
 Qed.
+*)
 
 (** Should be able to get this from the above just from
   rewriting, but it's not working... *)
 Theorem fContI (f : A -> B) :
-  Cont.t Logic.eq Logic.eq (CovG A) 
-  (CovG B) (discrF f).
+  Contprf (discrete A) (discrete B) (discrF f).
 Proof.
 constructor; unfold Cov; intros.
 - apply FormTop.grefl. exists (f a); constructor.
-- subst. assumption.
+- simpl in X. subst. assumption.
 - inv H. inv H0. apply FormTop.grefl. exists (f a). split; reflexivity.
   reflexivity.
 - apply FormTop.grefl. exists b; unfold In; auto. induction X; auto.
-  subst. apply IHX. assumption. induction i. subst.
+  simpl in *. subst. apply IHX. assumption. induction i. subst.
   apply X. constructor. assumption. 
 Qed.
 
 (** Same story here... *)
-Definition pt_okI (x : A) : Cont.pt eq (CovG A) (eq x).
+Definition pt_okI (x : A) : Contpt (discrete A) (Logic.eq x).
 Proof.
 constructor.
 - econstructor. reflexivity.
@@ -146,7 +160,7 @@ constructor.
 - intros. subst. econstructor.
   econstructor. reflexivity. induction X. 
   + assumption.
-  + subst. assumption.
+  + simpl in *. subst. assumption.
   + destruct i. subst. apply X. constructor.
 Qed.
 
@@ -155,9 +169,7 @@ Qed.
 Require Import FormTopC.Product.
 
 Theorem prod_assoc_cont :
-  Cont.t (prod_op Logic.eq Logic.eq) Logic.eq
-         (Product.Cov A B (leS := Logic.eq) (leT := Logic.eq) 
-         (Ix A) (Ix B) (C A) (C B)) (CovG (A * B)) Logic.eq.
+  Contprf (discrete A * discrete B) (discrete (A * B)) Logic.eq.
 Proof.
 constructor; intros.
 - apply FormTop.grefl. econstructor. constructor. reflexivity.
@@ -165,13 +177,11 @@ constructor; intros.
 - subst. apply FormTop.grefl. constructor 1 with a.
   split; reflexivity. reflexivity.
 - subst. unfold Cov in X. apply FormTop.grefl.
-  econstructor. apply CovG_Cov. eassumption. reflexivity.
+  econstructor. apply Discrete.CovG_Cov. eassumption. reflexivity.
 Qed.
 
 Theorem prod_deassoc_cont : 
-  Cont.t Logic.eq (prod_op Logic.eq Logic.eq) (CovG (A * B))
-         (Product.Cov A B (leS := Logic.eq) (leT := Logic.eq) 
-         (Ix A) (Ix B) (C A) (C B)) Logic.eq.
+  Contprf (discrete (A * B)) (discrete A * discrete B) Logic.eq.
 Proof.
 constructor; unfold Cov; intros.
 - econstructor. econstructor. reflexivity. reflexivity.
@@ -193,49 +203,14 @@ Qed.
 
 End DFunc.
 
-End Discrete.
-
-
-Require Import
-  Spec.Category
-  FormTopC.Bundled
-  FormTopC.Cont
-  FormTopC.Product.
-Import Category.
-
-Local Open Scope loc.
-
-Definition discrete (A : Type) : IGT :=
-  {| S := A 
-  ; PO := PreO.discrete A
-  ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
-  ; pos := InfoBase.Overt (PO := PO.discrete A)
-  |}.
-
-Definition discrete_f_mp {A B} (f : A -> B)
-  : Contmap (discrete A) (discrete B) :=
-  Discrete.discrF f.
-
-Definition discrete_f_mp_ok {A B} (f : A -> B)
-  : Contprf (discrete A) (discrete B) (discrete_f_mp f) := Discrete.fContI f.
+End DiscreteFunc.
 
 Definition discrete_f {A B} (f : A -> B) : discrete A ~~> discrete B :=
-  {| mp := discrete_f_mp f 
-   ; mp_ok := discrete_f_mp_ok f |}.
-
-Definition discrete_prod_assoc_mp {A B}
-  : Contmap (discrete A * discrete B) (discrete (A * B)) := Logic.eq.
-
-Lemma discrete_prod_assoc_mp_ok {A B}
-  : Contprf (discrete A * discrete B) (discrete (A * B)) 
-  discrete_prod_assoc_mp. 
-Proof. apply Discrete.prod_assoc_cont.
-Qed.
+  {| mp_ok := DiscreteFunc.fContI f |}.
 
 Definition discrete_prod_assoc {A B : Type} : 
   discrete A * discrete B ~~> discrete (A * B) :=
-  {| mp := discrete_prod_assoc_mp
-   ; mp_ok := discrete_prod_assoc_mp_ok
+  {| mp_ok := DiscreteFunc.prod_assoc_cont
   |}.
 
 (** Could have used Sierpinski? *)

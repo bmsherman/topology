@@ -117,6 +117,13 @@ eapply FormTop.trans. eassumption.
 intros. assumption.
 Qed.
 
+Lemma func_EQ_Sat (F_ G_ : map S T)
+  : func_EQ F_ G_ -> func_EQ (Sat F_) (Sat G_).
+Proof.
+unfold func_EQ. intros.
+rewrite <- !Sat_idempotent. assumption.
+Qed.
+
 Section DirectedSup.
 Context {Ix : Type} `{JoinLat.t Ix}.
 Variable (f : Ix -> map S T).

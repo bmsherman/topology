@@ -16,19 +16,7 @@ Set Universe Polymorphism.
 
 Module ExampleComp.
 
-
-Definition discrete_pt {A} (x : A) : unit ~~> discrete A :=
-  point (discrete A) (Logic.eq x) (Discrete.pt_okI x).
-
-Definition runDiscrete {A} (x : unit ~~> discrete A) : A.
-pose proof (Cont.here (mp_ok x) I) as H.
-remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
-induction H; subst. destruct u. destruct i.
-- exact a0.
-- apply IHGCov. reflexivity.
-- induction i. simpl in *. apply (X I).
-  unfold InfoBase.C. constructor. reflexivity.
-Defined.
+Existing Instances All.IGT_Cat All.IGT_CMC.
 
 Definition discrBinOp {A B C : Type} 
   (f : A -> B -> C) : discrete A * discrete B ~~> discrete C :=
@@ -45,6 +33,10 @@ Definition testFunc : discrete nat * discrete nat ~~> discrete nat
 
 Definition add3 : discrete nat ~~> discrete nat :=
   discrete_f (fun n => n + 3).
+
+
+Definition discrete_pt {A} (x : A) : unit ~~> discrete A :=
+  point (discrete A) (Logic.eq x) (DiscreteFunc.pt_okI x).
 
 Definition five : One ~~> discrete nat :=
   discrete_pt 5.
@@ -84,8 +76,6 @@ Defined.
 
 Require Import Language.CCCPL.
 
-Set Printing All.
-
 (* Why do I need to set these implicits to avoid a typeclass loop? 
    So frustrating! *)
 Definition func1_twice : unit ~~> (Y (discrete nat) ==> Y (discrete nat))%obj := 
@@ -102,6 +92,16 @@ Lemma discrete_fo {A B : Type} : FirstOrder (discrete A * unit) (discrete B)
   (Y (discrete A) ==> Y (discrete B))%obj.
 Proof.
 repeat econstructor.
+Defined.
+
+Definition runDiscrete {A} (x : unit ~~> discrete A) : A.
+pose proof (Cont.here (mp_ok x) I) as H.
+remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
+induction H; subst. destruct u. destruct i.
+- exact a0.
+- apply IHGCov. reflexivity.
+- induction i. simpl in *. apply (X I).
+  unfold InfoBase.C. constructor. reflexivity.
 Defined.
 
 Definition runDiscrete_CCC {A B : Type}
