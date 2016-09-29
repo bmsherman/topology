@@ -1,5 +1,9 @@
-Require Import Coq.Program.Basics
-  FormTopC.FormTop FormTopC.Cont Algebra.FrameC Algebra.SetsC
+Require Import 
+  Coq.Program.Basics
+  FormTopC.FormTop
+  FormTopC.Cont
+  Algebra.OrderC
+  Algebra.SetsC
   CMorphisms
   Prob.StdLib.
 
@@ -469,24 +473,6 @@ Qed.
 Admitted.
 
 Definition Point (f : Subset S) := Cont.t MeetLat.le leS Cov CovS (fun t _ => f t).
-
-Hypothesis FTS : FormTop.t leS CovS.
-
-Local Instance FrameS : Frame.t (Subset S) (FormTop.FOps leS CovS)
-  := FormTop.Frame leS CovS.
-
-Local Instance FrameOne : Frame.t (Subset True) (FormTop.FOps MeetLat.le Cov)
-  := FormTop.Frame MeetLat.le Cov.
-
-Existing Instance Frame.prop.
-
-(* Broken
-Definition toFPoint (f : Subset S) (pointf : Point f) :
-  Frame.cmap Frame.prop_ops (FormTop.FOps leS CovS) :=
-  {| Frame.finv := fun x => Cont.frame (fun t _ => f t) x I 
-  ; Frame.cont := Frame.morph_compose _ _
-    (Cont.toFrame FTOne FTS (fun t _ => f t) pointf) FTtoFrame |}.
-*)
 
 End One.
 End One.

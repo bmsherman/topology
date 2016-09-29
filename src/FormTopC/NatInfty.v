@@ -1,4 +1,6 @@
-Require Import Algebra.SetsC Algebra.FrameC
+Require Import 
+  Algebra.SetsC
+  Algebra.OrderC
   FormTopC.FormTop.
 
 Set Universe Polymorphism.

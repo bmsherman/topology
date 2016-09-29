@@ -1,4 +1,6 @@
-Require Import FormTopC.FormTop Algebra.FrameC
+Require Import 
+  FormTopC.FormTop
+  Algebra.OrderC
   Algebra.SetsC
   CoRN.metric2.Metric
   FormTopC.Metric.

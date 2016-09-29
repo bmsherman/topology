@@ -1,7 +1,7 @@
 Require Import 
   Prob.StdLib 
   FormTopC.FormTop
-  Algebra.FrameC
+  Algebra.OrderC
   Algebra.SetsC 
   FormTopC.Cont
   FormTopC.Bundled.

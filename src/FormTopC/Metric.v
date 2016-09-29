@@ -1,4 +1,7 @@
-Require Import FormTopC.FormTop Algebra.FrameC Algebra.SetsC.
+Require Import 
+  FormTopC.FormTop
+  Algebra.OrderC
+  Algebra.SetsC.
 
 Set Asymmetric Patterns.
 Set Universe Polymorphism.

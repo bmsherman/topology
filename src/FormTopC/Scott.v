@@ -128,3 +128,26 @@ Definition Open (A : IGT) : IGT :=
    ; localized := InfoBase.loc (PO := PO.fromPreO LE)
    ; pos := InfoBase.Overt (PO := PO.fromPreO LE)
   |}.
+
+Definition open_abstract_mp {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+     : Cont.map (S Γ) (S (Open A))
+  := Scott.absF (leT := le A) (IxT := Ix A) (CT := C A) f.
+
+Existing Instances Bundled.PO Bundled.local.
+
+Definition open_abstract_mp_ok {Γ A : IGT}
+  (f : Cont.map (S (Γ * A)) (S Σ))
+  : Cont.t (le (Γ * A)) (le Σ) (Cov (Γ * A)) (Cov Σ) f
+  -> Cont.t (le Γ) (le (Open A)) (Cov Γ) (Cov (Open A)) 
+    (open_abstract_mp f).
+Proof.
+intros H.
+apply Scott.absF_cont. apply H.
+Qed.
+
+Definition open_abstract {Γ A : IGT} (f : Γ * A ~~> Σ) : Γ ~~> Open A
+  := 
+  {| mp := open_abstract_mp (mp f)
+   ; mp_ok := open_abstract_mp_ok (mp f) (mp_ok f)
+  |}.

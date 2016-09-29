@@ -1,6 +1,9 @@
 Require Import 
   Basics
-  FormTopC.FormTop Algebra.SetsC Algebra.FrameC
+  FormTopC.FormTop
+  Algebra.SetsC
+  Algebra.OrderC
+  Algebra.FrameC
   CRelationClasses.
 
 Set Universe Polymorphism.

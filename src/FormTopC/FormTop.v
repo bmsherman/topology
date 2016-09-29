@@ -1,4 +1,9 @@
-Require Import Algebra.FrameC Algebra.SetsC CMorphisms CRelationClasses.
+Require Import 
+  Algebra.OrderC
+  Algebra.FrameC
+  Algebra.SetsC
+  CMorphisms
+  CRelationClasses.
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
 
@@ -815,66 +820,3 @@ Qed.
 End IGDefn.
 
 End Subspace.
-
-
-
-(** An inductively generated formal topology for the Cantor space.
-    See Section 4.1 of [1]. *)
-Module Cantor.
-
-Variable A : Type.
-
-Definition S := list A.
-
-Definition Ix (s : S) := True.
-
-Require Import Coq.Lists.List.
-
-Definition C (s : S) (_ : True) (s' : S) : Type := 
-  { b | s' = s ++ (b :: nil) }.
-
-Definition LE {A} (xs ys : list A) : Type := { zs |
-  xs = ys ++ zs }.
-
-Lemma LE_PO {A : Type} : @PO.t (list A) LE eq.
-Proof.
-constructor; intros.
-- constructor; unfold LE; intros.
-  + exists nil. rewrite app_nil_r. reflexivity.
-  + destruct X, X0.
-    exists (x1 ++ x0). rewrite e, e0.
-    rewrite app_assoc. reflexivity.
-- unfold Proper, respectful. 
-  unfold LE in *. intros. subst. reflexivity. 
-- unfold LE in *.  destruct X, X0.
-  rewrite e0 in e. rewrite <- app_assoc in e.
-  rewrite <- app_nil_r in e at 1.
-  apply app_inv_head in e.
-  symmetry in e. apply app_eq_nil in e.
-  destruct e. subst. rewrite app_nil_r.
-  reflexivity.
-Defined.
-
-Definition Cov := FormTop.GCov LE C.
-
-Theorem loc : FormTop.localized LE C.
-Proof.
-unfold FormTop.localized.
-intros a c H i. unfold Ix in *. destruct i. exists I.
-intros s H0. unfold C in *. destruct H0.
-simpl in H.
-unfold LE in H. destruct H.
-destruct x0.
-- subst.
-  exists (c ++ x :: nil). split. exists x. reflexivity.
-  unfold FormTop.down. split; simpl; unfold LE.
-  exists (x :: nil). reflexivity.
-  exists nil. repeat rewrite app_nil_r. reflexivity.
-- exists (c ++ a0 :: nil). split. exists a0. reflexivity.
-  unfold FormTop.down. split; simpl; unfold LE.
-  exists (x :: nil). assumption. exists (x0 ++ x :: nil).
-  rewrite <- app_assoc. simpl.
-  rewrite e. rewrite e0. rewrite <- app_assoc. reflexivity.
-Qed.
-
-End Cantor.

@@ -1,4 +1,7 @@
-Require Import FormTopC.FormTop Algebra.SetsC Algebra.FrameC.
+Require Import
+  FormTopC.FormTop 
+  Algebra.SetsC
+  Algebra.OrderC.
 
 Module JoinTop.
 

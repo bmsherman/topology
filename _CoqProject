@@ -33,11 +33,13 @@ src/FormTopC/Metric.v
 src/FormTopC/Compact.v
 src/FormTopC/MReal.v
 src/FormTopC/Truncate.v
+src/FormTopC/Cantor.v
 
 src/Algebra/Frame.v
 src/Algebra/FrameC.v
 src/Algebra/Sets.v
 src/Algebra/SetsC.v
+src/Algebra/OrderC.v
 
 src/Examples/ContPL.v
 src/Examples/Comp.v

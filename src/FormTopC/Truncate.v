@@ -2,7 +2,7 @@
 
 Require Import
   Algebra.SetsC
-  Algebra.FrameC
+  Algebra.OrderC
   FormTopC.FormTop
   FormTopC.Cont
   Coq.Classes.CMorphisms.

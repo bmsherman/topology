@@ -1,7 +1,8 @@
 Require Import FormTopC.FormTop 
   FormTopC.Cont
   FormTopC.InfoBase
-  Algebra.SetsC Algebra.FrameC
+  Algebra.SetsC
+  Algebra.OrderC
   Coq.Classes.CMorphisms
   Prob.StdLib.
 

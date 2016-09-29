@@ -1,6 +1,6 @@
 Require Import FormTopC.FormTop 
   FormTopC.Cont
-  Algebra.FrameC
+  Algebra.OrderC
   Algebra.SetsC
   Prob.StdLib.
 
@@ -157,3 +157,10 @@ intros H. constructor;
 - destruct H0. constructor. symmetry. assumption.
 - destruct H0, H1. constructor. etransitivity; eassumption.
 Qed.
+
+Definition Open {A : IGT} : Type := S A -> Type.
+
+(*
+Record Approx {A : IGT} {I : Type} : Type :=
+  { Approx_cov : 
+*)
