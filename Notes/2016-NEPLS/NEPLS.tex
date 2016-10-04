@@ -336,12 +336,24 @@ Axioms: next slide
 \end{center}
 \end{frame}
 
-\begin{frame}{Simulating non-determinism}
+\begin{frame}{The non-deterministic powerspace $\PLower(A)$}
+
+Variables: $\lozenge P$ for each $P : \Open{A}$
+
+Axioms:
 \begin{mathpar}
 \inferrule* [right=]
-  {\top \vdash_A \bigvee_{i : I} P_i}
-  {\top \vdash_{\PLower(A)} \bigvee_{i : I} \lozenge P_i}
+  {P \vdash_A \bigvee_{i : I} Q_i}
+  {\lozenge P \vdash_{\PLower(A)} \bigvee_{i : I} \lozenge Q_i}
+
+\inferrule* [right=]
+  {}
+  {\top \vdash_{\PLower(A)} \lozenge \top_A}
 \end{mathpar}
+\pause
+\[
+\frac{A \Downarrow I}{\PLower(A) \Downarrow I}
+\]
 \end{frame}
 
 \begin{frame}{Buridan's autonomous car}
@@ -405,13 +417,6 @@ Axioms: next slide
   \ret{\PLower}(\mathsf{false})
 \end{cases}
 \end{align*}
-\end{frame}
-
-\begin{frame}{3. Facilitates reasoning about uncertainty}
-\begin{itemize}
-\item \emph{Every} space has a probabilistic powerspace
-\item Non-determinism and randomness have computational meaning
-\end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -500,6 +505,13 @@ A programming language for continuous spaces which
 \emph{Continuity and robustness of programs} by Swarat Chaudhuri, Sumit Gulwani, and Robert Lublinerman
 
 Any function $A \to B$ is \emph{automatically} continuous
+\end{frame}
+
+\begin{frame}{3. Facilitates reasoning about uncertainty}
+\begin{itemize}
+\item \emph{Every} space has a probabilistic powerspace
+\item Non-determinism and randomness have computational meaning
+\end{itemize}
 \end{frame}
 
 \begin{frame}{What is continuity?}
