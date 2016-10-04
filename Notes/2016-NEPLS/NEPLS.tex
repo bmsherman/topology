@@ -338,7 +338,7 @@ Axioms: next slide
 
 \begin{frame}{The non-deterministic powerspace $\PLower(A)$}
 
-Variables: $\lozenge P$ for each $P : \Open{A}$
+Variables: $\lozenge P$ for each $P : \Open(A)$
 
 Axioms:
 \begin{mathpar}
@@ -417,6 +417,16 @@ Axioms:
   \ret{\PLower}(\mathsf{false})
 \end{cases}
 \end{align*}
+\end{frame}
+
+\begin{frame}{Advantages}
+\begin{itemize}
+\item \emph{Every} space $A$ naturally has a powerspace $\Prob(A)$ of probability distributions
+\note{Not true that every Coq type has a type with its probability distributions.
+}
+\item Powerspaces can be used for reasoning and computation
+\note{Computation with powerspaces doesn't work in Coq (c.f. difficulty with Bishop's notions of compactness)}
+\end{itemize}
 \end{frame}
 
 \begin{frame}
