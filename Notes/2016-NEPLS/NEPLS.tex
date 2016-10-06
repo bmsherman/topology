@@ -100,7 +100,10 @@ In domains where software correctness is paramount, construction of formal proof
 \begin{frame}{Patriot missile failure (1991)}
 
 \begin{itemize}
-\item A missile missed its target due to numerical rounding error
+\item A missile missed its target
+\bigskip
+\item Cause: numerical rounding error
+\bigskip
 \item Would like to prove: modeling physical motion and sensor uncertainty, the missile hits its target with high probability
 \end{itemize}
 
@@ -109,30 +112,34 @@ In domains where software correctness is paramount, construction of formal proof
 \begin{frame}{Ariane 5 rocket explosion (1996)}
 
 \begin{itemize}
-\item Rocket's guidance system failed due to a numerical overflow
+\item Rocket's guidance system failed
+\bigskip
+\item Cause: numerical overflow
+\bigskip
 \item Would like to prove: guidance system's state estimates is close to actual rocket state with high probability
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Aircraft collision avoidance}
-[ Picture ]
+\begin{center}
+\includegraphics[width=0.8\textwidth]{images/airplane.jpg}
+\end{center}
 
 Detect aircraft which may be on track to collide, and decide on avoidance maneuvers
 \end{frame}
 
-\begin{frame}{Challenges}
+\begin{frame}
+\begin{center}
+\huge Challenge: gap between the \textbf{code} and the \textbf{math}
+\end{center}
+
+\bigskip
+\pause 
 \begin{itemize}
-\item Gap between the code and the math
-  \begin{itemize}
   \item Overflow, rounding errors
   \item Mathematical identities don't actually hold
   \item Proofs about models (e.g., KeYmaera) invalid
-  \end{itemize}
-\item Difficulty with probabilistic uncertainty
-  \begin{itemize}
-  \item No Coq library yet defines probability over continuous spaces
-  \item Probabilistic semantics for programs on continuous spaces unclear
-  \end{itemize}
+  \item Probabilistic semantics are difficult/unclear
 \end{itemize}
 \end{frame}
 
@@ -150,24 +157,26 @@ Detect aircraft which may be on track to collide, and decide on avoidance maneuv
 \end{itemize}
 \end{frame}
 
-\begin{frame}
+\begin{frame}{PL for continuous spaces}
 
 \begin{center}
-\Large 
+\Large
 \begin{align*}
 \text{types} &\triangleq \text{spaces}
 \\
-\text{functions} &\triangleq \text{continuous maps}
-\\
 \text{values} &\triangleq \text{points}
+\\
+\text{functions} &\triangleq \text{continuous maps}
 \end{align*}
 \end{center}
 \end{frame}
 
-\begin{frame}
+\begin{frame}{Topology, briefly}
 \begin{itemize}
 \item a \emph{space} $X$ is a set of ``observable properties'' together with axioms relating those properties
-\item a \emph{point} of $X$ gives consistent truth values to observable properties
+\bigskip
+\item a \emph{point} of $X$ gives consistent truth values to observable properties (a model)
+\bigskip
 \item a \emph{continuous map} $f : X \to Y$ (consistently) describes properties of $Y$ in terms of the properties of $X$
 \end{itemize}
 \end{frame}
@@ -179,6 +188,7 @@ Detect aircraft which may be on track to collide, and decide on avoidance maneuv
   \item if true, one can just ``see it'' to be true
   \item if false, might be impossible to tell
 \end{itemize}
+\bigskip
 \item Connectives $\top$, $\bot$, finitary $\wedge$, infinitary $\bigvee$
 \end{itemize}
 \end{frame}
@@ -349,32 +359,39 @@ Axioms: next slide
 \end{center}
 \end{frame}
 
-\begin{frame}{Buridan's principle}
+\begin{frame}{Buridan's autonomous car}
+
 \begin{center}
-{\Huge $\R \to \bool$}
-\\
-\includegraphics[width=\textwidth]{images/buridan.jpg}
-\end{center}
- \setlength{\TPHorizModule}{\textwidth}
- \setlength{\TPVertModule}{\textwidth}
- \begin{textblock}{1}(0.1, 0.45)
- \begin{center}
-\visible<2->{
- \colorbox{white}{\vspace{1em} $\quad decide(x : \R) = x \ge 0 : \bool \quad$ \vspace{1em}}
- }
+\only<1-2>{\Huge $\R \to \bool$}
+\only<3>{\Huge $\R \to \PLower(\bool)$}
+
+ \begin{tikzpicture}
+ \draw [<->, ultra thick] (-5, 0) -- (5, 0);
+ \draw [(->, ultra thick, green] (-2, 0.2) -- (5, 0.2);
+ \draw [<-), ultra thick, red] (-5, 0.4) -- (2, 0.4);
+ \node[inner sep=0pt, anchor=south] (car) at (-2.5, 0.6)
+    {\includegraphics[width=.25\textwidth]{images/car.png}};
+ \node[inner sep=0pt, anchor=south] (light) at (3.5,0.6)
+    {\includegraphics[width=.1\textwidth]{images/traffic-light.png}};
+ \end{tikzpicture}
  \end{center}
- \end{textblock}
+
+\only<2>{ 
+ \begin{align*}
+ \mathsf{brake?} &: \R \to \bool
+\\ \mathsf{brake?}(x) &\triangleq x \le 0
+ \end{align*}
+ }
+ \only<3>{ 
+ \begin{align*}
+ \mathsf{brake?} &: \R \to \PLower(\bool)
+\\ \mathsf{brake?}(x) &\triangleq \, ?
+ \end{align*}
+ }
+ 
 \end{frame}
 
 \note{Even with floating point, it is usually a bad idea to write a program that makes hard comparisons like this. It's unstable, and this is explained by topological concerns.}
-
-\begin{frame}{Buridan's principle}
-\begin{center}
-\Huge $\R \to \PLower(\bool)$
-\\
-\includegraphics[width=\textwidth]{images/buridan.jpg}
-\end{center}
-\end{frame}
 
 \begin{frame}{The non-deterministic powerspace $\PLower(A)$}
 
@@ -402,20 +419,6 @@ Axioms:
 \end{mathpar}
 \end{frame}
 
-\begin{frame}{Buridan's autonomous car}
-\begin{center}
- \begin{tikzpicture}
- \draw [<->, ultra thick] (-5, 0) -- (5, 0);
- \draw [(->, ultra thick, green] (-2, 0.2) -- (5, 0.2);
- \draw [<-), ultra thick, red] (-5, 0.4) -- (2, 0.4);
- \node[inner sep=0pt, anchor=south] (car) at (-2.5, 0.6)
-    {\includegraphics[width=.25\textwidth]{images/car.png}};
- \node[inner sep=0pt, anchor=south] (light) at (3.5,0.6)
-    {\includegraphics[width=.1\textwidth]{images/traffic-light.png}};
- \end{tikzpicture}
- \end{center}
-\end{frame}
-
 \begin{frame}{The car's state}
 \begin{center}
 \begin{tikzpicture}[scale=2.7]
@@ -441,7 +444,7 @@ Axioms:
 \begin{frame}{No input uncertainty}
 \begin{align*}
 \mathsf{brake?} &: \{ \State \suchthat \SafeToGo \vee \SafeToStop \} \to \PLower(\bool)
-\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
+\\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
 \begin{cases}
 \SafeToGo
   \quad &\Longrightarrow \quad
@@ -504,7 +507,7 @@ Axioms:
 \begin{frame}{Non-determistic input uncertainty}
 \begin{align*}
 \mathsf{brake?} &: \{ \PUpper(\State) \suchthat \square \SafeToGo \vee \square \SafeToStop \} \to \PLower(\bool)
-\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
+\\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
 \begin{cases}
 \square \SafeToGo
   \quad &\Longrightarrow \quad
@@ -521,7 +524,7 @@ Axioms:
 \begin{align*}
 \mathsf{brake?} &: \{ \Prob(\State) \suchthat \Pr[\SafeToGo] > 99\% \vee \Pr[\SafeToStop] > 99\% \} 
 \\ &\to \PLower(\bool)
-\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
+\\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
 \begin{cases}
 \Pr[\SafeToGo] > 99\%
    &\Longrightarrow
