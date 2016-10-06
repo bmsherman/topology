@@ -12,6 +12,8 @@
 \usetikzlibrary{arrows}
 \usetikzlibrary{shapes, arrows.meta}
 
+\usepackage[absolute, overlay]{textpos}
+
 \usepackage{pgfplots}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -155,18 +157,18 @@ Detect aircraft which may be on track to collide, and decide on avoidance maneuv
 \begin{align*}
 \text{types} &\triangleq \text{spaces}
 \\
-\text{open expressions} &\triangleq \text{continuous maps}
+\text{functions} &\triangleq \text{continuous maps}
 \\
-\text{closed expressions} &\triangleq \text{points}
+\text{values} &\triangleq \text{points}
 \end{align*}
 \end{center}
 \end{frame}
 
 \begin{frame}
 \begin{itemize}
-\item a \emph{space} $X$ is a theory of geometric logic
-\item a \emph{continuous map} $f : X \to Y$ interprets the theory of $Y$ in terms of the logic of $X$
-\item a \emph{point} of $X$ is a model of the theory
+\item a \emph{space} $X$ is a set of ``observable properties'' together with axioms relating those properties
+\item a \emph{point} of $X$ gives consistent truth values to observable properties
+\item a \emph{continuous map} $f : X \to Y$ (consistently) describes properties of $Y$ in terms of the properties of $X$
 \end{itemize}
 \end{frame}
 
@@ -176,13 +178,75 @@ Detect aircraft which may be on track to collide, and decide on avoidance maneuv
 \begin{itemize}
   \item if true, one can just ``see it'' to be true
   \item if false, might be impossible to tell
-\end{itemize} 
+\end{itemize}
 \item Connectives $\top$, $\bot$, finitary $\wedge$, infinitary $\bigvee$
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Does Bigfoot exist?}
+Variables:
+\begin{mathpar}
+\inferrule{}{\mathsf{bigfoot\_exists} : \Open(\mathsf{Bigfoot})}
+
+\inferrule{c : \mathsf{Country}}{\mathsf{bigfoot\_in}(c) : \Open(\mathsf{Bigfoot})}
+\end{mathpar}
+
+Axioms:
+\[
+\mathsf{bigfoot\_exists} \vdash \bigvee_{c : \mathsf{Country}} \mathsf{bigfoot\_in}(c)
+\]
+% If bigfoot exists, we must have found him somewhere
+
+%\pause
+%\[
+%\top \nvdash \mathsf{bigfoot\_exists} \vee \neg \mathsf{bigfoot\_exists} 
+%\]
+%we may never know whether Bigfoot exists, because it's so hard to rule out the possibiliity
+
+\end{frame}
+
+
+\begin{frame}{Running points}
+\begin{center}
+\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step1.pdf_tex}}
+\end{center}
+\end{frame}
+
+\begin{frame}{Running points}
+\begin{center}
+\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step2.pdf_tex}}
+\end{center}
+\end{frame}
+
+\begin{frame}{Running points}
+\begin{center}
+\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step3.pdf_tex}}
+\end{center}
+\end{frame}
+
+\begin{frame}{Running points (formally)}
+\begin{align*}
+&A : \Space \\
+& I : \Type \\
+&i : I \vdash P_i : \Open(A) \\
+&x : \mathsf{Pt}(A)
+\end{align*}
+
+\bigskip
+
+\begin{mathpar}
+\inferrule* [right=]
+  {\quad \top \vdash_A \bigvee_{i : I} P_i}
+  {\exists i : I, x \models P_i}
+\end{mathpar}
+\end{frame}
+
 \begin{frame}{$\R$}
-Variables: $p < \cdot < q$ for $p, q : \rat$
+Variables:
+\begin{mathpar}
+\inferrule{p, q : \rat}
+ {p < \cdot < q : \Open(\R)}
+\end{mathpar}
 
 Axioms: next slide
 \end{frame}
@@ -249,58 +313,14 @@ Axioms: next slide
 \end{frame}
 
 
-\begin{frame}{Running points}
-\begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step1.pdf_tex}}
-\end{center}
-\end{frame}
 
-\begin{frame}{Running points}
-\begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step2.pdf_tex}}
-\end{center}
-\end{frame}
-
-\begin{frame}{Running points}
-\begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step3.pdf_tex}}
-\end{center}
-\end{frame}
-
-\begin{frame}{Running points (formally)}
-\begin{align*}
-&A : \Space \\
-& I : \Type \\
-&i : I \vdash P_i : \Open(A) \\
-&x : \mathsf{Pt}(A)
-\end{align*}
-
-\bigskip
-
-\begin{mathpar}
-\inferrule* [right=]
-  {\quad \top \vdash_A \bigvee_{i : I} P_i}
-  {\exists i : I, x \models P_i}
-\end{mathpar}
-\end{frame}
-
-\begin{frame}{Example computation rules}
+\begin{frame}{Running $\R$}
 \begin{mathpar}
 \inferrule* [right=]
   {\varepsilon : \rat^+}
   {\top \vdash_\R \bigvee_{q : \rat} q - \varepsilon < \cdot < q + \varepsilon}
 \end{mathpar}
 
-\begin{mathpar}
-\inferrule* [right=]
-  {\top \vdash_A \bigvee_{i : I} P_i
-  \\ \top \vdash_B \bigvee_{j : J} Q_j}
-  {\top \vdash_{A \times B} \bigvee_{(i, j) : I \times J} P_i \times Q_j}
-\end{mathpar}
-
-\end{frame}
-
-\begin{frame}{Example computation rules (simplified)}
 \[
 \Downarrow : \Space \to \Type \to \Type
 \]
@@ -311,22 +331,42 @@ Axioms: next slide
   {\R \Downarrow \rat}
 \end{mathpar}
 
-\begin{mathpar}
-\inferrule* [right=]
-  {A \Downarrow I
-  \\ B \Downarrow J}
-  {A \times B \Downarrow I \times J}
-\end{mathpar}
+\end{frame}
 
+\begin{frame}{Computing with spaces}
+\begin{itemize}
+\item Proofs are used to compute!
+\item products, disjoint union, probability distributions, powerspaces
+\item mathematical laws hold
+\item no rounding error or overflow
+\end{itemize}
+
+\pause
+
+\begin{center}
+\item How to write programs?
+\\ How to prove things about them?
+\end{center}
 \end{frame}
 
 \begin{frame}{Buridan's principle}
 \begin{center}
-\Huge $\R \to \bool$
+{\Huge $\R \to \bool$}
 \\
 \includegraphics[width=\textwidth]{images/buridan.jpg}
 \end{center}
+ \setlength{\TPHorizModule}{\textwidth}
+ \setlength{\TPVertModule}{\textwidth}
+ \begin{textblock}{1}(0.1, 0.45)
+ \begin{center}
+\visible<2->{
+ \colorbox{white}{\vspace{1em} $\quad decide(x : \R) = x \ge 0 : \bool \quad$ \vspace{1em}}
+ }
+ \end{center}
+ \end{textblock}
 \end{frame}
+
+\note{Even with floating point, it is usually a bad idea to write a program that makes hard comparisons like this. It's unstable, and this is explained by topological concerns.}
 
 \begin{frame}{Buridan's principle}
 \begin{center}
@@ -342,18 +382,24 @@ Variables: $\lozenge P$ for each $P : \Open(A)$
 
 Axioms:
 \begin{mathpar}
-\inferrule* [right=]
-  {P \vdash_A \bigvee_{i : I} Q_i}
-  {\lozenge P \vdash_{\PLower(A)} \bigvee_{i : I} \lozenge Q_i}
+\inferrule
+  {}
+  {\lozenge \left( \bigvee_{i : I} P_i \right) {\dashv \vdash}_{\PLower(A)} \bigvee_{i : I} \lozenge P_i}
 
-\inferrule* [right=]
+\inferrule
   {}
   {\top \vdash_{\PLower(A)} \lozenge \top_A}
 \end{mathpar}
+
 \pause
-\[
-\frac{A \Downarrow I}{\PLower(A) \Downarrow I}
-\]
+\hrule
+
+\begin{mathpar}
+\inferrule{P \vdash_A \bigvee_{i : I} Q_i}
+  {\lozenge P \vdash_{\PLower(A)} \bigvee_{i : I} \lozenge Q_i}
+
+\inferrule{A \Downarrow I}{\PLower(A) \Downarrow I}
+\end{mathpar}
 \end{frame}
 
 \begin{frame}{Buridan's autonomous car}
@@ -370,51 +416,120 @@ Axioms:
  \end{center}
 \end{frame}
 
+\begin{frame}{The car's state}
+\begin{center}
+\begin{tikzpicture}[scale=2.7]
+    % Draw axes
+    \draw [<->,thick] (0,2) node (yaxis) [above] {speed}
+        |- (3,0) node (xaxis) [right] {distance};
+    % Draw two intersecting lines
+    \coordinate (a_1) at (0.3, 0);
+    \coordinate (a_2) at (2.3, 2);
+    \coordinate (b_1) at (2.3, 0);
+    \coordinate (b_2) at (0.3, 2);
+    \shade[top color=green, bottom color=green, fill opacity=0.5] 
+      (a_1) -- (a_2) -- (3,2) -- (3,0) -- cycle;
+    \shade[top color=red, bottom color=red, fill opacity=0.5] 
+      (b_1) -- (b_2) -- (0, 2) -- (0,0) -- cycle;
+    \draw (a_1) -- (a_2);
+    \draw (b_1) -- (b_2);
+\end{tikzpicture}
+ \end{center}
+
+\end{frame}
+
 \begin{frame}{No input uncertainty}
 \begin{align*}
-\mathsf{decide} &: \{ \State \suchthat \SafeToGo \vee \SafeToStop \} \to \PLower(\bool)
-\\ \mathsf{decide}(s) &= \mathsf{cases}(s)
+\mathsf{brake?} &: \{ \State \suchthat \SafeToGo \vee \SafeToStop \} \to \PLower(\bool)
+\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
 \begin{cases}
 \SafeToGo
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{true})
+  \ret{\PLower}(\mathsf{false})
 \\
 \SafeToStop
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{false})
+  \ret{\PLower}(\mathsf{true})
 \end{cases}
 \end{align*}
+
+\pause
+
+\begin{mathpar}
+\inferrule{\bool \Downarrow \texttt{bool}}
+  {\PLower(\bool) \Downarrow \texttt{bool}}
+\end{mathpar}
+
 \end{frame}
+
+
+\begin{frame}{The car's state}
+\begin{center}
+\begin{tikzpicture}[scale=2.7]
+    % Draw axes
+    \draw [<->,thick] (0,2) node (yaxis) [above] {speed}
+        |- (3,0) node (xaxis) [right] {distance};
+    % Draw two intersecting lines
+    \coordinate (a_1) at (0.3, 0);
+    \coordinate (a_2) at (2.3, 2);
+    \coordinate (b_1) at (2.3, 0);
+    \coordinate (b_2) at (0.3, 2);
+    \coordinate (a_1x) at (0.6, 0);
+    \coordinate (a_2x) at (2.6, 2);
+    \coordinate (b_1x) at (2, 0);
+    \coordinate (b_2x) at (0, 2);
+    \shade<1-2>[top color=green, bottom color=green, fill opacity=0.5] 
+      (a_1) -- (a_2) -- (3,2) -- (3,0) -- cycle;
+    \shade<1-2>[top color=red, bottom color=red, fill opacity=0.5] 
+      (b_1) -- (b_2) -- (0, 2) -- (0,0) -- cycle;
+    \draw<1-2> (a_1) -- (a_2);
+    \draw<1-2> (b_1) -- (b_2);
+    
+    \fill<2-3>[black] (1.3, 0.7) circle (1pt);
+    \draw<2-3>[black] (1.3,0.7) circle (6pt);
+
+    \draw<3>[dashed] (a_1) -- (a_2);
+    \draw<3>[dashed] (b_1) -- (b_2);
+    \draw<3> (a_1x) -- (a_2x);
+    \draw<3> (b_1x) -- (b_2x);
+    \shade<3>[top color=green, bottom color=green, fill opacity=0.5] 
+      (a_1x) -- (a_2x) -- (3,2) -- (3,0) -- cycle;
+    \shade<3>[top color=red, bottom color=red, fill opacity=0.5] 
+      (b_1x) -- (b_2x) -- (0, 2) -- (0,0) -- cycle;
+\end{tikzpicture}
+ \end{center}
+\end{frame}
+
 
 \begin{frame}{Non-determistic input uncertainty}
 \begin{align*}
-\mathsf{decide} &: \{ \PUpper(\State) \suchthat \square \SafeToGo \vee \square \SafeToStop \} \to \PLower(\bool)
-\\ \mathsf{decide}(s) &= \mathsf{cases}(s)
+\mathsf{brake?} &: \{ \PUpper(\State) \suchthat \square \SafeToGo \vee \square \SafeToStop \} \to \PLower(\bool)
+\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
 \begin{cases}
 \square \SafeToGo
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{true})
+  \ret{\PLower}(\mathsf{false})
 \\
 \square \SafeToStop
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{false})
+  \ret{\PLower}(\mathsf{true})
 \end{cases}
 \end{align*}
 \end{frame}
 
 \begin{frame}{Probabilistic uncertainty}
 \begin{align*}
-\mathsf{decide} &: \{ \Prob(\State) \suchthat \Pr[\SafeToGo] > 99\% \vee \Pr[\SafeToStop] > 99\% \} 
+\mathsf{brake?} &: \{ \Prob(\State) \suchthat \Pr[\SafeToGo] > 99\% \vee \Pr[\SafeToStop] > 99\% \} 
 \\ &\to \PLower(\bool)
-\\ \mathsf{decide}(s) &= \mathsf{cases}(s)
+\\ \mathsf{brake?}(s) &= \mathsf{cases}(s)
 \begin{cases}
 \Pr[\SafeToGo] > 99\%
    &\Longrightarrow
-  \ret{\PLower}(\mathsf{true})
+  \ret{\PLower}(\mathsf{false})
 \\
 \Pr[\SafeToStop] > 99\%
    &\Longrightarrow
-  \ret{\PLower}(\mathsf{false})
+  \ret{\PLower}(\mathsf{true})
 \end{cases}
 \end{align*}
 \end{frame}
@@ -533,20 +648,21 @@ Observable property of output $\Rightarrow$ observable property of input
 %\begin{frame}{3. Facilitates reasoning about uncertainty}
 %\end{frame}
 
-\begin{frame}{Does Bigfoot exist?}
-Variables: $\mathsf{bigfoot\_exists}$, $\mathsf{bigfoot\_in}(c)$ for each $c \in \mathsf{Country}$
+\begin{frame}{Running product spaces}
 
-Axioms:
-\[
-\mathsf{bigfoot\_exists} \vdash \bigvee_{c \in \mathsf{Country}} \mathsf{bigfoot\_in}(c)
-\]
-% If bigfoot exists, we must have found him somewhere
+\begin{mathpar}
+\inferrule* [right=]
+  {\top \vdash_A \bigvee_{i : I} P_i
+  \\ \top \vdash_B \bigvee_{j : J} Q_j}
+  {\top \vdash_{A \times B} \bigvee_{(i, j) : I \times J} P_i \times Q_j}
+\end{mathpar}
 
-\pause
-\[
-\top \nvdash \mathsf{bigfoot\_exists} \vee \neg \mathsf{bigfoot\_exists} 
-\]
-%we may never know whether Bigfoot exists, because it's so hard to rule out the possibiliity
+\begin{mathpar}
+\inferrule* [right=]
+  {A \Downarrow I
+  \\ B \Downarrow J}
+  {A \times B \Downarrow I \times J}
+\end{mathpar}
 
 \end{frame}
 
