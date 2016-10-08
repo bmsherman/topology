@@ -1,5 +1,4 @@
-\documentclass[14pt, notes]{beamer} 
-%\documentclass[14pt]{beamer} 
+\documentclass[14pt]{beamer} 
 \usetheme{default}
 
 \usepackage{import}
@@ -26,6 +25,9 @@
 %\setbeamercovered{transparent}
 \definecolor{bgcol}{rgb}{0.8, 0.8, 0.8}
 \setbeamercolor{bgcolor}{fg=black,bg=bgcol}
+
+\definecolor{green}{rgb}{0.0, 0.5, 0.0}
+\definecolor{red}{rgb}{0.8, 0.0, 0.0}
 
 \newcommand{\Type}{\mathsf{Type}}
 \newcommand{\Space}{\mathsf{Space}}
@@ -70,7 +72,8 @@
 \\ \small MIT}
 \date{October 7, 2016}
 
-\setbeamertemplate{footline}{}
+\setbeamertemplate{footline}{%
+  \raisebox{5pt}{\makebox[\paperwidth]{\hfill\makebox[10pt]{\scriptsize\insertframenumber}}}}
 \setbeamertemplate{navigation symbols}{}
 %\setbeamertemplate{headline}
 %{\vspace{0.03em}
@@ -104,7 +107,7 @@ In domains where software correctness is paramount, construction of formal proof
 \bigskip
 \item Cause: numerical rounding error
 \bigskip
-\item Would like to prove: modeling physical motion and sensor uncertainty, the missile hits its target with high probability
+\item Would like to prove: the missile hits its target with high probability
 \end{itemize}
 
 \end{frame}
@@ -116,7 +119,7 @@ In domains where software correctness is paramount, construction of formal proof
 \bigskip
 \item Cause: numerical overflow
 \bigskip
-\item Would like to prove: guidance system's state estimates is close to actual rocket state with high probability
+\item Would like to prove: guidance system's state estimate is close to actual rocket state with high probability
 \end{itemize}
 \end{frame}
 
@@ -171,66 +174,56 @@ Detect aircraft which may be on track to collide, and decide on avoidance maneuv
 \end{center}
 \end{frame}
 
-\begin{frame}{Topology, briefly}
-\begin{itemize}
-\item a \emph{space} $X$ is a set of ``observable properties'' together with axioms relating those properties
-\bigskip
-\item a \emph{point} of $X$ gives consistent truth values to observable properties (a model)
-\bigskip
-\item a \emph{continuous map} $f : X \to Y$ (consistently) describes properties of $Y$ in terms of the properties of $X$
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Geometric theories}
-\begin{itemize}
-\item propositions are ``affirmable'' properties
-\begin{itemize}
-  \item if true, one can just ``see it'' to be true
-  \item if false, might be impossible to tell
-\end{itemize}
-\bigskip
-\item Connectives $\top$, $\bot$, finitary $\wedge$, infinitary $\bigvee$
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Does Bigfoot exist?}
+\begin{frame}{$\nat^\infty$: How long does my program run?}
+\small
 Variables:
 \begin{mathpar}
-\inferrule{}{\mathsf{bigfoot\_exists} : \Open(\mathsf{Bigfoot})}
+\inferrule{n : \nat}{\mathsf{exactly}(n) : \Open(\nat^\infty)}
 
-\inferrule{c : \mathsf{Country}}{\mathsf{bigfoot\_in}(c) : \Open(\mathsf{Bigfoot})}
+\inferrule{n : \nat}{\mathsf{at\_least}(n) : \Open(\nat^\infty)}
 \end{mathpar}
 
 Axioms:
+\begin{mathpar}
+\inferrule{}{\mathsf{at\_least}(n) \vdash \mathsf{exactly}(n) \vee \mathsf{at\_least}(n + 1)}
+
+\inferrule{k \le n}{\mathsf{exactly}(n) \vdash \mathsf{at\_least}(k)}
+
+\inferrule{k \le n}{\mathsf{at\_least}(n) \vdash \mathsf{at\_least}(k)}
+\end{mathpar}
+
+\end{frame}
+
+\begin{frame}{Running points of $\nat^\infty$}
 \[
-\mathsf{bigfoot\_exists} \vdash \bigvee_{c : \mathsf{Country}} \mathsf{bigfoot\_in}(c)
+\top \vdash \mathsf{exactly}(0) \vee \mathsf{exactly}(1) \vee \mathsf{at\_least}(2)
 \]
-% If bigfoot exists, we must have found him somewhere
 
-%\pause
-%\[
-%\top \nvdash \mathsf{bigfoot\_exists} \vee \neg \mathsf{bigfoot\_exists} 
-%\]
-%we may never know whether Bigfoot exists, because it's so hard to rule out the possibiliity
+\pause
+
+\[
+\overline{1} \models \mathsf{exactly}(1)
+\]
+
+\pause
+
+\[
+\overline{5} \models \mathsf{at\_least}(2)
+\]
+
+\pause
+
+\[
+\infty \models \mathsf{at\_least}(2)
+\]
 
 \end{frame}
 
-
 \begin{frame}{Running points}
 \begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step1.pdf_tex}}
-\end{center}
-\end{frame}
-
-\begin{frame}{Running points}
-\begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step2.pdf_tex}}
-\end{center}
-\end{frame}
-
-\begin{frame}{Running points}
-\begin{center}
-\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step3.pdf_tex}}
+\only<1>{\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step1.pdf_tex}}}
+\only<2>{\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step2.pdf_tex}}}
+\only<3>{\resizebox{0.7\textwidth}{!}{\import{../Figures/Cover/output/}{step3.pdf_tex}}}
 \end{center}
 \end{frame}
 
@@ -343,6 +336,18 @@ Axioms: next slide
 
 \end{frame}
 
+\begin{frame}{Topology, briefly}
+\begin{itemize}
+\item a \emph{space} $X$ is a set of observable properties (``opens'') together with axioms relating them
+\bigskip
+\item a \emph{point} of $X$ assigns consistent truth values to observable properties (a model)
+\bigskip
+\item a \emph{continuous map} $f : X \to Y$ (consistently) describes properties of $Y$ in terms of the properties of $X$
+\bigskip
+\item Geometric logic: $\top$, $\bot$, finitary $\wedge$, infinitary $\bigvee$
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Computing with spaces}
 \begin{itemize}
 \item Proofs are used to compute!
@@ -354,7 +359,7 @@ Axioms: next slide
 \pause
 
 \begin{center}
-\item How to write programs?
+How to write programs?
 \\ How to prove things about them?
 \end{center}
 \end{frame}
@@ -395,7 +400,11 @@ Axioms: next slide
 
 \begin{frame}{The non-deterministic powerspace $\PLower(A)$}
 
-Variables: $\lozenge P$ for each $P : \Open(A)$
+Variables:
+\begin{mathpar}
+\inferrule{P : \Open(A)}
+  {\lozenge P : \Open(\PLower(A))}
+\end{mathpar}
 
 Axioms:
 \begin{mathpar}
@@ -426,9 +435,9 @@ Axioms:
     \draw [<->,thick] (0,2) node (yaxis) [above] {speed}
         |- (3,0) node (xaxis) [right] {distance};
     % Draw two intersecting lines
-    \coordinate (a_1) at (0.3, 0);
-    \coordinate (a_2) at (2.3, 2);
-    \coordinate (b_1) at (2.3, 0);
+    \coordinate (a_1) at (1.9, 0);
+    \coordinate (a_2) at (1.3, 2);
+    \coordinate (b_1) at (2.8, 0);
     \coordinate (b_2) at (0.3, 2);
     \shade[top color=green, bottom color=green, fill opacity=0.5] 
       (a_1) -- (a_2) -- (3,2) -- (3,0) -- cycle;
@@ -441,18 +450,18 @@ Axioms:
 
 \end{frame}
 
-\begin{frame}{No input uncertainty}
+\begin{frame}{No state uncertainty}
 \begin{align*}
 \mathsf{brake?} &: \{ \State \suchthat \SafeToGo \vee \SafeToStop \} \to \PLower(\bool)
 \\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
 \begin{cases}
 \SafeToGo
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{false})
+  \{ \mathsf{false} \}
 \\
 \SafeToStop
   \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{true})
+  \{ \mathsf{true} \}
 \end{cases}
 \end{align*}
 
@@ -473,52 +482,38 @@ Axioms:
     \draw [<->,thick] (0,2) node (yaxis) [above] {speed}
         |- (3,0) node (xaxis) [right] {distance};
     % Draw two intersecting lines
-    \coordinate (a_1) at (0.3, 0);
-    \coordinate (a_2) at (2.3, 2);
-    \coordinate (b_1) at (2.3, 0);
+    \coordinate (a_1) at (1.9, 0);
+    \coordinate (a_2) at (1.3, 2);
+    \coordinate (b_1) at (2.8, 0);
     \coordinate (b_2) at (0.3, 2);
-    \coordinate (a_1x) at (0.6, 0);
-    \coordinate (a_2x) at (2.6, 2);
-    \coordinate (b_1x) at (2, 0);
-    \coordinate (b_2x) at (0, 2);
+    \coordinate (a_1x) at (2.125, 0);
+    \coordinate (a_2x) at (1.525, 2);
+    \coordinate (b_1x) at (2.475, 0);
+    \coordinate (b_2x) at (0, 1.98);
     \shade<1-2>[top color=green, bottom color=green, fill opacity=0.5] 
       (a_1) -- (a_2) -- (3,2) -- (3,0) -- cycle;
     \shade<1-2>[top color=red, bottom color=red, fill opacity=0.5] 
       (b_1) -- (b_2) -- (0, 2) -- (0,0) -- cycle;
+    \shade<3>[top color=green, bottom color=green, fill opacity=0.5] 
+      (a_1x) -- (a_2x) -- (3,2) -- (3,0) -- cycle;
+    \shade<3>[top color=red, bottom color=red, fill opacity=0.5] 
+      (b_1x) -- (b_2x) -- (0, 2) -- (0,0) -- cycle;
     \draw<1-2> (a_1) -- (a_2);
     \draw<1-2> (b_1) -- (b_2);
     
-    \fill<2-3>[black] (1.3, 0.7) circle (1pt);
-    \draw<2-3>[black] (1.3,0.7) circle (6pt);
+    \coordinate (cx) at (2.02, 0.35);
+    
+    \fill<2-3>[black] (cx) circle (1pt);
+    \draw<2-3>[black] (cx) circle (6pt);
 
     \draw<3>[dashed] (a_1) -- (a_2);
     \draw<3>[dashed] (b_1) -- (b_2);
     \draw<3> (a_1x) -- (a_2x);
     \draw<3> (b_1x) -- (b_2x);
-    \shade<3>[top color=green, bottom color=green, fill opacity=0.5] 
-      (a_1x) -- (a_2x) -- (3,2) -- (3,0) -- cycle;
-    \shade<3>[top color=red, bottom color=red, fill opacity=0.5] 
-      (b_1x) -- (b_2x) -- (0, 2) -- (0,0) -- cycle;
 \end{tikzpicture}
  \end{center}
 \end{frame}
 
-
-\begin{frame}{Non-determistic input uncertainty}
-\begin{align*}
-\mathsf{brake?} &: \{ \PUpper(\State) \suchthat \square \SafeToGo \vee \square \SafeToStop \} \to \PLower(\bool)
-\\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
-\begin{cases}
-\square \SafeToGo
-  \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{false})
-\\
-\square \SafeToStop
-  \quad &\Longrightarrow \quad
-  \ret{\PLower}(\mathsf{true})
-\end{cases}
-\end{align*}
-\end{frame}
 
 \begin{frame}{Probabilistic uncertainty}
 \begin{align*}
@@ -528,31 +523,30 @@ Axioms:
 \begin{cases}
 \Pr[\SafeToGo] > 99\%
    &\Longrightarrow
-  \ret{\PLower}(\mathsf{false})
+  \{ \mathsf{false} \}
 \\
 \Pr[\SafeToStop] > 99\%
    &\Longrightarrow
-  \ret{\PLower}(\mathsf{true})
+  \{ \mathsf{true} \}
 \end{cases}
 \end{align*}
 \end{frame}
 
-\begin{frame}{Advantages}
+\begin{frame}{Conclusion}
 \begin{itemize}
+\item Can perform overlapping pattern match on an open cover
 \item \emph{Every} space $A$ naturally has a powerspace $\Prob(A)$ of probability distributions
 \note{Not true that every Coq type has a type with its probability distributions.
 }
 \item Powerspaces can be used for reasoning and computation
+\item Coq implementation underway!
 \note{Computation with powerspaces doesn't work in Coq (c.f. difficulty with Bishop's notions of compactness)}
 \end{itemize}
-\end{frame}
 
-\begin{frame}
+\pause
+\bigskip
+
 \begin{center}
-\Huge Questions?
-
-\vspace{3em}
-
 \small Ben Sherman
 \\ sherman@csail.mit.edu
 \end{center}
@@ -667,6 +661,34 @@ Observable property of output $\Rightarrow$ observable property of input
   {A \times B \Downarrow I \times J}
 \end{mathpar}
 
+\end{frame}
+
+\begin{frame}{Geometric theories}
+\begin{itemize}
+\item propositions are ``affirmable'' properties
+\begin{itemize}
+  \item if true, one can just ``see it'' to be true
+  \item if false, might be impossible to tell
+\end{itemize}
+\bigskip
+\item Connectives $\top$, $\bot$, finitary $\wedge$, infinitary $\bigvee$
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Non-determistic input uncertainty}
+\begin{align*}
+\mathsf{brake?} &: \{ \PUpper(\State) \suchthat \square \SafeToGo \vee \square \SafeToStop \} \to \PLower(\bool)
+\\ \mathsf{brake?}(s) &\triangleq \mathsf{cases}(s)
+\begin{cases}
+\square \SafeToGo
+  \quad &\Longrightarrow \quad
+  \{ \mathsf{true} \}
+\\
+\square \SafeToStop
+  \quad &\Longrightarrow \quad
+  \{ \mathsf{false} \}
+\end{cases}
+\end{align*}
 \end{frame}
 
 
