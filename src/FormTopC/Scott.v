@@ -126,7 +126,7 @@ Definition Open (A : IGT) : IGT :=
    ; Ix := InfoBase.Ix
    ; C := InfoBase.C (leS := LE) (eqS := PO.eq_PreO LE)
    ; localized := InfoBase.loc (PO := PO.fromPreO LE)
-   ; pos := InfoBase.Overt (PO := PO.fromPreO LE)
+   ; pos := InfoBase.Pos (PO := PO.fromPreO LE)
   |}.
 
 Definition open_abstract_mp {Γ A : IGT}

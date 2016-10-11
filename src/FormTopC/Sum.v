@@ -1,4 +1,8 @@
-Require Import Prob.StdLib FormTopC.FormTop Algebra.FrameC Algebra.SetsC 
+Require Import 
+  Prob.StdLib 
+  FormTopC.FormTop
+  Algebra.OrderC
+  Algebra.SetsC 
   FormTopC.Cont.
 
 Set Universe Polymorphism.
@@ -101,7 +105,7 @@ destruct i.
   destruct H as (i' & H).
 Abort.
 
-Definition Ix := FormTop.IxL le (Ix := IxUL).
+Definition Ix := FormTop.IxL le IxUL.
 Definition C := FormTop.CL le CUL.
 
 Definition Cov := FormTop.GCov le C.
@@ -116,10 +120,10 @@ Qed.
 Let CovS := FormTop.GCov leS CS.
 Let CovT := FormTop.GCov leT CT.
 
-Section Overt.
+Section Positive.
 
-Context {PosS : Subset S} {OvertS : FormTop.gtPos leS CS}.
-Context {PosT : Subset T} {OvertT : FormTop.gtPos leT CT}.
+Context {PosS : FormTop.gtPos leS CS}.
+Context {PosT : FormTop.gtPos leT CT}.
 
 Inductive PosSum : Subset (S * T) :=
   | LeftPos : forall {s t}, FormTop.gPos s -> PosSum (s, t)
@@ -128,22 +132,22 @@ Inductive PosSum : Subset (S * T) :=
 Local Open Scope Subset.
 
 
-Lemma Overt : FormTop.gtPos (prod_op leS leT) C.
+Lemma Pos : FormTop.gtPos (prod_op leS leT) C.
 Proof.
 unshelve econstructor.
 - exact PosSum.
 - intros. destruct b, X0, X. simpl in *.
-  + left. eapply OvertS; eassumption.
-  + right. eapply OvertT; eassumption.
+  + left. eapply PosS; eassumption.
+  + right. eapply PosT; eassumption.
 - intros. destruct i.
-  destruct x. simpl. admit.
+  destruct l. simpl. admit.
 - intros.
   apply (FormTop.trans (U := eq a ∩ PosSum)).
 Admitted.
 
 Existing Instance FormTop.GCov_formtop.
 
-End Overt.
+End Positive.
 
 Inductive inl : Cont.map S (S * T) :=
   | MkInl : forall a b t, leS a b -> inl (b, t) a.
@@ -161,8 +165,8 @@ unshelve econstructor; intros.
 - induction X0. econstructor. etransitivity; eassumption.
 - induction X. destruct X0, c. simpl in *.
    econstructor. etransitivity; eassumption.
-- induction j. destruct x. simpl.
-  induction X. induction i.
+- induction j. destruct c. simpl.
+  induction X.
 Abort.
 
 End Sum.

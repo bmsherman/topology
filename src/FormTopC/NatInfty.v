@@ -107,7 +107,7 @@ constructor; unfold exactly; intros.
   + simpl in *. contradiction.
 Qed.
 
-Lemma Overt : FormTop.gtPos le C.
+Lemma Pos : FormTop.gtPos le C.
 Proof.
 apply FormTop.gall_Pos.
 intros a. destruct a.
@@ -260,7 +260,7 @@ Proof. unshelve eapply (
   ; le := NatInfty.le
   ; PO := NatInfty.le_PreO
   ; C := NatInfty.C
-  ; pos := NatInfty.Overt
+  ; pos := NatInfty.Pos
   |}).
 apply FormTop.Llocalized. apply NatInfty.le_PreO.
 Defined.

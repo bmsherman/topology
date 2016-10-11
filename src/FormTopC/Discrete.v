@@ -87,7 +87,7 @@ Definition discrete (A : Type) : IGT :=
   {| S := A 
   ; PO := PreO.discrete A
   ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
-  ; pos := InfoBase.Overt (PO := PO.discrete A)
+  ; pos := InfoBase.Pos (PO := PO.discrete A)
   |}.
 
 Module DiscreteFunc.

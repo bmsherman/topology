@@ -31,7 +31,7 @@ Record IGT : Type :=
   ; localized : FormTop.localized le C
     (** The axiom set should be localized, as defined in CSSV2003 *)
   ; pos : FormTop.gtPos le C
-    (** The space must be overt, i.e., have a positivity predicate. *)
+    (** The space must have a positivity predicate. *)
   }.
 
 Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
@@ -46,7 +46,7 @@ Local Instance local `(X : IGT) : FormTop.localized (le X) (C X)
 Local Instance IGTFT `(X : IGT) : FormTop.t (le X) (Cov X) :=
   FormTop.GCov_formtop.
 
-Local Instance IGT_Overt `(X : IGT) : FormTop.gtPos (le X) (C X)
+Local Instance IGT_Pos `(X : IGT) : FormTop.gtPos (le X) (C X)
   := pos X.
 
 Definition Contmap (A B : IGT) := Cont.map (S A) (S B).

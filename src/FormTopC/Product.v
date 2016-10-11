@@ -10,7 +10,7 @@ Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
 Existing Instances FormTop.GCov_formtop 
-  Bundled.IGT_PreO Bundled.IGTFT Bundled.IGT_Overt.
+  Bundled.IGT_PreO Bundled.IGTFT Bundled.IGT_Pos.
 
 
 (** Product spaces for inductively generated formal topologies.
@@ -88,7 +88,7 @@ intros H H0. induction H.
   subst. apply X0. assumption.
 Qed.
 
-(** Prove the space is overt. *)
+(** Prove the space has a positivity predicate. *)
 Definition PosProd : Subset (S X * S Y) :=
   fun p => let (x, y) := p in (FormTop.gPos x * FormTop.gPos y)%type.
 
@@ -107,7 +107,7 @@ intros. split; intros H.
   simpl in *. split. reflexivity. split; assumption.
 Qed.
 
-Lemma Overt : FormTop.gtPos (prod_op (le X) (le Y)) C'.
+Lemma Pos : FormTop.gtPos (prod_op (le X) (le Y)) C'.
 Proof.
 unshelve econstructor.
 - exact PosProd.
@@ -176,7 +176,7 @@ Definition times : IGT :=
    ; le := prod_op (le X) (le Y)
    ; Bundled.PO := PO
    ; localized := loc
-   ; pos := Overt
+   ; pos := Pos
   |}.
 
 End Product.

@@ -94,7 +94,7 @@ simpl_crelation. apply CovEquiv.
 Fail (rewrite <- X; apply isCovG).
 Admitted.
 
-Lemma Overt : FormTop.gtPos leS C.
+Lemma Pos : FormTop.gtPos leS C.
 Proof.
 apply FormTop.gall_Pos.
 intros. destruct i. simpl. exists t.
@@ -526,7 +526,7 @@ Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
   {| S := A 
   ; PO := PO.PreO
   ; localized := @InfoBase.loc _ _ _ MeetLat.PO
-  ; pos := InfoBase.Overt
+  ; pos := InfoBase.Pos
   |}.
 
 Definition One : IGT := InfoBase MeetLat.one.

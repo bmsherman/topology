@@ -17,7 +17,7 @@ Context {S} {leS : crelation S}
   {IxS : S -> Type}
   {CS : forall a, IxS a -> Subset S}
   {locS : FormTop.localized leS CS}
-  {OvertS : FormTop.gtPos leS CS}.
+  {PosS : FormTop.gtPos leS CS}.
 
 Let CovS := FormTop.GCov leS CS.
 
@@ -34,7 +34,7 @@ econstructor.
 - intros. destruct X. destruct X0.
   apply Orig. etransitivity; eassumption.
   apply IPos. assumption. destruct X0. apply IPos. 
-  eapply (FormTop.gmono_le (gtPos := OvertS)); eassumption.
+  eapply (FormTop.gmono_le (gtPos := PosS)); eassumption.
   apply IPos. eassumption.
 Qed.
 
@@ -51,16 +51,16 @@ intros. induction X.
 - 
 Abort.
 
-Local Instance Overt : FormTop.gtPos le C.
+Local Instance Pos : FormTop.gtPos le C.
 Proof.
 unshelve econstructor.
-- exact (FormTop.gPos (gtPos := OvertS)).
+- exact (FormTop.gPos (gtPos := PosS)).
 - intros. destruct X. eapply FormTop.gmono_le; eassumption.
   assumption. 
 - intros. destruct i. simpl.
   destruct l.
   + destruct (locS a c l ix).
-    pose proof (FormTop.gmono_ax (gtPos := OvertS)
+    pose proof (FormTop.gmono_ax (gtPos := PosS)
      a x) as H. simpl.
     specialize (H X). destruct H. destruct i.
     specialize (s a0 c0).
@@ -68,13 +68,13 @@ unshelve econstructor.
     exists x0. destruct p. split. assumption.
     destruct d. split; apply Orig; assumption.
     assumption.
-  + pose proof (FormTop.gmono_ax (gtPos := OvertS)
+  + pose proof (FormTop.gmono_ax (gtPos := PosS)
       c ix g). destruct X0.  destruct i. 
     exists a0. split. exists a0. split. assumption.
     split. apply IPos. assumption. reflexivity.
     assumption.
 - intros.
-  pose proof (FormTop.gpositive (gtPos := OvertS)
+  pose proof (FormTop.gpositive (gtPos := PosS)
     a U).
   eapply FormTop.trans.
 Abort.
