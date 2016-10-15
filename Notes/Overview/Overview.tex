@@ -1,56 +1,4 @@
 % !TEX encoding = UTF-8 Unicode
-\documentclass{article}           % use "amsart" instead of "article" for AMSLaTeX format
-\usepackage{geometry}                           % See geometry.pdf to learn the layout options. There are lots.
-\geometry{letterpaper}                          % ... or a4paper or a5paper or ... 
-%\geometry{landscape}                           % Activate for for rotated page geometry
-%\usepackage[parfill]{parskip}                  % Activate to begin paragraphs with an empty line rather than an indent
-\usepackage{graphicx}                           % Use pdf, png, jpg, or epsÂ§ with pdflatex; use eps in DVI mode
-                                                % TeX will automatically convert eps --> pdf in pdflatex                
-
-\usepackage[utf8]{inputenc}
-
-\usepackage{amssymb}
-\usepackage{amsmath}
-\usepackage{amsthm}
-
-\usepackage{../tex/mathpartir}
-\usepackage{url}
-
-\newtheorem{definition}{Definition}
-\newtheorem{lemma}{Lemma}
-\newtheorem{theorem}{Theorem}
-\newtheorem{corrolary}{Corrolary}
-\newtheorem{claim}{Claim}
- 
-\newcommand{\R}{\mathbb{R}}
-\newcommand{\lowerT}[1]{\overrightarrow{#1}}
-\newcommand{\cov}{\vartriangleleft}
-\newcommand{\Pos}{\mathsf{Pos}}
-\newcommand{\Type}{\mathcal{U}}
-\newcommand{\Prop}{\mathcal{P}}
-\newcommand{\List}[1]{\mathsf{List}\ {#1}}
-\newcommand{\map}[2]{\mathsf{map}\ {#1}\ {#2}}
-\newcommand{\fun}[2]{\lambda {#1}.\  {#2}}
-\newcommand{\nat}{\mathbb{N}}
-\newcommand{\suchthat}{\ |\ }
-\newcommand{\concat}{\ensuremath{+\!\!\!\!+\,}}
-\newcommand{\One}{\mathsf{One}}
-\newcommand{\Dist}[1]{\mathcal{M}({#1})}
-\newcommand{\Open}[1]{\mathcal{O}({#1})}
-\newcommand{\coinflip}{\mathsf{coinflip}}
-\newcommand{\Sampler}{\mathsf{Sampler}}
-\newcommand{\bool}{\mathbb{B}}
-\newcommand{\cons}{::}
-\newcommand{\un}[1]{\ \mathrm{#1}}
-\newcommand{\irule}[1]{\textsc{#1}}
-
-\title{Overview of Probability in Coq}
-\author{Ben Sherman}
-%\date{\today}                                  % Activate to display a given date or no date
-
-\begin{document}
-\maketitle
-
 \section{Introduction}
 
 My goal is to develop a framework for reasoning about probability in Coq. I believe this can be useful for a few reasons:
@@ -549,25 +497,6 @@ Here I outline what still must be done, both in terms of what is not yet formali
   \item Show that every continuous function from $A \to \underline{\mathbb{R}}^+$ is equivalent to the supremum of simple functions. This is done in \cite{jones1990}, and the argument there should work here as well.
 \end{enumerate}
 
-\item Extend the language of Cartesian monoidal categories to have support for operations talking about open sets (i.e., continuous maps $X \leadsto \Sigma$ for the Sierpinski space $\Sigma$). This requires lambda abstractions, where the space of the term being abstracted must be locally compact.
-As an example, consider the topological statement that if $X$ is compact and $F \subset X$ is closed, then $F$ is compact\cite{escardo2004}. This is realized by the function $\forall_F : \Sigma^X \to \Sigma$ defined by
-\[
-\forall_F(p) = \forall_X(\lambda x. \chi_{X \setminus F}(x) \vee p(x)).
-\]
-To ``compile'' this function, we take the following composition of functions
-\[
-\Sigma^X \times X
-\xrightarrow{\mathrm{id} \times \Delta}
-\Sigma^X \times (X \times X)
-\xrightarrow{\cong}
-(\Sigma^X \times X) \times X
-\xrightarrow{\varepsilon \times \chi_{X \setminus F}}
-\Sigma \times \Sigma
-\xrightarrow{\vee}
-\Sigma,
-\]
-which gives us a function of $\Sigma^X \times X \to \Sigma$, which we (using the fact that we know that we can take exponentials of $X$) curry to $\Sigma^X \to \Sigma^X$, which we then compose with $\forall_X : \Sigma^X \to \Sigma$.
-
 \item Show that the functor $\mathsf{Prob} : \mathbf{IgTop} \to \mathbf{IgTop}$ is monadic, where $\mathbf{IgTop}$ is the category of inductively generated formal topologies. This should be possible because a probability distribution on a space $A$ is a function from the opens of $A$ to $\underline{\mathbb{R}}^+$, and the topology on the opens of $A$ should be locally compact (since we give it the Scott topology/specialization topology), and then we follow the argument in \cite{maietti2005}.
 
 This will allow people to describe probability distributions in the familiar monadic style.
@@ -578,7 +507,7 @@ This will allow people to describe probability distributions in the familiar mon
 
 \item Having to work with join-closed formal topologies is quite onerous, because the join-closed formal topologies are much larger than standard formal topologies. Particular, one might wish that they could prove the modularity condition for elements of a formal topology, and have that imply the modularity of the join-closure of that formal topology. It intuitively makes sense that this might be the case.
 
-\item Embed metric spaces into formal topologies using the method in \cite{palmgren2007}, and connect these definitions to the definitions of metric completions and metric spaces in CoRN\cite{oconnor2008}. This will allow us to define the familiar distributions on real numbers, such as the normal distribution, using the results already available in CoRN. 
+\item Connect the definition of local metric completion for formal topology which I have defined to the definitions of metric completions and metric spaces in CoRN\cite{oconnor2008}. This will allow us to define the familiar distributions on real numbers, such as the normal distribution, using the results already available in CoRN. 
 \end{enumerate}
 
 \section{Comparison to computable measure theory}
@@ -780,8 +709,3 @@ With partial samplers, we can construct many more interesting classes of sampler
 \item We can formulate the general principle of rejection sampling.
 \item We can formulate the general principle of inverse transform sampling. Again, it would be interesting to see how we can design an inverse transform sampling so that it is not wasteful in its use of randomness.
 \end{enumerate}
-
-\bibliographystyle{alpha}
-\bibliography{Overview}
-
-\end{document}

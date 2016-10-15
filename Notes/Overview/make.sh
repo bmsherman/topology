@@ -1,4 +1,4 @@
-pdflatex Overview.tex
-bibtex Overview
-pdflatex Overview.tex
-pdflatex Overview.tex
+pdflatex Main.tex
+bibtex Main
+pdflatex Main.tex
+pdflatex Main.tex
