@@ -939,7 +939,7 @@ Suppose that we have an optimal temperature trajectory $\tau : [0, t_f] \to \R$ 
 \[
 \mathsf{error}(T_\text{on}, T_\text{off}) \defeq \int_0^{t_f} (\mathsf{sim}(T_\text{on}, T_\text{off}, t) - \tau(t))^2 dt.
 \]
-\cite{vickersintegral} explains how the Riemannian integral can be defined such that the above quantity is simply computable. Moreover, suppose we know we will restrict our choices of $T_\text{on}$ and $T_\text{off}$ to the compact/overt sets $\mathsf{on}, \mathsf{off} : \Viet(\R)$. Then we can just compute the minimum error,
+\cite{vickersintegral} explains how the Riemann integral can be defined such that the above quantity is simply computable. Moreover, suppose we know we will restrict our choices of $T_\text{on}$ and $T_\text{off}$ to the compact/overt sets $\mathsf{on}, \mathsf{off} : \Viet(\R)$. Then we can just compute the minimum error,
 \[
 \mathsf{min\_error} \defeq \min(\map{\Viet}\mathsf{error}(\mathsf{on} \otimes \mathsf{off})).
 \]
@@ -967,7 +967,7 @@ By the rules of non-deterministic powerspaces, for any space $A$, open $U$ of $A
   \quad \vdash \quad
   &\bigvee_{i : I} \exists x \in \cdot, U(x) \wedge P_i(x).
 \end{align*}
-The first several steps follow from general rules of geometric logic, while the final rule is an axiom in the geometric theory of the overt powerspaces ($\Viet$ and $\PLower$). Applying the derivation above, taking $U$ to be
+The first several steps follow from general rules of geometric logic (together with monotonicity of the ``necessity'' modality), while the final rule is an axiom in the geometric theory of the overt powerspaces ($\Viet$ and $\PLower$). Applying the derivation above, taking $U$ to be
 \[
 \{ (T_\text{on}, T_\text{off}) : \R \times \R \suchthat \mathsf{error}(T_\text{on}, T_\text{off}) < \mathsf{min\_error} + \varepsilon \},
 \]
