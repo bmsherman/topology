@@ -34,6 +34,7 @@ src/FormTopC/Compact.v
 src/FormTopC/MReal.v
 src/FormTopC/Truncate.v
 src/FormTopC/Cantor.v
+src/FormTopC/Subspace.v
 
 src/Algebra/Frame.v
 src/Algebra/FrameC.v

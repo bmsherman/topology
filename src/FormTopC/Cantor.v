@@ -1,8 +1,11 @@
 Require Import
   FormTopC.FormTop
   Algebra.OrderC
+  Algebra.SetsC
   CMorphisms
   FormTopC.Bundled.
+
+Local Open Scope Subset.
 
 (** An inductively generated formal topology for the Cantor space.
     See Section 4.1 of [1]. *)
@@ -59,10 +62,19 @@ simpl in H. destruct H. destruct zs.
   rewrite e. rewrite e0. rewrite <- app_assoc. reflexivity.
 Qed.
 
+Hypothesis inhabited : A.
+
 (* This actually needs 'A' to be inhabited. *)
 Local Instance pos : FormTop.gtPos LE C.
 Proof.
-Admitted.
+unshelve econstructor.
+- exact (fun _ => True).
+- simpl. auto.
+- simpl. intros. eexists. split. econstructor.
+  reflexivity. auto.
+- simpl. intros. auto.
+Unshelve. auto.
+Defined.
 
 Definition Cantor : IGT :=
   {| Bundled.S := list A

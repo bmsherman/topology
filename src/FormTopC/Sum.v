@@ -3,20 +3,34 @@ Require Import
   FormTopC.FormTop
   Algebra.OrderC
   Algebra.SetsC 
-  FormTopC.Cont.
+  FormTopC.Cont
+  FormTopC.Bundled.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Class HasBot {S : Type} {le : S -> S -> Type}
-  {Cov : S -> Subset S -> Type}
+Class HasBot {A : IGT}
   : Type :=
-  { bot : S
-  ; bot_le : forall {s : S}, le bot s
-  ; bot_cov : forall (U : Subset S), Cov bot U
+  { bot : S A
+  ; bot_le : forall {s : S A}, le A bot s
+  ; bot_cov : forall (U : Subset (S A)), Cov A bot U
   }.
 
-Arguments HasBot {S} le Cov : clear implicits.
+Arguments HasBot : clear implicits.
+
+Definition posIGT {A : IGT} (x : S A) := FormTop.gPos (gtPos := pos A) x.
+
+Lemma bot_Pos (A : IGT) `(HasBot A) :
+  posIGT bot -> False.
+Proof. 
+intros contra.
+pose (FormTop.GCov_Pos (H :=pos A)).
+pose proof (FormTop.mono bot (fun _ => False)).
+cut (Inhabited ((fun _ : S A => False) ∩ FormTop.Pos)%Subset).
+intros. destruct X0. destruct i. auto.
+apply X. simpl. assumption.
+apply bot_cov.
+Qed.
 
 (** Sum (coproduct) spaces
 
@@ -44,49 +58,42 @@ which is key.
 *)
 Section Sum.
 
-Context {S} {leS : S -> S -> Type}
-  {IS : S -> Type} {CS : forall s, IS s -> Subset S}.
-Context {T} {leT : T -> T -> Type}
-  {IT : T -> Type} {CT : forall t, IT t -> Subset T}.
+Context {A B : IGT}.
 
-Context {SHasBot : HasBot leS (FormTop.GCov leS CS)}
-        {THasBot : HasBot leT (FormTop.GCov leT CT)}.
+Context {AHasBot : HasBot A}
+        {BHasBot : HasBot B}.
 
-Require Import FormTopC.Product.
+Definition S' := (S A * S B)%type.
 
-Inductive IxUL : S * T -> Type := 
+Inductive IxUL : S' -> Type := 
   | SplitIx : forall s t, IxUL (s, t)
-  | LeftIx : forall {s}, IS s -> IxUL (s, bot)
-  | RightIx : forall {t}, IT t -> IxUL (bot, t).
+  | LeftIx : forall {s}, Ix A s -> IxUL (s, bot)
+  | RightIx : forall {t}, Ix B t -> IxUL (bot, t).
 
 Arguments IxUL : clear implicits.
 
-Inductive CUL : forall {p : S * T}, IxUL p -> Subset (S * T) :=
+Inductive CUL : forall {p : S'}, IxUL p -> Subset S' :=
   | CSplitL : forall {s t}, In (CUL (SplitIx s t)) (s, bot)
   | CSplitR : forall {s t}, In (CUL (SplitIx s t)) (bot, t)
-  | CLeft : forall {s} (ix : IS s) (s' : S), In (CS s ix) s' -> In (CUL (LeftIx ix)) (s', bot)
-  | CRight : forall {t} (ix : IT t) (t' : T), In (CT t ix) t' -> In (CUL (RightIx ix)) (bot, t').
+  | CLeft : forall {s} (ix : Ix A s) (s' : S A), In (C A s ix) s' -> In (CUL (LeftIx ix)) (s', bot)
+  | CRight : forall {t} (ix : Ix B t) (t' : S B), In (C B t ix) t' -> In (CUL (RightIx ix)) (bot, t').
 
 Arguments CUL : clear implicits.
 
-Context {POS : PreO.t leS}. 
-Context {POT : PreO.t leT}.
+Definition le' := prod_op (le A) (le B).
 
-Definition le := prod_op leS leT.
+Existing Instances Bundled.IGT_Pos Bundled.IGT_PreO
+  Bundled.IGTFT Bundled.local.
 
-Local Instance PO : PreO.t le := PreO.product POS POT.
+Local Instance PO : PreO.t le' := PreO.product _ _.
 
 Ltac inv H := inversion H; clear H; subst.
 
-
 (** This isn't localized. I should just
     take its localization. *)
-Local Instance loc : 
-    FormTop.localized leS CS
-  -> FormTop.localized leT CT
-  -> FormTop.localized le CUL.
+Local Instance loc : FormTop.localized le' CUL.
 Proof.
-intros H H0. unfold FormTop.localized.
+unfold FormTop.localized.
 intros a c H1 i. destruct H1 as (H1 & H2).
 destruct a as [sa ta].
 simpl in *.
@@ -99,60 +106,72 @@ destruct i.
   + exists (bot, t). split. econstructor.
     split; split; simpl;
       (assumption || reflexivity || apply bot_le).
-- unfold FormTop.localized in H.
-  simpl in *.
-  specialize (H sa s H1 i).
-  destruct H as (i' & H).
 Abort.
 
-Definition Ix := FormTop.IxL le IxUL.
-Definition C := FormTop.CL le CUL.
+Definition Ix' := FormTop.IxL le' IxUL.
+Definition C' := FormTop.CL le' CUL.
 
-Definition Cov := FormTop.GCov le C.
+Definition Cov := FormTop.GCov le' C'.
 
 Existing Instance FormTop.Llocalized.
 
-Local Instance isCov : FormTop.t (prod_op leS leT) Cov.
+Local Instance isCov : FormTop.t le' Cov.
 Proof.
 apply FormTop.GCov_formtop.
 Qed.
 
-Let CovS := FormTop.GCov leS CS.
-Let CovT := FormTop.GCov leT CT.
-
-Section Positive.
-
-Context {PosS : FormTop.gtPos leS CS}.
-Context {PosT : FormTop.gtPos leT CT}.
-
-Inductive PosSum : Subset (S * T) :=
+Inductive PosSum : Subset S' :=
   | LeftPos : forall {s t}, FormTop.gPos s -> PosSum (s, t)
   | RightPos : forall {s t}, FormTop.gPos t -> PosSum (s, t).
 
 Local Open Scope Subset.
 
-
-Lemma Pos : FormTop.gtPos (prod_op leS leT) C.
+Local Instance Pos : FormTop.gtPos le' C'.
 Proof.
 unshelve econstructor.
 - exact PosSum.
 - intros. destruct b, X0, X. simpl in *.
-  + left. eapply PosS; eassumption.
-  + right. eapply PosT; eassumption.
+  + left. eapply (pos A); eassumption.
+  + right. eapply (pos B); eassumption.
 - intros. destruct i.
-  destruct l. simpl. admit.
+  destruct l as [l l0]. destruct ix; simpl in l, l0.
+  + destruct X; simpl in l, l0.
+    * simpl. exists (s0, bot). unfold In. split.
+    exists (s, bot). split. econstructor.
+    split. split; simpl. reflexivity. apply bot_le.
+    split; simpl. assumption. apply bot_le.
+    econstructor 1. assumption.
+    * simpl. exists (bot, t0). unfold In. split.
+    exists (bot, t). split. econstructor.
+    split. split; simpl. apply bot_le. reflexivity. 
+    split; simpl. apply bot_le. assumption.
+    econstructor 2. assumption.
+  + destruct a as [sa ta]; simpl in l, l0.
+    pose proof (FormTop.gmono_ax (gtPos := pos A) s i).
+    inv X. 
+    * destruct X0. eapply FormTop.gmono_le; eassumption.
+      destruct i0. exists (a, ta). split. 2: econstructor 1; auto.
+      exists (a, bot). split. econstructor.  assumption.
+      split. admit. admit.
+    * exfalso. eapply (bot_Pos B). eapply FormTop.gmono_le.
+      eassumption. assumption.
+  + admit.
 - intros.
   apply (FormTop.trans (U := eq a ∩ PosSum)).
 Admitted.
 
 Existing Instance FormTop.GCov_formtop.
 
-End Positive.
+Definition Sum : IGT :=
+  {| S := S'
+  ; le := le'
+  ; Ix := Ix'
+  ; C := C' |}.
 
-Inductive inl : Cont.map S (S * T) :=
-  | MkInl : forall a b t, leS a b -> inl (b, t) a.
+Inductive inl : Contmap A Sum :=
+  | MkInl : forall a b t, le A a b -> inl (b, t) a.
 
-Lemma inl_cont : IGCont.t leS CovS le C inl.
+Lemma inl_cont : IGContprf A Sum inl.
 Proof.
 unshelve econstructor; intros.
 - apply FormTop.grefl. exists (a, bot). unfold In.
@@ -170,17 +189,3 @@ unshelve econstructor; intros.
 Abort.
 
 End Sum.
-
-(*
-Section SumMaps.
-
-Context {S} {leS : S -> S -> Type}
-  {IS : S -> Type} {CS : forall s, IS s -> Subset S}.
-Context {T} {leT : T -> T -> Type}
-  {IT : T -> Type} {CT : forall t, IT t -> Subset T}.
-
-Let CovS := FormTop.GCov leS CS.
-
-Context {SHasBot : HasBot leS (FormTop.GCov leS CS)}
-        {THasBot : HasBot leT (FormTop.GCov leT CT)}.
-*)
