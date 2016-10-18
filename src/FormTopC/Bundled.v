@@ -2,7 +2,8 @@ Require Import FormTopC.FormTop
   FormTopC.Cont
   Algebra.OrderC
   Algebra.SetsC
-  Prob.StdLib.
+  Prob.StdLib
+  CMorphisms.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
@@ -15,7 +16,7 @@ Local Open Scope loc.
 Record IGT : Type :=
   { S : Type
     (** The type of basic opens, i.e., observable property *)
-  ; le : S -> Subset S
+  ; le : crelation S
     (** a preorder on [S] which indicates when one basic open lies in another,
        i.e., one observable property implies another *)
   ; PO : PreO.t le
@@ -39,6 +40,7 @@ Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
 Definition Cov (X : IGT) := FormTop.GCov (le X) (C X).
 
 Notation "a <|[ X ] U" := (Cov X a U) (at level 63, format "a  <|[ X ]  U").
+Notation "a <=[ X ] b" := (le X a b) (at level 40, format "a  <=[ X ]  b").
 
 Local Instance local `(X : IGT) : FormTop.localized (le X) (C X)
   := localized X.

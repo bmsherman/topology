@@ -20,21 +20,23 @@ src/FormTop/Concrete.v
 src/FormTop/Alexandroff.v
 
 src/FormTopC/All.v
-src/FormTopC/FormTop.v
+src/FormTopC/Bundled.v
+src/FormTopC/Cantor.v
+src/FormTopC/Compact.v
 src/FormTopC/Cont.v
+src/FormTopC/Discrete.v
+src/FormTopC/FormTop.v
+src/FormTopC/FormalSpace.v
 src/FormTopC/Product.v
 src/FormTopC/InfoBase.v
-src/FormTopC/Bundled.v
-src/FormTopC/Discrete.v
-src/FormTopC/NatInfty.v
-src/FormTopC/Lift.v
 src/FormTopC/Join.v
+src/FormTopC/Lift.v
+src/FormTopC/Locale.v
 src/FormTopC/Metric.v
-src/FormTopC/Compact.v
 src/FormTopC/MReal.v
-src/FormTopC/Truncate.v
-src/FormTopC/Cantor.v
+src/FormTopC/NatInfty.v
 src/FormTopC/Subspace.v
+src/FormTopC/Truncate.v
 
 src/Algebra/Frame.v
 src/Algebra/FrameC.v

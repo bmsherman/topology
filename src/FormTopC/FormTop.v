@@ -133,6 +133,32 @@ Proof.
 intros. split; apply monotone; firstorder.
 Qed.
 
+Instance Cov_Proper  :
+  Proper (le --> Included ==> arrow) Cov.
+Proof.
+unfold Proper, respectful, arrow. intros.
+unfold flip in *. 
+eapply le_left; try eassumption.
+eapply monotone; eassumption.
+Qed.
+
+Instance Cov_Proper3  :
+  Proper (le ==> Included --> flip arrow) Cov.
+Proof.
+unfold Proper, respectful, arrow, flip. intros.
+eapply le_left; try eassumption.
+eapply monotone; eassumption.
+Qed.
+
+Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
+Proof.
+unfold Proper, respectful. intros x y xy x' y' xy'. subst.
+split; intros. apply (monotone x'). 
+apply Included_subrelation. assumption. assumption.
+apply (monotone y'). apply Included_subrelation. symmetry. assumption.
+assumption.
+Qed.
+
 End Defn.
 
 Arguments t {S} le Cov : clear implicits.
@@ -427,46 +453,6 @@ intros. symmetry. apply X0; symmetry; assumption.
 intros. symmetry. apply X1; symmetry; assumption.
 Qed.
 
-Section Properness.
-Context {S : Type}.
-Variable (le : crelation S) (Cov : S -> Subset S -> Type).
-Context `{PO : PreO.t S le}.
-Context `{tS : t S le Cov}. 
-
-
-Instance Cov_Proper  :
-  Proper (le --> Included ==> arrow) Cov.
-Proof.
-unfold Proper, respectful, arrow. intros.
-unfold flip in *. 
-eapply le_left; try eassumption.
-eapply monotone; eassumption.
-Qed.
-
-(** This is just a flipped version of what's above. It
-    shouldn't be needed. *)
-
-Instance Cov_Proper3  :
-  Proper (le ==> Included --> flip arrow) Cov.
-Proof.
-unfold Proper, respectful, arrow, flip. intros.
-eapply le_left; try eassumption.
-eapply monotone; eassumption.
-Qed.
-
-
-Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) Cov.
-Proof.
-unfold Proper, respectful. intros x y xy x' y' xy'. subst.
-split; intros. apply (monotone x'). 
-apply Included_subrelation. assumption. assumption.
-apply (monotone y'). apply Included_subrelation. symmetry. assumption.
-assumption.
-Qed.
-
-End Properness.
-
-
 Section Localize.
 
 Context {S : Type}.
@@ -525,7 +511,7 @@ Qed.
 Local Instance GCov_Proper : Proper (le --> Included ==> arrow)
   (GCov le CL). 
 Proof. 
-apply Cov_Proper. apply GCov_formtop.
+unshelve eapply Cov_Proper. eapply GCov_formtop.
 Qed.
 
 Theorem GCovL_formtop : t le (GCovL le C).
@@ -543,192 +529,5 @@ Qed.
 End Localize.
 
 Arguments IxL {S} le Ix a : clear implicits.
-
-Section ToFrame.
-Context {S : Type}.
-Variable (le : crelation S) (Cov : S -> Subset S -> Type).
-
-Definition Sat (U : Subset S) : Subset S :=
-  fun s => Cov s U.
-
-Definition leA (U V : Subset S) : Type := Included (Sat U) (Sat V).
-
-Definition eqA (U V : Subset S) : Type := Same_set (Sat U) (Sat V).
-
-Definition minA (U V : Subset S) : Subset S :=
-  downset le U ∩ downset le V.
-
-Inductive supA I (f : I -> Subset S) : Subset S := 
-  MksupA : forall i s, f i s -> In (supA I f) s.
-
-Definition LOps : Lattice.Ops (Subset S) :=
-  {| Lattice.le := leA
-  ;  Lattice.eq := eqA
-  ;  Lattice.max := Union
-  ;  Lattice.min := minA
-  |}.
-
-Instance LOps' : Lattice.Ops (Subset S) := LOps.
-
-Definition FOps : Frame.Ops (Subset S) := 
-  {| Frame.LOps := LOps
-   ; Frame.sup := supA
-  |}.
-
-Instance FOps' : Frame.Ops (Subset S) := FOps.
-
-Context `{PO : PreO.t S le}.
-Context `{tS : t S le Cov}. 
-
-Theorem FramePreO : @PreO.t (Subset S) leA.
-Proof.
-constructor; unfold leA; intros.
-- reflexivity.
-- etransitivity; eassumption.
-Qed.
-
-Theorem FramePO : @PO.t (Subset S) leA eqA.
-Proof.
-constructor; unfold eqA; intros.
-- apply FramePreO.
-- unfold leA. unfold Proper, respectful. 
-  intros. rewrite X, X0. reflexivity.
-- unfold leA in *. split; intros.
-  apply X. assumption. apply X0. assumption.
-Qed.
-
-Existing Instances Cov_Proper Cov_Proper2 Cov_Proper3.
-
-Theorem Sat_Intersection : forall U V,
-  Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
-Proof.
-intros. constructor; unfold Sat, In in *.
-  rewrite <- (Intersection_Included_l _ U V); eassumption.
-  rewrite <- (Intersection_Included_r _ U V); eassumption.
-Qed.
-
-Theorem Sat_Union : forall U V,
-  Sat U ∪ Sat V ⊆ Sat (U ∪ V).
-Proof.
-intros. unfold Included, pointwise_rel, arrow; intros a H. 
-destruct H; unfold In, Sat in *. 
-rewrite <- Union_Included_l. assumption. 
-rewrite <- Union_Included_r. assumption. 
-Qed.
-
-Theorem Sat_mono : forall U, U ⊆ Sat U.
-Proof.
-intros. unfold Included, pointwise_rel, arrow, Sat. 
-intros. apply refl. assumption.
-Qed.
-
-Theorem Sat_mono2 : forall U V, U ⊆ V -> Sat U ⊆ Sat V.
-Proof.
-intros U V H. unfold Included, pointwise_rel, arrow, Sat. 
-intros a X. rewrite <- H. assumption.
-Qed.
-
-Theorem Cov_Sat : forall a U, iffT (Cov a U) (Cov a (Sat U)).
-Proof.
-intros. split; intros. rewrite <- Sat_mono. assumption.
-etrans. assumption.
-Qed.
-
-Theorem Sat_downset : forall U, Sat U === Sat (downset le U).
-Proof.
-intros. split.
-- apply Sat_mono2. unfold Included, In, downset.
-  intros. econstructor. eassumption. reflexivity.
-- unfold Included, Sat, In, downset.
-  intros H. etrans. destruct H. 
-  rewrite l. apply refl. assumption.
-Qed.
-
-Existing Instances Union_Proper_le_flip Union_Proper_eq.
-
-Theorem FrameLatt : Lattice.t (Subset S) LOps.
-Proof.
-constructor; intros.
-- apply FramePO.
-- simpl. unfold Proper, respectful, eqA. intros x y H x0 y0 H0.
-  split; unfold Included, In, Sat; intros.
-  + apply Cov_Sat. rewrite <- Sat_Union.
-    rewrite <- H, <- H0.
-    rewrite <- !Sat_mono. assumption.
-  + apply Cov_Sat. rewrite <- Sat_Union. 
-    rewrite H, H0. rewrite <- !Sat_mono. assumption. 
-- constructor.
-  + simpl. unfold leA. apply Sat_mono2. 
-    apply Union_Included_l.
-  + simpl. unfold leA. apply Sat_mono2.
-    apply Union_Included_r.
-  + simpl. unfold leA. intros.
-    unfold Sat, Included, pointwise_rel, arrow. 
-    intros a H. etrans. rewrite Cov_Sat. destruct H.
-    * rewrite <- X, <- Cov_Sat. apply refl. assumption.
-    * rewrite <- X0, <- Cov_Sat. apply refl. assumption.
-- simpl. unfold Proper, respectful, eqA, minA.
-  intros x y H x0 y0 H0.
-  apply Included_Same_set.
-  + rewrite Sat_Intersection. rewrite <- !Sat_downset.
-    rewrite H, H0. unfold Included, pointwise_rel, arrow; 
-    intros a H1.
-    destruct H1. unfold Sat, In in *.
-    join s s0. assumption.
-  + rewrite Sat_Intersection. rewrite <- !Sat_downset.
-    rewrite <- H, <- H0. unfold Included, pointwise_rel, arrow; 
-    intros a H1.
-    destruct H1. unfold Sat, In in *.
-    join s s0; assumption.
-- simpl. constructor; unfold leA, minA; intros.
-  + unfold Sat, Included, pointwise_rel, arrow; intros a H.
-    etrans. destruct H as (H0 & H1). destruct H0.
-    rewrite l0. apply refl. assumption.
-  + unfold Sat, Included, pointwise_rel, arrow; intros a H.
-    etrans. destruct H as (H0 & H1). destruct H1. 
-    rewrite l0. apply refl. assumption.
-  + unfold Sat, Included, pointwise_rel, arrow; intros a H. 
-    etrans. apply le_right. rewrite Cov_Sat, <- X, <- Cov_Sat.
-    apply refl. assumption.
-    rewrite Cov_Sat, <- X0, <- Cov_Sat. apply refl.  assumption.
-Qed.
-
-Theorem Frame : Frame.t (Subset S) FOps.
-Proof.
-constructor; intros.
-- apply FrameLatt.
-- simpl. unfold eqA, pointwise_relation. 
-  unfold Proper, respectful. intros.
-  split; unfold Included, Sat; intros.
-  + etrans. destruct X0.
-    apply (trans (U := y i)).
-    rewrite Cov_Sat, <- (X i), <- Cov_Sat. 
-    apply refl. assumption. specialize (X i).
-    intros. apply refl. econstructor. eassumption. 
-  + etrans. destruct X0.
-    apply (trans (U := x i)).
-    rewrite Cov_Sat, (X i), <- Cov_Sat.
-    apply refl. assumption. intros.
-    apply refl. econstructor; eassumption.
-- simpl. constructor; unfold leA; intros.
-  + apply Sat_mono2. unfold Included, pointwise_rel, arrow; intros. 
-    econstructor; eassumption. 
-  + unfold Included, Sat, pointwise_rel, arrow; intros.
-    etrans. destruct X0. 
-    rewrite Cov_Sat, <- (X i), <- Cov_Sat.
-    apply refl. assumption.
-- simpl. unfold minA, eqA.
-  split; apply Sat_mono2.
-  + unfold Included, pointwise_rel, arrow. 
-    intros a0 H. destruct H as (H & H0).
-    destruct H0. destruct i.
-    repeat (econstructor; try eassumption).
-  + unfold Included, pointwise_rel, arrow. 
-    intros a0 H. destruct H. destruct i0.
-    constructor. assumption. destruct d0. 
-    repeat (econstructor; try eassumption).
-Qed. 
-
-End ToFrame.
 
 End FormTop.

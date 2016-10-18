@@ -22,20 +22,23 @@ Section Product.
 
 Variable X Y : IGT.
 
-Inductive Ix' : S X * S Y -> Type := 
+Definition S' : Type := S X * S Y.
+
+Definition le' := prod_op (le X) (le Y).
+
+Inductive Ix' : S' -> Type := 
   | PLeft : forall {s}, Ix X s -> forall t, Ix' (s, t)
   | PRight : forall {t}, Ix Y t -> forall s, Ix' (s, t).
 
-Definition C' (p : S X * S Y) (i : Ix' p) : Subset (S X * S Y)
+Definition C' (p : S') (i : Ix' p) : Subset S'
   := fun open => let (z, w) := open in (match i with
   | PLeft _ ixs t => C X _ ixs z * (w = t)
   | PRight _ ixt s => C Y _ ixt w * (z = s)
   end)%type.
 
-Local Instance PO : PreO.t (prod_op (le X) (le Y)) := PreO.product (PO X) (PO Y).
+Local Instance PO : PreO.t le' := PreO.product (PO X) (PO Y).
 
-Local Instance loc : 
-  FormTop.localized (prod_op (le X) (le Y)) C'.
+Local Instance loc : FormTop.localized le' C'.
 Proof.
 unfold FormTop.localized.
 intros a c H1 i. destruct H1 as (H1 & H2).
@@ -63,11 +66,10 @@ destruct i.
   subst. destruct downu.
   unfold FormTop.down. split.
   simpl. split. reflexivity. assumption.
-  unfold prod_op; eauto.
+  unfold le', prod_op; eauto.
 Qed.
 
-
-Definition Cov' := FormTop.GCov (prod_op (le X) (le Y)) C'.
+Definition Cov' := FormTop.GCov le' C'.
 
 Lemma factors a b U V : Cov X a U -> Cov Y b V -> 
   Cov' (a, b) (fun p => let (a', b') := p in U a' * V b')%type.
@@ -89,7 +91,7 @@ intros H H0. induction H.
 Qed.
 
 (** Prove the space has a positivity predicate. *)
-Definition PosProd : Subset (S X * S Y) :=
+Definition PosProd : Subset S' :=
   fun p => let (x, y) := p in (FormTop.gPos x * FormTop.gPos y)%type.
 
 Local Open Scope Subset.
@@ -130,10 +132,18 @@ unshelve econstructor.
   + intros. destruct X1. subst. apply X0. assumption.
 Qed.
 
+Definition times : IGT :=
+  {| S := S X * S Y
+   ; le := prod_op (le X) (le Y)
+   ; Bundled.PO := PO
+   ; localized := loc
+   ; pos := Pos
+  |}.
+
 (** The other space has to be nonempty *)
 Lemma unfactors1 a b U : Cov' (a, b) U
   -> (forall (t : S Y) (i : Ix Y t), Inhabited (C Y t i))
-  -> Cov X a (fun s => { b' : S Y & U (s, b') }).
+  -> a <|[X] (fun s => { b' : S Y & U (s, b') }).
 Proof.
 intros H H0. remember (a, b) as ab.
 replace (a) with (fst ab) by (rewrite Heqab; auto).
@@ -153,7 +163,7 @@ Qed.
 
 Lemma unfactors2 a b U : Cov' (a, b) U
   -> (forall (s : S X) (i : Ix X s), Inhabited (C X s i))
-  -> Cov Y b (fun t' => { a' : S X & U (a', t') }).
+  -> b <|[Y] (fun t' => { a' : S X & U (a', t') }).
 Proof.
 intros H H0. remember (a, b) as ab.
 replace b with (snd ab) by (rewrite Heqab; auto).
@@ -171,14 +181,6 @@ clear a b Heqab. induction H.
     intuition.
 Qed.
 
-Definition times : IGT :=
-  {| S := S X * S Y
-   ; le := prod_op (le X) (le Y)
-   ; Bundled.PO := PO
-   ; localized := loc
-   ; pos := Pos
-  |}.
-
 End Product.
 End Product.
 
@@ -195,7 +197,7 @@ Local Open Scope loc.
 
 Definition diagonal : Contmap A (A * A)
   := fun (out : S (A * A)) (p : S A) =>
-  let (out1, out2) := out in (le A p out1 * le A p out2)%type.
+  let (out1, out2) := out in ((p <=[A] out1) * (p <=[A] out2))%type.
 
 Lemma t_diagonal : Contprf A (A * A) diagonal.
 Proof.
@@ -236,7 +238,7 @@ Qed.
 Variable B : IGT.
 
 Definition proj_L : Contmap (A * B) A :=
-  fun (out : S A) (p : S (A * B)) => let (s1, t1) := p in le A s1 out.
+  fun (out : S A) (p : S (A * B)) => let (s1, t1) := p in s1 <=[A] out.
 
 Lemma t_proj_L : Contprf (A * B) A proj_L.
 Proof.
@@ -262,7 +264,7 @@ constructor; intros; unfold proj_L in *.
 Qed.
 
 Definition proj_R : Contmap (A * B) B :=
-  fun (out : S B) (p : S (A * B)) => let (s1, t1) := p in le B t1 out.
+  fun (out : S B) (p : S (A * B)) => let (s1, t1) := p in t1 <=[B] out.
 
 Lemma t_proj_R : Contprf (A * B) B proj_R.
 Proof.

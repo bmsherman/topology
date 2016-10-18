@@ -144,8 +144,8 @@ Lemma single_Dsup : forall i a U,
  CovS a (union U (f i)) ->
  CovS a (union U func_Dsup).
 Proof.
-intros.  eapply FormTop.Cov_Proper. typeclasses eauto. 
-  reflexivity. apply union_monotone. apply (oneIncl i).
+intros. eapply FormTop.Cov_Proper.
+reflexivity. apply union_monotone. apply (oneIncl i).
 assumption.
 Qed.
 
@@ -234,127 +234,6 @@ constructor; intros.
 Qed.
 
 End SheafMap.
-
-Let FrameS := FormTop.Frame leS CovS.
-Let FrameT := FormTop.Frame leT CovT.
-
-Variable F_ : T -> Subset S.
-Hypothesis cont : t F_.
-
-Local Instance POFS : @PO.t (Subset S) (FormTop.leA CovS) (FormTop.eqA CovS).
-Proof.
-eapply FormTop.FramePO.
-Qed.
-
-Local Instance POFT : @PO.t (Subset T) (FormTop.leA CovT) (FormTop.eqA CovT).
-Proof.
-eapply FormTop.FramePO.
-Qed.
-
-Theorem monotone : PreO.morph (FormTop.leA CovT) (FormTop.leA CovS)
-   (frame F_).
-Proof.
-unfold PreO.morph. intros. unfold frame.
-simpl. unfold FormTop.leA, FormTop.Sat.
-unfold Included, pointwise_rel, arrow.
-intros a' H. FormTop.trans H.
-destruct H as [t' at' Fa't'].
-apply (cov cont _ Fa't'). apply X. unfold FormTop.Sat.
-apply FormTop.refl. assumption.
-Qed.
-
-Require Import CMorphisms.
-
-Local Instance Cov_Proper : Proper (leS --> Included ==> arrow) CovS.
-Proof.
- apply FormTop.Cov_Proper. assumption.
-Qed.
-
-Local Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) CovS.
-Proof.
- eapply FormTop.Cov_Proper2; eassumption.
-Qed.
-
-Theorem Sat_Proper : forall A leA `{PreO.t A leA} (Cov : A -> Subset A -> Type)
-  `{FormTop.t _ leA Cov},
-  Proper (Same_set ==> Same_set) (FormTop.Sat Cov).
-Proof.
-intros. unfold Proper, respectful. intros. unfold FormTop.Sat.
-apply Same_set_iff. intros. apply FormTop.subset_equiv.
-assumption.
-Qed.
-
-Local Instance Cov_Proper3 : Proper (leS ==> Included --> flip arrow) CovS.
-Proof.
- eapply FormTop.Cov_Proper3; eassumption.
-Qed.
-
-Existing Instances FormTop.Cov_Proper union_Proper.
-
-(** This shouldn't be necessary. It should essentially
-    follow from union_Proper. *)
-Local Instance union_Proper_flip : 
-  forall A B, Proper ((@Included A) --> eq ==> flip (@Included B)) union.
-Proof.
-intros. unfold Proper, respectful; intros. subst. 
-apply union_Proper. assumption. reflexivity.
-Qed.
-
-Theorem toLattice : 
-   L.morph (FormTop.LOps leT CovT) (FormTop.LOps leS CovS) (frame F_).
-Proof.
-constructor.
-  + constructor.
-     * apply monotone.
-     * repeat intro. split; apply monotone; simpl in X;
-       rewrite X; apply PreO.le_refl.
-  + intros. unfold frame. simpl. unfold FormTop.eqA.
-    eapply Sat_Proper; try eassumption.
-    symmetry. apply Union_union.
-  + intros. unfold frame. simpl. apply PO.le_antisym;
-    unfold FormTop.leA, FormTop.Sat, Included, pointwise_rel, arrow; intros.
-    * FormTop.trans X. unfold FormTop.minA in X.
-      destruct X. destruct i. destruct d, d0.
-      unfold FormTop.minA.
-      apply FormTop.le_right;
-      apply (cov cont _ f).
-      apply FormTop.le_left with a2. assumption.
-      apply FormTop.refl. assumption.
-      apply FormTop.le_left with a3. assumption.
-      apply FormTop.refl. assumption.
-    * FormTop.trans X. unfold FormTop.minA in *.
-      destruct X. destruct d, d0. destruct i, i0.
-      rewrite <- FormTop.down_downset; try eassumption.
-      apply local. assumption. 
-      eapply le_left with a1; eassumption.
-      eapply le_left with a2; eassumption.
-Qed.
-
-(** Broken due to universe inconsistency
-Theorem toFrame : Frame.morph 
-  (FormTop.FOps leT CovT) (FormTop.FOps leS CovS) (frame F_).
-Proof.
-constructor.
-- apply toLattice.
-- unfold frame. simpl. intros.
-  unfold FormTop.eqA. eapply Sat_Proper; try eassumption.
-  intros; split; unfold Included, In; intros.
-  + destruct H. destruct H. repeat econstructor; eauto.
-  + destruct H. destruct H. repeat econstructor; eauto. 
-- unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
-  intros. split; unfold Included, In; intros.
-  + apply FormTop.refl. exists (fun _ => True). constructor.
-  + pose proof (here cont x).
-    eapply FormTop.trans. apply H0. clear H0. intros. 
-    destruct H0. apply FormTop.refl. 
-    repeat (econstructor; try eassumption).
-Qed.
-
-Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
-  (FormTop.FOps leT CovT) :=
-  {| Frame.finv := frame F_
-   ; Frame.cont := toFrame |}.
-*)
 
 
 End Cont.
