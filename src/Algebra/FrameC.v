@@ -30,16 +30,29 @@ Module L := Lattice.
     function from [A] to [B] corresponds to a continuous map from the locale
     for [A] to the locale for [B].
     *)
+
+  Inductive sigT1@{U V} {A:Type@{U}} (P:A -> Type@{V}) : Type@{V} :=
+    existT : forall x:A, P x -> sigT1 P.
+
 Module Frame.
-  Class Ops {A} :=
+Section Frame.
+Universes UI UA.
+
+    (** Every frame must have a top and bottom element.
+      However, predicatively, we're not guaranteed to be able to produce
+      the top element, so we'll ask for it explicitly. *)
+
+  Class Ops {A : Type@{UA}} :=
    { LOps :> L.Ops A
-   ; sup : forall {Ix : Type}, (Ix -> A) -> A
+   ; top : A
+   ; sup : forall {Ix : Type@{UI}}, (Ix -> A) -> A
    }.
 
   Arguments Ops : clear implicits.
 
-  Class t {A} {OA : Ops A}: Type :=
+  Class t {A : Type@{UA}} {OA : Ops A}: Type :=
   { L :> L.t A LOps
+  ; top_ok : PreO.top (le := L.le) top
   ; sup_proper : forall {Ix : Type},
      Proper (pointwise_relation _ L.eq ==> L.eq) (@sup _ _ Ix)
   ; sup_ok :  forall {Ix : Type} (f : Ix -> A), PreO.sup (le := L.le) f (sup f)
@@ -49,24 +62,44 @@ Module Frame.
 
   Arguments t : clear implicits.
   Section Facts.
-  Context {A OA} {tA : t A OA}.
+  Context {A : Type@{UA}} {OA} {tA : t A OA}.
 
-  Definition sup_proper_u : forall {Ix : Type} (f g : Ix -> A),
+  Definition sup_proper_u : forall {Ix : Type@{UI}} (f g : Ix -> A),
     (forall (i : Ix), L.eq (f i) (g i)) -> L.eq (sup f) (sup g).
   Proof.
   intros. apply sup_proper. unfold pointwise_relation.
   assumption.
   Qed.
 
+  Universes T P.
+  Constraint T < UA.
+  Local Instance type_ops : Ops@{P P} Type@{T} :=
+    {| LOps := L.type_ops@{UA T P}
+     ; top := True
+     ; sup := @sigT1@{UI T}
+    |}.
 
-  (** Every frame must have a top and bottom element. *)
+  Local Instance type : @t _ type_ops.
+  Proof. constructor; simpl; intros.
+  - apply L.type.
+  - unfold PreO.top, arrow. auto.
+  - constructor; unfold pointwise_relation in X; simpl in X;
+    intros [??]; eexists; apply X; eassumption.
+  - constructor; simpl; unfold arrow; intros.
+    + exists i. assumption.
+    + destruct X0. apply (X x). assumption.
+  - split; intros.
+    + destruct X as (xa & i & fia). exists i. split; assumption.
+    + destruct X as (i & xa & fia). split. assumption.
+      exists i. assumption.
+  Qed.
 
-  Definition top : A := sup (fun a => a).
-
-  Definition top_ok : PreO.top (le := L.le) top.
-  Proof. 
-    unfold PreO.top. simpl. pose proof (sup_ok (fun a => a)) as H.
-    destruct H. apply sup_ge.
+  Definition point_splits
+    {I : Type@{UI}} (cov : I -> Type@{UI}) : L.le (top (Ops := type_ops)) (sup cov) ->
+     {i : I & L.le top (cov i)}.
+  Proof.
+  simpl. unfold arrow. intros.
+  destruct X. auto. exists x. auto.
   Qed.
 
   Definition bottom : A := sup (fun contra : False => False_rect _ contra).
@@ -80,12 +113,13 @@ Module Frame.
 
   End Facts.
   Section Morph. 
-  Context {A OA} {tA : t A OA}.
-  Context {B OB} {tB : t B OB}.
+  Context {A B : Type@{UA}}
+    {OA} {tA : t A OA}
+    {OB} {tB : t B OB}.
 
   Record morph {f : A -> B} : Type :=
   { f_L : L.morph LOps LOps f
-  ; f_sup : forall {Ix : Type} (g : Ix -> A), L.eq (f (sup g)) (sup (fun i => f (g i)))
+  ; f_sup : forall {Ix : Type@{UI}} (g : Ix -> A), L.eq (f (sup g)) (sup (fun i => f (g i)))
   ; f_top : L.eq (f top) top
   }.
 
@@ -105,10 +139,10 @@ Module Frame.
 
   End Morph.
 
-  Arguments morph {A} OA {B} OB f.
+  Arguments morph {A B} OA OB f.
 
   Section MorphProps.
-  Context {A OA} {tA : t A OA}.
+  Context {A : Type@{UA}} {OA} {tA : t A OA}.
 
   Lemma morph_id : morph OA OA (fun x => x).
   Proof. 
@@ -116,8 +150,8 @@ Module Frame.
    reflexivity. reflexivity.
   Qed.
 
-  Lemma morph_compose {B OB} {tB : t B OB}
-    {C OC} {tC : t C OC}
+  Lemma morph_compose {B : Type@{UA}} {OB} {tB : t B OB}
+    {C : Type@{UA}} {OC} {tC : t C OC}
      (f : A -> B) (g : B -> C)
      : morph OA OB f 
      -> morph OB OC g 
@@ -134,12 +168,14 @@ Module Frame.
 
   Definition one_ops : Ops True :=
     {| LOps := L.one_ops
+     ; top := I
      ; sup := fun _ _ => I
     |}.
 
   Definition one : t True one_ops.
   Proof. constructor; intros; auto.
   - apply L.one.
+  - unfold PreO.top. simpl. auto.
   - unfold Proper, respectful. intros. reflexivity.
   - constructor; trivial.
   Qed.
@@ -148,12 +184,14 @@ Module Frame.
       existential quantifier. *)
   Local Instance prop_ops : Ops Prop :=
     {| LOps := L.prop_ops
+     ; top := True
      ; sup := (fun _ f => exists i, f i)
     |}.
 
   Local Instance prop : t Prop prop_ops.
   Proof. constructor; simpl; intros.
   - apply L.prop.
+  - unfold PreO.top. simpl. auto.
   - constructor; unfold pointwise_relation in X; simpl in X;
      intros [??]; eexists; apply X; eassumption.
   - constructor; simpl; intros.
@@ -168,6 +206,7 @@ Module Frame.
   Definition pointwise_ops {A B} (OB : forall a : A, Ops (B a))
     : Ops (forall a, B a) :=
     {| LOps := L.pointwise_ops (fun _ => LOps)
+     ; top := fun _ => top
      ; sup := fun _ f => fun x => sup (fun i => f i x)
     |}.
 
@@ -175,6 +214,8 @@ Module Frame.
     : t (forall a, B a) (pointwise_ops OB).
   Proof. constructor.
   - apply L.pointwise. intros. apply L.
+  - unfold PreO.top. simpl. unfold pointwise_op.
+    intros. apply top_ok.
   - simpl. unfold Proper, respectful, pointwise_relation, pointwise_op.
     intros. apply sup_proper. unfold pointwise_relation.
     intros a'. apply X.
@@ -202,11 +243,8 @@ Module Frame.
   Proof.
   constructor; intros; simpl in *; intros.
   - apply L.morph_pointwise.
-  - unfold pointwise_op. intros. apply PO.eq_refl. 
-  - unfold pointwise_op. intros. apply PO.le_antisym.
-    + apply sup_pointwise. intros. exists (fun b => i (f b)).
-      apply PreO.le_refl. 
-    + apply sup_pointwise. intros. exists (fun _ => i a). apply PreO.le_refl.
+  - unfold pointwise_op. intros. apply PO.eq_refl.
+  - unfold pointwise_op. intros. reflexivity.
   Qed. 
 
   Definition subset_ops A : Ops (A -> Prop) := pointwise_ops (fun _ => prop_ops).
@@ -241,7 +279,9 @@ Module Frame.
   Proof. refine (
   {| finv x := finv f (finv g x) |}
   ). eapply morph_compose; eapply cont.
-  Defined. 
+  Defined.
+
+End Frame.
 
 End Frame.
 

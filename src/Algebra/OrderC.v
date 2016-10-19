@@ -1,4 +1,7 @@
-Require Import Prob.StdLib Coq.Classes.CMorphisms Coq.Classes.CRelationClasses.
+Require Import 
+  Coq.Classes.CMorphisms
+  Coq.Classes.CRelationClasses.
+Require Import Prob.StdLib.
 
 Set Universe Polymorphism.
 Generalizable All Variables.
@@ -291,7 +294,11 @@ Arguments PreO.max {A} {le} _ _ _ : clear implicits.
 (** Partial orders: We take a preorder, but also have an equality relation [eq]
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
 Module PO.
-  Class t {A : Type} {le : crelation A} {eq : crelation A} : Type :=
+
+Section PO.
+Universes UA UP.
+
+  Class t {A : Type@{UA}} {le eq : crelation@{UA UP} A} : Type@{UP} :=
   { PreO :> PreO.t le
   ; le_proper : Proper (eq ==> eq ==> iffT) le
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
@@ -300,9 +307,10 @@ Module PO.
   Arguments t {A} le eq : clear implicits.
 
   Section Morph.
-  Context `{tA : t A leA eqA} `{tB : t B leB eqB}.
+  Context {A : Type@{UA}} {leA eqA : crelation@{UA UP} A} {tA : t leA eqA} 
+          {B : Type@{UA}} {leB eqB : crelation@{UA UP} B} {tB : t leB eqB}.
 
-  Record morph {f : A -> B} : Type :=
+  Record morph {f : A -> B} : Type@{UP} :=
    { f_PreO : PreO.morph leA leB f
    ; f_eq : Proper (eqA ==> eqB) f
    }.
@@ -314,7 +322,7 @@ Module PO.
   Arguments morph {_} leA eqA {_} leB eqB f.
 
   Section Facts.
-  Context `{tA : t A leA eqA}.
+  Context {A : Type@{UA}} {leA eqA : crelation@{UA UP} A} {tA : t leA eqA}.
 
   (** The equality relation of a partial order must form an
       equivalence relation. *)
@@ -397,10 +405,12 @@ Module PO.
       in the obvious ways. There's really nothing interesting
       here. *)
 
-  Definition eq_PreO {S} (le : crelation S) (x y : S) : Type :=
+  Definition eq_PreO {S : Type@{UA}} (le : crelation@{UA UP} S) 
+    (x y : S) : Type@{UP} :=
     (le x y * le y x)%type.
 
-  Definition fromPreO {S} (le : crelation S) `{POS : PreO.t S le}
+  Definition fromPreO {S : Type@{UA}} (le : crelation@{UA UP} S) 
+    {POS : PreO.t le}
     : PO.t le (eq_PreO le).
   Proof.
   constructor.
@@ -413,11 +423,16 @@ Module PO.
 *)
   Admitted.
 
+  End PO.
+
+  Arguments t {A} _ _: clear implicits.
+  Arguments morph {A} _ _ {B} _ _ _ : clear implicits.
+
   Definition one : t (fun (_ : True) _ => True) (fun _ _ => True).
   Proof. 
     constructor; intros; auto.
     - apply PreO.one.
-    - unfold Proper, respectful. intuition.
+    - unfold Proper, respectful, iffT. auto.
   Qed.
 
   Definition two : t Bool.leb Logic.eq.
@@ -444,6 +459,8 @@ Module PO.
   - assumption.
   Qed.
 
+  Existing Instances t_equiv le_properI.
+
   Definition product `(tA : t A leA eqA) `(tB : t B leB eqB) 
     : t (prod_op leA leB) (prod_op eqA eqB).
   Proof. constructor; intros.
@@ -460,13 +477,14 @@ Module PO.
 *)
   Admitted.
 
-  Definition map `(f : A -> B) `(tB : t B leB eqB) : t
+  Definition map {A B : Type} (f : A -> B) 
+    {leB eqB : crelation B} (tB : t leB eqB) : t
     (map_op f leB) (map_op f eqB).
   Proof. constructor; intros.
   - apply (PreO.map f PreO).
   - unfold map_op; split; simpl in *; intros. 
-    + rewrite <- X. rewrite <- X0. assumption.
-    + rewrite X. rewrite X0. assumption.
+    + rewrite <- X, <- X0. eassumption. 
+    + eapply le_proper; eassumption.
   - unfold map_op; eapply le_antisym; eauto.
   Qed.
 
@@ -500,11 +518,14 @@ Module PO.
   split; simpl in *; intros; intuition.
   Qed.
 
+  Axiom undefined : forall A, A.
+  Set Printing Universes.
   Local Instance type : t arrow iffT.
   Proof. 
-  constructor; intuition. apply PreO.type.
-  split; simpl in *; intros unfold iffT; firstorder.
-  split; assumption.
+  constructor; intuition. 
+  - do 3 apply PreO.type. apply undefined.
+  - split; simpl in *; intros unfold iffT; firstorder.
+  - split; assumption.
   Qed.
 
   Local Instance subset (A : Type) : @t (A -> Type) _ _ := pointwise (fun _ => type).
@@ -918,7 +939,7 @@ End MeetLat.
     this is basically just copied from the two modules above. *)
 Module Lattice.
 
-  Class Ops {A} : Type :=
+  Class Ops {A : Type} : Type :=
     { le : crelation A
     ; eq : crelation A
     ; max : A -> A -> A
@@ -937,16 +958,16 @@ Module Lattice.
 
   Arguments t : clear implicits.
 
-   Definition toMeetLatOps' {A} (ops : Ops A) : MeetLat.Ops A :=
+   Definition toMeetLatOps' {A : Type} (ops : Ops A) : MeetLat.Ops A :=
     {| MeetLat.le := le
      ; MeetLat.eq := eq
      ; MeetLat.min := min
     |}.
 
-  Instance toMeetLatOps {A} : Ops A -> MeetLat.Ops A
+  Instance toMeetLatOps {A : Type} : Ops A -> MeetLat.Ops A
     := toMeetLatOps'.
 
-  Instance toMeetLat {A ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
+  Instance toMeetLat {A : Type} {ops} : t A ops -> MeetLat.t A (toMeetLatOps ops).
   Proof.
   intros. constructor.
   - apply PO.
@@ -954,16 +975,16 @@ Module Lattice.
   - apply min_ok.
   Qed.
 
-  Definition toJoinLatOps' {A} (ops : Ops A) : JoinLat.Ops A :=
+  Definition toJoinLatOps' {A : Type} (ops : Ops A) : JoinLat.Ops A :=
     {| JoinLat.le := le
      ; JoinLat.eq := eq
      ; JoinLat.max := max
     |}.
 
-  Instance toJoinLatOps {A} : Ops A -> JoinLat.Ops A
+  Instance toJoinLatOps {A : Type} : Ops A -> JoinLat.Ops A
     := toJoinLatOps'.
 
-  Instance toJoinLat {A ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
+  Instance toJoinLat {A : Type} {ops} : t A ops -> JoinLat.t A (toJoinLatOps ops).
   Proof.
   intros. constructor.
   - apply PO.
@@ -1060,6 +1081,21 @@ Module Lattice.
   Local Instance prop : t Prop prop_ops.
   Proof. 
     constructor; simpl; intros; constructor; simpl; firstorder.
+  Qed.
+
+  Set Printing Universes.
+
+  (*ST is the universe that T lies in. *)
+  Local Instance type_ops@{ST T P} : Ops@{ST P P} Type@{T} :=
+    {| le := arrow
+     ; eq := iffT
+     ; max := sum
+     ; min := prod
+    |}.
+
+  Local Instance type : t Type type_ops.
+  Proof.
+  constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
 
   Definition pointwise_ops {A B} (O : forall a : A, Ops (B a)) : Ops (forall a, B a) :=

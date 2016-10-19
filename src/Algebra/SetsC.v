@@ -7,18 +7,19 @@ Definition bin_op (A : Type) := A -> A -> A.
 
 Section Defns.
 Context {A : Type}.
+Universes A P.
 
-Definition In (U : Subset A) (x : A) := U x. 
+Definition In (U : Subset@{A P} A) (x : A) := U x. 
 
-Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset A) : Subset A
+Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset@{A P} A) : Subset@{A P} A
   := fun a : A => f (U a) (V a).
 
-Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset A) : Type
+Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset@{A P} A) : Type
   := forall a : A, f (U a) (V a).
 
-Definition Intersection : bin_op (Subset A) := pointwise_op prod.
+Definition Intersection : bin_op (Subset@{A P} A) := pointwise_op prod.
 
-Definition Union : bin_op (Subset A) := pointwise_op sum.
+Definition Union : bin_op (Subset@{A P} A) := pointwise_op sum.
 
 Inductive Inhabited {U : Subset A} :=
   Inhabited_intro : forall a : A, In U a -> Inhabited.
@@ -48,13 +49,13 @@ Definition compose {S T U} (F : S -> T -> Type)
   (G : T -> U -> Type) (s : S) (u : U) : Type :=
     { t : T & (F s t * G t u)%type }.
 
-Inductive union {S T} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
+Inductive union {S T : Type} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
-Theorem Union_union : forall A B (a b : Subset A) (f : A -> Subset B),
+Theorem Union_union : forall (A B : Type) (a b : Subset A) (f : A -> Subset B),
   union a f ∪ union b f === union (a ∪ b) f.
 Proof.
-intros. constructor; unfold Included; intros.
+intros. constructor; unfold Included; intros X.
 - destruct X; destruct u; econstructor; eauto; firstorder.
 - destruct X; destruct i; [ left | right]; econstructor; eauto.
 Qed.
@@ -239,7 +240,7 @@ Local Instance Union_Proper_eq : forall A,
   Proper (Same_set ==> Same_set ==> Same_set) (@Union A).
 Proof.
 unfold Proper, respectful, Same_set, pointwise_rel, iffT.
-intros. split; intros; 
+intros. split; intros;
   (destruct X1; [left | right];
   [apply X | apply X0]; assumption ).
 Qed.

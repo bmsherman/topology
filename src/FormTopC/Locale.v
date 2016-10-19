@@ -42,12 +42,13 @@ Definition LOps : Lattice.Ops T :=
 
 Instance LOps' : Lattice.Ops T := LOps.
 
-Definition FOps : Frame.Ops T := 
+Definition FOps : @Frame.Ops T := 
   {| Frame.LOps := LOps
+   ; Frame.top := fun _ => True
    ; Frame.sup := supA
   |}.
 
-Instance FOps' : Frame.Ops T := FOps.
+Instance FOps' : @Frame.Ops T := FOps.
 
 Theorem FramePreO : @PreO.t T leA.
 Proof.
@@ -137,16 +138,22 @@ constructor; intros.
 - simpl. unfold Proper, respectful, eqA, minA.
   intros x y H x0 y0 H0.
   apply Included_Same_set.
-  + rewrite Sat_Intersection. rewrite <- !Sat_downset.
+  + rewrite Sat_Intersection. 
+    (* universes broke rewriting
+rewrite <- Sat_downset.
     rewrite H, H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
     destruct H1. unfold Sat, In in *.
     join s s0. assumption.
-  + rewrite Sat_Intersection. rewrite <- !Sat_downset.
+    *) admit.
+  + rewrite Sat_Intersection. 
+    (* universes broke rewriting
+    rewrite <- !Sat_downset.
     rewrite <- H, <- H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
     destruct H1. unfold Sat, In in *.
-    join s s0; assumption.
+    join s s0; assumption. *)
+    admit.
 - simpl. constructor; unfold leA, minA; intros.
   + unfold Sat, Included, pointwise_rel, arrow; intros a H.
     etrans. destruct H as (H0 & H1). destruct H0.
@@ -158,12 +165,15 @@ constructor; intros.
     etrans. apply le_right. rewrite Cov_Sat, <- X, <- Cov_Sat.
     apply refl. assumption.
     rewrite Cov_Sat, <- X0, <- Cov_Sat. apply refl.  assumption.
-Qed.
+Admitted.
 
-Theorem Frame : Frame.t T FOps.
+Theorem Frame : @Frame.t T FOps.
 Proof.
 constructor; intros.
 - apply FrameLatt.
+- simpl. unfold PreO.top, leA.
+  intros. apply Sat_mono2. unfold Included, In, pointwise_rel, arrow. 
+  auto.
 - simpl. unfold eqA, pointwise_relation. 
   unfold Proper, respectful. intros.
   split; unfold Included, Sat; intros.
@@ -232,18 +242,6 @@ Qed.
 
 Require Import CMorphisms.
 
-(*
-Local Instance Cov_Proper : Proper (le A --> Included ==> arrow) (Cov A).
-Proof.
- apply FormTop.Cov_Proper. assumption.
-Qed.
-
-Local Instance Cov_Proper2 : Proper (eq ==> Same_set ==> iffT) CovS.
-Proof.
- eapply FormTop.Cov_Proper2; eassumption.
-Qed.
-*)
-
 Theorem Sat_Proper : forall A,
   Proper (Same_set ==> Same_set) (Sat A).
 Proof.
@@ -251,13 +249,6 @@ intros. unfold Proper, respectful. intros. unfold Sat.
 apply Same_set_iff. intros. apply FormTop.subset_equiv.
 assumption.
 Qed.
-
-(*
-Local Instance Cov_Proper3 : Proper (leS ==> Included --> flip arrow) CovS.
-Proof.
- eapply FormTop.Cov_Proper3; eassumption.
-Qed.
-*)
 
 Existing Instances FormTop.Cov_Proper union_Proper.
 
@@ -300,30 +291,30 @@ constructor.
       eapply Cont.le_left with a2; eassumption.
 Qed.
 
-(** Broken due to universe inconsistency
 Theorem toFrame : Frame.morph 
-  (FOps B) (FOps A) (Cont.frame F_).
+  (OA := (FOps B)) (OB := (FOps A)) (f := (Cont.frame F_)).
 Proof.
 constructor.
 - apply toLattice.
-- unfold frame. simpl. intros.
-  unfold Locale.eqA. eapply Sat_Proper; try eassumption.
+- unfold Cont.frame. simpl. intros.
+  unfold eqA. eapply Sat_Proper; try eassumption.
   intros; split; unfold Included, In; intros.
-  + destruct H. destruct H. repeat econstructor; eauto.
-  + destruct H. destruct H. repeat econstructor; eauto. 
-- unfold frame. simpl. unfold FormTop.eqA, FormTop.Sat.
+  + destruct X. destruct i. repeat econstructor; eauto.
+  + destruct X. destruct u. repeat econstructor; eauto. 
+- unfold Cont.frame. simpl. unfold eqA, Sat.
   intros. split; unfold Included, In; intros.
-  + apply FormTop.refl. exists (fun _ => True). constructor.
-  + pose proof (here cont x).
-    eapply FormTop.trans. apply H0. clear H0. intros. 
-    destruct H0. apply FormTop.refl. 
+  + apply FormTop.refl. unfold In. auto.
+  + pose proof (Cont.here cont a).
+    FormTop.ejoin. FormTop.etrans.
+    destruct X1.  destruct d, d0.
+    destruct i0. clear i i0. clear l.
+    rewrite l0. apply FormTop.refl.
     repeat (econstructor; try eassumption).
 Qed.
 
-Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
-  (FormTop.FOps leT CovT) :=
-  {| Frame.finv := frame F_
+Definition toCmap : Frame.cmap (OA := FOps A)
+  (OB := FOps B) :=
+  {| Frame.finv := Cont.frame F_
    ; Frame.cont := toFrame |}.
-*)
 
 End FrameMorphism.

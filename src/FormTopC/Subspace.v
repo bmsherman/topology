@@ -6,21 +6,24 @@ Require Import
   CRelationClasses.
 
 Local Open Scope Subset.
+Set Universe Polymorphism.
 
 Module Subspace.
 
 Section Defn.
-Context {S : Type} {leS : crelation S}.
+Universes S P.
+Set Printing Universes.
+Context {S : Type@{S}} {leS : crelation@{S P} S}.
 Hypothesis POS : PreO.t leS.
-Variable CovS : S -> (Subset S) -> Type.
+Variable CovS : S -> (Subset@{S P} S) -> Type@{P}.
 
-Definition Cov (V : Subset S) (a : S)
-  (U : Subset S) : Type := CovS a (V ∪ U).
+Definition Cov (V : Subset@{S P} S) (a : S)
+  (U : Subset@{S P} S) : Type@{P} := CovS a (V ∪ U).
 
 
 Context {FTS : FormTop.t leS CovS}.
 
-Existing Instances FormTop.Cov_Proper FormTop.Cov_Proper2 FormTop.Cov_Proper3.
+Existing Instances FormTop.Cov_Proper.
 
 Theorem t (V : Subset S) : FormTop.t leS (Cov V).
 Proof.
@@ -32,12 +35,13 @@ constructor; unfold Cov; intros.
 - apply FormTop.le_left with b; assumption.
 - FormTop.ejoin. FormTop.etrans.
   destruct X1. destruct d, d0.
-  destruct i. rewrite l. apply FormTop.refl. left.  assumption.
+  destruct i.
+  rewrite l. apply FormTop.refl. left.  assumption.
   destruct i0. rewrite l0. apply FormTop.refl. left. assumption.
   rewrite <- Union_Included_r.
   apply FormTop.le_right. 
-  rewrite l. apply FormTop.refl. assumption.
-  rewrite l0. apply FormTop.refl. assumption.
+  eapply FormTop.Cov_Proper. apply l. reflexivity. apply FormTop.refl. assumption.
+  eapply FormTop.Cov_Proper. apply l0. reflexivity. apply FormTop.refl. assumption.
 Qed.
 
 End Defn.
