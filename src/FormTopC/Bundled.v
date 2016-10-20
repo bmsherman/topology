@@ -161,8 +161,3 @@ intros H. constructor;
 Qed.
 
 Definition Open {A : IGT} : Type := S A -> Type.
-
-(*
-Record Approx {A : IGT} {I : Type} : Type :=
-  { Approx_cov : 
-*)

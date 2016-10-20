@@ -137,6 +137,16 @@ Universes UI UA.
   unfold pointwise_relation. intros. contradiction.
   Qed.
 
+  Lemma f_cov {f : A -> B} (Hf : morph f)
+    (U : A) {Ix} (V : Ix -> A)
+    : L.le U (sup V)
+    -> L.le (f U) (sup (fun i : Ix => f (V i))).
+  Proof.
+  intros H.
+  rewrite <- f_sup by assumption.
+  eapply PO.f_PreO. apply Hf. assumption.
+  Qed.
+
   End Morph.
 
   Arguments morph {A B} OA OB f.
@@ -263,7 +273,7 @@ Universes UI UA.
 
   (** A point in [A] is a continuous map from the frame representing
       a space with one point ([Prop]) to [A]. *)
-  Definition point {A} (OA : Ops A) := cmap prop_ops OA.
+  Definition point {A} (OA : Ops A) := cmap type_ops OA.
 
   (** Every function [f : A -> B] is continuous on the topology
       which includes all subsets. *)
@@ -280,6 +290,22 @@ Universes UI UA.
   {| finv x := finv f (finv g x) |}
   ). eapply morph_compose; eapply cont.
   Defined.
+
+  Existing Instances type_ops type.
+
+  Definition point_cov {A OA} {tA : t A OA}
+    (f : point OA) {U : A} {Ix} {V : Ix -> A}
+    : L.le U (sup V)
+    -> finv f U -> { i : Ix & finv f (V i) }.
+  Proof.
+  intros Hcov Hpt.
+  apply (f_cov (f := finv f)) in Hcov. 2: apply f.
+  assert (L.le top (f U)).
+  simpl. unfold arrow.  auto.
+  rewrite <- X in Hcov.
+  apply point_splits in Hcov.
+  destruct Hcov. exists x. apply l. simpl. auto.
+  Qed.
 
 End Frame.
 
