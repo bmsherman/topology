@@ -1,7 +1,8 @@
 Require Import 
   FormTopC.FormTop
   Algebra.OrderC
-  Algebra.SetsC.
+  Algebra.SetsC
+  FormTopC.Bundled.
 
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
@@ -467,6 +468,41 @@ Definition CUL (b : Ball) (i : IxUL b) : Subset Ball :=
 Definition Ix := FormTop.IxL le_ball IxUL.
 Definition C := FormTop.CL le_ball CUL.
 
+Lemma shrink_ball (b : Ball) :
+  { b' : Ball & lt_ball b' b }.
+Proof.
+destruct b as [m q].
+destruct (Qpos_smaller q) as [q' qq'].
+exists (m, q'). apply lt_ball_center. assumption.
+Qed. 
+
+Local Instance MPos : FormTop.gtPos le_ball C.
+Proof.
+unshelve econstructor.
+- exact (fun _ => True).
+- simpl. auto.
+- simpl. intros. destruct i. simpl. destruct ix.
+  + exists (fst a, QposMinMax.Qpos_min q (snd a)). 
+    split. simpl. exists (fst a, q). split. reflexivity.
+    destruct a; simpl. 
+    split; apply le_ball_center. apply QposMinMax.Qpos_min_lb_r.
+    apply QposMinMax.Qpos_min_lb_l. auto.
+  + destruct (shrink_ball a). exists x. split. 
+    exists x. split. simpl. eapply lt_le_trans; eassumption.
+    split. apply lt_le_weak; eassumption. reflexivity.
+    auto.
+- simpl. auto.
+Qed.
+
+Definition Metric : IGT :=
+  {| Bundled.le := le_ball
+   ; Bundled.Ix := Ix
+   ; Bundled.C := C
+   ; Bundled.localized := FormTop.Llocalized _ _
+   ; Bundled.pos := MPos
+  |}.
+
+
 Definition Cov := FormTop.GCovL le_ball C.
 
 End Metric.
@@ -842,6 +878,10 @@ Qed.
 
 End Lipschitz.
 
+
+(** Try to do it with maps that are only uniformly continuous,
+    rather than just Lipschitz.
+    I can't figure out how to do this proof. *)
 Context {X Y : MetricSpace}.
 Delimit Scope uc_scope with uc.
 Variable f : (X --> Y)%uc.
