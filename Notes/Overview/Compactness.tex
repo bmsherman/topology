@@ -15,7 +15,7 @@ Sometimes in formal verification, we are lucky and it turns out that properties 
 
 When we move to the continuous world, it at first seems that we are less lucky, because so many predicates are undecidable. For instance, determining whether one real number is less than another is undecidable. Additionally, very few spaces have sets of points which are Kuratowski-finite, and many spaces of interest aren't even countable; for instance, the real numbers are (potentially) uncountable.
 
-I'd like to advance the argument that the notions of ``decidable propositions'' and ``Kuratowski-finite sets'' should be generalized to \emph{binary covers} and \emph{compact/overt spaces}. The convenient properties about decidable reasoning over finite sets then largely carries over to these generalized notions for topological spaces.
+I'd like to advance the argument that the notions of ``decidable propositions'' and ``Kuratowski-finite sets'' should be generalized to \emph{binary covers} and \emph{compact/overt spaces} for computing with topological spaces. The convenient properties about decidable reasoning over finite sets then largely carries over to these generalized notions for topological spaces.
 
 We'll start by back-translating what binary covers ought to mean just in the world of Coq's sets and propositions. Note that there's an asymmetry in the definition of $\mathsf{Decidable}$, to a constructive reader, at least, in considering $P$ and $\neg P$ as opposites. Of course, for decidable propositions, this is okay, because here everything looks classical, and so they are in fact opposites. Similarly, we have
 \[
@@ -31,8 +31,8 @@ In the world of Coq, a pair of propositions $\langle P, Q \rangle$ is a binary c
 \[
 \mathsf{BCover}\ (\langle P, Q \rangle : \Prop \times \Prop) : \Type \triangleq
   \begin{cases}
-  \mathsf{Left}\ (\ell : P) : \mathsf{BCover}\ P\ Q
-  \\ \mathsf{Right}\ (r : Q) : \mathsf{BCover}\ P\ Q
+  \mathsf{Left}\ (\ell : P) : \mathsf{BCover}\ \langle P, Q \rangle
+  \\ \mathsf{Right}\ (r : Q) : \mathsf{BCover}\ \langle P, Q \rangle
   \end{cases}.
 \]
 
@@ -166,7 +166,7 @@ Just as we found that the ``conjunction'' and ``disjunction'' operations of pair
 \end{cases}.
 \end{align*}
 
-Are these definitions, using overlapping pattern matching, valid definitions? There are two conditions to check: that the cases cover the entire input space, and that overlapping branches have a maximum in terms of specialization order. Since the output space is $\mathsf{BCover}$, which always maxima, we always satisfy the second condition. Since we have the cover
+Are these definitions, using overlapping pattern matching, valid definitions? There are two conditions to check: that the cases cover the entire input space, and that overlapping branches have a maximum in terms of specialization order. Since the output space is $\mathsf{BCover}$, which always have maxima, we always satisfy the second condition. Since we have the cover
 \[
 \top_\mathsf{BCover} \le \mathsf{Left} \vee \mathsf{Right},
 \]
@@ -193,9 +193,46 @@ It's still important to check that these definitions satisfy the definitions you
 \end{cases}
 \end{align*}
 
+\subsection{Alternative understandings of binary covers}
+
 If you're bothered by the fact that the two opens in a binary cover get ``opposite'' treatments, and in particular that the logical operations on the second open are in reverse, for no good reason, there's another way to think about it. Rather than thinking of a binary cover of $A$ as two opens $P, Q : \Open{A}$ such that $A \subseteq P \cup Q$, we can instead think of it as an open set $P$ and a \emph{closed} set $\overline{Q}$ which is the ``set-theoretic'' complement of $Q$, since the complement of an open set is closed. Then the fact that $\langle P, Q \rangle$ is a binary cover means that $\overline{Q} \subseteq P$. Then the definitions of the logical operations should make more sense. For instance, one can find the union of two closed sets by taking their complement to produce two open sets, taking the intersection of that, and then taking the complement to return to a closed set. Since we are simply ``encoding'' closed sets with their open complements, computing the ``union'' just corresponds to taking an intersection.
 
-This elicits the view of binary covers as ``approximate'' predicates, sandwiching a closed subspace inside an open one, with wiggle room for for points which are in between. Any points which are in $\overline{Q}$ (and thus also $P$) will definitely compute to $\mathsf{Left}$, while any points which are outside of $P$ (and thus also outside $\overline{Q}$ will definitely compute to $\mathsf{Right}$, while in-between points, which are in $P$ but not $\overline{Q}$, are allowed to compute either way.
+This elicits the view of binary covers as ``approximate'' predicates, sandwiching a closed subspace inside an open one, with wiggle room for for points which are in between. Any points which are in $\overline{Q}$ (and thus also $P$) will definitely compute to $\mathsf{Left}$, while any points which are outside of $P$ (and thus also outside $\overline{Q}$) will definitely compute to $\mathsf{Right}$, while in-between points, which are in $P$ but not $\overline{Q}$, are allowed to compute either way.
+
+Finally, note that there is a homeomorphism $\mathsf{BCover} \cong \PLower^+(\bool)$ given by
+\begin{align*}
+\mathsf{to} &: \mathsf{BCover} \to \PLower^+(\bool)
+\\ \mathsf{to}(x) &\triangleq
+  \mathsf{cases}(x)
+  \begin{cases}
+\mathsf{Left}
+ \qquad &\Rightarrow \qquad
+ \{ \mathsf{tt} \}
+\\
+\mathsf{Right}
+ \qquad &\Rightarrow \qquad
+ \{ \mathsf{ff} \}
+  \end{cases}
+\\
+\mathsf{from} &: \PLower^+(\bool) \to \mathsf{BCover}
+\\ \mathsf{from}(s) &\triangleq
+  \mathsf{cases}(s)
+  \begin{cases}
+\lozenge(\cdot =\mathsf{tt})
+ \qquad &\Rightarrow \qquad
+ \mathsf{L}
+\\
+\lozenge(\cdot =\mathsf{ff})
+ \qquad &\Rightarrow \qquad
+ \mathsf{R}
+  \end{cases},
+\end{align*}
+which gives another understanding of binary covers, as representing non-deterministic truth values in Boolean logic. All of the logical operations defined for binary covers might make more sense when interpreted by the homeomorphism above. For instance, the conjunction operation on Boolean values,
+$\&\& : \bool \times \bool \to \bool$ can be lifted to a function of type $\PLower(\bool) \times \PLower(\bool) \to \PLower(\bool)$ which applies $\&\&$ to its non-deterministic input possibilities and collects all the possible results. This lifted $\&\&$ operation, when translated by the above homeomorphism to $\mathsf{BCover}$, identical to the $\wedge$ operation on $\mathsf{BCover}$s. This applies similarly to the other logical connectives that were defined on $\mathsf{BCover}$s.
+
+This allows us to easily confirm that the logical connectives that we defined for $\mathsf{BCover}$s satisfy  De Morgan's laws for Boolean logic. In fact, binary covers form what is called a quasi-Boolean algebra, which satisfy almost all of the laws of Boolean algebra. Binary covers are similar to the three-valued logic K3, and also related to 
+
+The specialization order on $\mathsf{BCover}$s corresponds to subset inclusion on $\PLower(\bool)$.
 
 \subsection{Binary covers on $\R$}
 
@@ -213,7 +250,8 @@ x > y - \varepsilon,
 \end{align*}
 yielding an ``approximate'' comparison with error up to $\varepsilon$. Notice the intentional asymmetry in the definition here. We are setting up our our $\mathsf{BCovers}$ on $\R$ such that if an $\varepsilon$-approximate proposition ``computes'' that it lies in $\mathsf{Left}$, then it indeed lies in that open set indicated by the approximate proposition, while if it computes to $\mathsf{Right}$, it either doesn't lie in the indicated open, or it is ``barely inside'' the open, no more than $\varepsilon$ away from the border. However, this interpretation relies on never using the negation operator, since negation swaps these roles.
 
-Just this $\R$-specific comparison operator is enough to reproduce all the logical operations of dReal, together with their computational meaning. dReal also offers a predicate $\cdot \le_\varepsilon \cdot$, which is useless, since it is identical to $\cdot <_\varepsilon \cdot$.
+Just this $\R$-specific comparison operator is enough to reproduce all the logical operations of dReal, together with their computational meaning. dReal also offers a predicate $\cdot \le_\varepsilon \cdot$, which  is (computationally) identical to $\cdot <_\varepsilon \cdot$.
+\footnote{This is due to the fact that, for any $x, y : \R$, the only way one could computationally/observationally confirm that $x \le y$ is by observing that $x < y$.}
 
 \subsection{Compactness}
 
@@ -231,11 +269,15 @@ Similarly, a space $A$ is \emph{overt} if for every space $\Gamma$, and every op
 
 These conditions are the definitions of universal and existential quantification in terms of adjoints, viewing $\Gamma$ as some context and opens as truth values in a context.
 
-A \emph{compact/overt} space is a space which is both compact and overt. Now, suppose we have a compact/overt space $A$ which has opens $P, Q : \Open{A}$ which are a binary cover, i.e.,
+A \emph{compact/overt} space is a space $A$ which is both compact and overt, as well as satisfying an additional property, that says for all $P, Q : \Open{A}$, we have
+\[
+\forall_A(P \vee Q) \le \forall_A P \vee \exists_A Q.
+\]
+I believe this additional requirement is equivalent to $A$ being closed (which is always true if $A$ is a subspace of a Hausdorff space, since every compact Hausdorff subspace is closed).
+Now, suppose we have a compact/overt space $A$ which has opens $P, Q : \Open{A}$ which are a binary cover, i.e.,
 \[
 \top_A \le P \vee Q.
 \]
-
 To universally quantify over this binary cover, we'd like to show that
 \[
 \top_\Sigma \le \forall_A P \vee \exists_A Q,
@@ -245,10 +287,10 @@ which follows from the derivation
 \top_\Sigma 
   &\le \forall_A (\top_A)
 \\ &\le \forall_A(P \vee Q)  \tag{since $\top_A \le P \vee Q$}
-\\ &\le \forall_A P \vee \exists_A Q.
+\\ &\le \forall_A P \vee \exists_A Q \tag{since $A$ is compact/overt}.
 \end{align*}
 
-Similarly, we can existentially quantify over the binary cover compose of $P, Q : \Open{A}$ to produce the binary cover
+Similarly, we can existentially quantify over the binary cover composed of $P, Q : \Open{A}$ to produce the binary cover
 \[
 \top_\Sigma \le \exists_A P \vee \forall_A Q,
 \]
@@ -297,11 +339,11 @@ Another way in which nondeterminism can break compactness is by having a non-det
 f &: [0,1] \to \PLower(\R)
 \\ f(x) &\triangleq \mathsf{cases}(x)
 \begin{cases}
-[n : \nat] \quad &\cdot > 1 / n
+[n : \nat] \quad &\cdot > 1 / (n + 1)
  \qquad \Rightarrow \qquad
  \{ n \}
 \\ \quad &\cdot < 1/2
-\qquad \Rightarrow \qquad
+\qquad \qquad \ \  \Rightarrow \qquad
 \{ 0 \}
 \end{cases}
 \end{align*}
