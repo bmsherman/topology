@@ -31,7 +31,7 @@ The other example is the definition of multiplication of real numbers. It's quit
 \end{cases},
 \end{align*}
 where we have the family of functions $\mathsf{scale}_L : \{ \R \suchthat -L < \cdot < L \} \times \R \to \R$ \footnote{For a space $A$ and open $U : \Open{A}$, the notation $\{ A \suchthat U \}$ indicates the open subspace $U$ of $A$.}
-for $L : \rat^+$ which are directly defined as the extension of Lipschitz functions on the rationals. I this definition, notice that we ``bind'' the pattern variable $x'$ as a variable of type $\{ \R \suchthat -L < \cdot < L \}$.
+for $L : \rat^+$ which are directly defined as the extension of Lipschitz functions on the rationals. In this definition, notice that we ``bind'' the pattern variable $x'$ as a variable of type $\{ \R \suchthat -L < \cdot < L \}$.
 
 To prove that the above definition is in fact valid, we must show that the cases suffice to cover $\R$, and that any two branches have a ``maximum'' on their region of overlap. The former should be clear, and we should be able to prove that branches always \emph{agree} exactly on their region of overlap, so that maximum exists: it's the same as either branch. These proofs confirm the validity of the above definition and provide computational content so that the function can be run.
 
@@ -146,21 +146,21 @@ So in general, a general pattern match on a term $x : A$ to produce a value in $
 [i : I] \quad f_i(x_i) \quad \Longrightarrow e_i(x_i)
 \end{cases},
 \]
-where $i$ ranges over the index set $I$, and $f_i : A_i \hookto B$ is an open embedding, and $e_i : A_i \to B$ is a general expression, and $x_i : A_i$ is a pattern. The $\mathsf{cases}$ expression above entirely determines the \emph{specification} of the program, assuming it is valid, but we still need to prove two conditions to show that it is valid, which are also then used in the \emph{implementation} of the program. That means that these proofs will affect the \emph{computational} behavior of the program, meaning that different proofs might result in different responses to open covers when points are evaluated. The two conditions are
+where $i$ ranges over the index set $I$, and $f_i : A_i \hookto A$ is an open embedding, and $e_i : A_i \to B$ is a general expression, and $x_i : A_i$ is a pattern. The $\mathsf{cases}$ expression above entirely determines the \emph{specification} of the program, assuming it is valid, but we still need to prove two conditions to show that it is valid, which are also then used in the \emph{implementation} of the program. That means that these proofs will affect the \emph{computational} behavior of the program, meaning that different proofs might result in different responses to open covers when points are evaluated. The two conditions are
 \begin{description}
 \item[Covering]
 \[
-\top \vdash_B \bigvee_{i : I} f_i(A_i)
+\top \vdash_A \bigvee_{i : I} f_i(A_i)
 \]
 \item[Gluing] For each $i, j : I$, there is a map
 \[
-f_{ij} : A_i \times_B A_j \to B
+f_{ij} : A_i \times_A A_j \to B
 \]
 such that 
 \[
 f_{ij} = \max(f_i \circ e_i, f_j \circ e_j),
 \]
-where $e_i : A_i \times_B A_j \hookto A_i$ and $e_j : A_i \times_B A_j \hookto A_j$ are the expected pullback maps.
+where $e_i : A_i \times_A A_j \hookto A_i$ and $e_j : A_i \times_A A_j \hookto A_j$ are the expected pullback maps.
 \end{description}
 
 Sometimes, we can automatically/generically discharge either of these two goals. For instance, if the output space $B$ is such that any two (generalized) points have a maximum in terms of specialization order, then the \emph{gluing} condition is automatically fulfilled. For instance, this holds for any lower powerspace $\PLower(A)$, including the supported subspaces $\PLower^+(A)$.
