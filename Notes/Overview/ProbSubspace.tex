@@ -41,7 +41,7 @@ Fortunately, this \emph{isn't} the case. While, in our situation, $p : \Stream(\
 \]
 That is, for any point $p$, $s$ is \emph{not} $p$ (with probability 1).
 
-I would like to tentatively argue in this note, that we can avoid dealing with reasoning about termination of functions like $\mathsf{cmp}$ defined on $\Stream(\bool)$, by dealing instead with the space $\Stream(\bool)_{\mu_R}$, which defines a subspace of $\Stream(\bool)$ according to the nucleus [refer to nLab for definition]
+\cite{simpson2012} defines the ``locale of random sequences'' for a given measure $\mu$, which satisfy all measure-1 properties of that measure. By the previous reasoning, these spaces must not have any points. However, they still have computational structure, and I would like to tentatively argue in this note, that we can avoid dealing with reasoning about termination of functions like $\mathsf{cmp}$ defined on $\Stream(\bool)$ by using that structure. Instead of dealing with $\Stream(\bool)$, we use a subspace of it, called $\Stream(\bool)_{\mu_R}$, which is defined by the nucleus [refer to nLab for definition]
 \[
 U \mapsto \bigcup \left\{ V \suchthat U \subseteq V, \mu_R(U) = \mu_R(V) \right\},
 \]
@@ -51,7 +51,6 @@ so that instead we would have for every \emph{global} point $p : \Stream(\bool)$
 \mathsf{cmp}_p : \Stream(\bool)_{\mu_R} \to \bool.
 \]
 This in fact defines a valid nucleus. It wasn't clear to me that it preserves meets, so I emailed Antonin, and he provided a very nice explanation why it does in fact preserve meets.
-
 \footnote{Why can't you have 
 \[
 \mathsf{cmp} :  \Stream(\bool) \times \Stream(\bool)_{\mu_R} \to \bool?
@@ -100,7 +99,7 @@ j_\mathcal{N}^* &: \Prob\left(\R_\mathcal{N}\right) \to \Prob(\R)
 \end{align*}
 is well-defined.
 
-In $R_\mathcal{N}$, there is a wealth of decidable propositions (i.e., clopens), meaning that it is easy to compute the probability of many different events of $R_{\neg\neg}$. For instance, our predicate $\cdot > 0$ is now clopen! We have the cover
+In $R_\mathcal{N}$, there is a wealth of decidable propositions (i.e., clopens), meaning that it is easy to compute the probability of many different events of $R_\mathbb{N}$. For instance, our predicate $\cdot > 0$ is now clopen! We have the cover
 \[
 \R_{\mathcal{N}} \subseteq (\cdot > 0) \cup (\cdot < 0),
 \]
@@ -114,7 +113,7 @@ Since $\cdot > 0$ is clopen, this means that for any probability distribution $\
 
 We can compute floors with a pattern match with infinitely many cases:
 \begin{align*}
-\lfloor \cdot \rfloor &: \R_{\neg\neg} \to \nat
+\lfloor \cdot \rfloor &: \R_\mathcal{N} \to \nat
 \\ \lfloor x \rfloor &\triangleq \mathsf{cases}(x)
 \begin{cases}
 [n : \nat] \quad n < \cdot < n + 1
@@ -124,9 +123,12 @@ We can compute floors with a pattern match with infinitely many cases:
 \end{align*}
 This pattern match is well-defined, since there is indeed the cover
 \[
-\R_\mathcal{N} \subseteq \bigcup_{n : \nat} (n < \cdot < n + 1)
+\R_\mathcal{N} \subseteq \bigcup_{n : \nat} (n < \cdot < n + 1),
 \]
-since the right-hand side occurs with probability 1 under the normal distribution.
+because we have that for any normal distribution $\mu$,
+\[
+\mu \left( \bigcup_{n : \nat} (n - 1 < \cdot < n + 1) \right) = \mu(\R) = 1.
+\]
 
 Continuous maps whose domains are $R_\mathcal{N}$ may not be able to run on points, but they can be useful in other ways: for instance, they can be integrated against certain probability distributions (distributions on $\R_\mathcal{N}$), or computed on samples from such distributions, which are not points but ``lawless sequences'' in some sense. Also, we are able to condition on decidable predicates (whose probability is more than 0): that is, given a space $A$ and probability distribution $\mu : \Prob(A)$, if $U : \Open{A}$ is clopen and satisfies $\mu(U) > 0$, then we can compute a probability distribution $\mu(\cdot \suchthat U) : \Prob(\{A \suchthat U \})$, whose measure is defined by the usual equation
 \[
