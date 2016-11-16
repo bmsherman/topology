@@ -3,7 +3,7 @@
 
 \subsection{Introduction}
 
-Suppose we have access to a random bitstream which affords us an ``API'' to access it, $s \leftarrow \mu_R$, where $\mu_R : \Prob(\Stream(\bool))$ is the probability distribution over bitstreams which gives equal probability to all bitstreams, and where we can think of $\Stream$s as being coinductively defined to in some sense ``prefer'' access to the front, but anyway we have the homeomorphism $\Stream(A) \cong \nat \Rightarrow \bool$, where $\Rightarrow : \Type \to \Space \to \Space$ constructs function spaces with discrete domains.
+Suppose we have access to a random bitstream which affords us an ``API'' to access it, $s \leftarrow \mu_R$, where $\mu_R : \Prob(\Stream(\bool))$ is the probability distribution over bitstreams which gives equal probability to all bitstreams, and where we can think of $\Stream$s as being coinductively defined to in some sense ``prefer'' access to the front, but anyway we have the homeomorphism $\Stream(A) \cong \nat \Rightarrow A$, where $\Rightarrow : \Type \to \Space \to \Space$ constructs function spaces with discrete domains.
 
 Now, suppose that I have real number in the unit interval with the binary expansion
 \[
@@ -59,9 +59,9 @@ Well, we have the mono $i_{\mu_R} : \Stream(\bool)_{\mu_R} \rightarrowtail \Stre
 \[
 \mathsf{cmp}(i_{\mu_R}(s), s),
 \]
-which we know never terminates. The fact has to be that one input should be a global point, and the other must be random from a regular measure.}
+which we know never terminates. The fact has to be that one input should be a global point, and the other must be random from a non-atomic probability distribution.}
 
-Writing this program seems pointless, because as it turns out, the space $\Stream(\bool)_{\mu_R}$ doesn't have any points: the quotient operation which identifies an open set with the interior of its closure necessarily kills them all. So it seems like we can't ever run $\mathsf{cmp}$. But, recall that $\mu_R$ was a regular measure, so instead we can define $\mu_R : \Prob\left(\Stream(\bool)_{\mu_R} \right)$ which is a stricter requirement; only probability distributions with the same smallest measure-1 subspace as $\mu_R$ can be presented as probability distributions on this space. So the random stream $s \leftarrow \mu_R$, which is perhaps pulling from \texttt{/dev/random}, while certainly not a \emph{point} of $\Stream(\bool)_{\mu_R}$ (after all, this space has no points), implements the (seemingly-impossible) computational \emph{interface} for $\Stream(\bool)_{\mu_R}$.
+Writing this program seems pointless, because as it turns out, the space $\Stream(\bool)_{\mu_R}$ doesn't have any points, since $\mu_R$ is non-atomic. So it seems like we can't ever run $\mathsf{cmp}$. But this isn't really the case: the random stream $s \leftarrow \mu_R$, which is perhaps pulling from \texttt{/dev/random}, while certainly not a \emph{point} of $\Stream(\bool)_{\mu_R}$ (after all, this space has no points), implements the (seemingly-impossible) computational \emph{interface} for $\Stream(\bool)_{\mu_R}$.
 
 At least, it does so with probability 1. My point is that using doubly-negated spaces and probability distributions over them, gives a useful formalism for not having to reason about probability 1 termination. All of capacity for non-termination is localized in the ``API'' interface for the random stream $s \leftarrow \mu_R$. In $\Stream(\bool)_{\mu_R}$, we have the cover
 \[
@@ -103,9 +103,9 @@ In $R_\mathcal{N}$, there is a wealth of decidable propositions (i.e., clopens),
 \[
 \R_{\mathcal{N}} \subseteq (\cdot > 0) \cup (\cdot < 0),
 \]
-since in $\R$, there is the cover
+since for any normal distribution $\mu$,
 \[
-(\cdot \neq 0) \subseteq \neg \neg \left( (\cdot > 0) \cup (\cdot < 0) \right).
+\mu\left((\cdot > 0) \cup (\cdot < 0)\right) = \mu(\R) = 1.
 \]
 Note that the covering for $\R_\mathcal{N}$ is non-trivial, even though $\R_\mathcal{N}$ has no points; even though I am using subset-like notation such as $\subseteq$ and $\cup$, these operations \emph{cannot} be interpreted as operations on subsets. Unlike sets, where all empty sets are isomorphic, two spaces without points are not necessarily homeomorphic to each other.
 
@@ -140,16 +140,9 @@ Therefore, for instance, we could compute a conditional probability distribution
 
 \subsection{Products}
 
-How does producing measure-1 subspaces interact with products? 
-
-Suppose I have have probability distributions $\mu_A : A_{\mu_A}$ and $\mu_B : B_{\mu_B}$. That is, both probability distributions are restricted to their smallest measure-1 subspace. There should be a continuous map, which I believe is mono,
+How does producing measure-1 subspaces interact with products? Suppose I have have probability distributions $\mu_A : A_{\mu_A}$ and $\mu_B : B_{\mu_B}$. That is, both probability distributions are restricted to their smallest measure-1 subspace. There should be a continuous map, which I believe is mono,
 \[f : (A \times B)_{\mu_A \otimes \mu_B} \to A_{\mu_A} \times B_{\mu_B}.\]
-
-Does this map have a continuous inverse? That is, are these spaces homeomorphic, and does the double-negation operation commute with products? My hunch is that the answer is no. Taking $A$ and $B$ to both be $\R$, and $\mu_A$ and $\mu_B$ to be normali distributions, the ``diagonal" relation on $(\R \times \R)_{\mu_A \otimes \mu_B}$ should be clopen (in fact, it is equivalent to $\bot$), but I have a feeling that the diagonal of $\mathbb{R}_{\mu_A} \times \mathbb{R}_{\mu_B}$ shouldn't be open.
-
-If we have probability distributions $\mu_A : \mathcal{R}(A_{\neg\neg})$ and $\mu_B : \mathcal{R}(B_{\neg\neg})$, then the independent product is \[\mu_A \otimes \mu_B : \mathcal{R}(A_{\neg\neg} \times B_{\neg\neg}).\]
-
-I imagine there might be some analogies to be drawn with Dmitri Pavlov's discussion of measurable spaces in this MathOverflow answer\footnote{\url{http://mathoverflow.net/a/49542/82487}}.
+Does this map have a continuous inverse? That is, are these spaces homeomorphic?
 
 \subsection{Predicativity worries}
 All the statements which I'm making should be valid in an impredicative sense. But I'm worried about how to actually define the smallest measure-1 subspaces in a computational (predicative) way. For doubly-negated spaces, which are somewhat similar, I should cite some references which indicate that doubly-negated spaces \emph{cannot} be inductively generated formal topologies, at least in some cases I think.
