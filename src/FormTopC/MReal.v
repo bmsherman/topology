@@ -34,7 +34,7 @@ Require Import QposMinMax.
 
 Existing Instances PreO PreO.PreOrder_I.
 
-Lemma tt_cont : IGCont.pt le_ball C (fun _ : Ball MOne => True).
+Lemma tt_cont : IGCont.pt Metric (fun _ : Ball MOne => True).
 Proof.
 constructor.
 - exists (tt, Qpos1). unfold In. auto.
@@ -55,7 +55,8 @@ constructor.
   + destruct (Qpos_smaller q).
     exists (tt, x). split. auto. 
     exists (tt, x). split. apply lt_ball_center.
-    apply le_ball_radius in l. simpl in l.
+    apply (@le_ball_radius MOne (tt, q) (tt, q0)) in l. 
+    simpl in l.
     eapply Qlt_le_trans; eassumption.
     split. apply le_ball_center. apply Qlt_le_weak.
     assumption. reflexivity.
@@ -78,8 +79,7 @@ Qed.
     [x: X] into its metric completion.
 *)
 Definition from_One_cont (x : X) :
-  IGCont.t le_ball (FormTop.GCovL le_ball CUL)
-  le_ball (FormTop.CL le_ball CUL) 
+  IGCont.t (toPreSpace Metric) Metric 
   (lift (fun _ : MOne => x) Qpos1).
 Proof.
 apply Cont. apply from_One_lip.

@@ -9,45 +9,45 @@ Require Import FormTopC.FormTop
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
+Local Open Scope FT.
+
 Module Discrete.
 Section Discrete.
 
 Variable A : Type.
 
-Definition Ix := @InfoBase.Ix _ (@Logic.eq A).
-Definition C := @InfoBase.C _ (@Logic.eq A) (@Logic.eq A).
-Definition CovI := @InfoBase.Cov _ (@Logic.eq A).
-Definition CovG := @InfoBase.GCov A Logic.eq Logic.eq.
+Definition DiscretePO : FormTop.PreOrder :=
+  {| PO_car := A
+   ; le := Logic.eq
+  |}.
 
-Definition Cov (a : A) (U : Subset A) : Type := U a.
-
-Lemma CovG_Cov : forall a U, CovG a U -> In U a.
-Proof.
-intros. induction X. 
-- assumption.
-- subst. assumption.
-- induction i. subst. apply X. reflexivity.
-Qed.
-
-Theorem CovEquiv : (eq ==> Same_set ==> iffT)%signature Cov CovI.
-Proof.
-simpl_crelation. unfold Cov, CovI, InfoBase.Cov.
-split; intros.
-- exists y. apply X. assumption. reflexivity.
-- destruct X0 as [x t xt leat]. subst. apply X. assumption. 
-Qed.
-
-Instance FTproper : Proper _ FormTop.t := @FormTop.t_proper A.
+Require Import FormTopC.Bundled.
 
 Instance discretePO : PO.t Logic.eq Logic.eq := PO.discrete A.
 
-Instance isCov : FormTop.t Logic.eq Cov.
+Definition DiscI : IGT := InfoBase DiscretePO.
+
+Definition Disc : PreSpace.t :=
+  {| PreSpace.S := DiscretePO
+   ; PreSpace.Cov := fun a U => In U a |}.
+
+Lemma CovG_Cov : forall a U, a <|[DiscI] U -> In U a.
 Proof.
-eapply FormTop.t_proper. 3: apply InfoBase.isCov.
-reflexivity.  apply CovEquiv.
+intros. induction X. 
+- simpl in *. subst. assumption.
+- simpl in *. subst. assumption.
+- induction i.
 Qed.
 
-Definition pt_ok (x : A) : Cont.pt eq Cov (eq x).
+Instance isCov : FormTop.t Disc.
+Proof.
+econstructor; try (simpl; eauto).
+- intros. subst. eauto.
+- intros. split; unfold downset; exists a;
+  (assumption || reflexivity).
+Qed.
+
+Definition pt_ok (x : A) : Cont.pt Disc (eq x).
 Proof.
 constructor.
 - econstructor. reflexivity.
@@ -58,15 +58,15 @@ constructor.
 Qed.
 
 Lemma pt_singleton (U : Subset A) :
-  Cont.pt eq Cov U -> forall x y : A, U x -> U y -> x = y.
+  Cont.pt Disc U -> forall x y : A, U x -> U y -> x = y.
 Proof.
 intros H x y Ux Uy.
 pose proof (Cont.pt_local H Ux Uy).
 destruct X. destruct i.
-destruct d. subst. assumption.
+destruct d. simpl in *. subst. assumption.
 Qed.
 
-Definition pt_eval (U : Subset A) (x : Cont.pt eq Cov U)
+Definition pt_eval (U : Subset A) (x : Cont.pt Disc U)
   := match Cont.pt_here x with
    | Inhabited_intro y _ => y
   end.
@@ -84,10 +84,9 @@ Import Category.
 Local Open Scope loc.
 
 Definition discrete (A : Type) : IGT :=
-  {| S := A 
+  {| S := Discrete.DiscI A
   ; PO := PreO.discrete A
-  ; localized := @InfoBase.loc _ _ _ (PO.discrete A)
-  ; pos := InfoBase.Pos (PO := PO.discrete A)
+  ; pos := InfoBase.Pos (Discrete.DiscretePO A)
   |}.
 
 Module DiscreteFunc.
@@ -100,17 +99,17 @@ Variable B : IGT.
 
 Variable (f : A -> Subset (S B)).
 
-Definition pointwise : Contmap (discrete A) B :=
+Definition pointwise : Cont.map (discrete A) B :=
   fun (y : S B) (x : A) => In (f x) y.
 
-Hypothesis fpt : forall a, Cont.pt (le B) (Cov B) (f a).
+Hypothesis fpt : forall a, Cont.pt B (f a).
 
-Theorem pointwise_cont : Cont.t Logic.eq (le B) (Discrete.Cov A) (Cov B) pointwise.
+Theorem pointwise_cont : Cont.t (Discrete.Disc A) B pointwise.
 Proof.
-constructor; unfold Cov; intros.
+constructor; simpl; intros.
 - destruct (Cont.pt_here (fpt a)).
   exists a0. constructor. assumption.
-- subst. assumption.
+- unfold pointwise in *. subst. assumption.
 - unfold pointwise in *.
   pose proof (Cont.pt_local (fpt a) X X0).
   destruct X1. destruct i. exists a0; assumption.
@@ -139,7 +138,7 @@ Qed.
 (** Should be able to get this from the above just from
   rewriting, but it's not working... *)
 Theorem fContI (f : A -> B) :
-  Contprf (discrete A) (discrete B) (discrF f).
+  Cont.t (discrete A) (discrete B) (discrF f).
 Proof.
 constructor; unfold Cov; intros.
 - apply FormTop.grefl. exists (f a); constructor.
@@ -147,12 +146,11 @@ constructor; unfold Cov; intros.
 - inv H. inv H0. apply FormTop.grefl. exists (f a). split; reflexivity.
   reflexivity.
 - apply FormTop.grefl. exists b; unfold In; auto. induction X; auto.
-  simpl in *. subst. apply IHX. assumption. induction i. subst.
-  apply X. constructor. assumption. 
+  simpl in *. subst. apply IHX. assumption. induction i.
 Qed.
 
 (** Same story here... *)
-Definition pt_okI (x : A) : Contpt (discrete A) (Logic.eq x).
+Definition pt_okI (x : A) : Cont.pt (discrete A) (Logic.eq x).
 Proof.
 constructor.
 - econstructor. reflexivity.
@@ -162,7 +160,7 @@ constructor.
   econstructor. reflexivity. induction X. 
   + assumption.
   + simpl in *. subst. assumption.
-  + destruct i. subst. apply X. constructor.
+  + destruct i.
 Qed.
 
 (** Show that (discrete A * discrete B ≅ discrete (A * B) *)
@@ -170,7 +168,7 @@ Qed.
 Require Import FormTopC.Product.
 
 Theorem prod_assoc_cont :
-  Contprf (discrete A * discrete B) (discrete (A * B)) Logic.eq.
+  Cont.t (discrete A * discrete B) (discrete (A * B)) Logic.eq.
 Proof.
 constructor; intros.
 - apply FormTop.grefl. econstructor. constructor. reflexivity.
@@ -182,7 +180,7 @@ constructor; intros.
 Qed.
 
 Theorem prod_deassoc_cont : 
-  Contprf (discrete (A * B)) (discrete A * discrete B) Logic.eq.
+  Cont.t (discrete (A * B)) (discrete A * discrete B) Logic.eq.
 Proof.
 constructor; unfold Cov; intros.
 - econstructor. econstructor. reflexivity. reflexivity.
@@ -195,9 +193,9 @@ constructor; unfold Cov; intros.
   destruct a.
   destruct i; subst; apply X; split;
   repeat match goal with
-  | [ H : Ix _ _ |- _ ] => destruct H; subst
+  | [ H : PreISpace.Ix _ _ |- _ ] => destruct H; subst
   | [  |- _ = _ ] => reflexivity
-  | [ |- C _ _ _ _ ] => constructor
+  | [ i : Product.Ix _ _ |- _] => destruct i
   end.
 Qed.
 

@@ -11,6 +11,7 @@ Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
 Local Open Scope Subset.
+Local Open Scope FT.
 
 (** Information bases, which are the predicative versions of
     Scott domains. Perhaps, see Definition 1.9 of [2].
@@ -22,102 +23,83 @@ Local Open Scope Subset.
 Module InfoBase. 
 Section InfoBase.
 
-Generalizable Variables leS eqS. 
-
-Context {S : Type} `{PO : PO.t S leS eqS}.
+Variable (S : FormTop.PreOrder).
+Context {PO : PreO.t (le S)}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
-Inductive Ix {s : S} : Type := 
-  MkIx : forall t, leS s t -> Ix.
+Inductive Ix {s : S} : Type := .
 
 Arguments Ix : clear implicits.
 
 Definition C (s : S) (s' : Ix s) : Subset S := match s' with
-  | MkIx t _ => eqS t
   end.
 
-(** This axiom set is localized. *)
-Local Instance loc : FormTop.localized leS C.
-Proof.
-pose proof (@PO.t_equiv _ _ _ PO) as eqEquiv.
-unfold FormTop.localized. intros. simpl.
-destruct i. simpl.
-assert (leS a a) as H0 by reflexivity.
-exists (MkIx a H0). 
-intros. simpl in *. clear H0.
-exists t. split. reflexivity.
-split. 
-rewrite X0. reflexivity. 
-rewrite <- X0. etransitivity; eassumption.
-Qed.
+Definition IBInd : PreISpace.t :=
+  {| PreISpace.S := S
+   ; PreISpace.Ix := Ix
+   ; PreISpace.C := C
+  |}.
 
 Definition Cov (s : S) (U : Subset S) : Type :=
-  In (FormTop.downset leS U) s.
+  In (⇓ U) s.
 
-(** The covering relation for information bases,
-    which we derive from the axiom set above. *)
-Definition GCov := @FormTop.GCov _ leS Ix C.
+Definition IB : PreSpace.t :=
+  {| PreSpace.S := S
+   ; PreSpace.Cov := Cov |}.
 
-Theorem CovEquiv : forall s U, iffT (Cov s U) (GCov s U).
+(** This axiom set is localized. *)
+Local Instance loc : FormTop.localized IBInd.
 Proof.
-intros. unfold Cov, GCov. split; intros.
+unfold FormTop.localized. intros. induction i.
+Qed.
+
+Theorem CovEquiv : forall s U, 
+  (s <|[IB] U) <--> (s <|[IBInd] U).
+Proof.
+intros. simpl. unfold Cov. split; intros.
 - destruct X as [t Ut st].
-  apply FormTop.ginfinity with (MkIx t st).
-  unfold C. simpl. intros.
-  apply FormTop.gle_left with t.
-  rewrite X. reflexivity.
-  apply FormTop.grefl. assumption.
+  apply FormTop.gle_left with t. assumption.
+  apply FormTop.grefl. assumption. 
 - induction X. 
   + exists a. assumption. reflexivity.
   + destruct IHX as [t Ut bt].
     exists t. assumption. etransitivity; eassumption.
-  + destruct i. unfold C in *. simpl in *.
-    assert (eqS t t) as eqt by reflexivity.
-    specialize (X t eqt).
-    specialize (g t eqt). destruct X as [x Ux tx].
-    exists x. assumption. etransitivity; eassumption.
+  + destruct i.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Local Instance isCovG : FormTop.t leS GCov := 
+Local Instance isCovG : FormTop.t IBInd := 
   FormTop.GCov_formtop.
 
-Local Instance isCov : FormTop.t leS Cov.
+(** Should prove this via homeomorphism with IBInd. *)
+Local Instance isCov : FormTop.t IB.
 Proof.
-assert ((eq ==> eq ==> iffT)%signature Cov GCov).
-simpl_crelation. apply CovEquiv.
-(** I should be able to replace Cov with GCov here
-    and apply isCovG, but I don't have the t_Proper instance
-    due to universe issues.
-*)
-Fail (rewrite <- X; apply isCovG).
 Admitted.
 
-Lemma Pos : FormTop.gtPos leS C.
+Lemma Pos : FormTop.gtPos IBInd.
 Proof.
 apply FormTop.gall_Pos.
-intros. destruct i. simpl. exists t.
-unfold In. reflexivity.
+intros. destruct i.
 Qed.
 
 End InfoBase.
 End InfoBase.
 
-Arguments InfoBase.Ix {S leS} s : clear implicits.
+Arguments InfoBase.Ix : clear implicits.
 
 Module InfoBaseCont.
 Section InfoBaseCont.
 
 Generalizable All Variables.
 
-Context {S} {leS : crelation S} {POS : PreO.t leS}.
-Context {T} {leT eqT : crelation T} {POT : PO.t leT eqT}.
+Context {S : PreSpace.t} {POS : PreO.t (le S)}.
+Context {T : FormTop.PreOrder} {POT : PreO.t (le T)}.
 
 Record ptNM {F : Subset T} : Type :=
   { ptNM_local : forall {a b}, F a -> F b -> 
-     Inhabited (F ∩ FormTop.down leT a b)
-  ; ptNM_le_right : forall a b, leT a b -> F a -> F b
+     Inhabited (F ∩ (a ↓ b))
+  ; ptNM_le_right : forall a b, a <=[T] b -> F a -> F b
   ; ptNM_here : Inhabited F
   }.
 
@@ -130,23 +112,21 @@ Admitted.
 
 (** I have no idea whether this is in fact
     a good definition *)
-Record tNM {F_ : Cont.map S T} :=
-  { NMle_left : forall a b c, leS a b -> F_ c b -> F_ c a
-  ; NMle_right :  forall a b c, F_ b a -> leT b c -> F_ c a
+Record tNM {F_ : Cont.map S (InfoBase.IB T)} :=
+  { NMle_left : forall a b c, a <=[S] b -> F_ c b -> F_ c a
+  ; NMle_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
   ; NMlocal : forall {a b c}, F_ b a -> F_ c a -> 
-     Inhabited ((fun t => F_ t a) ∩ FormTop.down leT b c)
+     Inhabited ((fun t => F_ t a) ∩ (b ↓ c))
   ; NMhere : forall s : S, In (union (fun _ => True) F_) s
   }.
 
 Arguments tNM : clear implicits.
 
-Variable CovS : S -> Subset S -> Type.
-Hypothesis FTS : FormTop.t leS CovS.
-Let CovT : T -> Subset T -> Type := @InfoBase.Cov _ leT.
+Hypothesis FTS : FormTop.t S.
 
-Theorem contNM : forall (F : Cont.map S T),
+Theorem contNM : forall (F : Cont.map S (InfoBase.IB T)),
   tNM F
-  -> Cont.t leS leT CovS CovT F.
+  -> Cont.t S (InfoBase.IB T) F.
 Proof.
 intros. constructor; intros.
 - unfold InfoBase.Cov. apply FormTop.refl.
@@ -156,7 +136,7 @@ intros. constructor; intros.
   pose proof (NMlocal X X0 X1).
   destruct X2. destruct i.
   econstructor; eassumption.
-- unfold CovT, InfoBase.Cov in *. 
+- simpl in *. unfold InfoBase.Cov in *. 
   destruct X1 as [t0 Vt0 bt0].
   apply FormTop.refl. exists t0. assumption.
   apply (NMle_right X) with b; assumption.
@@ -164,12 +144,13 @@ Qed.
 
 End InfoBaseCont.
 
-Arguments tNM {_} leS {_} leT F_.
-Arguments ptNM {_} leT F.
+Arguments tNM : clear implicits.
+Arguments ptNM : clear implicits.
 
+(*
 Section InfoBaseML.
 
-Context {S} {leS : crelation S} {POS : PreO.t leS}.
+Context {S : PreSpace.t} {POS : PreO.t (le S)}.
 Context {T} `{MeetLat.t T}.
 
 Record pt {F : Subset T} : Type :=
@@ -356,56 +337,33 @@ unfold eval. split; intros.
 Qed.
 
 End EvalPt.
+*)
 
 End InfoBaseCont.
 
+(*
 Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename, clear implicits.
+*)
 
 Module One.
 Section One.
 
-Local Instance MLOneOps : MeetLat.Ops True := MeetLat.one_ops.
-Local Instance MLOne : MeetLat.t True MLOneOps := MeetLat.one.
-Local Instance POOne : @PO.t True (fun _ _ => True) (fun _ _ => True) := @MeetLat.PO _ _ MLOne.
+Definition OnePO : FormTop.PreOrder :=
+  {| PO_car := True
+   ; le := fun _ _ => True
+  |}.
 
-Definition Cov (_ : True) (U : Subset True) : Type := U I.
-Definition Cov' := FormTop.GCov MeetLat.le 
-  (InfoBase.C (leS := MeetLat.le) (eqS := MeetLat.eq)).
-
-Theorem CovEquiv' : forall a U, iffT (Cov a U) (Cov' a U).
-Proof.
-intros. unfold Cov, Cov'. split; intros.
-- apply FormTop.grefl. destruct a; assumption. 
-- induction X; auto. destruct a; auto.
-  apply (X I). destruct i. constructor.
-Qed.
-
-Theorem CovEquiv : (eq ==> eq ==> iffT)%signature Cov Cov'.
-Proof.
-simpl_crelation. apply CovEquiv'.
-Qed.
-
-
-Instance FTOne : FormTop.t (@MeetLat.le _ MeetLat.one_ops) Cov.
-Proof.
-(** This is a weird Coq error... *)
-Fail rewrite CovEquiv.
-(** Proof broken 
-apply FormTop.GCov_formtop. apply InfoBase.loc.
-Qed.
-*)
-Admitted.
+Definition One : PreISpace.t := InfoBase.IBInd OnePO.
 
 Section One_intro.
 
-Context {S : Type} {leS : crelation S}
-  {CovS : S -> Subset S -> Type}
-  {FTS : FormTop.t leS CovS}.
+Context {S : PreSpace.t} {FTS : FormTop.t S}.
 
-Definition One_intro (_ : True) (s : S) : Prop := True.
+Definition One_intro : Cont.map S One :=
+   fun (_ : True) (s : S) => True.
 
 Theorem One_intro_cont : 
-  Cont.t leS (fun _ _ => True) CovS Cov' One_intro.
+  Cont.t S One One_intro.
 Proof.
 constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
@@ -413,13 +371,11 @@ constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. 
   exists I. unfold FormTop.down, In; auto. constructor.
 - apply FormTop.refl. constructor 1 with I.
-  rewrite <- CovEquiv' in X. unfold Cov in X.
-  assumption. auto.
+  induction X. destruct a0. assumption.
+  assumption.  destruct i. auto.
 Qed.
 
 End One_intro.
-
-Instance one_ops : MeetLat.Ops True := MeetLat.one_ops.
 
 (** Why is this a universe inconsistency???
 Definition FTtoFrame : 
@@ -447,13 +403,12 @@ constructor.
 Qed.
 *)
 
-Context {S} {leS : S -> Subset S} {POS : PreO.t leS}.
-Variable CovS : S -> (Subset S) -> Type.
+Context {S : PreSpace.t} {POS : PreO.t (le S)}.
 
-Existing Instance Cont.t_Proper.
+(*Existing Instance Cont.t_Proper. *)
 
 Theorem pt_to_map (f : Subset S) :
-  Cont.pt leS CovS f -> Cont.t MeetLat.le leS Cov' CovS (fun t _ => f t).
+  Cont.pt S f -> Cont.t One S (fun t _ => f t).
 Proof.
 intros H. destruct H. destruct pt_here.
 (** Another weird Coq error. *)
@@ -472,20 +427,26 @@ Qed.
 *)
 Admitted.
 
-Definition Point (f : Subset S) := Cont.t MeetLat.le leS Cov CovS (fun t _ => f t).
+Definition Point (f : Subset S) := Cont.t One S (fun t _ => f t).
 
 End One.
 End One.
 
 Module Sierpinski.
 
-Local Instance ops : MeetLat.Ops bool := MeetLat.two_ops.
-Local Instance SML : MeetLat.t bool ops := MeetLat.two.
+Definition SierpPO : FormTop.PreOrder :=
+  {| PO_car := bool
+   ; le := Bool.leb |}.
 
-Definition Ix := InfoBase.Ix (leS := MeetLat.le).
-Definition C := InfoBase.C (leS := MeetLat.le) (eqS := MeetLat.eq).
+Definition Sierp := InfoBase.IBInd SierpPO.
 
-Definition sand : Cont.map (bool * bool) bool :=
+Definition ProdPO (A B : FormTop.PreOrder) : FormTop.PreOrder :=
+  {| PO_car := A * B
+  ; le := prod_op (le A) (le B) |}.
+
+(*
+Definition sand : Cont.map (InfoBase.IBInd (ProdPO SierpPO SierpPO))
+  Sierp :=
   InfoBaseCont.lift_binop andb.
 
 Existing Instances MeetLat.product MeetLat.product_ops.
@@ -509,6 +470,7 @@ Definition const_cont (b : bool) : InfoBaseCont.pt (MeetLat.le (negb b)).
 Proof.
 apply InfoBaseCont.above_pt.
 Qed.
+*)
 
 End Sierpinski.
 
@@ -521,67 +483,37 @@ Import Category.
 
 Local Open Scope loc.
 
-Definition InfoBase {A : Type} {ops : MeetLat.Ops A}
-  (ML : MeetLat.t A ops) : IGT :=
-  {| S := A 
-  ; PO := PO.PreO
-  ; localized := @InfoBase.loc _ _ _ MeetLat.PO
-  ; pos := InfoBase.Pos
+Definition InfoBase {A : FormTop.PreOrder} {POS : PreO.t (le A)} : IGT :=
+  {| S := InfoBase.IBInd A
+  ; PO := _
+  ; localized := InfoBase.loc A
+  ; pos := InfoBase.Pos A
   |}.
 
-Definition One : IGT := InfoBase MeetLat.one.
+Arguments InfoBase A {POS}.
 
-Definition Σ : IGT := InfoBase Sierpinski.SML.
-
-Definition Σand_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sand.
-
-(** I need to prove that a the information-base product of meet lattices
-    is the same as the product of the information bases
-
-    This will be phrased as a homeomorphism!
-*)
-(** Sierpinski.sand_cont *)
-Definition Σand_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
-  (Cov (Σ * Σ)) (Cov Σ) Σand_mp.
+Local Instance One_PreO : PreO.t (le One.One).
 Proof.
-simpl. unfold Cov. simpl. 
-Admitted.
+firstorder.
+Qed.
 
-Definition Σand : Σ * Σ ~~> Σ :=
-  {| mp := Σand_mp
-   ; mp_ok := Σand_mp_ok
-  |}.
-
-Definition Σor_mp : Cont.map (S (Σ * Σ)) (S Σ) := Sierpinski.sor.
-
-(** Sierpinski.sor_cont *)
-Definition Σor_mp_ok : Cont.t (le (Σ * Σ)) (le Σ)
-  (Cov (Σ * Σ)) (Cov Σ) Σor_mp.
+Local Instance Sierp_PreO : PreO.t (le Sierpinski.Sierp).
 Proof.
-simpl. unfold Cov. simpl. 
-Admitted.
+econstructor; intros.
+- destruct x; firstorder.
+- destruct x, y, z; firstorder.
+Qed.
 
-Definition Σor : Σ * Σ ~~> Σ :=
-  {| mp := Σor_mp
-   ; mp_ok := Σor_mp_ok
-  |}.
+Definition One : IGT := InfoBase One.One.
 
-Class Hausdorff {A : IGT} : Type :=
-  { apart : A * A ~~> Σ }.
-
-Arguments Hausdorff A : clear implicits.
-
-
-
-
-
+Definition Σ : IGT := InfoBase Sierpinski.Sierp.
 
 
 
 
 Definition point_mp (A : IGT) (f : Subset (S A))
-  (fpt : Cont.pt (le A) (Cov A) f)
-  : Contprf One A (fun t _ => f t).
+  (fpt : Cont.pt A f)
+  : Cont.t One A (fun t _ => f t).
 Proof.
 simpl.
 constructor; intros; auto.
@@ -596,14 +528,13 @@ constructor; intros; auto.
   apply FormTop.grefl. econstructor; eauto.
 Qed.
 
-Definition One_intro_mp {A : IGT} : Contmap A One
+Definition One_intro_mp {A : IGT} : Cont.map A One
   := One.One_intro.
 
 Require Import FunctionalExtensionality.
 
-Definition One_intro_mp_ok {A : IGT} : Contprf A One One_intro_mp.
+Definition One_intro_mp_ok {A : IGT} : Cont.t A One One_intro_mp.
 Proof.
-unfold Contprf.
 constructor; unfold Cov, One_intro_mp, One.One_intro; simpl; intros.
 - apply FormTop.grefl. econstructor. constructor. constructor.
 - constructor.
@@ -611,8 +542,8 @@ constructor; unfold Cov, One_intro_mp, One.One_intro; simpl; intros.
 - apply FormTop.grefl. induction X.
   + econstructor. eassumption. constructor.
   + assumption.
-  + induction i. eapply X. reflexivity.
-Unshelve. constructor. constructor. constructor.
+  + induction i.
+Unshelve. constructor. constructor.
 Qed.
 
 Definition One_intro `{A : IGT} : A ~~> One :=
@@ -626,7 +557,7 @@ Import Category.
 Definition const {Γ A : IGT} (pt : One ~~> A) : Γ ~~> A
   := pt ∘ One_intro.
 
-Definition point (A : IGT) (f : Subset (S A)) (fpt : Cont.pt (le A) (Cov A) f)
+Definition point (A : IGT) (f : Subset (S A)) (fpt : Cont.pt A f)
   : One ~~> A :=
   {| mp := fun t _ => f t
    ; mp_ok := point_mp A f fpt

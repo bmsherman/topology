@@ -31,11 +31,10 @@ Local Open Scope Subset.
 Module Compact.
 Section Defn.
 
-Context {S} {leS : S -> S -> Type} {POS : PreO.t leS}.
-Context {IxS : S -> Type}.
-Context {CS : forall a, IxS a -> Subset S}.
+Context {S : PreISpace.t}
+        {POS : PreO.t (le S)}.
 
-Definition le := JoinTop.leL (le := leS).
+Definition le := JoinTop.leL (le := le S).
 
 Instance PO : PreO.t le := JoinTop.joinPreO.
 
@@ -48,6 +47,8 @@ Inductive Splits : list S -> list S -> list S -> Type :=
            -> Splits (a :: xs) ys (a :: zs)
   | SplitR : forall b {xs ys zs}, Splits xs ys zs
            -> Splits xs (b :: ys) (b :: zs).
+
+Definition IxS := PreISpace.Ix S.
 
 Inductive Ix {xs : list S} : Type :=
   | MkIx : forall a s : list S, Each IxS a 
@@ -94,6 +95,8 @@ induction e.
 - inv mem. assumption. apply IHe. assumption.
 Defined.
 
+Definition CS := PreISpace.C S.
+
 Inductive axunion {a : list S} {axioms : Each IxS a}
   : Subset S :=
   | Mkaxunion : forall (s : S) x (el : member x a),
@@ -127,16 +130,25 @@ Definition C (xs : list S) (split : Ix xs) : Subset (list S) :=
   | MkIx a s axioms mem => Covering a s axioms
   end.
 
-Lemma member_le : forall a b, member a b -> le [a] b.
+Definition CompactPreO : FormTop.PreOrder :=
+  {| PO_car := list S
+   ; FormTop.le := le |}.
+
+Definition Compact : PreISpace.t :=
+  {| PreISpace.S := CompactPreO
+   ; PreISpace.Ix := Ix
+   ; PreISpace.C := C |}.
+
+Lemma member_le : forall a b, member a b -> [a] <=[Compact] b.
 Proof.
-intros. unfold le, JoinTop.leL. intros.
+intros. simpl. unfold le, JoinTop.leL. intros.
 inv X0. Focus 2. inv X1.
 exists a. split. reflexivity. assumption.
 Qed.
 
-Lemma leS_le : forall a b, leS a b -> le [a] [b].
+Lemma leS_le : forall a b, a <=[S] b -> [a] <=[Compact] [b].
 Proof.
-intros. unfold le, JoinTop.leL. intros.
+intros. simpl. unfold le, JoinTop.leL. intros.
 inv X0. Focus 2. inv X1. exists b. split. assumption.
 constructor.
 Qed.
@@ -200,7 +212,7 @@ apply Splits_nil in s. subst.
 reflexivity.
 Qed.
 
-Hypothesis locS : FormTop.localized leS CS.
+Hypothesis locS : FormTop.localized S.
 
 Lemma Splits_nil_opp {xs ys} : Splits xs ys []
   -> xs = [] /\ ys = [].
@@ -261,10 +273,10 @@ reflexivity.
 Qed.
 
 
-Lemma loc : FormTop.localized le C.
+Lemma loc : FormTop.localized Compact.
 Proof.
 unfold FormTop.localized.
-intros. 
+intros.
 unfold FormTop.localized in locS.
 generalize dependent a.
 induction c.
@@ -278,10 +290,9 @@ induction c.
 - intros. induction i. simpl.
 Abort.
 
-Definition inj : Cont.map S (list S) := fun xs x => le [x] xs.
+Definition inj : Cont.map S Compact := fun xs x => [x] <=[Compact] xs.
 
-
-Definition inj_cont : IGCont.t leS (FormTop.GCov leS CS) le C inj.
+Definition inj_cont : IGCont.t S Compact inj.
 Proof.
 constructor; intros.
 - apply FormTop.grefl. exists [a]. unfold SetsC.In. constructor.
@@ -294,6 +305,7 @@ constructor; intros.
 - induction j. simpl. induction a0.
   + apply FormTop.grefl. unfold inj in *.
     exists (a :: s). 2: apply member_le; constructor.
+    simpl in X.
     econstructor. apply SplitL. apply SplitsR_All.
     2: eassumption. apply (Splits_KFinite s0).
     apply KNil. 
@@ -318,7 +330,9 @@ intros. simpl. econstructor. apply SplitL. econstructor.
   constructor.
 Qed.
 
-Lemma Cov_nil {U} : FormTop.GCov le C [] U.
+Local Open Scope FT.
+
+Lemma Cov_nil {U} : [] <|[Compact] U.
 Proof.
 apply FormTop.ginfinity with Ixnil.
 simpl. intros. induction X. 
@@ -330,8 +344,8 @@ simpl. intros. induction X.
 Abort.
 
 Lemma Cov_each : forall U (xs : list S),
-  (forall x : S, member x xs -> FormTop.GCov le C [x] U)
-  -> FormTop.GCov le C xs U.
+  (forall x : S, member x xs -> [x] <|[Compact] U)
+  -> xs <|[Compact] U.
 Proof.
 intros. induction xs.
 - apply FormTop.ginfinity with Ixnil. 
@@ -343,14 +357,14 @@ intros. induction xs.
   apply Splits_nil in s. subst.
 Abort.
  
-Lemma lift_Cov : forall a U, FormTop.GCov leS CS a U
-  -> FormTop.GCov le C [a] (Each U).
+Lemma lift_Cov : forall a U, a <|[S] U
+  -> [a] <|[Compact] Each U.
 Proof.
 intros.
 induction X.
 - apply FormTop.grefl. constructor. assumption.
   constructor.
-- eapply FormTop.gle_left. 2: eassumption.
+- simpl in *. eapply FormTop.gle_left. 2: eassumption.
   apply leS_le. assumption.
 - unshelve eapply FormTop.ginfinity.
   apply Ix_singleton. assumption.
@@ -361,20 +375,19 @@ Abort.
 
 (** This actually doesn't work, because the
     empty compact set is a valid point of the space. *)
-Definition nondet_run : forall a U, FormTop.GCov leS CS a U
-  -> forall (F : Subset (list S)), IGCont.pt le C F
+Definition nondet_run : forall a U, FormTop.GCov S a U
+  -> forall (F : Subset (list S)), IGCont.pt Compact F
   -> SetsC.In F [a] -> { b : S & SetsC.In U b }.
 Proof.
 intros.
 induction X.
 - exists a. assumption.
 - apply IHX. unfold SetsC.In.
-  eapply (IGCont.pt_le_right _ X0).
+  eapply (IGCont.pt_le_right (T := Compact) (F := F) X0).
   eassumption. apply leS_le. assumption.
-- pose proof (IGCont.pt_cov _ X0 X1 (Ix_singleton i)) as H.
+- pose proof (IGCont.pt_cov X0 X1 (Ix_singleton i)) as H.
   induction H.
 Abort.
-
 
 
 End Defn.

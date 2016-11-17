@@ -1,4 +1,5 @@
 Require Import 
+  FormTopC.FormTop
   FormTopC.Bundled
   FormTopC.Cont
   FormTopC.Product
@@ -49,7 +50,7 @@ intros. unfold eq. simpl. unfold eq_map.
   + etransitivity; eassumption.
 - unfold eq. simpl. unfold eq_map. intros.
   destruct H, H0. constructor.
-  simpl. apply Cont.compose_proper;
+  simpl. apply (Cont.compose_proper (T := B));
     (apply mp_ok || assumption).
 - intros. simpl. unfold eq_map.
   induction H, H0. constructor.

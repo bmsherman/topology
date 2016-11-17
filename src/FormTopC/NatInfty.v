@@ -48,10 +48,17 @@ Definition CUL (a : O) : IxUL a -> Subset O := match a with
   | Exactly _ => Empty_set_rect _
   end.
 
-Definition Ix := FormTop.IxL le IxUL.
-Definition C := FormTop.CL le CUL.
+Definition NatInfPO : FormTop.PreOrder :=
+  {| PO_car := O
+   ; FormTop.le := le
+  |}.
 
-Definition Cov := FormTop.GCovL le CUL.
+Definition NatInfUL : PreISpace.t :=
+  {| PreISpace.S := NatInfPO
+   ; PreISpace.C := CUL
+  |}.
+
+Definition NatInfPS := Localized NatInfUL.
 
 Definition exactly (n : nat) : Subset O := le (Exactly n).
 
@@ -62,7 +69,7 @@ Inductive infty : Subset O :=
 
 Require Import FormTopC.Cont.
 
-Definition is_pt := IGCont.pt le C.
+Definition is_pt := IGCont.pt NatInfPS.
 
 Lemma pt_infty : is_pt infty.
 Proof.
@@ -107,30 +114,29 @@ constructor; unfold exactly; intros.
   + simpl in *. contradiction.
 Qed.
 
-Lemma Pos : FormTop.gtPos le C.
+Lemma Pos : FormTop.gtPos NatInfPS.
 Proof.
 apply FormTop.gall_Pos.
 intros a. destruct a.
 - (** MoreThan n - take the point infty as an example. *)
   intros i.
-  rewrite <- (Intersection_Included_r _ infty (C (MoreThan n) i)).
-  apply (IGCont.pt_cov _ pt_infty).
+  rewrite <- (Intersection_Included_r _ infty (PreISpace.C NatInfPS (MoreThan n) i)).
+  apply (IGCont.pt_cov pt_infty).
   constructor.
 - (** Exactly n - take the point (exactly n) as an example. *)
   intros i.
-  rewrite <- (Intersection_Included_r _ (exactly n) (C (Exactly n) i)).
-  apply (IGCont.pt_cov _ (pt_exactly n)).
+  rewrite <- (Intersection_Included_r _ (exactly n) (PreISpace.C NatInfPS (Exactly n) i)).
+  apply (IGCont.pt_cov (pt_exactly n)).
   constructor. reflexivity.
 Qed.
 
-Require Import FormTopC.InfoBase.
+Require Import FormTopC.Discrete
+  FormTopC.Bundled.
 
 (** The (open) embedding of the natural numbers into
     its Alexandroff compactification. *)
-Definition inj : Cont.map nat O := fun o n =>
+Definition inj : Cont.map (discrete nat) NatInfPS := fun o n =>
   exactly n o.
-
-Require Import FormTopC.Discrete.
 
 (*
 Lemma inj_cont : Cont.t Logic.eq le (Discrete.Cov nat) (FormTop.GCov le C) inj.
@@ -196,23 +202,23 @@ unfold is_pt. constructor.
   + destruct c. simpl in *. destruct ix.
     inv l. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
     exists (MoreThan n0). split. assumption.
-    exists (MoreThan (S n)). split. constructor.
+    exists (MoreThan (Datatypes.S n)). split. constructor.
     split; constructor. reflexivity. assumption.
     subst. clear H2.
-    destruct (f (S n0)) eqn:fSn.
-    exists (Exactly (S n0)). split.  unfold checkf. split. 
+    destruct (f (Datatypes.S n0)) eqn:fSn.
+    exists (Exactly (Datatypes.S n0)). split.  unfold checkf. split. 
     intros. apply H. apply Lt.lt_n_Sm_le; assumption.
-    assumption. exists (Exactly (S n0)). split. constructor.
+    assumption. exists (Exactly (Datatypes.S n0)). split. constructor.
     split; constructor. constructor. reflexivity.
-    exists (MoreThan (S n0)). split. unfold checkf. intros.
+    exists (MoreThan (Datatypes.S n0)). split. unfold checkf. intros.
     inv H0. assumption. apply H. assumption.
-    exists (MoreThan (S n0)). split. constructor.
+    exists (MoreThan (Datatypes.S n0)). split. constructor.
     split; constructor. constructor. reflexivity.
     reflexivity. exists (Exactly m). split.  assumption.
     destruct (Compare_dec.le_lt_eq_dec _ _ H2).
-    exists (MoreThan (S n)). split. constructor.
+    exists (MoreThan (Datatypes.S n)). split. constructor.
     split; constructor. reflexivity. assumption.
-    subst. exists (Exactly (S n)). split.  constructor.
+    subst. exists (Exactly (Datatypes.S n)). split.  constructor.
     split; constructor; reflexivity.
     induction ix.
 Qed.
@@ -229,13 +235,13 @@ Arguments Partial : clear implicits.
 
 Definition pt_to_Partial (x : Subset O) (ptx : is_pt x) : Partial unit.
 Proof.
-destruct (IGCont.pt_here _ ptx).
+destruct (IGCont.pt_here ptx).
 induction a.
 Focus 2. apply Now. apply tt.
 generalize dependent n. cofix.
 intros.
-pose proof (IGCont.pt_cov _ ptx i 
-  (FormTop.MkIxL _ (MoreThan n) tt  (PreO.le_refl (MoreThan n)))) as X.
+pose proof (IGCont.pt_cov ptx i 
+  (FormTop.MkIxL NatInfUL (MoreThan n) tt  (PreO.le_refl (MoreThan n)))) as X.
 simpl in X. destruct X. destruct i0. destruct s.
 destruct p. destruct d. induction n0.
 - induction a.
@@ -254,30 +260,31 @@ Require Import
   FormTopC.All.
 Import Category.
 
-Definition NatInfty : IGT.
-Proof. unshelve eapply (
-  {| S := NatInfty.O
-  ; le := NatInfty.le
-  ; PO := NatInfty.le_PreO
-  ; C := NatInfty.C
-  ; pos := NatInfty.Pos
-  |}).
-apply FormTop.Llocalized. apply NatInfty.le_PreO.
-Defined.
+Lemma NIPO : PreO.t (le NatInfty.NatInfUL).
+Proof.
+apply NatInfty.le_PreO.
+Qed.
+
+Definition NatInfty : IGT :=
+  {| S := NatInfty.NatInfPS
+   ; Bundled.PO := NatInfty.le_PreO
+   ; pos := NatInfty.Pos
+   ; localized := @FormTop.Llocalized _ NIPO
+  |}.
 
 Local Open Scope loc.
 
 Definition NatInfty_exactly (n : nat) : unit ~~> NatInfty
   := point NatInfty (NatInfty.exactly n)
-  (IGCont.pt_cont _ _ (NatInfty.pt_exactly n)).
+  (IGCont.pt_cont _ (NatInfty.pt_exactly n)).
 
 Definition NatInfty_infty : unit ~~> NatInfty :=
-  point NatInfty (NatInfty.infty) (IGCont.pt_cont _ _
+  point NatInfty (NatInfty.infty) (IGCont.pt_cont _
     (NatInfty.pt_infty)).
 
 Definition NatInfty_checker (f : nat -> bool) : unit ~~> NatInfty
   := point NatInfty (NatInfty.checkf f)
-    (IGCont.pt_cont _ _ (NatInfty.checkf_cont f)).
+    (IGCont.pt_cont _ (NatInfty.checkf_cont f)).
 
 Definition run_NatInfty (x : unit ~~> NatInfty) :
   NatInfty.Partial Datatypes.unit.
@@ -287,7 +294,6 @@ unfold NatInfty.is_pt.
 eapply IGCont.pt_cont_converse.
 
 pose proof (mp_ok NatInfty_infty).
-unfold Contprf in X. simpl in X.
 Abort.
 
 

@@ -8,17 +8,19 @@ Module JoinTop.
 Section JoinTop.
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Context {S} {ops : JoinLat.Ops S} {JL : JoinLat.t S ops}.
+(** NO! This context gives us two (different) preorders on S.
+    Will need to fix this. *)
+Context {S : PreSpace.t} {ops : JoinLat.Ops S} {JL : JoinLat.t S ops}.
 
 Variable bot : S.
-Variable Cov : S -> (Subset S) -> Type.
 
+Local Open Scope FT.
 
 Class t : Type :=
-  { FT :> FormTop.t JoinLat.le Cov
+  { FT :> FormTop.t S
   ; bot_ok : @PreO.bottom _ JoinLat.le bot
-  ; bot_Cov : forall U, Cov bot U
-  ; join_left : forall a b U, Cov a U -> Cov b U -> Cov (JoinLat.max a b) U
+  ; bot_Cov : forall U, bot <| U
+  ; join_left : forall a b U, a <| U -> b <| U -> JoinLat.max a b <| U
   }.
 
 Hypothesis FTS : t.
@@ -26,8 +28,8 @@ Hypothesis FTS : t.
 
 Definition singleton (s s' : S) : Prop := s = s'.
 
-Lemma join_right : forall a b c, Cov a (singleton b)
-  -> Cov a (singleton (JoinLat.max b c)).
+Lemma join_right : forall a b c, a <| (singleton b)
+  -> a <| singleton (JoinLat.max b c).
 Proof.
 intros. eapply FormTop.trans. apply X. clear X. clear a.
 intros a sba. unfold singleton in sba. subst.

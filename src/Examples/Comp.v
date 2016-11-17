@@ -94,14 +94,17 @@ Proof.
 repeat econstructor.
 Defined.
 
+Require Import FormTopC.Bundled
+  FormTopC.FormTop.
+
 Definition runDiscrete {A} (x : unit ~~> discrete A) : A.
 pose proof (Cont.here (mp_ok x) I) as H.
-remember (union (fun _ : S (discrete A) => True) (mp x)) as U. 
-induction H; subst. destruct u. destruct i.
-- exact a0.
+simpl in H. 
+remember (@union A True(fun _ : A => True) (@mp One (discrete A) x)) as U. 
+induction H; subst. destruct a. destruct u.
+- exact a.
 - apply IHGCov. reflexivity.
-- induction i. simpl in *. apply (X I).
-  unfold InfoBase.C. constructor. reflexivity.
+- induction i. 
 Defined.
 
 Definition runDiscrete_CCC {A B : Type}

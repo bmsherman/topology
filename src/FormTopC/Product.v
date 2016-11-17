@@ -11,6 +11,7 @@ Set Asymmetric Patterns.
 
 Existing Instances FormTop.GCov_formtop 
   Bundled.IGT_PreO Bundled.IGTFT Bundled.IGT_Pos.
+Local Open Scope FT.
 
 
 (** Product spaces for inductively generated formal topologies.
@@ -26,6 +27,9 @@ Definition S' : Type := S X * S Y.
 
 Definition le' := prod_op (le X) (le Y).
 
+Definition Ix := PreISpace.Ix.
+Definition C := PreISpace.C.
+
 Inductive Ix' : S' -> Type := 
   | PLeft : forall {s}, Ix X s -> forall t, Ix' (s, t)
   | PRight : forall {t}, Ix Y t -> forall s, Ix' (s, t).
@@ -36,9 +40,20 @@ Definition C' (p : S') (i : Ix' p) : Subset S'
   | PRight _ ixt s => C Y _ ixt w * (z = s)
   end)%type.
 
-Local Instance PO : PreO.t le' := PreO.product (PO X) (PO Y).
+Definition ProdPreO : FormTop.PreOrder :=
+  {| PO_car := S'
+   ; FormTop.le := le'
+  |}.
 
-Local Instance loc : FormTop.localized le' C'.
+Definition Prod : PreISpace.t :=
+  {| PreISpace.S := ProdPreO
+   ; PreISpace.Ix := Ix'
+   ; PreISpace.C := C'
+  |}.
+
+Local Instance PO : PreO.t (le Prod) := PreO.product (PO X) (PO Y).
+
+Local Instance loc : FormTop.localized Prod.
 Proof.
 unfold FormTop.localized.
 intros a c H1 i. destruct H1 as (H1 & H2).
@@ -66,50 +81,49 @@ destruct i.
   subst. destruct downu.
   unfold FormTop.down. split.
   simpl. split. reflexivity. assumption.
+  simpl.
   unfold le', prod_op; eauto.
 Qed.
 
-Definition Cov' := FormTop.GCov le' C'.
-
-Lemma factors a b U V : Cov X a U -> Cov Y b V -> 
-  Cov' (a, b) (fun p => let (a', b') := p in U a' * V b')%type.
+Lemma factors a b U V : a <|[X] U -> b <|[Y] V -> 
+  (a, b) <|[Prod] (fun p => let (a', b') := p in U a' * V b')%type.
 Proof.
 intros H H0. induction H.
 - induction H0.
   + apply FormTop.grefl. split; assumption.
   + eapply FormTop.gle_left. 2:apply IHGCov.
     split; simpl. apply PreO.le_refl. assumption.
-  + apply (FormTop.ginfinity (C := C')) with (PRight i a).
+  + apply (FormTop.ginfinity) with (PRight i a).
     intros. simpl in X0. destruct u0. destruct X1. 
     subst. apply X0. assumption.
 - apply FormTop.gle_left with (b0, b). split; simpl.
   assumption. reflexivity.
   apply IHGCov.
-- apply (FormTop.ginfinity (C := C')) with (PLeft i b).
+- apply (FormTop.ginfinity) with (PLeft i b).
   intros. simpl in X1. destruct u. destruct X1. 
   subst. apply X0. assumption.
 Qed.
 
 (** Prove the space has a positivity predicate. *)
-Definition PosProd : Subset S' :=
+Definition PosProd : Subset Prod :=
   fun p => let (x, y) := p in (FormTop.gPos x * FormTop.gPos y)%type.
 
 Local Open Scope Subset.
 
-Lemma PosProd_factors (a : S X * S Y) :
+Lemma PosProd_factors (a : Prod) :
   eq a ∩ PosProd === fun p => let (x, y) := p in
     ((eq (fst a) ∩ FormTop.gPos) x * (eq (snd a) ∩ FormTop.gPos) y)%type.
 Proof.
-destruct a.
+destruct a as [x y].
 apply Same_set_iff.
 intros. split; intros H.
 - destruct H. subst. simpl. destruct p.
   split; split; (reflexivity || assumption).
-- destruct x. destruct H. destruct i, i0. subst.
+- destruct x0. destruct H. destruct i, i0. subst.
   simpl in *. split. reflexivity. split; assumption.
 Qed.
 
-Lemma Pos : FormTop.gtPos (prod_op (le X) (le Y)) C'.
+Lemma Pos : FormTop.gtPos Prod.
 Proof.
 unshelve econstructor.
 - exact PosProd.
@@ -124,7 +138,7 @@ unshelve econstructor.
     exists (s, a). destruct i0. split. simpl. 
     split. assumption. reflexivity. split; assumption.
 - intros.
-  apply (FormTop.trans (U := eq a ∩ PosProd)).
+  apply (FormTop.trans (A := Prod) (U := eq a ∩ PosProd)).
   + eapply FormTop.gsubset_equiv.
     apply PosProd_factors. destruct a.
     eapply factors; apply FormTop.gpositive; 
@@ -133,24 +147,23 @@ unshelve econstructor.
 Qed.
 
 Definition times : IGT :=
-  {| S := S X * S Y
-   ; le := prod_op (le X) (le Y)
+  {| S := Prod
    ; Bundled.PO := PO
    ; localized := loc
    ; pos := Pos
   |}.
 
 (** The other space has to be nonempty *)
-Lemma unfactors1 a b U : Cov' (a, b) U
+Lemma unfactors1 a b U : (a, b) <|[times] U
   -> (forall (t : S Y) (i : Ix Y t), Inhabited (C Y t i))
   -> a <|[X] (fun s => { b' : S Y & U (s, b') }).
 Proof.
 intros H H0. remember (a, b) as ab.
 replace (a) with (fst ab) by (rewrite Heqab; auto).
 clear a b Heqab. induction H.
-- apply FormTop.grefl. destruct a. exists s0. assumption.
+- apply FormTop.grefl. destruct a. eexists; eassumption.
 - destruct a, b, l. simpl in *.
-  eapply FormTop.gle_left with s1. assumption.
+  eapply FormTop.gle_left with p1. assumption.
   assumption.
 - destruct a. destruct i.
   + apply FormTop.ginfinity with i.
@@ -158,26 +171,26 @@ clear a b Heqab. induction H.
     intuition.
   + simpl in *.
     specialize (H0 t i). destruct H0.
-    apply (X0 (s1, a)). split; trivial. 
+    apply (X0 (s, a)). split; trivial. 
 Qed.
 
-Lemma unfactors2 a b U : Cov' (a, b) U
+Lemma unfactors2 a b U : (a, b) <|[times] U
   -> (forall (s : S X) (i : Ix X s), Inhabited (C X s i))
   -> b <|[Y] (fun t' => { a' : S X & U (a', t') }).
 Proof.
 intros H H0. remember (a, b) as ab.
 replace b with (snd ab) by (rewrite Heqab; auto).
 clear a b Heqab. induction H.
-- apply FormTop.grefl. destruct a. exists s. assumption.
+- apply FormTop.grefl. destruct a. exists p; assumption.
 - destruct a, b, l. simpl in *. 
-  apply FormTop.gle_left with s2. assumption.
+  apply FormTop.gle_left with p2. assumption.
   assumption.
 - destruct a. destruct i.
   + simpl in *.
-    specialize (H0 s1 i). destruct H0.
+    specialize (H0 s i). destruct H0.
     apply (X0 (a, t)). split; trivial.
   + apply FormTop.ginfinity with i.
-    intros. apply (X0 (s1, u)). simpl. simpl in X0.
+    intros. apply (X0 (s, u)). simpl. simpl in X0.
     intuition.
 Qed.
 
@@ -195,11 +208,11 @@ Require Import FormTopC.Bundled.
 Variable A : IGT.
 Local Open Scope loc.
 
-Definition diagonal : Contmap A (A * A)
+Definition diagonal : Cont.map A (A * A)
   := fun (out : S (A * A)) (p : S A) =>
   let (out1, out2) := out in ((p <=[A] out1) * (p <=[A] out2))%type.
 
-Lemma t_diagonal : Contprf A (A * A) diagonal.
+Lemma t_diagonal : Cont.t A (A * A) diagonal.
 Proof.
 constructor; intros; unfold diagonal in *.
 - apply FormTop.refl. exists (a, a). split.
@@ -214,8 +227,8 @@ constructor; intros; unfold diagonal in *.
   + apply FormTop.refl. exists a. assumption. assumption. 
   + apply IHX0. destruct a, b, l. simpl in *. 
     destruct X. 
-    split. transitivity s; eassumption.
-    transitivity s0; eassumption.
+    split. transitivity p; eassumption.
+    transitivity p0; eassumption.
   + destruct i; simpl in *; destruct X0.
     * destruct (localized A a0 s l i).
       apply FormTop.ginfinity with x.
@@ -237,47 +250,47 @@ Qed.
   
 Variable B : IGT.
 
-Definition proj_L : Contmap (A * B) A :=
+Definition proj_L : Cont.map (A * B) A :=
   fun (out : S A) (p : S (A * B)) => let (s1, t1) := p in s1 <=[A] out.
 
-Lemma t_proj_L : Contprf (A * B) A proj_L.
+Lemma t_proj_L : Cont.t (A * B) A proj_L.
 Proof.
 constructor; intros; unfold proj_L in *.
-- apply FormTop.refl. destruct a. exists s. unfold In.
+- apply FormTop.refl. destruct a. exists p. unfold In.
   constructor. reflexivity.
 - destruct c, a, X. simpl in l, l0. 
   etransitivity; eassumption.
 - destruct a. apply FormTop.refl. 
-  exists s. split; assumption. reflexivity. 
-- destruct a. generalize dependent s. induction X0; intros.
+  exists p. split; assumption. reflexivity. 
+- destruct a. generalize dependent p. induction X0; intros.
   + apply FormTop.refl. exists a; assumption.
-  + apply (FormTop.le_left (le := le (A * B))) with (b, s0).
+  + apply FormTop.le_left with (b, p0).
     split; simpl. etransitivity; eassumption. 
     reflexivity. apply IHX0. reflexivity.
   + destruct (localized A _ _ X0 i).
-    apply FormTop.ginfinity with (Product.PLeft _ _ x s0). 
+    apply FormTop.ginfinity with (Product.PLeft _ _ x p0). 
     intros. simpl in *. destruct u. destruct X1.
     subst.
-    specialize (s1 _ c). destruct s1 as (u & Caiu & downu).
+    specialize (s _ c). destruct s as (u & Caiu & downu).
     eapply X. eassumption.
     destruct downu. assumption.
 Qed.
 
-Definition proj_R : Contmap (A * B) B :=
+Definition proj_R : Cont.map (A * B) B :=
   fun (out : S B) (p : S (A * B)) => let (s1, t1) := p in t1 <=[B] out.
 
-Lemma t_proj_R : Contprf (A * B) B proj_R.
+Lemma t_proj_R : Cont.t (A * B) B proj_R.
 Proof.
 constructor; intros; unfold proj_R in *.
-- apply FormTop.refl. destruct a. exists s0. unfold In.
+- apply FormTop.refl. destruct a. exists p0. unfold In.
   constructor. reflexivity.
 - destruct c, a, X. simpl in l, l0. 
   etransitivity; eassumption.
 - destruct a. apply FormTop.refl. 
-  exists s0. split; eauto. reflexivity. 
-- destruct a. generalize dependent s0. induction X0; intros.
+  exists p0. split; eauto. reflexivity. 
+- destruct a. generalize dependent p0. induction X0; intros.
   + apply FormTop.refl. exists a; assumption.
-  + apply (FormTop.le_left (le := le (A * B))) with (s, b).
+  + apply (FormTop.le_left) with (p, b).
     (** We would like
         eauto using (PreO.le_refl, PreO.le_trans)
         to work here, but it is dumb! *)
@@ -285,24 +298,24 @@ constructor; intros; unfold proj_R in *.
     etransitivity; eassumption.
     apply IHX0. reflexivity.
   + destruct (localized B _ _ X0 i).
-    apply FormTop.ginfinity with (Product.PRight _ _ x s). 
+    apply FormTop.ginfinity with (Product.PRight _ _ x p). 
     intros. simpl in *. destruct u. destruct X1.
     subst.
-    specialize (s1 _ c). destruct s1 as (u & Caiu & downu).
+    specialize (s _ c). destruct s as (u & Caiu & downu).
     eapply X. eassumption.
     destruct downu. assumption.
 Qed.
 
 Variable X Y : IGT.
 
-Definition parallelIG (F : Contmap A X) (G : Contmap B Y)
-  : Contmap (A * B) (X * Y) :=
+Definition parallelIG (F : Cont.map A X) (G : Cont.map B Y)
+  : Cont.map (A * B) (X * Y) :=
   fun (out : S (X * Y)) (p : S (A * B)) =>
   let (s, t) := p in let (a, b) := out in
    (F a s * G b t)%type.
 
 Local Open Scope Subset.
-Lemma parallelIG_Proper_LE {F F' : Contmap A X} {G G' : Contmap B Y}
+Lemma parallelIG_Proper_LE {F F' : Cont.map A X} {G G' : Cont.map B Y}
   : LE_map F F' -> LE_map G G'
   -> LE_map (parallelIG F G) (parallelIG F' G').
 Proof.
@@ -319,7 +332,7 @@ apply Product.factors.
 - apply HG. unfold Cont.Sat. apply FormTop.refl. assumption.
 Qed.
 
-Lemma parallelIG_Proper_EQ {F F' : Contmap A X} {G G' : Contmap B Y}
+Lemma parallelIG_Proper_EQ {F F' : Cont.map A X} {G G' : Cont.map B Y}
   : EQ_map F F' -> EQ_map G G'
   -> EQ_map (parallelIG F G) (parallelIG F' G').
 Proof.
@@ -340,10 +353,10 @@ Qed.
 
 Require Import CRelationClasses. 
 
-Theorem t_parallelIG (F : Contmap A X) (G : Contmap B Y)
-  : IGContprf A X F
-  -> IGContprf B Y G
-  -> IGContprf (A * B) (X * Y) (parallelIG F G).
+Theorem t_parallelIG (F : Cont.map A X) (G : Cont.map B Y)
+  : IGCont.t A X F
+  -> IGCont.t B Y G
+  -> IGCont.t (A * B) (X * Y) (parallelIG F G).
 Proof.
 intros ContF ContG. constructor; intros.
 - eapply FormTop.gmonotone with
@@ -355,36 +368,36 @@ intros ContF ContG. constructor; intros.
   constructor 1 with (a, a0). 
   constructor. econstructor; eassumption.
   destruct a.
-  eapply FormTop.monotone.
+  eapply (@FormTop.monotone (A * B) _).
   Focus 2.
   apply Product.factors; try eassumption.
-  apply (IGCont.here _ ContF). apply (IGCont.here _ ContG).
+  apply (IGCont.here ContF). apply (IGCont.here ContG).
   unfold Included, pointwise_rel, arrow; intros. 
   destruct a. assumption.
 - destruct a, b, c.
   destruct X0, X1.
-  pose proof (IGCont.local _ ContF _ _ _ f f0).
-  pose proof (IGCont.local _ ContG _ _ _ g g0).
+  pose proof (IGCont.local ContF _ _ _ f f0).
+  pose proof (IGCont.local ContG _ _ _ g g0).
   eapply FormTop.monotone. Focus 2.
   eapply Product.factors; eassumption.
   unfold Included, pointwise_rel, arrow; intros x H.
   destruct x. destruct H. destruct u, u0.
   destruct i, i0.
   exists (a, a0). simpl.
-   unfold FormTop.down, In, le, prod_op; auto.
+   unfold FormTop.down, In. simpl; unfold Product.le', prod_op. auto.
   split; assumption.
 - destruct c, b, a. destruct X0, X1; simpl in *.
   split. 
-  eapply (IGCont.le_left _ ContF); eassumption.
-  eapply (IGCont.le_left _ ContG); eassumption.
+  eapply (IGCont.le_left ContF); eassumption.
+  eapply (IGCont.le_left ContG); eassumption.
 - destruct a, b, c. destruct X0, X1. simpl in *.
-  split. eapply (IGCont.le_right _ ContF); eassumption.
-  eapply (IGCont.le_right _ ContG); eassumption.
+  split. eapply (IGCont.le_right ContF); eassumption.
+  eapply (IGCont.le_right ContG); eassumption.
 - destruct j as [a0 i b | b i a0]; simpl in *.
   + destruct a. destruct X0.
-  pose proof (IGCont.ax_right _ ContF _ _ i f).
-  assert ( (s, s0) <|[(A * B)%loc]
-    (fun open => let (s', t') := open in (union (C X a0 i) F s') * (s0 = t')))%type.
+  pose proof (IGCont.ax_right ContF _ _ i f).
+  assert ( (p, p0) <|[(A * B)%loc]
+    (fun open => let (s', t') := open in (union (PreISpace.C X a0 i) F s') * (p0 = t')))%type.
   eapply Product.factors; try eassumption. apply FormTop.grefl. reflexivity.
   eapply FormTop.gmonotone. 2: apply X1.
   unfold Included, pointwise_rel, arrow; intros.
@@ -393,9 +406,9 @@ intros ContF ContG. constructor; intros.
   reflexivity. split; assumption.
   + (** Same thing on this side. Yay! *)
   destruct a. destruct X0.
-  pose proof (IGCont.ax_right _ ContG _ _ i g).
-  assert ((s, s0) <|[(A * B)%loc]
-    (fun open => let (s', t') := open in (s = s') * (union (C Y b i) G t')))%type.
+  pose proof (IGCont.ax_right ContG _ _ i g).
+  assert ((p, p0) <|[(A * B)%loc]
+    (fun open => let (s', t') := open in (p = s') * (union (PreISpace.C Y b i) G t')))%type.
   eapply Product.factors; try eassumption. apply FormTop.grefl. reflexivity.
   eapply FormTop.gmonotone. 2: apply X1.
   unfold Included, pointwise_rel, arrow; intros.
@@ -404,18 +417,17 @@ intros ContF ContG. constructor; intros.
   split; assumption.
 Qed.
 
-Definition parallel (F : Contmap A X) (G : Contmap B Y)
-  : Contmap (A * B) (X * Y) :=
-  parallelIG (Cont.Sat (CovS := Cov A) F) (Cont.Sat (CovS := Cov B) G).
+Definition parallel (F : Cont.map A X) (G : Cont.map B Y)
+  : Cont.map (A * B) (X * Y) :=
+  parallelIG (Cont.Sat (S := A) F) (Cont.Sat (S := B) G).
 
-Theorem t_parallel (F : Contmap A X) (G : Contmap B Y)
-  : Contprf A X F
-  -> Contprf B Y G
-  -> Contprf (A * B) (X * Y) (parallel F G).
+Theorem t_parallel (F : Cont.map A X) (G : Cont.map B Y)
+  : Cont.t A X F
+  -> Cont.t B Y G
+  -> Cont.t (A * B) (X * Y) (parallel F G).
 Proof.
 intros ContF ContG.
 unfold parallel. apply IGCont.cont.
-typeclasses eauto.
 apply t_parallelIG; apply IGCont.converse;
   try (typeclasses eauto); eassumption.
 Qed.

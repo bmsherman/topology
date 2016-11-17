@@ -25,6 +25,10 @@ Inductive LE {xs ys : list A} : Type :=
   | IsLE : forall zs, xs = ys ++ zs -> LE.
 Arguments LE : clear implicits.
 
+Definition CantorPO : FormTop.PreOrder :=
+  {| PO_car := list A
+  ; le := LE |}.
+
 Local Instance LE_PO : @PO.t (list A) LE eq.
 Proof.
 constructor; intros.
@@ -44,10 +48,14 @@ constructor; intros.
   reflexivity.
 Defined.
 
-Local Instance loc : FormTop.localized LE C.
+Definition PreCantor : PreISpace.t :=
+  {| PreISpace.S := CantorPO
+   ; PreISpace.C := C |}.
+
+Local Instance loc : FormTop.localized PreCantor.
 Proof.
 unfold FormTop.localized.
-intros a c H i. unfold Ix in *. destruct i. exists I.
+intros a c H i. simpl in *. destruct i. exists I.
 intros s H0. destruct H0.
 simpl in H. destruct H. destruct zs.
 - subst.
@@ -65,7 +73,7 @@ Qed.
 Hypothesis inhabited : A.
 
 (* This actually needs 'A' to be inhabited. *)
-Local Instance pos : FormTop.gtPos LE C.
+Local Instance pos : FormTop.gtPos PreCantor.
 Proof.
 unshelve econstructor.
 - exact (fun _ => True).
@@ -77,8 +85,7 @@ Unshelve. auto.
 Defined.
 
 Definition Cantor : IGT :=
-  {| Bundled.S := list A
-  ;  Bundled.C := C
+  {| Bundled.S := PreCantor
   ;  Bundled.localized := loc
   |}.
 

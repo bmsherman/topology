@@ -1,98 +1,131 @@
-Require Import
+ Require Import
   Algebra.SetsC
   Algebra.OrderC
-  FormTopC.Bundled
   FormTopC.FormTop
+  FormTopC.FormalSpace
   CRelationClasses.
 
 Local Open Scope Subset.
+Local Open Scope FT.
 Set Universe Polymorphism.
 
 Module Subspace.
 
+(** Closed subspaces *)
 Section Defn.
-Universes S P.
-Set Printing Universes.
-Context {S : Type@{S}} {leS : crelation@{S P} S}.
-Hypothesis POS : PreO.t leS.
-Variable CovS : S -> (Subset@{S P} S) -> Type@{P}.
+Context {A : FormalSpace.t}.
+Variable (V : Open A).
 
-Definition Cov (V : Subset@{S P} S) (a : S)
-  (U : Subset@{S P} S) : Type@{P} := CovS a (V ∪ U).
+Definition Cov' a U := a <|[A] V ∪ U.
 
 
-Context {FTS : FormTop.t leS CovS}.
+Definition Closed : PreSpace.t :=
+  {| PreSpace.S := A
+   ; PreSpace.Cov := Cov'
+  |}.
 
-Existing Instances FormTop.Cov_Proper.
+Existing Instances FormalSpace.FT FormalSpace.PreO
+  FormalSpace.Cov_Proper FormalSpace.Cov_Proper2
+  FormalSpace.Cov_Proper3.
 
-Theorem t (V : Subset S) : FormTop.t leS (Cov V).
+Theorem t : FormTop.t Closed.
 Proof.
-constructor; unfold Cov; intros.
-- apply FormTop.refl. right. assumption.
-- FormTop.etrans.
-  destruct X. apply FormTop.refl. left. assumption.
-  apply X0. assumption.
-- apply FormTop.le_left with b; assumption.
-- FormTop.ejoin. FormTop.etrans.
+constructor; unfold Cov'; intros.
+- apply FormalSpace.refl. right. assumption.
+- FormalSpace.etrans.
+  destruct X. 
+  + apply FormalSpace.refl. left. assumption.
+  + apply X0. assumption.
+- apply FormalSpace.le_left with b; assumption.
+- FormalSpace.ejoin. simpl in *.  unfold Cov'. 
+  FormalSpace.etrans.
   destruct X1. destruct d, d0.
   destruct i.
-  rewrite l. apply FormTop.refl. left.  assumption.
-  destruct i0. rewrite l0. apply FormTop.refl. left. assumption.
-  rewrite <- Union_Included_r.
-  apply FormTop.le_right. 
-  eapply FormTop.Cov_Proper. apply l. reflexivity. apply FormTop.refl. assumption.
-  eapply FormTop.Cov_Proper. apply l0. reflexivity. apply FormTop.refl. assumption.
+  + rewrite l. apply FormalSpace.refl. left. assumption.
+  + destruct i0. rewrite l0. apply FormalSpace.refl.
+    left. assumption.
+    rewrite <- Union_Included_r.
+    apply FormTop.le_right.
+    * rewrite l. apply FormalSpace.refl. assumption.
+    * rewrite l0. apply FormalSpace.refl. assumption.
 Qed.
+
+Hypothesis tPos : FormTop.tPos Closed.
+
+Definition ClosedSub : FormalSpace.t :=
+  {| S := Closed
+  ; isFT := t |}.
 
 End Defn.
 
-Arguments Cov {S} CovS V a U : clear implicits.
+Lemma RelSame_iffT {A B} (R S : A -> B -> Type) :
+  (forall a b, R a b <--> S a b) <--> (R ==== S).
+Proof.
+firstorder.
+Qed.
 
+Require Import FormTopC.Bundled.
 Section IGDefn.
 
 Context {A : IGT}.
 
-Variable V : Subset (S A). 
+Variable V : Open A. 
 
-Definition SIx (a : S A) : Type :=
-  (Ix A a + { I : True & V a })%type.
+Inductive SIx {a : S A} : Type :=
+  | Orig : PreISpace.Ix A a -> SIx
+  | InV : V a -> SIx.
 
-Definition SC (a : S A) (i : SIx a) : Subset (S A) := 
+Arguments SIx : clear implicits.
+
+Definition SC (a : S A) (i : SIx a) : Open A := 
   match i with
-  | inl i' => C A a i'
-  | inr _ => fun _ => False
+  | Orig i' => PreISpace.C A a i'
+  | InV _ => fun _ => False
   end.
 
-Existing Instances Bundled.IGT_PreO.
+Existing Instances Bundled.IGT_PreO
+  FormTop.Cov_Proper FormTop.Cov_Proper2 FormTop.Cov_Proper3.
 
-Theorem same : forall a U,
-  iffT (FormTop.GCovL (le A) SC a U) (Cov (FormTop.GCovL (le A) (C A)) V a U).
+Definition LocalizedPS (X : PreISpace.t) : PreSpace.t :=
+  {| PreSpace.S := PreISpace.S X
+   ; PreSpace.Cov := FormTop.GCovL X
+  |}.
+
+Definition A' : PreISpace.t :=
+  {| PreISpace.S := A
+   ; PreISpace.C := SC
+  |}.
+
+Theorem same : PreSpace.Cov (LocalizedPS A') ==== PreSpace.Cov (Closed (A := fromIGT A) V).
 Proof.
-intros. unfold Cov. split; intros H.
+apply RelSame_iffT. intros a U. simpl. unfold Cov'. split; intros H.
 - induction H.
-  + apply FormTop.glrefl. right. assumption.
-  + apply FormTop.glle_left with b. assumption.
+  + apply FormTop.grefl. right. assumption.
+  + simpl in *. apply FormTop.gle_left with b. assumption.
     assumption.
   + destruct i.
-    * apply (FormTop.gle_infinity a _ b i).
-      assumption. intros. apply X. simpl. apply X0.
-    * destruct s. apply FormTop.glle_left with b. assumption.
-      apply FormTop.glrefl. left. assumption.
-- remember (V ∪ U) as U' in H. induction H; subst.
+    * simpl. destruct (Bundled.localized A a b l i).
+      simpl in *.
+      apply (FormTop.ginfinity a _ x). intros. apply X.
+      simpl. apply s. assumption.
+    * rewrite l. apply FormTop.grefl. left. assumption. 
+- simpl in H. remember (V ∪ U) as U' in H. 
+  induction H; subst.
   + destruct u.
     * eapply FormTop.gmonotoneL. Focus 2.
     pose proof (PreO.le_refl a) as aa.
-    pose proof (FormTop.gle_infinity (I := SIx) (C := SC) a (fun _ => False) a (inr (existT (fun _ => V a) I v))
+    pose proof (FormTop.gle_infinity (A := A') a (fun _ => False) a (InV v)
        aa) as H0.
     apply H0. intros u H1. simpl in *.
     destruct H1 as (u' & bot & downau). contradiction. 
     unfold Included, pointwise_rel, arrow; intros; contradiction.
     * apply FormTop.glrefl. assumption.
-  + apply FormTop.glle_left with b. assumption. apply IHGCovL.
+  + simpl in *. apply (FormTop.glle_left (A := A')) with b. assumption. apply IHGCov.
     reflexivity.
-  + apply (FormTop.gle_infinity (C := SC) a _ b (inl i)).
-    assumption. intros.
-    apply X. apply X0. reflexivity.
+  + apply (FormTop.gle_infinity (A := A') a _ a (Orig i)).
+    reflexivity. intros. destruct X0.  simpl in p. 
+    destruct p, d. apply FormTop.glle_left with x. assumption. 
+    apply X. assumption. reflexivity.
 Qed.
 
 End IGDefn.

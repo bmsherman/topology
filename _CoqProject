@@ -30,7 +30,7 @@ src/FormTopC/FormTop.v
 src/FormTopC/FormalSpace.v
 src/FormTopC/Product.v
 src/FormTopC/InfoBase.v
-src/FormTopC/Join.v
+# src/FormTopC/Join.v
 src/FormTopC/Lift.v
 src/FormTopC/Locale.v
 src/FormTopC/Metric.v

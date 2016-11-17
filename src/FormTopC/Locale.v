@@ -7,19 +7,23 @@ Require Import
   CMorphisms.
 
 Local Open Scope Subset.
+Local Open Scope FT.
 
 Existing Instances FormalSpace.Cov_Proper 
   FormalSpace.Cov_Proper2 
   FormalSpace.Cov_Proper3
   FormalSpace.FT
-  FormalSpace.PreO.
+  FormalSpace.PreO
+  FormTop.Cov_Proper
+  FormTop.Cov_Proper2
+  FormTop.Cov_Proper3.
 
 Import FormTop.
 
 Section ToFrame.
 Variable (A : FormalSpace.t).
 
-Definition T := Subset (S A).
+Definition T := Open A.
 
 Definition Sat (U : T) : T := fun s => s <|[A] U.
 
@@ -27,8 +31,7 @@ Definition leA (U V : T) : Type := Sat U ⊆ Sat V.
 
 Definition eqA (U V : T) : Type := Sat U === Sat V.
 
-Definition minA (U V : T) : T :=
-  downset (le A) U ∩ downset (le A) V.
+Definition minA (U V : T) : T := ⇓ U ∩ ⇓ V.
 
 Inductive supA I (f : I -> T) : T := 
   MksupA : forall i s, f i s -> In (supA I f) s.
@@ -102,7 +105,7 @@ intros. split; intros. rewrite <- Sat_mono. assumption.
 etrans. assumption.
 Qed.
 
-Theorem Sat_downset : forall U, Sat U === Sat (downset (le A) U).
+Theorem Sat_downset : forall U, Sat U === Sat (⇓ U).
 Proof.
 intros. split.
 - apply Sat_mono2. unfold Included, In, downset.
@@ -208,12 +211,14 @@ Qed.
 
 End ToFrame.
 
+Require Import FormTopC.Cont.
+
 Section FrameMorphism.
 
 Context {A B : FormalSpace.t}.
 
-Variable F_ : Contmap A B.
-Hypothesis cont : Contprf A B F_.
+Variable F_ : Cont.map A B.
+Hypothesis cont : Cont.t A B F_.
 
 Local Instance POFS : @PO.t (T A) (leA A) (eqA A).
 Proof.
@@ -286,7 +291,7 @@ constructor.
     * FormTop.trans X. unfold minA in *.
       destruct X. destruct d, d0. destruct i, i0.
       rewrite <- FormTop.down_downset; try eassumption.
-      apply (Cont.local (CovT := Cov B) (leS := le A)). eassumption. 
+      apply (Cont.local (T := B) (S := A)). eassumption. 
       eapply Cont.le_left with a1; eassumption.
       eapply Cont.le_left with a2; eassumption.
 Qed.

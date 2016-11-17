@@ -9,6 +9,7 @@ Require Import
   CMorphisms.
 
 Coercion FormalSpace.fromIGT : IGT >-> FormalSpace.t.
+Local Open Scope FT.
 
 Require Import FormalSpace.
 
@@ -18,8 +19,7 @@ Proof.
 intros. induction X.
 - destruct a. assumption.
 - assumption.
-- destruct i. simpl in l.
-  simpl in X. auto.
+- destruct i.
 Qed.
 
 Local Open Scope Subset.
@@ -35,7 +35,7 @@ Qed.
 Lemma One_Sat_eq :
   forall U V, Sat One U === Sat One V -> U === V.
 Proof.
-intros. apply FormTop.Same_set_Included in X.
+intros. apply Same_set_Included in X.
 destruct X.
 apply Included_Same_set; apply One_Sat_le;
   assumption.
@@ -74,13 +74,8 @@ Definition One_type_cmap :
   :=
   {| Frame.cont := One_cont |}.
 
-Lemma liftContprf {X Y : IGT} f
-  : Bundled.Contprf X Y f
-  -> Contprf X Y f.
-Proof.
-intros H.
-apply H.
-Qed.
+Require Import FormTopC.Cont.
+
 
 Existing Instances Frame Frame.type
   FOps LOps.
@@ -93,7 +88,7 @@ Context {A : IGT}.
 Definition framePt (pt : One ~~> A)
   : Frame.point (FOps A) :=
   Frame.cmap_compose
-  One_type_cmap (toCmap _ (liftContprf _ (mp_ok pt))).
+  One_type_cmap (@toCmap One A _ (mp_ok (LA := One) (LB := A) pt)).
 
 Inductive liesIn {pt : One ~~> A} {U : Subset (S A)}
   := MkliesIn : forall u : S A, U u -> mp pt u I -> liesIn.

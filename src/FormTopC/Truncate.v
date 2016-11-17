@@ -4,25 +4,24 @@ Require Import
   Algebra.SetsC
   Algebra.OrderC
   FormTopC.FormTop
+  FormTopC.Bundled
   FormTopC.Cont
   Coq.Classes.CMorphisms.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
+Existing Instances Bundled.IGT_Pos Bundled.local
+  Bundled.IGTFT Bundled.IGT_PreO.
+
+Local Open Scope FT.
+
 Section Truncate.
 
-Context {S} {leS : crelation S} 
-  {POS : PreO.t leS}
-  {IxS : S -> Type}
-  {CS : forall a, IxS a -> Subset S}
-  {locS : FormTop.localized leS CS}
-  {PosS : FormTop.gtPos leS CS}.
+Variable A : IGT.
 
-Let CovS := FormTop.GCov leS CS.
-
-Inductive le {s t : S} : Type :=
-  | Orig : leS s t -> le
+Inductive le {s t : A} : Type :=
+  | Orig : s <=[A] t -> le
   | IPos : FormTop.gPos t -> le.
 
 Arguments le : clear implicits.
@@ -34,15 +33,25 @@ econstructor.
 - intros. destruct X. destruct X0.
   apply Orig. etransitivity; eassumption.
   apply IPos. assumption. destruct X0. apply IPos. 
-  eapply (FormTop.gmono_le (gtPos := PosS)); eassumption.
+  eapply (FormTop.gmono_le); eassumption.
   apply IPos. eassumption.
 Qed.
 
-Definition C := FormTop.CL le CS.
+Definition A'PO : FormTop.PreOrder :=
+  {| PO_car := A
+  ;  FormTop.le := le
+  |}.
+
+Definition A'UL : PreISpace.t :=
+  {| PreISpace.S := A'PO
+   ; PreISpace.C := PreISpace.C A
+  |}.
+
+Definition A' := Localized A'UL.
 
 Lemma Cov_Refine : forall a U,
-    FormTop.GCov leS CS a U
-   -> FormTop.GCov le C a U.
+    a <|[A] U
+   -> a <|[A'] U.
 Proof.
 intros. induction X.
 - apply FormTop.grefl. assumption.
@@ -51,16 +60,16 @@ intros. induction X.
 - 
 Abort.
 
-Local Instance Pos : FormTop.gtPos le C.
+Local Instance Pos : FormTop.gtPos A'.
 Proof.
 unshelve econstructor.
-- exact (FormTop.gPos (gtPos := PosS)).
+- exact (FormTop.gPos (A := A)).
 - intros. destruct X. eapply FormTop.gmono_le; eassumption.
   assumption. 
 - intros. destruct i. simpl.
   destruct l.
-  + destruct (locS a c l ix).
-    pose proof (FormTop.gmono_ax (gtPos := PosS)
+  + destruct (localized A a c l ix).
+    pose proof (FormTop.gmono_ax (A := A)
      a x) as H. simpl.
     specialize (H X). destruct H. destruct i.
     specialize (s a0 c0).
@@ -68,15 +77,14 @@ unshelve econstructor.
     exists x0. destruct p. split. assumption.
     destruct d. split; apply Orig; assumption.
     assumption.
-  + pose proof (FormTop.gmono_ax (gtPos := PosS)
+  + pose proof (FormTop.gmono_ax (A := A)
       c ix g). destruct X0.  destruct i. 
     exists a0. split. exists a0. split. assumption.
     split. apply IPos. assumption. reflexivity.
     assumption.
 - intros.
-  pose proof (FormTop.gpositive (gtPos := PosS)
+  pose proof (FormTop.gpositive (A := A)
     a U).
-  eapply FormTop.trans.
 Abort.
 
 End Truncate.
