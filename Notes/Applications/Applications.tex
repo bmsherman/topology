@@ -54,6 +54,7 @@
 \newcommand{\Space}{\mathsf{Space}}
 \newcommand{\Prob}{\mathcal{P}}
 \newcommand{\PLower}{\mathcal{L}^+}
+\newcommand{\PUpper}{\mathcal{U}^+}
 \newcommand{\Viet}{{\mathcal{V}^+}}
 
 \newcommand{\map}[1]{\mathsf{map}_{#1}}
@@ -396,18 +397,17 @@ is compact/overt because it is the product of two intervals, which are each comp
 \exists a \in s, \exists b \in t, P(a, b)
 \end{align*}
 
-Next, we know that the unit disk is closed, since it is co-classified by the open set
+It is a non-trivial fact that the unit disk $D$ is compact/overt. First, we know that $D$ is compact, since it is closed, being co-classified by the open set
 \[
 \fun{(x,y)}{x^2 + y^2 > 1}.
 \]
-The intersection of a compact/overt space with a closed overt space is still compact/overt\footnote{I need to go back and do this better. I should describe the lower and upper powerspace, so that the closed space being overt is being a point of the upper powerspace}. Given a compact/overt set $s : \Viet{A}$ and an open $U : \Open{A}$ co-classifying a desired closed set, the intersection $s \cap U^c$ is specified by
+Given a compact set $s : \PUpper(A)$ and an open $U : \Open{A}$ co-classifying a desired closed set, the intersection $s \cap U^c$ is specified by
 \begin{align*}
 \forall x \in s \cap U^c, P(x) \qquad &\defeq \qquad 
-  \forall x \in s, P(x) \vee U(x)
-\\
-\exists x \in s \cap U^c, P(x) \qquad &\defeq \qquad 
-  [[\text{BROKEN}]].
+  \forall x \in s, P(x) \vee U(x).
 \end{align*}
+
+The unit disk is also overt (as any topological locale is). It remains to show that the compactness and overtness interact properly, but I will not show that here.
 
 This yields the desired term $\mathsf{unit\_disk} : \Viet(\R^2)$. Then our speed estimation program which takes into account the uncertainty can be written like this, using ``syntactic sugar'' for monadic operations:
 \begin{align*}
@@ -490,7 +490,7 @@ Most of the concepts described thus far are also described in a similar way in P
 
 Likewise, we can form a topological space for all probability distributions over a given space. Let's describe the space $\Prob(A)$ of probability distributions over some space $A$. Let $\ratint = \{q : \rat \suchthat 0 \le q < 1 \}$. For each $P : \Open{A}$ and each $q : \ratint$, the basic open $\cdot(P) > q : \Open{\Prob(A)}$ which indicates whether the probability that the event $P$ occurs is strictly greater than $q$.
 
-We can generalize a bit further: given any topological space $A$, we can form a topological space of its open subspaces $\mathsf{Open}(A)$, whose points consist of open subspaces of $A$, and whose topology is the Scott topology. We can also define a topological space $\lowerT{\R}$ known as the \emph{lower real numbers}, where the basic opens are of the form $\cdot > q : \Open{\lowerT{\R}}$ for $q : \rat$. Interestingly, both $\mathsf{Open}(A)$ and $\lowerT{\R}$ are Scott domains, which means that any open cover has singleton subcover [[This seems wrong. What about covers which come from ``below''?]]. Thus, being a Scott domain is a sort of ``ultra''-compactness. The probability space $\Prob(A)$ can be seen as a subspace of the function space $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$. \footnote{The function space $X \Rightarrow Y$ does not necessarily exist (in the sense of being the categorical exponential) for arbitrary spaces $X$ and $Y$, but does exist whenever $X$ is a Scott domain (a sufficient but not necessary condition), as it is in this case, where $X = \mathsf{Open}(A)$.}
+We can generalize a bit further: given any topological space $A$, we can form a topological space of its open subspaces $\mathsf{Open}(A)$, whose points consist of open subspaces of $A$, and whose topology is the Scott topology. We can also define a topological space $\lowerT{\R}$ known as the \emph{lower real numbers}, where the basic opens are of the form $\cdot > q : \Open{\lowerT{\R}}$ for $q : \rat$. Interestingly, both $\mathsf{Open}(A)$ and $\lowerT{\R}$ are ``locally Scott'' domains, which means that they are in some sense ``generated'' by a similar space where any open cover has singleton subcover. Being locally Scott is a strong version of being locally compact. The probability space $\Prob(A)$ can be seen as a subspace of the function space $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$. \footnote{The function space $X \Rightarrow Y$ does not necessarily exist (in the sense of being the categorical exponential) for arbitrary spaces $X$ and $Y$, but does exist whenever $X$ is locally compact, as it is in this case, where $X = \mathsf{Open}(A)$ is locally Scott.}
 
 In particular, viewing $\Prob(A)$ as a subspace of $\mathsf{Open}(A) \Rightarrow \lowerT{\R}$, we additionally require the following rules to hold for any $\mu : \Prob(A)$
 \begin{mathpar}
