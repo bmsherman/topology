@@ -378,6 +378,7 @@
 \newcommand{\oinclf}[1]{\iota[{#1}]}
 \newcommand{\oincl}[2]{\oinclf{#1} \left({#2}\right)}
 \newcommand{\Branch}{\Rightarrow}
+\newcommand{\note}[1]{\textcolor{red}{[[{#1}]]}}
 
 
 \begin{document}
@@ -584,7 +585,7 @@ The notation $f : A \hookto B$ indicates that the continuous map $f : A \to B$ i
 
 We can equip \textbf{FSpc} with a Grothendieck pretopology where a collection of open embeddings $\left( f_i : A_i \hookto B \right)_{i : I}$ is considered a cover if
 \[
-\bigvee_{i : I} \Img{f_i} = B.
+\bigvee_{i : I} \Img{f_i} = \top_B.
 \]
 
 \subsection{General specification of overlapping patterns}
@@ -698,8 +699,9 @@ where $\pi_i : A_i \times_A A_j \hookto A_i$ and $\pi_j : A_i \times_A A_j \hook
 
 \subsection{Composition of patterns}
 
+\note{Problem with this section: There is a dependency issue. I haven't introduced lifted spaces or catch-all cases, which several of the examples in this section use.}
+
 Given open embeddings $p : U \hookto A$ and $q : V \hookto B$, the parallel embedding $p \otimes q : U \times V \hookto A \times B$ is also an open embedding. This allows us to pattern match through products. 
-[[Problem: Haven't introduced lifted spaces yet.]]
 For instance, we can define
 \begin{align*}
  \mathsf{pair}_\bot &: A_\bot \times B_\bot \to \left( A \times B \right)_\bot
@@ -720,8 +722,32 @@ Any homeomorphism is a cover by itself (a sort of ``reflexivity''), correspondin
 \end{align*}
 which has a similar feel to ``newtypes'' in Haskell.
 
-There is also a notion of composition of covers (``transitivity''), which corresponds to the potential to flatten nested patterns.
-[Example]
+There is also a notion of composition of covers (``transitivity''), which corresponds to the potential to flatten nested patterns. For instance, the definition
+\begin{align*}
+f &: A_\bot + B_\bot \to \left(A + B\right)_\bot
+\\ f(x) &\triangleq \mathsf{cases}
+\begin{cases}
+\mathsf{inl}(\ell) &\Branch \mathsf{cases}(\ell)
+  \begin{cases}
+  \mathsf{strict}(\ell') \Branch \mathsf{strict}(\mathsf{inl}(\ell'))
+  \end{cases}
+\\
+\mathsf{inr}(r) &\Branch \mathsf{cases}(r)
+  \begin{cases}
+  \mathsf{strict}(r') \Branch \mathsf{strict}(\mathsf{inr}(r'))
+  \end{cases}
+\end{cases}
+\end{align*}
+can be flattened into
+\begin{align*}
+f &: A_\bot + B_\bot \to \left(A + B\right)_\bot
+\\ f(x) &\triangleq \mathsf{cases}
+\begin{cases}
+\mathsf{inl}(\mathsf{strict}(\ell)) &\Branch \mathsf{strict}(\mathsf{inl}(\ell))
+\\
+\mathsf{inr}(\mathsf{strict}(r)) &\Branch \mathsf{strict}(\mathsf{inr}(r))
+\end{cases}
+\end{align*}
 
 Covers are also closed under pullback, in the sense that a pattern match such as
 \[
@@ -774,7 +800,7 @@ Since adding the catch-all case doesn't change the meaning, it makes sense to ke
 
 Spaces with bottom elements are useful for representing spaces of ``partial'' results. Since computationally, \emph{any} point may ``behave'' as $\bot$, splitting a point with an open cover may never provide any useful information. To get useful information out point in a space with bottom, one should \emph{prove} that the point actually lies in some subspace which excludes the bottom point.
 
-For any space $A$ there is a construction to produce the ``lifted'' space $A_\bot$ which adds in a bottom point[Is this true? Maybe just delete? [, and in fact, I'm pretty sure that any space $B$ which has a bottom point satisfies $B \cong C_\bot$ for some space $C$]]. For each lifted space $A_\bot$, there is importantly the open embedding $\mathsf{strict} : A \hookto A_\bot$.
+For any space $A$ there is a construction to produce the ``lifted'' space $A_\bot$ which adds in a bottom point[Is this true? Maybe just delete? [, and in fact, I'm pretty sure that any space $B$ which has a bottom point satisfies $B \cong C_\bot$ for some space $C$]]. [Should I describe the ``space'' constructor $\cdot_\bot$ in the same detail as $\PLower(\cdot)$?] For each lifted space $A_\bot$, there is importantly the open embedding $\mathsf{strict} : A \hookto A_\bot$.
 
 We can lift any function $f : A \to B$ to operate on lifted spaces with the overlapping pattern
 \begin{align*}
@@ -788,7 +814,10 @@ f_\bot &: A_\bot \to B_\bot
 which I think of as Haskell-ish, as it forces its argument to compute the result, but if the input is $\bot$, then so is the result. Since there is only one branch which doesn't return $\bot$, the gluing condition is satisfied. Lifting of spaces forms a monad, and its join operation can be expressed with a nice pattern match,
 \begin{align*}
 \mathsf{join} &: \left( A_\bot \right)_\bot \to A_\bot
-\\ \mathsf{join}(\mathsf{strict}(\mathsf{strict}(x))) &\triangleq \mathsf{strict}(x)
+\\ \mathsf{join}(x) &\triangleq \mathsf{cases}(x)
+\begin{cases}
+\mathsf{strict}(\mathsf{strict}(y)) &\Branch \mathsf{strict}(y)
+\end{cases}
 \end{align*}
 Again, the gluing condition is automatically satisfied.
 
@@ -808,7 +837,7 @@ holds in $\Open{\PLower(A)}$ whenever $U \le \bigvee_{i : I} V_i$ in $\Open{A}$.
 
 This definition is not predicatively acceptable, but \cite{vickersdoublepowerlocale} shows how the construction can be achieved predicatively within \textbf{FSpc}. If $U : \Open{A}$ is interpreted as a property of points of $A$, then $\lozenge U : \Open{\PLower(A)}$ indicates whether $U$ holds anywhere in a given subspace of $A$.
 
-Then $\PLower^+(A)$ is defined as the subspace of $\PLower(A)$ where the relation $\top \le \lozenge \top$ also holds.
+Then $\PLower^+(A)$ is defined as the subspace of $\PLower(A)$ where the relation $\top \le \lozenge \top$ also holds. With this relation added, it means that for every cover $\top \le \bigvee_{i : I} V_i$ in $\Open{A}$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\Open{\PLower^+(A)}$. Computationally, we read this fact as saying that for any observation we can make on points of $A$, we can make that same observation on \emph{some} non-deterministically chosen point within a subspace of $A$ that is represented as a point of $\PLower^+(A)$.
 
 There is an exact correspondence between continuous maps $A \to \PLower(B)$ and maps $f_* : B \to A$ which preserve joins, but not necessarily meets. We can define the union of subspaces as
 \begin{align*}
@@ -849,7 +878,7 @@ and accordingly we define functions on coproducts via pattern matching, just as 
 
 \subsection{Evaluation on points}
 
-[[ Find all the patterns where the point lies, plug in the expression with that given point, observe that everything becomes one big directed supremum. Does it even matter to explain this?]]
+\note{Find all the patterns where the point lies, plug in the expression with that given point, observe that everything becomes one big directed supremum. Does it even matter to explain this?}
 
 \section{Examples}
 
@@ -912,11 +941,13 @@ If we instead view $\Sigma$ as $\PLower(\One)$, then the ``or'' operation corres
 
 In this section, we will develop a theory of ``binary covers'', which are pairs of open sets which cover a given space. These binary covers are useful for computing approximate decisions on spaces (where computing exact decisions might not be possible). This development is intended to serve as a case study for programming with spaces, and demonstrates the utility of overlapping pattern matches.
 
-We define the space $\mathsf{BCover}$ as the open subspace
-\[
-\mathsf{BCover} \triangleq \{ (P, Q) : \Sigma \times \Sigma \suchthat P \vee Q \}
-\]
-of the product of $\Sigma$ with itself. Let's define $\mathsf{Left} : \Open{A}$ as $\mathsf{Left} \triangleq \mathsf{strict} \times \top_\Sigma$, the open subspace where the first projection is $\mathsf{true}$, and $\mathsf{Right} \triangleq \top_\Sigma \times \mathsf{strict}$. Then, in a ``point-free'' notation, we could have equivalently defined
+The basic idea is to generalize notions of exhaustive reasoning for general functional programming, where it is possible to compute whether or not decidable propositions hold. There is a calculus of decidable propositions: they are closed under conjunction, disjunction, and negation, and universal and existential quantification of decidable predicates over finite sets is decidable as well.
+
+We can relax the notion of decidable propositions to binary covers. Whereas a decidable proposition $P$ is one where either $P$ or $\neg P$ holds, a binary cover is a pair of propositions $P$ and $Q$ such that either $P$ or $Q$ holds. In a binary cover, it is possible that $P$ and $Q$ \emph{both} hold, which is of course never the case for $P$ and $\neg P$ in decidable propositions. So every decidable proposition can be interpreted as a binary cover, but not the other way around.
+
+Translating to spatial language, a decidable predicate on a space $A$ is an open $P$ of $A$ which is also closed (i.e., clopen), meaning that there is some open $\neg P$ such that $\top = P \vee \neg P$. A binary cover is a pair of opens $P$ and $Q$ which cover the space, i.e., $\top = P \vee Q$. We will be able to generalize the finite sets, over which quantification of decidable predicates is decidable, to \emph{compact/overt} spaces, where quantification of binary covers is a binary cover.
+
+We will define the space $\mathsf{BCover}$ as an open subspace of $\Sigma \times \Sigma$. Let's define $\mathsf{Left} : \Open{\Sigma \times \Sigma}$ as $\mathsf{Left} \triangleq \mathsf{strict} \times \top_\Sigma$, the open subspace where the first projection is $\mathsf{true}$, and $\mathsf{Right} \triangleq \top_\Sigma \times \mathsf{strict}$. Then, $\mathsf{BCover}$ is define as the open subspace
 \[
 \mathsf{BCover} \triangleq \{ \Sigma \times \Sigma \suchthat \mathsf{Left} \vee \mathsf{Right} \}.
 \]
@@ -954,7 +985,7 @@ For our three points of $\mathsf{BCover}$, we get the following Hasse diagram fo
 
 What's interesting to note is that the points of $\mathsf{BCover}$ always have maxima with respect to specialization order. That means it's always possible to non-deterministically join points of $\mathsf{BCover}$ together.
 
-Just as we found that the ``conjunction'' and ``disjunction'' operations of pairs of Coq propositions preserved having binary covers, we can define continuous maps representing conjunction and disjunction over the $\mathsf{BCover}$ space:
+We can define continuous maps representing conjunction and disjunction over the $\mathsf{BCover}$ space:
 \begin{align*}
 \cdot \wedge \cdot &: \mathsf{BCover} \times \mathsf{BCover} \to \mathsf{BCover}
 \\ x \wedge y &\triangleq \mathsf{cases}(x, y)
@@ -989,7 +1020,7 @@ Just as we found that the ``conjunction'' and ``disjunction'' operations of pair
 \end{cases}.
 \end{align*}
 
-Are these definitions, using overlapping pattern matching, valid definitions? There are two conditions to check: that the cases cover the entire input space, and that overlapping branches have a maximum in terms of specialization order. Since the output space is $\mathsf{BCover}$, which always have maxima, we always satisfy the second condition. Since we have the cover
+Are these definitions, using overlapping pattern matching, valid definitions? We must check the covering and gluing conditions. Since the output space is $\mathsf{BCover}$, which always have maxima, we always satisfy the gluing condition. Since we have the cover
 \[
 \top_\mathsf{BCover} \le \mathsf{Left} \vee \mathsf{Right},
 \]
@@ -1057,24 +1088,81 @@ This allows us to easily confirm that the logical connectives that we defined fo
 
 The specialization order on $\mathsf{BCover}$s corresponds to subset inclusion on $\PLower(\bool)$.
 
+\subsection{Quantification over compact/overt spaces}
+
+When working with sets, if a predicate $P$ on a set $A$ is decidable and if $A$ is Kuratowski-finite, then $\forall a : A, P(a)$ and $\exists a : A, P(a)$ are decidable as well. The analog of the finite sets in \textbf{Spc} are the compact/overt spaces.
+
+[cite nLab]
+A space $A$ is \emph{compact} if for every space $\Gamma$, and every open $U : \Open{\Gamma \times A}$, there is an open $\forall_A U : \Open{\Gamma}$ such that for every $V : \Open{\Gamma},$
+\[
+V \le_\Gamma \forall_A U \qquad \Leftrightarrow \qquad \top_A \times V \le_{\Gamma \times A} U.
+\]
+Similarly, a space $A$ is \emph{overt} if for every space $\Gamma$, and every open $U : \Open{\Gamma \times A}$, there is an open $\exists_A U : \Open{\Gamma}$ such that for every $V : \Open{\Gamma},$
+\[
+\exists_A U \le_\Gamma V  \qquad \Leftrightarrow \qquad U  \le_{\Gamma \times A} \top_A \times V.
+\]
+
+These conditions are the definitions of universal and existential quantification in terms of adjoints, viewing $\Gamma$ as some context and opens as truth values in a context.
+
+\begin{definition}
+A \emph{compact/overt} space is a space $A$ which is both compact and overt, as well as satisfying an additional property, that says for all $\Gamma$ and all $P, Q : \Open{\Gamma \times A}$, we have
+\[
+\forall_A(P \vee Q) \le_\Gamma \forall_A P \vee \exists_A Q.
+\]
+\end{definition}
+These properties allow us to quantify over compact/overt spaces. Suppose we have a binary cover $f : \Gamma \times A \to \mathsf{BCover}$ over a compact/overt space $A$ (in some context $\Gamma$). We define its universal quantification
+\note{Should I take the special case $\Gamma = \One$ perhaps?}
+\begin{align*}
+\forall_A f &: \Gamma \to \mathsf{BCover}
+\\ \forall_A f(\gamma) &\triangleq \mathsf{cases}(\mathsf{\gamma})
+\begin{cases}
+\oincl{\forall_A f_*(\mathsf{Left})}{\wildcard} &\Branch \mathsf{L}
+\\ \oincl{\exists_A f_*(\mathsf{Right})}{\wildcard} &\Branch \mathsf{R}
+\end{cases}
+\end{align*}
+
+We can confirm this pattern match is covering, i.e.,
+\[
+\top \le_\Gamma \forall_A f_*(\mathsf{Left}) \vee \exists_A f_*(\mathsf{Right}),
+\]
+with the derivation
+\begin{align*}
+\top_\Gamma 
+  &\le \forall_A (\top_A) \tag{$\forall_A$ adjointness}
+\\ &\le \forall_A (f_*(\top_\mathsf{BCover})) \tag{$f_*$ preserves $\top$}
+\\ &\le \forall_A (f_*(\mathsf{Left} \vee \mathsf{Right}))
+\\ &\le \forall_A(f_*(\mathsf{Left}) \vee f_*(\mathsf{Right}))  \tag{$f_*$ preserves joins}
+\\ &\le \forall_A f_*(\mathsf{Left}) \vee \exists_A f_*(\mathsf{Right}) \tag{$A$ is compact/overt}.
+\end{align*}
+
+Similarly, we can existentially quantify over the binary cover composed of $P, Q : \Open{\Gamma \times A}$ to produce the binary cover
+\[
+\top_\Gamma \le \exists_A P \vee \forall_A Q,
+\]
+in a completely symmetric manner.
+
+\note{Consider removing this paragraph} If we expand to work in the gros topos, where we have higher order functions, these functions for quantification, which allow us to extend quantification over opens to quantification over $\mathsf{BCover}$s, give us the operations $\forall_A : (A \to \mathsf{BCover}) \to \mathsf{BCover}$ and $\exists_A : (A \to \mathsf{BCover}) \to \mathsf{BCover}$ if $A$ is compact/overt.\footnote{Note that if $A$ is only compact or only overt, neither are possible, since the ``opposite'' quantification is used on the ``right'' side.}
+
+Compact/overt spaces form a convenient class of spaces over which exhaustive reasoning is possible. The continuous image of a compact/overt space is compact/overt (similar to the fact that the image of a finite set under any map is finite). Compact/overt subspaces are closed under finite union and intersection [citation needed].
+
+For the real numbers, we have that for any real numbers $a, b : \R$ such that $a < b$, the closed interval from $a$ to $b$ is compact/overt. Of course, we can then take unions and intersections of intervals and still have compact/overt subspaces.
+
+\note{Give an example use of the calculus of binary covers, perhaps on $\R$, and using quantification over compact/overt spaces.}
+
 \section{Related work}
 
 \cite{coquand1992} gives a topologically motivated explanation of pattern matching for dependently typed functional programming, describing patterns as (disjoint) partitions of a space.
 
 \cite{dijkstra} introduces ``guarded commands'', a language construct for imperative programming languages, where a branch can be chosen from a list of statements each guarded by boolean expressions. Whereas the cases in \cite{dijkstra} must be each decidable, in this work this need not be the case.
 
-Vickers?
+\note{Vickers?}
 
 dReal is a tool which allows computation of approximate truth values over the real numbers \cite{dReal}, allowing order comparisons and bounded quantifiers. The calculus of binary covers presented here, when restricted to $\R$, provides similar computational abilities, but with a different foundational framework. In a sense, it shows how it is possible to generalize the theory behind dReal to general topological spaces.
 
 \section{Conclusion}
-Isn't life great?
+\note{Isn't life great?}
 
-Future work:
-\begin{itemize}
-\item Extend to the gros topos, higher order functions, Kan extensions, that kind of thing
-\item Find other toposes, perhaps, which have notions of non-determinism or something like a specialization order, which would allow overlapping patterns to be meaningful
-\end{itemize}
+A possible direction of future work would be to extend overlapping patterns to the gros topos $\mathcal{E}$ over \textbf{FSpc} (with the coverage of open embeddings described earlier). For instance, we might want to have an overlapping pattern match which non-deterministically returns a \emph{function}, rather than simply a point of a space. Since \textbf{Spc} doesn't have exponentials in general, making sense of this would require extending the constructs defined here to $\mathcal{E}$.
 
 
 % conference papers do not normally have an appendix
