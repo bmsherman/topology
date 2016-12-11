@@ -891,11 +891,11 @@ and accordingly we define functions on coproducts via pattern matching, just as 
 
 The Sierp\'inski space $\Sigma$ is fundamental in topology for several reasons. It is the space of ``truth values'', and there is an exact correspondence between open sets $U : \Open{A}$ and continuous maps $\chi_U : A \to \Sigma$. The Sierp\'inski space $\Sigma$ is characterized by homeomorphisms
 \[
-\Sigma \cong \One_\bot \cong \PLower^+(\One) ,
+\Sigma \cong \One_\bot \cong \PLower(\One) ,
 \]
 which relate it to previously discussed constructions.
 
-In particular, since $\Sigma \cong \One_\bot$, $\Sigma$ has a bottom element (the ``false'' point), and so any pattern match which outputs to $\Sigma$ automatically satisfies the covering condition. On the other hand, since $\Sigma \cong \PLower^+(\One)$, pattern matches outputting to $\Sigma$ \emph{also} automatically satisfy the gluing condition, so any pattern match outputting to $\Sigma$ is automatically well-defined. Therefore, whenever writing any overlapping pattern match which outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient.
+In particular, since $\Sigma \cong \PLower(\One)$, any pattern match which outputs to $\Sigma$ automatically satisfies both the covering and gluing conditions. Therefore, whenever writing any overlapping pattern match which outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient. The bottom element of $\Sigma$, $\{ \} : \PLower(\One)$, is the ``false'' point of $\Sigma$, while $\mathsf{strict}(\mathsf{tt}) : \One$ or $\{ \mathsf{tt} \} : \PLower(\One)$ is the ``true'' point of $\Sigma$.
 
 This yields some cute ways of writing the logical ``and'' and ``or'' operations for $\Sigma$:
 \begin{align*}
@@ -1148,7 +1148,7 @@ in a completely symmetric manner.
 
 \note{Consider removing this paragraph} If we expand to work in the gros topos, where we have higher order functions, these functions for quantification, which allow us to extend quantification over opens to quantification over $\mathsf{BCover}$s, give us the operations $\forall_A : (A \to \mathsf{BCover}) \to \mathsf{BCover}$ and $\exists_A : (A \to \mathsf{BCover}) \to \mathsf{BCover}$ if $A$ is compact/overt.\footnote{Note that if $A$ is only compact or only overt, neither are possible, since the ``opposite'' quantification is used on the ``right'' side.}
 
-Compact/overt spaces form a convenient class of spaces over which exhaustive reasoning is possible. The continuous image of a compact/overt space is compact/overt (similar to the fact that the image of a finite set under any map is finite). Compact/overt subspaces are closed under finite union and intersection [citation needed].
+Compact/overt spaces form a convenient class of spaces over which exhaustive reasoning is possible. The continuous image of a compact/overt space is compact/overt (similar to the fact that the image of a finite set under any map is finite). Like Kuratowski-finite subsets, compact/overt subspaces are closed under finite union, but not necessarily intersection.
 
 For the real numbers, we have that for any real numbers $a, b : \R$ such that $a < b$, the closed interval from $a$ to $b$ is compact/overt. Of course, we can then take unions and intersections of intervals and still have compact/overt subspaces.
 
