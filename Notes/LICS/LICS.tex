@@ -559,7 +559,11 @@ Here, $f_*$ is known as the inverse image map. A continuous map transforms cover
 
 There is a useful partial order that we can put on continuous maps known as \emph{specialization order}, for which we will also use the symbol $\le$. For two maps $f, g : X \to Y$, $f \le g$ if for every $U : \Open{Y}$, $f_*(U) \le g_*(U)$. Intuitively, if $f \le g$, then an implementation of $g$ could always ``behave'' computationally as an implementation of $f$; $f$ has no more behaviors than $g$ does. Accordingly specialization order makes good sense of non-determinism, since any map $f$ can behave just as any map which is at most $f$.
 
-\note{Define open subspaces?}
+Given a space $X$ and an open $U : \Open{X}$, we can form the open subspace $\{ X \suchthat U \}$ of $X$ by making $\Open{\{X \suchthat U \}}$ a quotient of $\Open{X}$, by adding the extra relation
+\[
+\top \le U.
+\]
+\note{Explain generators and relations? This is out of context.}
 
 There are some difficulties with the predicative notions of space (as a predicative locale) as defined above. Most alarmingly, products don't necessarily exist, since the general construction for locale products is impredicative. The solution is to restrict to a full subcategory of \textbf{Spc} called \textbf{FSpc}, the inductively generated formal spaces, defined in \cite{coquand2003}. \textbf{FSpc} indeed has products, as well as pullbacks \cite{palmgren2003}, which we will need later.
 
@@ -576,12 +580,15 @@ This interpretation is limited to spatial locales (locales which also make sense
 First, some preliminary notions. For any two spaces $X$ and $Y$, let $X \cong Y$ indicate that the spaces $X$ and $Y$ are homeomorphic, meaning that we have exhibited continuous maps $f : X \to Y$ and $g : Y \to X$ such that $g \circ f = \mathsf{id}_X$ as well as $f \circ g = \mathsf{id}_Y$.
 We call a map $f : A \to B$ is an \emph{open embedding} if $A$ is homeomorphic to its image under $f$ in $B$. Formally, that means $f$ is an open embedding if there is an open subspace $U : \Open{B}$ and homeomorphism $\tilde{f} : A \to \{B \suchthat U \}$ such that the following diagram commutes:
 \begin{equation*}
-\begin{tikzcd}A \arrow[r, "\tilde{f}", yshift=0.5ex]
-   \arrow[dr,swap,"f"]& \{ B \suchthat U \}
+\begin{tikzcd}
+A \arrow[r, "\tilde{f}", yshift=0.5ex]
+   \arrow[dr,swap,"f"]
+& \{ B \suchthat U \}
    \arrow[l, "\tilde{f}^{-1}", yshift=-0.5ex]
    \arrow[d, "\oinclf{U}"]
 \\
-{} & B\end{tikzcd}
+{} & B
+\end{tikzcd}
 \end{equation*}
 The notation $f : A \hookto B$ indicates that the continuous map $f : A \to B$ is an open embedding, and use the notation $\Img{f}$ to indicate the open subspace $U$ of $B$ that $f$ factors through.
 
@@ -771,11 +778,13 @@ can be transformed into
 \]
 where each $q_i$ and $g_i$ come from the pullback diagram
 \begin{equation*}
-\begin{tikzcd}B_i \times_B A \arrow[r, hook, "q_i"]
+\begin{tikzcd}
+B_i \times_B A \arrow[r, hook, "q_i"]
    \arrow[d, "g_i"]
 & A \arrow[d, "f"]
 \\ B_i \arrow[r, hook, "p_i"]
-& B\end{tikzcd}
+& B
+\end{tikzcd}
 \end{equation*}
 
 \section{Properties of overlapping patterns}
@@ -895,7 +904,7 @@ The Sierp\'inski space $\Sigma$ is fundamental in topology for several reasons. 
 \]
 which relate it to previously discussed constructions.
 
-In particular, since $\Sigma \cong \PLower(\One)$, any pattern match which outputs to $\Sigma$ automatically satisfies both the covering and gluing conditions. Therefore, whenever writing any overlapping pattern match which outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient. The bottom element of $\Sigma$, $\{ \} : \PLower(\One)$, is the ``false'' point of $\Sigma$, while $\mathsf{strict}(\mathsf{tt}) : \One$ or $\{ \mathsf{tt} \} : \PLower(\One)$ is the ``true'' point of $\Sigma$.
+In particular, since $\Sigma \cong \PLower(\One)$, any pattern match which outputs to $\Sigma$ automatically satisfies both the covering and gluing conditions. Therefore, whenever writing any overlapping pattern match which outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient. The bottom element of $\Sigma$, $\{ \} : \PLower(\One)$, is the ``false'' point of $\Sigma$, while $\mathsf{strict}(\mathsf{tt}) : \One_\bot$ or $\{ \mathsf{tt} \} : \PLower(\One)$ is the ``true'' point of $\Sigma$.
 
 This yields some cute ways of writing the logical ``and'' and ``or'' operations for $\Sigma$:
 \begin{align*}
@@ -1037,7 +1046,7 @@ we have in the product space
 \end{align*}
 which clearly shows that the cases in the definitions of conjunction and disjunction also cover the entire input space.
 
-It's still important to check that these definitions satisfy the definitions you'd expect for conjunction and disjunction on binary covers. Negation is easy as well:
+It's still important to check that these definitions satisfy the definitions you'd expect for conjunction and disjunction on binary covers. Negation switches the roles of $\mathsf{Left}$ and $\mathsf{Right}$:
 \begin{align*}
  \neg &: \mathsf{BCover} \to \mathsf{BCover}
 \\ \neg x &\triangleq \mathsf{cases}(x)
@@ -1054,7 +1063,7 @@ It's still important to check that these definitions satisfy the definitions you
 
 \subsection{Alternative understandings of binary covers}
 
-If you're bothered by the fact that the two opens in a binary cover get ``opposite'' treatments, and in particular that the logical operations on the second open are in reverse, for no good reason, there's another way to think about it. Rather than thinking of a binary cover of $A$ as two opens $P, Q : \Open{A}$ such that $A \subseteq P \cup Q$, we can instead think of it as an open set $P$ and a \emph{closed} set $\overline{Q}$ which is the ``set-theoretic'' complement of $Q$, since the complement of an open set is closed. Then the fact that $\langle P, Q \rangle$ is a binary cover means that $\overline{Q} \subseteq P$. Then the definitions of the logical operations should make more sense. For instance, one can find the union of two closed sets by taking their complement to produce two open sets, taking the intersection of that, and then taking the complement to return to a closed set. Since we are simply ``encoding'' closed sets with their open complements, computing the ``union'' just corresponds to taking an intersection.
+There are several other interpretations of binary covers which help explain why the two opens in a binary cover get ``opposite'' treatments in the definitions of conjunction and disjunction. Rather than thinking of a binary cover of $A$ as two opens $P, Q : \Open{A}$ such that $A \subseteq P \cup Q$, we can instead think of it as an open set $P$ and a \emph{closed} set $\overline{Q}$ which is the ``set-theoretic'' complement of $Q$, since the complement of an open set is closed. Then the fact that $\langle P, Q \rangle$ is a binary cover means that $\overline{Q} \subseteq P$. Then the definitions of the logical operations should make more sense. For instance, one can find the union of two closed sets by taking their complement to produce two open sets, taking the intersection of that, and then taking the complement to return to a closed set. Since we are simply ``encoding'' closed sets with their open complements, computing the ``union'' just corresponds to taking an intersection.
 
 This elicits the view of binary covers as ``approximate'' predicates, sandwiching a closed subspace inside an open one, with wiggle room for for points which are in between. Any points which are in $\overline{Q}$ (and thus also $P$) will definitely compute to $\mathsf{Left}$, while any points which are outside of $P$ (and thus also outside $\overline{Q}$) will definitely compute to $\mathsf{Right}$, while in-between points, which are in $P$ but not $\overline{Q}$, are allowed to compute either way.
 
@@ -1150,12 +1159,34 @@ in a completely symmetric manner.
 
 Compact/overt spaces form a convenient class of spaces over which exhaustive reasoning is possible. The continuous image of a compact/overt space is compact/overt (similar to the fact that the image of a finite set under any map is finite). Like Kuratowski-finite subsets, compact/overt subspaces are closed under finite union, but not necessarily intersection.
 
-For the real numbers, we have that for any real numbers $a, b : \R$ such that $a < b$, the closed interval from $a$ to $b$ is compact/overt. Of course, we can then take unions and intersections of intervals and still have compact/overt subspaces.
+For the real numbers, we have that for any real numbers $a, b : \R$ such that $a < b$, the closed interval from $a$ to $b$ is compact/overt. Of course, we can then take unions of intervals and still have compact/overt subspaces.
 
-\note{Give an example use of the calculus of binary covers, perhaps on $\R$, and using quantification over compact/overt spaces, e.g.,
-\[
-\exists_{[-1,1]}(\lambda y. \forall_{[1,3]} (\lambda x. [x^2 > 3]_\varepsilon \vee [x -x^3 < y]_{2\varepsilon})) : \One \to \mathsf{BCover}
-\]}
+\subsection{Binary covers on $\R$}
+
+We can define binary covers which give approximate order comparisons on $\R$ by defining, for each $\varepsilon : \rat^+$,
+\note{I don't explain $\lambda$ notation for opens}
+\begin{align*}
+[ \cdot < \cdot ]_\varepsilon &: \R \times \R \to \mathsf{BCover}
+\\ [x < y]_\varepsilon &\triangleq \mathsf{cases}(x, y)
+\begin{cases}
+\oincl{\lambda (x, y). x < y}{\wildcard} &\Branch \mathsf{L}
+\\ \oincl{\lambda (x, y). x > y - \varepsilon}{\wildcard} &\Branch \mathsf{R}.
+\end{cases}
+\end{align*}
+
+We can use this to query whether an arbitrary continuous map $f : \R \to \R$ approximately no roots on a closed interval $[a, b]$, with the binary cover
+\begin{align*}
+\mathsf{no\_roots}_{\varepsilon} &: \One \to \mathsf{BCover}
+\\ \mathsf{no\_roots}_\varepsilon &\triangleq
+  \forall_{[a,b]}(\lambda x. [ 0 < |f(x)| ]_\varepsilon)
+\end{align*}
+If we observe $\mathsf{Left}$ of the result, then indeed $f$ has no roots, while if we observe $\mathsf{Right}$ of the result, then there is some $x \in [a, b]$ such that $|f(x)| < \varepsilon$. Perhaps we have two maps $f, g : \R \times \R \to \R$ and wish to confirm that there is some $x \in [0,1]$ such that for every $y \in [0,1]$, $f(x, y)$ is positive while $g(x,y)$ is negative:
+\begin{align*}
+\mathsf{apart}_{\varepsilon} &: \One \to \mathsf{BCover}
+\\ \mathsf{apart}_\varepsilon &\triangleq
+  \exists_{[0,1]}(\lambda x. \forall_{[a,b]}(\lambda y. [ 0 < f(x, y) ]_\varepsilon \wedge [g(x, y) < 0]_\varepsilon)).
+\end{align*}
+Again, such a query is sound, but incomplete. If we observe $\mathsf{Left}$, then it is certainly true, while if we observe $\mathsf{Right}$, then for every $x \in [0,1]$ there is a $y \in [0,1]$ such that either $f(x, y) < \varepsilon$ or $g(x, y) > -\varepsilon$.
 
 \section{Related work}
 
