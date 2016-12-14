@@ -503,7 +503,7 @@ for $L : \rat^+$. Multiplication on $\R$ is not Lipschitz and so cannot be used 
 [L : \rat^+] \quad \oincl{-L < \cdot < L}{x'}  \  \Branch \  \mathsf{scale}_L(x', y).
 \end{cases}
 \end{align*}
-This pattern match has infinitely branches, one for each $L : \rat^+$. To confirm that the above definition is in fact valid, we must show that the cases suffice to cover $\R$, and that any two branches have a non-deterministic union on their region of overlap. The former should be clear, and we should be able to prove that branches always \emph{agree} exactly on their region of overlap, so the union exists: it's the same as either branch. These proofs confirm the validity of the above definition and provide computational content so that the function can be run.
+This pattern match has infinitely branches, one for each $L : \rat^+$. To confirm that the above definition is in fact valid, we must show that the cases suffice to cover $\R$, and that any two branches have a non-deterministic union on their region of overlap. The former should be clear, and we should be able to prove that branches always agree \emph{exactly} on their region of overlap, so the union exists: it's the same as either branch. These proofs confirm the validity of the above definition and provide computational content so that the function can be run.
 
 The remainder of the paper is organized as follows:
 \begin{itemize}
@@ -703,7 +703,7 @@ f_{ij} = \max(f_i \circ \pi_i, f_j \circ \pi_j),
 \]
 where $\pi_i : A_i \times_A A_j \hookto A_i$ and $\pi_j : A_i \times_A A_j \hookto A_j$ are the expected pullback maps. Using pullback is just a natural way to encode the transformation of the gluing condition, noting the homeomorphism
 \[
- \{A \suchthat f_i(A_i) \wedge f_j(A_j) \} \cong A_i \times_A A_j.
+ \{A \suchthat \Img{f_i} \wedge \Img{f_j} \} \cong A_i \times_A A_j.
 \]
 
 \subsection{Composition of patterns}
@@ -1186,7 +1186,7 @@ If we observe $\mathsf{Left}$ of the result, then indeed $f$ has no roots, while
 \\ \mathsf{apart}_\varepsilon &\triangleq
   \exists_{[0,1]}(\lambda x. \forall_{[a,b]}(\lambda y. [ 0 < f(x, y) ]_\varepsilon \wedge [g(x, y) < 0]_\varepsilon)).
 \end{align*}
-Again, such a query is sound, but incomplete. If we observe $\mathsf{Left}$, then it is certainly true, while if we observe $\mathsf{Right}$, then for every $x \in [0,1]$ there is a $y \in [0,1]$ such that either $f(x, y) < \varepsilon$ or $g(x, y) > -\varepsilon$.
+Again, such a query has only false negatives (and its negation has only false positives). If we observe $\mathsf{Left}$, then it is certainly true, while if we observe $\mathsf{Right}$, then for every $x \in [0,1]$ there is a $y \in [0,1]$ such that either $f(x, y) < \varepsilon$ or $g(x, y) > -\varepsilon$.
 
 \section{Related work}
 
