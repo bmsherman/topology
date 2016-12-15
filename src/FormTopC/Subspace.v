@@ -2,6 +2,8 @@
   Algebra.SetsC
   Algebra.OrderC
   FormTopC.FormTop
+  FormTopC.Cont
+  FormTopC.Locale
   FormTopC.FormalSpace
   CRelationClasses.
 
@@ -9,35 +11,82 @@ Local Open Scope Subset.
 Local Open Scope FT.
 Set Universe Polymorphism.
 
-Module Subspace.
+Existing Instances FormalSpace.FT FormalSpace.PreO
+  FormalSpace.Cov_Proper FormalSpace.Cov_Proper2
+  FormalSpace.Cov_Proper3.
+
+(** General properties of subspaces and their inclusions. *)
+
+Section GenSub.
+Context {A : FormalSpace.t}.
+
+Variable Cov' : A -> Open A -> Type.
+
+Definition Subspace : PreSpace.t :=
+  {| PreSpace.S := A
+   ; PreSpace.Cov := Cov'
+  |}.
+
+Hypothesis tSubspace : FormTop.t Subspace.
+Hypothesis tPosSub : tPos Subspace.
+
+Definition SubspaceSub : FormalSpace.t :=
+  {| S := Subspace
+  ; isFT := tSubspace |}.
+
+Definition incl : Cont.map Subspace A :=
+  fun a => Sat SubspaceSub (eq a).
+
+Hypothesis CovImpl : PreSpace.Cov A ⊑ PreSpace.Cov SubspaceSub.
+
+Lemma incl_refl : forall a, incl a a.
+Proof.
+intros. unfold incl, Sat. apply FormTop.refl.
+reflexivity.
+Qed.
+
+Lemma incl_cont : Cont.t Subspace A incl.
+Proof.
+econstructor; intros.
+- apply FormTop.refl. exists a. unfold In. auto.
+  apply incl_refl.
+- unfold incl, Sat in *. rewrite X.  assumption.
+- unfold incl, Sat in X, X0.
+  FormTop.ejoin. FormTop.etrans. apply FormTop.refl.
+  exists a. rewrite <- down_downset_eq in X1.
+  assumption. apply incl_refl.
+- unfold incl, Sat in X. FormTop.etrans.
+  unfold In in X. subst. apply CovImpl in X0.
+  FormTop.etrans. apply FormTop.refl.
+  exists a. assumption. apply incl_refl.
+Qed.
+
+End GenSub.
+
 
 (** Closed subspaces *)
 Section Defn.
 Context {A : FormalSpace.t}.
 Variable (V : Open A).
 
-Definition Cov' a U := a <|[A] V ∪ U.
+Definition CovC a U := a <|[A] V ∪ U.
 
 
 Definition Closed : PreSpace.t :=
   {| PreSpace.S := A
-   ; PreSpace.Cov := Cov'
+   ; PreSpace.Cov := CovC
   |}.
-
-Existing Instances FormalSpace.FT FormalSpace.PreO
-  FormalSpace.Cov_Proper FormalSpace.Cov_Proper2
-  FormalSpace.Cov_Proper3.
 
 Theorem t : FormTop.t Closed.
 Proof.
-constructor; unfold Cov'; intros.
+constructor; unfold CovC; intros.
 - apply FormalSpace.refl. right. assumption.
 - FormalSpace.etrans.
   destruct X. 
   + apply FormalSpace.refl. left. assumption.
   + apply X0. assumption.
 - apply FormalSpace.le_left with b; assumption.
-- FormalSpace.ejoin. simpl in *.  unfold Cov'. 
+- FormalSpace.ejoin. simpl in *.  unfold CovC. 
   FormalSpace.etrans.
   destruct X1. destruct d, d0.
   destruct i.
@@ -56,14 +105,103 @@ Definition ClosedSub : FormalSpace.t :=
   {| S := Closed
   ; isFT := t |}.
 
-End Defn.
+Definition closed_incl : Cont.map ClosedSub A :=
+  incl CovC t tPos.
 
-Lemma RelSame_iffT {A B} (R S : A -> B -> Type) :
-  (forall a b, R a b <--> S a b) <--> (R ==== S).
+Lemma closed_incl_cont : Cont.t ClosedSub A closed_incl.
 Proof.
-firstorder.
+apply incl_cont. intros. simpl. 
+unfold RelIncl, Included, pointwise_rel, arrow, CovC.
+intros. 
+FormTop.etrans. apply FormTop.refl. right. assumption.
 Qed.
 
+(** Open subspaces. *)
+
+Definition CovO a U := ⇓ eq a ∩ ⇓ V <<|[A] U.
+
+Definition OpenPS : PreSpace.t :=
+  {| PreSpace.S := A
+   ; PreSpace.Cov := CovO
+  |}.
+
+Existing Instances pos.
+
+Theorem tOpen : FormTop.t OpenPS.
+Proof.
+constructor; simpl; unfold CovO; intros.
+- destruct X0. destruct d, d0. unfold In in i.
+   subst. rewrite l.  apply FormTop.refl. assumption.
+- destruct X1. destruct d, d0. unfold In in i. subst. 
+  apply positive. intros. 
+  apply (FormTop.trans (U := ⇓ (⇓ U ∩ ⇓ eq a0) ∩ ⇓ V)). 
+  Focus 2. intros. destruct X2.
+  destruct d, d0. destruct i.  destruct d, d0.
+  unfold In in *. subst.
+  eapply X0. eassumption.
+  split. exists a5. reflexivity. rewrite <- l3. assumption.
+  exists a4; assumption. 
+  apply FormTop.le_right. apply FormTop.le_right.
+  apply X. split. exists a1. reflexivity. assumption.
+  exists a2; assumption. apply FormTop.refl. reflexivity.
+  rewrite l0. apply FormTop.refl. assumption.
+- destruct X1. destruct d, d0. unfold In in i.
+   subst. eapply FormTop.trans. 
+  2: eapply X0. eapply FormTop.le_right. 
+  rewrite l, X. apply FormTop.refl. reflexivity. 
+  rewrite l0. apply FormTop.refl. assumption.
+- destruct X1. destruct d, d0. 
+  unfold In in i. subst.
+  apply FormTop.le_right. eapply FormTop.trans.
+  2: eapply X. apply FormTop.le_right.
+  rewrite l.  apply FormTop.refl. reflexivity.
+  rewrite l0. apply FormTop.refl. assumption.
+  eapply FormTop.trans. 2: eapply X0.
+  apply FormTop.le_right. rewrite l. apply FormTop.refl.
+  reflexivity. rewrite l0. apply FormTop.refl.
+  assumption.
+Qed.
+
+Lemma Intersection_Assoc {X : Type} (P Q R : Subset A)
+  : P ∩ (Q ∩ R) === (P ∩ Q) ∩ R.
+Proof.
+  firstorder.
+Qed.
+
+Lemma Intersection_Comm {X : Type} (P Q : Subset A)
+  : P ∩ Q === Q ∩ P.
+  Proof. firstorder. Qed.
+
+Require Import CMorphisms.
+
+Instance Inhabited_Proper {X : Type} : 
+  Proper (Included ==> arrow) (@Inhabited X).
+Proof.
+ firstorder.
+Qed.
+
+Hypothesis tPosO : FormTop.tPos OpenPS.
+
+Definition OpenSub : FormalSpace.t :=
+  {| S := OpenPS
+  ; isFT := tOpen |}.
+
+Definition open_incl : Cont.map OpenSub A :=
+  incl CovO tOpen tPosO.
+
+Lemma open_incl_cont : Cont.t OpenSub A open_incl.
+Proof.
+apply incl_cont. intros. simpl. 
+unfold RelIncl, Included, pointwise_rel, arrow, CovO.
+intros. destruct X0.  destruct d. unfold In in *.
+subst. rewrite l. assumption.
+Qed.
+
+
+End Defn.
+
+
+(** Closed subspaces are inductively generated. *)
 Require Import FormTopC.Bundled.
 Section IGDefn.
 
@@ -98,7 +236,7 @@ Definition A' : PreISpace.t :=
 
 Theorem same : PreSpace.Cov (LocalizedPS A') ==== PreSpace.Cov (Closed (A := fromIGT A) V).
 Proof.
-apply RelSame_iffT. intros a U. simpl. unfold Cov'. split; intros H.
+apply RelSame_iffT. intros a U. simpl. unfold CovC. split; intros H.
 - induction H.
   + apply FormTop.grefl. right. assumption.
   + simpl in *. apply FormTop.gle_left with b. assumption.
@@ -129,5 +267,3 @@ apply RelSame_iffT. intros a U. simpl. unfold Cov'. split; intros H.
 Qed.
 
 End IGDefn.
-
-End Subspace.

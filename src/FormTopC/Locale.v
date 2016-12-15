@@ -266,46 +266,14 @@ intros. unfold Proper, respectful; intros. subst.
 apply union_Proper. assumption. reflexivity.
 Qed.
 
-Theorem toLattice : 
-   L.morph (LOps B) (LOps A) (Cont.frame F_).
-Proof.
-constructor.
-  + constructor.
-     * apply monotone.
-     * repeat intro. split; apply monotone; simpl in X;
-       rewrite X; apply PreO.le_refl.
-  + intros. unfold Cont.frame. simpl. unfold eqA.
-    eapply Sat_Proper; try eassumption.
-    symmetry. apply Union_union.
-  + intros. unfold Cont.frame. simpl. apply PO.le_antisym;
-    unfold leA, Sat, Included, pointwise_rel, arrow; intros.
-    * FormTop.trans X. unfold minA in X.
-      destruct X. destruct i. destruct d, d0.
-      unfold minA.
-      apply FormTop.le_right;
-      apply (Cont.cov cont _ f).
-      apply FormTop.le_left with a2. assumption.
-      apply FormTop.refl. assumption.
-      apply FormTop.le_left with a3. assumption.
-      apply FormTop.refl. assumption.
-    * FormTop.trans X. unfold minA in *.
-      destruct X. destruct d, d0. destruct i, i0.
-      rewrite <- FormTop.down_downset; try eassumption.
-      apply (Cont.local (T := B) (S := A)). eassumption. 
-      eapply Cont.le_left with a1; eassumption.
-      eapply Cont.le_left with a2; eassumption.
-Qed.
-
 Theorem toFrame : Frame.morph 
   (OA := (FOps B)) (OB := (FOps A)) (f := (Cont.frame F_)).
 Proof.
-constructor.
-- apply toLattice.
-- unfold Cont.frame. simpl. intros.
-  unfold eqA. eapply Sat_Proper; try eassumption.
-  intros; split; unfold Included, In; intros.
-  + destruct X. destruct i. repeat econstructor; eauto.
-  + destruct X. destruct u. repeat econstructor; eauto. 
+unshelve eapply Frame.morph_easy.
+- eapply Frame.
+- eapply Frame.
+- repeat intro. split; apply monotone; simpl in X;
+       rewrite X; apply PreO.le_refl.
 - unfold Cont.frame. simpl. unfold eqA, Sat.
   intros. split; unfold Included, In; intros.
   + apply FormTop.refl. unfold In. auto.
@@ -315,6 +283,28 @@ constructor.
     destruct i0. clear i i0. clear l.
     rewrite l0. apply FormTop.refl.
     repeat (econstructor; try eassumption).
+- intros. unfold Cont.frame. simpl. apply PO.le_antisym;
+    unfold leA, Sat, Included, pointwise_rel, arrow; intros.
+    * FormTop.trans X. unfold minA in X.
+      destruct X. destruct i. destruct d, d0.
+      unfold minA.
+      apply FormTop.le_right;
+      apply (Cont.cov cont _ f).
+      apply FormTop.le_left with a1. assumption.
+      apply FormTop.refl. assumption.
+      apply FormTop.le_left with a2. assumption.
+      apply FormTop.refl. assumption.
+    * FormTop.trans X. unfold minA in *.
+      destruct X. destruct d, d0. destruct i, i0.
+      rewrite <- FormTop.down_downset; try eassumption.
+      apply (Cont.local (T := B) (S := A)). eassumption. 
+      eapply Cont.le_left with a0; eassumption.
+      eapply Cont.le_left with a1; eassumption.
+- unfold Cont.frame. simpl. intros.
+  unfold eqA. eapply Sat_Proper; try eassumption.
+  intros; split; unfold Included, In; intros.
+  + destruct X. destruct i. repeat econstructor; eauto.
+  + destruct X. destruct u. repeat econstructor; eauto. 
 Qed.
 
 Definition toCmap : Frame.cmap (OA := FOps A)

@@ -111,6 +111,29 @@ Universes UI UA.
     apply sup_ok. intros; contradiction.
   Qed.
 
+  Require Import Algebra.SetsC.
+Local Open Scope Subset.
+Lemma le_min (U V : A) : L.le U V <--> L.eq (L.min U V) U.
+Proof.
+split; intros.
+- apply PO.le_antisym; eapply L.min_ok. reflexivity.
+  assumption.
+- transitivity (L.min U V). rewrite X. reflexivity.
+  apply L.min_ok.
+Qed.
+
+Lemma max_sup (U V : A) : 
+  L.eq (L.max U V) (Frame.sup (fun b : bool => if b then U else V)).
+Proof.
+pose proof 
+  (PreO.sup_ge (A := A) (le := L.le) (I := bool) (fun b : bool => if b then U else V)
+  (Frame.sup (fun b : bool => if b then U else V))).
+specialize (X (Frame.sup_ok _)).
+apply PO.le_antisym.
+- apply L.max_ok. apply (X true). apply (X false).
+- apply Frame.sup_ok. intros. destruct i; apply L.max_ok.
+Qed.
+
   End Facts.
   Section Morph. 
   Context {A B : Type@{UA}}
@@ -146,6 +169,30 @@ Universes UI UA.
   rewrite <- f_sup by assumption.
   eapply PO.f_PreO. apply Hf. assumption.
   Qed.
+
+
+Lemma morph_easy (f : A -> B) : 
+Proper (L.eq ==> L.eq) f
+-> L.eq (f Frame.top) Frame.top
+-> (forall U V, L.eq (f (L.min U V)) (L.min (f U) (f V)))
+-> (forall (Ix : Type) (g : Ix -> A),
+L.eq (f (Frame.sup g)) (Frame.sup (fun i => f (g i))))
+-> morph f.
+Proof.
+intros. econstructor.
+- econstructor.
+  + econstructor.
+    * unfold PreO.morph, arrow. intros.
+      apply le_min. apply le_min in X3.
+      rewrite <- X1. apply X. assumption.
+    * unfold Proper, respectful. eassumption.
+  + intros. rewrite !max_sup. etransitivity.
+    apply X2. apply Frame.sup_proper.
+    unfold pointwise_relation. intros. destruct a0; reflexivity.
+  + assumption.
+- assumption.
+- assumption.
+Qed. 
 
   End Morph.
 

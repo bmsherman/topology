@@ -27,9 +27,9 @@ Local Open Scope Subset.
 Lemma One_Sat_le :
   forall U V, Sat One U ⊆ Sat One V -> U ⊆ V.
 Proof.
-unfold Sat, Included, In, pointwise_rel, arrow.
-intros.  destruct a. eapply split_One.
-eapply X. eapply FormTop.refl. eassumption.
+  intros. apply Included_impl; intros.
+  destruct x. eapply split_One. apply X.
+  eapply FormTop.refl. eassumption.
 Qed.
 
 Lemma One_Sat_eq :
@@ -43,30 +43,24 @@ Qed.
 
 Require Import Algebra.SetsC
   Prob.StdLib.
+    
 
 Definition One_cont : Frame.morph (OA := FOps One)
   (OB := Frame.type_ops) (f := fun U => U I).
 Proof.
-econstructor.
-- econstructor.
-  + econstructor.
-    * simpl. unfold PreO.morph, arrow.
-      unfold leA. intros. apply One_Sat_le in X.
-      unfold Included, In, pointwise_rel, arrow in X. 
-      auto.
-    * unfold Proper, respectful. simpl.
-      unfold eqA. intros. apply One_Sat_eq in X.
-      unfold Same_set, pointwise_rel in X. auto.
-  + simpl. unfold Union, pointwise_op.
-    reflexivity.
-  + simpl. unfold minA. intros.
-    split; intros. simpl in X. destruct X.
-    destruct d, d0. destruct a0, a1. auto.
-    destruct X. repeat (econstructor || eassumption).
+  unshelve eapply Frame.morph_easy.
+- eapply Frame.
+- eapply Frame.type.
+- unfold Proper, respectful. intros.
+  apply One_Sat_eq in X. simpl. apply Same_set_iff. assumption.
+- simpl. unfold iffT; auto.
+- simpl. split; intros.
+  + destruct X. destruct d, d0. destruct l, l0, a, a0.
+    auto.
+  + destruct X. split; exists I; (assumption || reflexivity).
 - simpl. intros. split; intros.
   + destruct X. exists i. assumption.
   + destruct X. exists x. assumption.
-- simpl. unfold iffT; auto.
 Qed.
 
 Definition One_type_cmap :

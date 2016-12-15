@@ -60,6 +60,16 @@ unfold Included, pointwise_rel, arrow; intros a downa.
 destruct downa. econstructor; econstructor; eauto.
 Qed.
 
+Lemma down_downset_eq : forall (A : FormTop.PreOrder) (x y : A),
+   x ↓ y === ⇓ eq x ∩ ⇓ eq y.
+Proof.
+intros. apply Included_Same_set.
+- apply down_downset; reflexivity.
+- unfold Included, pointwise_rel, arrow.
+  intros. destruct X. destruct d, d0. unfold In in *.
+  subst. split; assumption.
+Qed.
+
 Lemma downset_included {A} {PO : PreO.t (le A)} : forall (V : Open A),
    V ⊆ ⇓ V.
 Proof.

@@ -48,11 +48,21 @@ Definition RelSame {A B : Type} : crelation (A -> B -> Type) :=
 Infix "⊑" := RelIncl (at level 60) : Subset_scope.
 Infix "====" := RelSame (at level 70) : Subset_scope.
 
-Infix "<-->" := iffT (at level 70) : Subset_scope.
+Infix "<-->" := iffT (at level 75) : Subset_scope.
 
 Definition compose {S T U} (F : S -> T -> Type)
   (G : T -> U -> Type) (s : S) (u : U) : Type :=
     { t : T & (F s t * G t u)%type }.
+
+Theorem Included_impl : forall A (U V : Subset A),
+  (forall x, U x -> V x) <--> U ⊆ V.
+Proof. firstorder. Qed.
+
+Theorem Same_set_iff : forall A (U V : Subset A),
+  (forall x, U x <--> V x) <--> U === V.
+Proof.
+firstorder.
+Qed.
 
 Inductive union {S T : Type} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
@@ -69,14 +79,14 @@ Theorem union_Intersection :
   forall (A B : Type) (a b : Subset A) (f : A -> Subset B),
   union (a ∩ b) f ⊆ union a f ∩ union b f.
 Proof.
-intros. unfold Included, pointwise_rel, arrow; intros. 
+intros. apply Included_impl; intros. 
 destruct X. destruct i. constructor; econstructor; eassumption.
 Qed.
 
 Lemma union_eq A B (x: A) (f : A -> Subset B) :
   union (eq x) f ⊆ f x.
 Proof.
-unfold Included, In, pointwise_rel, arrow; intros.
+apply Included_impl; intros.
 destruct X. induction i. assumption.
 Qed.
 
@@ -157,12 +167,6 @@ intros. constructor; unfold Reflexive, Transitive, RelIncl; intros.
 - transitivity (y a); auto.
 Qed.
 
-Theorem Same_set_iff : forall A (U V : Subset A),
-  (forall x, U x <--> V x) -> U === V.
-Proof.
-firstorder.
-Qed.
-
 Instance Same_set_Equivalence : forall U, Equivalence (@Same_set U).
 Proof. intros. unfold Same_set. constructor;
   unfold Reflexive, Symmetric, Transitive; firstorder.
@@ -189,8 +193,7 @@ Qed.
 Lemma Included_Same_set : forall A (U V : Subset A),
   U ⊆ V -> V ⊆ U -> U === V.
 Proof.
-unfold Included, Same_set, pointwise_rel, arrow.
-firstorder.
+  firstorder.
 Qed.
 
 Lemma Same_set_Included {A} (U V : Subset A) : U === V -> ((U ⊆ V) * (V ⊆ U))%type.
@@ -209,6 +212,12 @@ Lemma RelSame_RelIncl A B (F F' : A -> Subset B) :
 Proof.
 unfold RelSame, RelIncl.
 intros. rewrite X. reflexivity.
+Qed.
+
+Lemma RelSame_iffT {A B} (R S : A -> B -> Type) :
+  (forall a b, R a b <--> S a b) <--> (R ==== S).
+Proof.
+firstorder.
 Qed.
 
 Instance RelSame_Proper : forall A B, Proper (RelSame ==> RelSame ==> iffT)
@@ -232,17 +241,16 @@ Qed.
 Lemma union_idx_monotone : forall A B (U V : Subset A) (F : A -> B -> Type),
   U ⊆ V -> union U F ⊆ union V F.
 Proof.
-intros. unfold Included, pointwise_rel, arrow.
-intros. destruct X0. econstructor; eauto.
+intros. apply Included_impl; intros.
+destruct X0. econstructor; eauto.
 apply X. assumption.
 Qed.
 
 Lemma union_monotone : forall A B (U : Subset A) (F G : A -> B -> Type),
   F ⊑ G -> union U F ⊆ union U G.
 Proof.
-intros. unfold Included, pointwise_rel, arrow.
-intros. destruct X0.
-econstructor. eassumption. apply X. assumption.
+intros. apply Included_impl; intros.
+destruct X0. econstructor. eassumption. apply X. assumption.
 Qed.
 
 Local Instance union_Proper : forall A B, 
@@ -256,19 +264,13 @@ Qed.
 Local Instance Union_Proper_eq : forall A, 
   Proper (Same_set ==> Same_set ==> Same_set) (@Union A).
 Proof.
-unfold Proper, respectful, Same_set, pointwise_rel, iffT.
-intros. split; intros;
-  (destruct X1; [left | right];
-  [apply X | apply X0]; assumption ).
+  firstorder.
 Qed.
 
 Instance Union_Proper_le_flip : forall A,
   Proper (Included --> Included --> flip Included) (@Union A).
 Proof.
-unfold Proper, respectful, Included, pointwise_rel, flip, arrow.
-intros.
-  destruct X1; [left | right];
-  [apply X | apply X0]; assumption.
+  firstorder.
 Qed.
 
 Lemma Same_set_iff_In:
