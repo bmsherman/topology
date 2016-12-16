@@ -42,6 +42,7 @@ src/FormTopC/Pattern.v
 
 src/Algebra/Frame.v
 src/Algebra/FrameC.v
+src/Algebra/Sublocale.v
 src/Algebra/Sets.v
 src/Algebra/SetsC.v
 src/Algebra/OrderC.v

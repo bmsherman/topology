@@ -9,6 +9,14 @@ Set Asymmetric Patterns.
 
 Module L := Lattice.
 
+Delimit Scope Frame_scope with Frame.
+Infix "<=" := L.le : Frame_scope.
+Infix "==" := L.eq (at level 70) : Frame_scope.
+Infix "∨" := L.max (at level 55) : Frame_scope.
+Infix "∧" := L.min (at level 50) : Frame_scope.
+
+Local Open Scope Frame.
+
 (** A frame represents the essence of the algebraic structure of topologies,
     without the requirement that this algebraic structure be formed by
     subsets of an underlying space. The frame is just the algebra itself.
@@ -57,7 +65,7 @@ Universes UI UA.
      Proper (pointwise_relation _ L.eq ==> L.eq) (@sup _ _ Ix)
   ; sup_ok :  forall {Ix : Type} (f : Ix -> A), PreO.sup (le := L.le) f (sup f)
   ; sup_distr : forall x {Ix : Type} (f : Ix -> A)
-    , L.eq (L.min x (sup f)) (sup (fun i => L.min x (f i)))
+    , x ∧ sup f == (sup (fun i => x ∧ f i))
   }.
 
   Arguments t : clear implicits.
@@ -65,7 +73,7 @@ Universes UI UA.
   Context {A : Type@{UA}} {OA} {tA : t A OA}.
 
   Definition sup_proper_u : forall {Ix : Type@{UI}} (f g : Ix -> A),
-    (forall (i : Ix), L.eq (f i) (g i)) -> L.eq (sup f) (sup g).
+    (forall (i : Ix), f i == g i) -> sup f == sup g.
   Proof.
   intros. apply sup_proper. unfold pointwise_relation.
   assumption.
@@ -92,11 +100,11 @@ Universes UI UA.
     + destruct X as (xa & i & fia). exists i. split; assumption.
     + destruct X as (i & xa & fia). split. assumption.
       exists i. assumption.
-  Qed.
+  Qed.  
 
   Definition point_splits
-    {I : Type@{UI}} (cov : I -> Type@{UI}) : L.le (top (Ops := type_ops)) (sup cov) ->
-     {i : I & L.le top (cov i)}.
+    {I : Type@{UI}} (cov : I -> Type@{UI}) : top (Ops := type_ops) <= sup cov ->
+     {i : I & top <= cov i}.
   Proof.
   simpl. unfold arrow. intros.
   destruct X. auto. exists x. auto.
@@ -162,8 +170,8 @@ Qed.
 
   Lemma f_cov {f : A -> B} (Hf : morph f)
     (U : A) {Ix} (V : Ix -> A)
-    : L.le U (sup V)
-    -> L.le (f U) (sup (fun i : Ix => f (V i))).
+    : U <= sup V
+    -> f U <= sup (fun i : Ix => f (V i)).
   Proof.
   intros H.
   rewrite <- f_sup by assumption.
@@ -173,10 +181,10 @@ Qed.
 
 Lemma morph_easy (f : A -> B) : 
 Proper (L.eq ==> L.eq) f
--> L.eq (f Frame.top) Frame.top
--> (forall U V, L.eq (f (L.min U V)) (L.min (f U) (f V)))
+-> f Frame.top == Frame.top
+-> (forall U V, f (U ∧ V) == (f U ∧ f V))
 -> (forall (Ix : Type) (g : Ix -> A),
-L.eq (f (Frame.sup g)) (Frame.sup (fun i => f (g i))))
+f (Frame.sup g) == Frame.sup (fun i => f (g i)))
 -> morph f.
 Proof.
 intros. econstructor.
@@ -286,8 +294,8 @@ Qed.
   Qed.
 
   Lemma sup_pointwise {A} {OA} {X : t A OA} {Ix Ix'} (f : Ix -> A) (g : Ix' -> A)
-  : (forall (i : Ix), { j : Ix' & L.le (f i) (g j) })
-  -> L.le (sup f) (sup g).
+  : (forall (i : Ix), { j : Ix' & f i <= g j })
+  -> sup f <= sup g.
   Proof.
   intros H. eapply PreO.sup_least. apply sup_ok. intros.
   destruct (H i). eapply PreO.le_trans. eassumption.
@@ -342,7 +350,7 @@ Qed.
 
   Definition point_cov {A OA} {tA : t A OA}
     (f : point OA) {U : A} {Ix} {V : Ix -> A}
-    : L.le U (sup V)
+    : U <= sup V
     -> finv f U -> { i : Ix & finv f (V i) }.
   Proof.
   intros Hcov Hpt.
@@ -357,6 +365,10 @@ Qed.
 End Frame.
 
 End Frame.
+
+Arguments Frame.t {A} OA.
+Arguments Frame.morph {A B} OA OB f.
+Arguments Frame.cmap {A} OA {B} OB.
 
 (** A definition of commutative and idempotent semigroups.
     This is effectively a semi-lattice (it can be a join semi-lattice

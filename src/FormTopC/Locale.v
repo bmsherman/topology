@@ -266,8 +266,7 @@ intros. unfold Proper, respectful; intros. subst.
 apply union_Proper. assumption. reflexivity.
 Qed.
 
-Theorem toFrame : Frame.morph 
-  (OA := (FOps B)) (OB := (FOps A)) (f := (Cont.frame F_)).
+Theorem toFrame : Frame.morph (FOps B) (FOps A) (Cont.frame F_).
 Proof.
 unshelve eapply Frame.morph_easy.
 - eapply Frame.
@@ -307,8 +306,7 @@ unshelve eapply Frame.morph_easy.
   + destruct X. destruct u. repeat econstructor; eauto. 
 Qed.
 
-Definition toCmap : Frame.cmap (OA := FOps A)
-  (OB := FOps B) :=
+Definition toCmap : Frame.cmap (FOps A) (FOps B) :=
   {| Frame.finv := Cont.frame F_
    ; Frame.cont := toFrame |}.
 

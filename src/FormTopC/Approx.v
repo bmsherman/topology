@@ -45,8 +45,8 @@ Require Import Algebra.SetsC
   Prob.StdLib.
     
 
-Definition One_cont : Frame.morph (OA := FOps One)
-  (OB := Frame.type_ops) (f := fun U => U I).
+Definition One_cont : Frame.morph (FOps One)
+  Frame.type_ops (fun U => U I).
 Proof.
   unshelve eapply Frame.morph_easy.
 - eapply Frame.
@@ -64,7 +64,7 @@ Proof.
 Qed.
 
 Definition One_type_cmap :
-  Frame.cmap (OA := Frame.type_ops) (OB := FOps One)
+  Frame.cmap Frame.type_ops (FOps One)
   :=
   {| Frame.cont := One_cont |}.
 
