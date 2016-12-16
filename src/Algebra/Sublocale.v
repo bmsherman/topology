@@ -185,6 +185,11 @@ intros. apply L.min_ok. rewrite <- X. apply L.min_ok.
 rewrite <- X0. apply L.min_ok.
 Qed.
 
+Definition min_comm (U V : A) : U ∧ V == V ∧ U.
+Proof.
+apply PO.le_antisym; repeat apply L.min_ok.
+Qed.
+
 Lemma implies_meet (U X Y UX UY UXY : A)
   : is_implies U X UX -> is_implies U Y UY
   -> is_implies U (X ∧ Y) UXY
@@ -201,6 +206,24 @@ unfold is_implies. intros. apply PO.le_antisym.
     apply L.min_ok. reflexivity. apply X0. reflexivity.
   + transitivity (UY ∧ U). apply min_mono.
     apply L.min_ok. reflexivity. apply X1. reflexivity.
+Qed.
+
+Lemma impl_apply_le (x a b xa xb : A) :
+  is_implies x a xa -> is_implies x b xb
+  -> xa <= xb -> a ∧ x <= b ∧ x.
+Proof.
+intros. unfold is_implies in *.
+apply L.min_ok. apply X0. rewrite <- X1. apply X.
+  apply L.min_ok. apply L.min_ok.
+Qed.
+
+Lemma impl_apply (x a b xa xb : A) :
+  is_implies x a xa -> is_implies x b xb
+  -> xa == xb -> a ∧ x == b ∧ x.
+Proof.
+intros. apply PO.le_antisym; eapply impl_apply_le;
+  try eassumption. rewrite X1. reflexivity.
+rewrite <- X1. reflexivity.
 Qed.
 
 Instance is_implies_Proper : Proper (L.eq ==> L.eq ==> L.eq ==> arrow) is_implies.
@@ -256,6 +279,7 @@ Section Pattern.
 Context {A : Type} {OA : @Frame.Ops A} {FA : Frame.t OA}
         {B : Type} {OB : @Frame.Ops B} {FB : Frame.t OB}.
 
+
 Variable Ix : Type.
 Variable V : Ix -> A.
 Variable Vimpl : Ix -> A -> A.
@@ -264,6 +288,25 @@ Variable f : Ix -> B -> A.
 Variable f_cont : forall i : Ix, Frame.morph OB (OpenSubOps (Vimpl i)) (f i).
 
 Definition f' (i : Ix) (b : B) : A := f i b ∧ V i.
+
+Lemma Vimpl_le (i : Ix) (a b : A) :
+  Vimpl i a <= Vimpl i b -> a ∧ V i <= b ∧ V i.
+Proof.
+eapply impl_apply_le; apply Vimpl_ok.
+Qed.
+
+Lemma Vimpl_mono (i : Ix) (a b : A) : a <= b 
+  -> Vimpl i a <= Vimpl i b.
+Proof.
+intros. apply Vimpl_ok. rewrite <- X. apply Vimpl_ok.
+reflexivity.
+Qed.
+
+Lemma Vimpl_eq (i : Ix) (a b : A) :
+   Vimpl i a == Vimpl i b -> a ∧ V i == b ∧ V i.
+Proof.
+eapply impl_apply; apply Vimpl_ok.
+Qed.
 
 Definition union_f (b : B) : A := Frame.sup (fun i => f' i b).
 
@@ -280,6 +323,25 @@ intros. apply L.min_ok. rewrite <- X. apply L.min_ok.
 rewrite <- X0. apply L.min_ok.
 Qed.
 
+Instance max_mono {Z} `{Frame.t Z} : Proper (L.le ==> L.le ==> L.le) L.max.
+Proof.
+unfold Proper, respectful.
+intros. apply L.max_ok. rewrite X. apply L.max_ok.
+rewrite X0. apply L.max_ok.
+Qed.
+
+Lemma f'_mono (i : Ix) (b b' : B) :
+  b <= b' -> f' i b <= f' i b'.
+Proof.
+intros. unfold f'. apply Vimpl_le.
+specialize (f_cont i). 
+destruct f_cont. clear f_sup f_top.
+destruct f_L. clear f_max f_min.
+destruct f_PO. unfold PreO.morph in f_PreO.
+simpl. simpl in f_PreO. apply f_PreO.
+assumption.
+Qed.
+
 Lemma VVimpl_ok : forall (i j : Ix) (U : A),
   is_implies (V i ∧ V j) U (VVimpl i j U).
 Proof.
@@ -288,13 +350,166 @@ split; intros.
 - do 2 apply Vimpl_ok in X. rewrite X.
 Admitted.
 
+Lemma VVimpl_le (i j : Ix) (a b : A) :
+  VVimpl i j a <= VVimpl i j b -> a ∧ (V i ∧ V j) <= b ∧ (V i ∧ V j).
+Proof.
+eapply impl_apply_le; apply VVimpl_ok.
+Qed.
+
+Lemma VVimpl_eq (i j : Ix) (a b : A) :
+   VVimpl i j a == VVimpl i j b -> a ∧ (V i ∧ V j) == b ∧ (V i ∧ V j).
+Proof.
+eapply impl_apply; apply VVimpl_ok.
+Qed.
+
 Variable glue_f : Ix -> Ix -> B -> A.
 Variable glue_f_cont : forall i j : Ix, 
   Frame.morph OB (OpenSubOps (VVimpl i j)) (glue_f i j).
 
+Definition union_f2 (b : B) : A :=
+  Frame.sup (fun p : (Ix * Ix) => let (i, j) := p in 
+     glue_f i j b ∧ (V i ∧ V j)).
+
+Lemma min_idempotent (x : A) : x ∧ x == x.
+Proof.
+apply PO.le_antisym; apply L.min_ok; reflexivity.
+Qed.
+
+
 (** Need to talk about inclusions of open subspaces into other
     open subspaces to state gluing. Also specialization preorders would
     be nice. *)
-Hypothesis gluing : forall i j : Ix, True.
+Hypothesis gluing : forall i j : Ix, 
+  let Vij := V i ∧ V j in
+  forall b : B, PreO.max (le := L.le (Ops := @Frame.LOps _ OA)) (f i b ∧ Vij) (f j b ∧ Vij) (glue_f i j b ∧ Vij).
+
+Lemma union_f_same (b : B) :
+  union_f b == union_f2 b.
+Proof.
+unfold union_f, union_f2.
+apply PO.le_antisym.
+- apply Frame.sup_ok. intros.
+  etransitivity. Focus 2. 
+  apply (Frame.sup_ok (Ix := Ix * Ix)).
+  instantiate (1 := (i, i)).
+  simpl. unfold f'.
+  rewrite min_idempotent.
+  pose proof (gluing i i).
+  simpl in X. specialize (X b).
+  apply PreO.max_l in X.
+  rewrite !min_idempotent in X.
+  assumption.
+- apply Frame.sup_ok. intros. destruct i.
+  rewrite <- (max_idempotent (Frame.sup (fun i1 : Ix => f' i1 b))).
+  etransitivity. Focus 2.
+  apply max_mono.
+  unshelve apply Frame.sup_ok. exact i.
+  unshelve apply Frame.sup_ok. exact i0.
+  unfold f'.
+  pose proof (gluing i i0).
+  simpl in X. specialize (X b).
+  destruct X. clear max_l max_r.
+  etransitivity. apply max_least. 3:reflexivity.
+  transitivity (f i b ∧ V i).
+  apply min_mono. reflexivity. apply L.min_ok.
+  apply L.max_ok.
+  transitivity (f i0 b ∧ V i0).
+  apply min_mono. reflexivity. apply L.min_ok.
+  apply L.max_ok.
+Qed.
+
+Lemma VVimpl_nucleus (i j : Ix) : nucleus (VVimpl i j).
+Proof.
+apply (Vimpl_nucleus (V i ∧ V j)).
+unfold VVimpl. unfold is_implies.
+intros. 
+split; intros.
+Admitted.
+
+Lemma min_distr1 (a b c : A) :
+  (a ∧ b) ∧ c == (a ∧ c) ∧ (b ∧ c).
+Proof.
+apply PO.le_antisym.
+- repeat apply L.min_ok.
+  transitivity (a ∧ b); apply L.min_ok.
+  transitivity (a ∧ b); apply L.min_ok.
+- repeat apply L.min_ok. transitivity (a ∧ c);
+  apply L.min_ok. transitivity (b ∧ c); apply L.min_ok.
+  transitivity (b ∧ c); apply L.min_ok.
+Qed.
+
+Existing Instances Frame.f_eq L.min_proper.
+
+Theorem pattern : Frame.morph OB OA union_f.
+Proof.
+apply Frame.morph_easy.
+- unfold Proper, respectful, union_f. intros.
+  apply Frame.sup_proper. unfold pointwise_relation. intros.
+  pose proof (Frame.f_eq (tB := OpenSubFrame _ (Vimpl a) (Vimpl_ok a)) (f_cont a)).
+  unfold f'. eapply impl_apply. apply Vimpl_ok. apply Vimpl_ok.
+  rewrite X0. reflexivity. assumption.
+- apply PO.le_antisym. apply Frame.top_ok.
+  apply covering.
+- intros. apply PO.le_antisym.
+  + unfold union_f. apply L.min_ok.
+  apply Frame.sup_pointwise. intros i.
+  exists i. apply f'_mono. apply L.min_ok.
+  apply Frame.sup_pointwise. intros i.
+  exists i. apply f'_mono. apply L.min_ok.
+  + rewrite (union_f_same (U ∧ V0)).
+    unfold union_f, union_f2.
+    rewrite Frame.sup_distr. apply Frame.sup_ok.
+    intros i. rewrite min_comm. 
+    rewrite Frame.sup_distr. apply Frame.sup_ok.
+    intros j. etransitivity.
+    Focus 2. apply (Frame.sup_ok (Ix := Ix * Ix)).
+    instantiate (1 := (i, j)).
+    simpl.
+    pose proof (gluing i j) as glue. simpl in glue.
+    unfold f'.
+    transitivity ((f i V0 ∧ f j U) ∧ (V i ∧ V j)).
+    apply L.min_ok. apply L.min_ok.
+    transitivity (f i V0 ∧ V i). apply L.min_ok.
+    apply L.min_ok.
+    transitivity (f j U ∧ V j).
+    apply L.min_ok. apply L.min_ok.
+    apply L.min_ok.
+    transitivity (f i V0 ∧ V i). apply L.min_ok.
+    apply L.min_ok. transitivity (f j U ∧ V j).
+    apply L.min_ok. apply L.min_ok.
+    rewrite (min_comm (f i V0) (f j U)).
+    destruct (glue V0). clear max_least max_r.
+    destruct (glue U). clear max_l0 max_least.
+    pose proof (glue_f_cont i j) as H.
+    destruct H.
+    destruct f_L. simpl in f_min.
+    specialize (f_min U V0).
+    rewrite j_idem_eq in f_min.
+    clear f_PO f_max f_sup f_top.
+    apply VVimpl_eq in f_min.
+    rewrite f_min.
+    2: apply VVimpl_nucleus.
+    rewrite (min_distr1 (f j U)).
+    rewrite (min_distr1 (glue_f i j U)).
+    apply min_mono. apply max_r. apply max_l.
+- intros. unfold union_f. apply PO.le_antisym.
+  apply Frame.sup_ok. intros. 
+  unfold f'.
+  pose proof (Frame.f_sup (f_cont i) g).
+  simpl in X.
+  rewrite j_idem_eq in X.
+  rewrite Vimpl_eq. 2: eapply X. 2: eapply Vimpl_nucleus.
+  2: eapply Vimpl_ok.
+  rewrite min_comm. rewrite Frame.sup_distr.
+  apply Frame.sup_pointwise. intros.
+  exists i0. rewrite min_comm.
+  eapply (PreO.sup_ge (fun i1 : Ix => f i1 (g i0) ∧ V i1) _ (Frame.sup_ok (fun i1 : Ix => f i1 (g i0) ∧ V i1)) i).
+  apply Frame.sup_ok. intros. apply Frame.sup_pointwise.
+  intros.  exists i0. unfold f'.
+  rewrite Vimpl_le. reflexivity.
+  pose proof (PO.f_PreO (L.f_PO (Frame.f_L (f_cont i0)))).
+  unfold PreO.morph in X. simpl in X.
+  apply X. apply Frame.sup_ok.
+Qed.
 
 End Pattern.
