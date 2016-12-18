@@ -6,6 +6,99 @@ Require Import
 Set Universe Polymorphism.
 Local Open Scope Frame.
 
+Section Congruence.
+Context {A : Type} {OA : @Frame.Ops A} {FA : Frame.t OA}
+        {B : Type} {OB : @Frame.Ops B} {FB : Frame.t OB}.
+
+Variable f : A -> B.
+Hypothesis f_L : L.morph (Frame.LOps (Ops := OA)) (Frame.LOps (Ops := OB)) f.
+Hypothesis f_sup : forall (Ix : Type) (g : Ix -> A),
+  f (Frame.sup g) == Frame.sup (fun i => f (g i)).
+
+Definition LOpsA' : L.Ops A :=
+  {| L.le := fun U V => f U <= f V
+   ; L.eq :=  fun U V => f U == f V
+   ; L.min := fun U V => U ∧ V
+   ; L.max := fun U V => U ∨ V
+  |}.
+
+Definition OpsA' : @Frame.Ops A := 
+  {| Frame.LOps := LOpsA'
+  ; Frame.top := Frame.top
+  ; Frame.sup := fun Ix f => Frame.sup f
+  |}.
+
+Lemma eq_le (x y : B) : x == y -> x <= y.
+Proof.
+  intros. rewrite X. reflexivity.
+Qed.
+
+Lemma LatticeC : L.t _ LOpsA'.
+Proof.
+econstructor.
+- constructor.
+  + constructor. intros. simpl.
+    reflexivity. simpl. intros. etransitivity; eassumption.
+  + unfold Proper, respectful. simpl.
+    intros. rewrite X, X0. reflexivity.
+  + simpl. intros. apply PO.le_antisym; assumption.
+- unfold Proper, respectful. simpl. intros.
+  transitivity (f x ∨ f x0).
+  apply f_L. transitivity (f y ∨ f y0).
+  rewrite X, X0. reflexivity.
+  symmetry. apply f_L.
+- simpl. intros. econstructor.
+  + transitivity (f l ∨ f r). apply L.max_ok.
+    apply eq_le. symmetry. apply f_L.
+  + transitivity (f l ∨ f r). apply L.max_ok.
+    apply eq_le. symmetry. apply f_L.
+  + intros. transitivity (f l ∨ f r).
+    apply eq_le. apply f_L.
+    apply L.max_ok; assumption.
+- unfold Proper, respectful. simpl. intros.
+  transitivity (f x ∧ f x0).
+  apply f_L. transitivity (f y ∧ f y0).
+  rewrite X, X0. reflexivity. symmetry. apply f_L.
+- intros. econstructor.
+  + simpl. transitivity (f l ∧ f r).
+    apply eq_le. apply f_L. apply L.min_ok.
+  + simpl. transitivity (f l ∧ f r).
+    apply eq_le. apply f_L. apply L.min_ok.
+  + simpl. intros. transitivity (f l ∧ f r).
+    apply L.min_ok; assumption. apply eq_le. 
+    symmetry. apply f_L.
+Qed.
+
+Instance FrameC : Frame.t OpsA'.
+Proof.
+econstructor.
+- apply LatticeC.
+- unfold PreO.top. intros. simpl. apply f_L. apply Frame.top_ok.
+- unfold Proper, pointwise_relation, respectful. simpl.
+  intros. transitivity (Frame.sup (fun i => f (x i))). 
+  apply f_sup. transitivity (Frame.sup (fun i => f (y i))).
+  apply Frame.sup_proper. unfold pointwise_relation.
+  assumption. symmetry. apply f_sup.
+- intros. econstructor.
+  + intros. simpl. apply f_L. apply Frame.sup_ok.
+  + simpl. intros. transitivity (Frame.sup (fun i => f (f0 i))).
+    apply eq_le. apply f_sup. apply Frame.sup_ok.
+    assumption.
+- simpl. intros. apply f_L. apply Frame.sup_distr.
+Qed.
+
+Lemma incl_cont : Frame.morph OA OpsA' (fun a => a).
+Proof.
+unshelve eapply Frame.morph_easy.
+- unfold Proper, respectful. simpl. intros.
+  apply f_L. assumption.
+- reflexivity.
+- intros. simpl. apply f_L. reflexivity.
+- simpl. intros. apply f_L. reflexivity.
+Qed. 
+
+End Congruence.
+
 Section Nucleus.
 
 Context {A : Type} `{FA : Frame.t A}.
@@ -138,7 +231,7 @@ econstructor.
       apply j_mono. apply j_mono2. apply Frame.sup_ok.
 Qed.
 
-Lemma incl_cont : Frame.morph OA OpsAj (fun a => a).
+Lemma incl_contN : Frame.morph OA OpsAj (fun a => a).
 Proof.
 unshelve eapply Frame.morph_easy.
 - unfold Proper, respectful. simpl. intros.
@@ -150,7 +243,7 @@ Qed.
 
 End Nucleus.
 
-Section OpenSub.
+Section OpenSubN.
 
 Context {A : Type} `{FA : Frame.t A}.
 
@@ -256,17 +349,80 @@ econstructor.
   reflexivity. apply L.min_ok. apply Vimpl_ok. reflexivity.
 Qed.
 
-Definition OpenSubOps : @Frame.Ops A :=
+Definition OpenSubOpsN : @Frame.Ops A :=
   OpsAj Vimpl.
 
-Instance OpenSubFrame : Frame.t OpenSubOps.
+Instance OpenSubFrameN : Frame.t OpenSubOpsN.
 Proof.
   apply FrameJ. apply Vimpl_nucleus.
 Qed.
 
+Lemma open_incl_contN : Frame.morph OA OpenSubOpsN (fun a => a).
+Proof.
+apply incl_contN. apply Vimpl_nucleus.
+Qed.
+
+End OpenSubN.
+
+
+
+
+Section OpenSub.
+
+Context {A : Type} `{FA : Frame.t A}.
+
+Require Import Algebra.SetsC.
+Local Open Scope Subset.
+
+Variable V : A.
+
+Definition intV (U : A) := U ∧ V.
+
+Lemma min_distr1 (a b c : A) :
+  (a ∧ b) ∧ c == (a ∧ c) ∧ (b ∧ c).
+Proof.
+apply PO.le_antisym.
+- repeat apply L.min_ok.
+  transitivity (a ∧ b); apply L.min_ok.
+  transitivity (a ∧ b); apply L.min_ok.
+- repeat apply L.min_ok. transitivity (a ∧ c);
+  apply L.min_ok. transitivity (b ∧ c); apply L.min_ok.
+  transitivity (b ∧ c); apply L.min_ok.
+Qed.
+
+Lemma intV_L : L.morph Frame.LOps Frame.LOps intV.
+Proof.
+unfold intV. econstructor.
+- econstructor.
+  + unfold PreO.morph. intros. apply min_mono.
+    assumption. reflexivity.
+  + unfold Proper, respectful. intros. rewrite X. reflexivity.
+- intros. rewrite !Frame.max_sup. 
+  rewrite min_comm. rewrite Frame.sup_distr.
+  apply Frame.sup_proper. unfold pointwise_relation.
+  intros. rewrite min_comm. destruct a0; reflexivity.
+- intros. apply min_distr1.
+Qed.
+
+Lemma intV_sup : forall Ix (g : Ix -> A),
+  intV (Frame.sup g) == Frame.sup (fun i => intV (g i)).
+Proof.
+unfold intV. intros. rewrite min_comm.
+rewrite Frame.sup_distr. apply Frame.sup_proper.
+unfold pointwise_relation; intros.
+apply min_comm.
+Qed.
+
+Definition OpenSubOps : @Frame.Ops A := OpsA' intV.
+
+Instance OpenSubFrame : Frame.t OpenSubOps.
+Proof.
+  apply FrameC. apply intV_L. apply intV_sup.
+Qed.
+
 Lemma open_incl_cont : Frame.morph OA OpenSubOps (fun a => a).
 Proof.
-apply incl_cont. apply Vimpl_nucleus.
+apply incl_cont. apply intV_L. apply intV_sup.
 Qed.
 
 End OpenSub.
@@ -282,38 +438,14 @@ Context {A : Type} {OA : @Frame.Ops A} {FA : Frame.t OA}
 
 Variable Ix : Type.
 Variable V : Ix -> A.
-Variable Vimpl : Ix -> A -> A.
-Variable Vimpl_ok : forall (i : Ix) (U : A), is_implies (V i) U (Vimpl i U).
 Variable f : Ix -> B -> A.
-Variable f_cont : forall i : Ix, Frame.morph OB (OpenSubOps (Vimpl i)) (f i).
+Variable f_cont : forall i : Ix, Frame.morph OB (OpenSubOps (V i)) (f i).
 
-Definition f' (i : Ix) (b : B) : A := f i b ∧ V i.
-
-Lemma Vimpl_le (i : Ix) (a b : A) :
-  Vimpl i a <= Vimpl i b -> a ∧ V i <= b ∧ V i.
-Proof.
-eapply impl_apply_le; apply Vimpl_ok.
-Qed.
-
-Lemma Vimpl_mono (i : Ix) (a b : A) : a <= b 
-  -> Vimpl i a <= Vimpl i b.
-Proof.
-intros. apply Vimpl_ok. rewrite <- X. apply Vimpl_ok.
-reflexivity.
-Qed.
-
-Lemma Vimpl_eq (i : Ix) (a b : A) :
-   Vimpl i a == Vimpl i b -> a ∧ V i == b ∧ V i.
-Proof.
-eapply impl_apply; apply Vimpl_ok.
-Qed.
+Definition f' (i : Ix) (b : B) : A := intV (V i) (f i b).
 
 Definition union_f (b : B) : A := Frame.sup (fun i => f' i b).
 
 Hypothesis covering : Frame.top <= union_f Frame.top.
-
-Definition VVimpl (i j : Ix) (U : A) : A :=
-  Vimpl i (Vimpl j U).
 
 (** This is copied. I should put it somewhere good. *)
 Instance min_mono2 {Z} `{Frame.t Z} : Proper (L.le ==> L.le ==> L.le) L.min.
@@ -322,6 +454,7 @@ unfold Proper, respectful.
 intros. apply L.min_ok. rewrite <- X. apply L.min_ok.
 rewrite <- X0. apply L.min_ok.
 Qed.
+
 
 Instance max_mono {Z} `{Frame.t Z} : Proper (L.le ==> L.le ==> L.le) L.max.
 Proof.
@@ -333,42 +466,17 @@ Qed.
 Lemma f'_mono (i : Ix) (b b' : B) :
   b <= b' -> f' i b <= f' i b'.
 Proof.
-intros. unfold f'. apply Vimpl_le.
-specialize (f_cont i). 
-destruct f_cont. clear f_sup f_top.
-destruct f_L. clear f_max f_min.
-destruct f_PO. unfold PreO.morph in f_PreO.
-simpl. simpl in f_PreO. apply f_PreO.
-assumption.
-Qed.
-
-Lemma VVimpl_ok : forall (i j : Ix) (U : A),
-  is_implies (V i ∧ V j) U (VVimpl i j U).
-Proof.
-unfold is_implies, VVimpl in *. intros.
-split; intros.
-- do 2 apply Vimpl_ok in X. rewrite X.
-Admitted.
-
-Lemma VVimpl_le (i j : Ix) (a b : A) :
-  VVimpl i j a <= VVimpl i j b -> a ∧ (V i ∧ V j) <= b ∧ (V i ∧ V j).
-Proof.
-eapply impl_apply_le; apply VVimpl_ok.
-Qed.
-
-Lemma VVimpl_eq (i j : Ix) (a b : A) :
-   VVimpl i j a == VVimpl i j b -> a ∧ (V i ∧ V j) == b ∧ (V i ∧ V j).
-Proof.
-eapply impl_apply; apply VVimpl_ok.
+intros. unfold f'.
+apply (f_cont i). assumption.
 Qed.
 
 Variable glue_f : Ix -> Ix -> B -> A.
 Variable glue_f_cont : forall i j : Ix, 
-  Frame.morph OB (OpenSubOps (VVimpl i j)) (glue_f i j).
+  Frame.morph OB (OpenSubOps (V i ∧ V j)) (glue_f i j).
 
 Definition union_f2 (b : B) : A :=
   Frame.sup (fun p : (Ix * Ix) => let (i, j) := p in 
-     glue_f i j b ∧ (V i ∧ V j)).
+  intV (V i ∧ V j) (glue_f i j b)).
 
 Lemma min_idempotent (x : A) : x ∧ x == x.
 Proof.
@@ -392,7 +500,7 @@ apply PO.le_antisym.
   etransitivity. Focus 2. 
   apply (Frame.sup_ok (Ix := Ix * Ix)).
   instantiate (1 := (i, i)).
-  simpl. unfold f'.
+  simpl. unfold f', intV.
   rewrite min_idempotent.
   pose proof (gluing i i).
   simpl in X. specialize (X b).
@@ -418,26 +526,6 @@ apply PO.le_antisym.
   apply L.max_ok.
 Qed.
 
-Lemma VVimpl_nucleus (i j : Ix) : nucleus (VVimpl i j).
-Proof.
-apply (Vimpl_nucleus (V i ∧ V j)).
-unfold VVimpl. unfold is_implies.
-intros. 
-split; intros.
-Admitted.
-
-Lemma min_distr1 (a b c : A) :
-  (a ∧ b) ∧ c == (a ∧ c) ∧ (b ∧ c).
-Proof.
-apply PO.le_antisym.
-- repeat apply L.min_ok.
-  transitivity (a ∧ b); apply L.min_ok.
-  transitivity (a ∧ b); apply L.min_ok.
-- repeat apply L.min_ok. transitivity (a ∧ c);
-  apply L.min_ok. transitivity (b ∧ c); apply L.min_ok.
-  transitivity (b ∧ c); apply L.min_ok.
-Qed.
-
 Existing Instances Frame.f_eq L.min_proper.
 
 Theorem pattern : Frame.morph OB OA union_f.
@@ -445,9 +533,7 @@ Proof.
 apply Frame.morph_easy.
 - unfold Proper, respectful, union_f. intros.
   apply Frame.sup_proper. unfold pointwise_relation. intros.
-  pose proof (Frame.f_eq (tB := OpenSubFrame _ (Vimpl a) (Vimpl_ok a)) (f_cont a)).
-  unfold f'. eapply impl_apply. apply Vimpl_ok. apply Vimpl_ok.
-  rewrite X0. reflexivity. assumption.
+  unfold f'. apply (f_cont a). assumption.
 - apply PO.le_antisym. apply Frame.top_ok.
   apply covering.
 - intros. apply PO.le_antisym.
@@ -484,11 +570,8 @@ apply Frame.morph_easy.
     destruct H.
     destruct f_L. simpl in f_min.
     specialize (f_min U V0).
-    rewrite j_idem_eq in f_min.
-    clear f_PO f_max f_sup f_top.
-    apply VVimpl_eq in f_min.
-    rewrite f_min.
-    2: apply VVimpl_nucleus.
+    unfold intV.
+    unfold intV in f_min. rewrite f_min.
     rewrite (min_distr1 (f j U)).
     rewrite (min_distr1 (glue_f i j U)).
     apply min_mono. apply max_r. apply max_l.
@@ -497,17 +580,14 @@ apply Frame.morph_easy.
   unfold f'.
   pose proof (Frame.f_sup (f_cont i) g).
   simpl in X.
-  rewrite j_idem_eq in X.
-  rewrite Vimpl_eq. 2: eapply X. 2: eapply Vimpl_nucleus.
-  2: eapply Vimpl_ok.
-  rewrite min_comm. rewrite Frame.sup_distr.
+  rewrite X. unfold intV.
+  rewrite min_comm. rewrite Frame.sup_distr. 
   apply Frame.sup_pointwise. intros.
   exists i0. rewrite min_comm.
   eapply (PreO.sup_ge (fun i1 : Ix => f i1 (g i0) ∧ V i1) _ (Frame.sup_ok (fun i1 : Ix => f i1 (g i0) ∧ V i1)) i).
   apply Frame.sup_ok. intros. apply Frame.sup_pointwise.
   intros.  exists i0. unfold f'.
-  rewrite Vimpl_le. reflexivity.
-  pose proof (PO.f_PreO (L.f_PO (Frame.f_L (f_cont i0)))).
+  pose proof (PO.f_PreO (L.f_PO (Frame.f_L (f_cont i0)))) as X.
   unfold PreO.morph in X. simpl in X.
   apply X. apply Frame.sup_ok.
 Qed.
