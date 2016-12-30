@@ -390,6 +390,7 @@
 \newcommand{\isthemaxof}[3]{{#1}\text{ is the max of }{#2}\text{ and }{#3}}
 \newcommand{\strue}{\mathsf{up}(\mathsf{tt})}
 \newcommand{\sfalse}{\bot}
+\newcommand{\dirsup}[1]{{\bigvee_{#1}}^{\uparrow}}
 
 
 \begin{document}
@@ -550,7 +551,7 @@ For general spaces $A$ and $B$, $\mathsf{inl} : A \hookto A + B$ and $\mathsf{in
 
 \emph{Connected} spaces, such as $\R$, cannot be partitioned into disjoint open subspaces. Accordingly, it is impossible to make a non-trivial discrete decision over these spaces; for instance, any function $f : \R \cto \bool$ must be a constant function. Instead, it makes sense to allow decisions to be nondeterministic. This is accomplished by producing output in the space $\PLower^+(\bool)$ of nondeterministic Boolean values, rather than $\bool$.
 
-For any space $A$, a point of $\PLower^+(A)$ is an inhabited subspace of $A$ which allows ``simulation'' of some nondeterministic result. There is a map $\lozenge : \Open{A} \to \Open{\PLower(A)}$ (read ``possibly'') such that for every cover $\top \le \bigvee_{i : I} V_i$ in $A$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\PLower^+(A)$. 
+For any space $A$, a point of $\PLower^+(A)$ is an inhabited subspace of $A$ which allows ``simulation'' of some nondeterministic result. There is a map $\lozenge : \Open{A} \to \Open{\PLower^+(A)}$ (read ``possibly'') such that for every cover $\top \le \bigvee_{i : I} V_i$ in $A$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\PLower^+(A)$. 
 
 The map $\{ \cdot \} : A \cto \PLower^+(A)$ produces singleton subspaces (deterministic values) and the map $\cdot \cup \cdot : \PLower^+(A) \times \PLower^+(A) \cto \PLower^+(A)$ performs a nondeterministic union.
 
@@ -624,6 +625,60 @@ which forces its argument to compute the result; but if the input is $\bot$, the
 \end{align*}
 Again, the gluing condition is automatically satisfied.
 
+\subsubsection{The Sierp\'inski space}
+
+The Sierp\'inski space $\Sigma$ is fundamental in topology for several reasons. It is the space of ``truth values,'' and there is an exact correspondence between open sets $U : \Open{A}$ and continuous maps $\chi_U : A \cto \Sigma$. The Sierp\'inski space $\Sigma$ is characterized by homeomorphisms
+\[
+\Sigma \cong \One_\bot \cong \PLower(\One) ,
+\]
+which relate it to previously discussed constructions.
+
+In particular, since $\Sigma \cong \PLower(\One)$, any pattern match that outputs to $\Sigma$ automatically satisfies both the covering and gluing conditions. Therefore, whenever writing any overlapping pattern match that outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient. The bottom element of $\Sigma$, $\{ \} : \PLower(\One)$, is the ``false'' point of $\Sigma$, while $\up(\mathsf{tt}) : \One_\bot$ or $\{ \mathsf{tt} \} : \PLower(\One)$ is the ``true'' point of $\Sigma$.
+
+\note{This} yields some cute ways of writing the logical ``and'' and ``or'' operations for $\Sigma$:
+\begin{align*}
+\mathsf{and} &: \One_\bot \times \One_\bot \cto \One_\bot
+\\ \mathsf{and}(p) &\triangleq \mathsf{cases}(p)
+\begin{cases}
+\up , \up
+  \quad \Branch \quad \up(\mathsf{tt})
+\end{cases}
+\\
+\mathsf{or} &: \One_\bot \times \One_\bot \cto \One_\bot
+\\ \mathsf{or}(p) &\triangleq \mathsf{cases}(p)
+\begin{cases}
+\up , \wildcard
+  \quad &\Branch \quad \up(\mathsf{tt})
+\\  \wildcard , \up
+  \quad &\Branch \quad \up(\mathsf{tt})
+\end{cases}
+\end{align*}
+
+The first definition perhaps looks similar to the Haskell definition
+\begin{verbatim}
+and :: () -> () -> ()
+and () () = ()
+\end{verbatim}
+which looks trivial but has an important computational interpretation of forcing both of its arguments whenever the return value is forced. However, the definition of $\mathsf{or}$ has no analogue in Haskell. The ``similar'' Haskell definition
+\begin{verbatim}
+or :: () -> () -> ()
+or () _ = ()
+or _ () = ()
+\end{verbatim}
+does not correspond to legal Haskell.\footnote{It produces a warning about overlapping patterns, and will in fact behave computationally as if the second pattern were missing (i.e., it forces the first argument but not the second).} The $\mathsf{or}$ operation is often known as the ``parallel-OR'' operation, which Mart\'in Escard\'o discusses in \cite{escardo2004}. It has this name because of the interpretation of the space $\Sigma$ representing semidecision procedures: if we have two semidecision procedures, we can create a procedure which halts if and only if either of the component procedures halts by interleaving them in a parallel fashion.
+
+Note that, viewing $\Sigma$ as $\One_\bot$, the ``and'' operation readily generalizes to 
+\begin{align*}
+ \mathsf{pair}_\bot &: A_\bot \times B_\bot \cto \left( A \times B \right)_\bot
+\\ \mathsf{pair}_\bot(p) &\triangleq \mathsf{cases}(p)
+\begin{cases}
+\up(x) , \up(y)
+  \quad \Branch \quad \up(x, y)
+\end{cases}
+\end{align*}
+but it isn't possible to generalize ``or'' to something that would look like $ \mathsf{either}_\bot: A_\bot \times A_\bot \cto A_\bot$. The ``or'' operation works for the Sierp\'inski space because $\One$ has only one element, so one cannot tell if they observed the result due to either the left argument or the right argument. However, for general $A$, \note{this} may not be the case. Accordingly, the Haskell \texttt{or} definition is problematic.
+
+If we instead view $\Sigma$ as $\PLower(\One)$, then the ``or'' operation corresponds to union, $\cup$, as discussed earlier, and generalizes to $\PLower(A)$ for any space $A$. On the other hand, the ``and'' operation corresponds to intersection, and \note{this} can only be generalized to discrete spaces $A$; intersection is not necessarily possible to compute for general $A$. It does not seem that writing intersection and union on $\PLower(A)$ can be phrased as overlapping pattern matches, however, unless $A$ is discrete.
 
 \subsection{``Sheafification'' of constructions}
 
@@ -843,7 +898,7 @@ where $p_{ij} : A_i \times_A A_j \hookto A_i$ and $q_{ij} : A_i \times_A A_j \ho
  \{A \suchthat \Img{f_i} \wedge \Img{f_j} \} \cong A_i \times_A A_j.
 \]
 
-\subsection{Composition of patterns}
+\subsection{Pattern matching on products}
 
 Given open embeddings $p : U \hookto A$ and $q : V \hookto B$, the parallel embedding $p \otimes q : U \times V \hookto A \times B$ is also an open embedding. This allows us to pattern match through products. 
 For instance, we can define
@@ -856,70 +911,6 @@ For instance, we can define
 \end{cases}
 \end{align*}
 as an overlapping pattern match.
-
-Since open embeddings in \textbf{FSpc} form a Grothendieck pretopology, they are closed under certain operations, which correspond to operations that can be done with overlapping patterns.
-
-Any homeomorphism is a cover by itself (a sort of ``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\negate : \R \hookto \R$, we can define the binary minimum on $\R$ using an existing maximum function,
-\begin{align*}
-\mathsf{min} &: \R \times \R \cto \R
-\\ \mathsf{min}(p) &\triangleq \mathsf{cases}(p)
-\\ &\begin{cases}
-\negate(x), \negate(y) &\Branch \negate(\mathsf{max}(x, y))
-\end{cases}
-\end{align*}
-which has a similar feel to ``newtypes'' in Haskell.
-
-There is also a notion of composition of covers (``transitivity''), which corresponds to the potential to flatten nested patterns. For instance, the definition
-\begin{align*}
-f &: A_\bot + B_\bot \cto \left(A + B\right)_\bot
-\\ f(x) &\triangleq \mathsf{cases}
-\begin{cases}
-\mathsf{inl}(\ell) &\Branch \mathsf{cases}(\ell)
-  \begin{cases}
-  \up(\ell') \Branch \up(\mathsf{inl}(\ell'))
-  \end{cases}
-\\
-\mathsf{inr}(r) &\Branch \mathsf{cases}(r)
-  \begin{cases}
-  \up(r') \Branch \up(\mathsf{inr}(r'))
-  \end{cases}
-\end{cases}
-\end{align*}
-can be flattened into
-\begin{align*}
-f(x) &\triangleq \mathsf{cases}
-\begin{cases}
-\mathsf{inl}(\up(\ell)) &\Branch \up(\mathsf{inl}(\ell))
-\\
-\mathsf{inr}(\up(r)) &\Branch \up(\mathsf{inr}(r))
-\end{cases}.
-\end{align*}
-
-Covers are also closed under pullback, in the sense that a pattern match such as
-\[
-\mathsf{cases}(f(x))
-\begin{cases}
-[i : I] \quad p_i(y_i) \quad \Branch \quad e_i(y_i)
-\end{cases}
-\]
-where $f : A \cto B$, and each $p_i : B_i \hookto B$,
-can be transformed into
-\[
-\mathsf{cases}(x)
-\begin{cases}
-[i : I] \quad q_i(x_i) \quad \Branch \quad e_i(g_i(x_i)),
-\end{cases}
-\]
-where each $q_i$ and $g_i$ come from the pullback diagram
-\begin{equation*}
-\begin{tikzcd}
-B_i \times_B A \arrow[r, hook, "q_i"]
-   \arrow[d, "g_i"]
-& A \arrow[d, "f"]
-\\ B_i \arrow[r, hook, "p_i"]
-& B
-\end{tikzcd}
-\end{equation*}
 
 \section{Properties of overlapping patterns}
 \label{s:properties}
@@ -987,66 +978,96 @@ which corresponds to the empty subspace of $A$. Therefore, when the output space
 
 In the case where a cover $\left( f_i : A_i \hookto B \right)_{i : I}$ is \emph{disjoint}, i.e., if $i \ne j$, then $\Img{f_i} \wedge \Img{f_j}$ is empty, then we recover the ordinary notion of pattern matching.
 
-\subsection{Evaluation on points}
+\subsection{Equational reasoning about evaluation}
 
-\note{Find all the patterns where the point lies, plug in the expression with that given point, observe that everything becomes one big directed supremum. Does it even matter to explain this?}
-
-\section{Examples}
-
-\subsection{The Sierp\'inski space}
-
-The Sierp\'inski space $\Sigma$ is fundamental in topology for several reasons. It is the space of ``truth values,'' and there is an exact correspondence between open sets $U : \Open{A}$ and continuous maps $\chi_U : A \cto \Sigma$. The Sierp\'inski space $\Sigma$ is characterized by homeomorphisms
+Overlapping patterns admit a form of equational reasoning. A function $f : A \cto B$ defined by the pattern match
 \[
-\Sigma \cong \One_\bot \cong \PLower(\One) ,
+f(x) \triangleq \mathsf{cases}(x)
+\begin{cases}
+[i : I] \quad p_i(x_i) \quad \Branch \quad e_i(x_i)
+\end{cases}
 \]
-which relate it to previously discussed constructions.
-
-In particular, since $\Sigma \cong \PLower(\One)$, any pattern match that outputs to $\Sigma$ automatically satisfies both the covering and gluing conditions. Therefore, whenever writing any overlapping pattern match that outputs to $\Sigma$, no additional proofs are necessary! Simply writing the specification with the overlapping pattern is sufficient. The bottom element of $\Sigma$, $\{ \} : \PLower(\One)$, is the ``false'' point of $\Sigma$, while $\up(\mathsf{tt}) : \One_\bot$ or $\{ \mathsf{tt} \} : \PLower(\One)$ is the ``true'' point of $\Sigma$.
-
-\note{This} yields some cute ways of writing the logical ``and'' and ``or'' operations for $\Sigma$:
-\begin{align*}
-\mathsf{and} &: \One_\bot \times \One_\bot \cto \One_\bot
-\\ \mathsf{and}(p) &\triangleq \mathsf{cases}(p)
+where each $p_i : A_i \hookto A$ and $e_i : A_i \to B$,
+when evaluated on a (generalized) point $x : \Gamma \cto A$
+can be described by
+\[
+(f \circ x)(\gamma) = \mathsf{cases}(\gamma)
 \begin{cases}
-\up , \up
-  \quad \Branch \quad \up(\mathsf{tt})
+[i : I] \quad q_i(y_i) \quad \Branch \quad e_i(g_i(y_i)),
 \end{cases}
+\]
+where each $q_i$ and $g_i$ come from the pullback diagram
+\begin{equation*}
+\begin{tikzcd}
+A_i \times_A \Gamma \arrow[r, hook, "q_i"]
+   \arrow[d, "g_i"]
+& \Gamma \arrow[d, "x"]
+\\ A_i \arrow[r, hook, "p_i"]
+& A
+\end{tikzcd}
+\end{equation*}
+
+In particular, suppose for each $i : I$, the open
+\[
+\Img{q_i} : \Open{\Gamma}
+\]
+is either $\top$ or $\bot$. If $x$ is a global point, meaning $\Gamma \cong \One$, then assuming the law of the excluded middle, \note{this} is the case. Let $I_\top$ and $I_\bot$ represent the indices where the opens are $\top$ and $\bot$, respectively, and for $i : I_\top$, let $x_{A_i} : \Gamma \cto \{ A \suchthat \Img{p_i} \}$ be $x$ with a restricted range. Then for any $U : \Open{B}$,
+\begin{align*}
+f_*(U) &= \bigvee_{i : I} (e_i \circ g_i \circ \tilde{q}_i^{-1})_*(U)
+\\ &= \bigvee_{i : I_\top} (e_i \circ g_i \circ \tilde{q}_i^{-1})_*(U)
+\\ &= \bigvee_{i : I_\top} (e_i \circ \tilde{p}_i^{-1} \circ x_{A_i})_*(U)
+\end{align*}
+Therefore
+\[
+f \circ x = \dirsup{i : I_\top} e_i \circ \tilde{p}_i^{-1} \circ x_{A_i},
+\]
+where the indicated supremum of continuous maps is directed.
+
+These arguments confirm the intuitive explanation about evaluation of overlapping patterns. It is possible to symbolically reduce a pattern match which scrutinizes a point if it is known which branches the scrutinee may fall into: collect the possible branches, apply them to the point, and take a directed supremum.
+
+\note{Give an example of such equational reasoning?}
+
+
+\subsection{Composition of patterns}
+
+Since open embeddings in \textbf{FSpc} form a Grothendieck pretopology, they are closed under certain operations, which correspond to operations that can be done with overlapping patterns.
+
+Any homeomorphism is a cover by itself (a sort of ``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\negate : \R \hookto \R$, we can define the binary minimum on $\R$ using an existing maximum function,
+\begin{align*}
+\mathsf{min} &: \R \times \R \cto \R
+\\ \mathsf{min}(p) &\triangleq \mathsf{cases}(p)
+\\ &\begin{cases}
+\negate(x), \negate(y) &\Branch \negate(\mathsf{max}(x, y))
+\end{cases}
+\end{align*}
+which has a similar feel to ``newtypes'' in Haskell.
+
+There is also a notion of composition of covers (``transitivity''), which corresponds to the potential to flatten nested patterns. For instance, the definition
+\begin{align*}
+f &: A_\bot + B_\bot \cto \left(A + B\right)_\bot
+\\ f(x) &\triangleq \mathsf{cases}
+\begin{cases}
+\mathsf{inl}(\ell) &\Branch \mathsf{cases}(\ell)
+  \begin{cases}
+  \up(\ell') \Branch \up(\mathsf{inl}(\ell'))
+  \end{cases}
 \\
-\mathsf{or} &: \One_\bot \times \One_\bot \cto \One_\bot
-\\ \mathsf{or}(p) &\triangleq \mathsf{cases}(p)
-\begin{cases}
-\up , \wildcard
-  \quad &\Branch \quad \up(\mathsf{tt})
-\\  \wildcard , \up
-  \quad &\Branch \quad \up(\mathsf{tt})
+\mathsf{inr}(r) &\Branch \mathsf{cases}(r)
+  \begin{cases}
+  \up(r') \Branch \up(\mathsf{inr}(r'))
+  \end{cases}
 \end{cases}
 \end{align*}
-
-The first definition perhaps looks similar to the Haskell definition
-\begin{verbatim}
-and :: () -> () -> ()
-and () () = ()
-\end{verbatim}
-which looks trivial but has an important computational interpretation of forcing both of its arguments whenever the return value is forced. However, the definition of $\mathsf{or}$ has no analogue in Haskell. The ``similar'' Haskell definition
-\begin{verbatim}
-or :: () -> () -> ()
-or () _ = ()
-or _ () = ()
-\end{verbatim}
-does not correspond to legal Haskell.\footnote{It produces a warning about overlapping patterns, and will in fact behave computationally as if the second pattern were missing (i.e., it forces the first argument but not the second).} The $\mathsf{or}$ operation is often known as the ``parallel-OR'' operation, which Mart\'in Escard\'o discusses in \cite{escardo2004}. It has this name because of the interpretation of the space $\Sigma$ representing semidecision procedures: if we have two semidecision procedures, we can create a procedure which halts if and only if either of the component procedures halts by interleaving them in a parallel fashion.
-
-Note that, viewing $\Sigma$ as $\One_\bot$, the ``and'' operation readily generalizes to 
+can be flattened into
 \begin{align*}
- \mathsf{pair}_\bot &: A_\bot \times B_\bot \cto \left( A \times B \right)_\bot
-\\ \mathsf{pair}_\bot(p) &\triangleq \mathsf{cases}(p)
+f(x) &\triangleq \mathsf{cases}
 \begin{cases}
-\up(x) , \up(y)
-  \quad \Branch \quad \up(x, y)
-\end{cases}
+\mathsf{inl}(\up(\ell)) &\Branch \up(\mathsf{inl}(\ell))
+\\
+\mathsf{inr}(\up(r)) &\Branch \up(\mathsf{inr}(r))
+\end{cases}.
 \end{align*}
-but it isn't possible to generalize ``or'' to something that would look like $ \mathsf{either}_\bot: A_\bot \times A_\bot \cto A_\bot$. The ``or'' operation works for the Sierp\'inski space because $\One$ has only one element, so one cannot tell if they observed the result due to either the left argument or the right argument. However, for general $A$, \note{this} may not be the case. Accordingly, the Haskell \texttt{or} definition is problematic.
 
-If we instead view $\Sigma$ as $\PLower(\One)$, then the ``or'' operation corresponds to union, $\cup$, as discussed earlier, and generalizes to $\PLower(A)$ for any space $A$. On the other hand, the ``and'' operation corresponds to intersection, and \note{this} can only be generalized to discrete spaces $A$; intersection is not necessarily possible to compute for general $A$. It does not seem that writing intersection and union on $\PLower(A)$ can be phrased as overlapping pattern matches, however, unless $A$ is discrete.
 
 \section{Case study: binary covers}
 \label{s:bcover}
