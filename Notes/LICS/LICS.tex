@@ -941,16 +941,16 @@ without changing the meaning. The catch-all case already suffices to cover the w
 
 We can also characterize when the output space $B$ ensures that the \emph{gluing} condition is automatically fulfilled. If $B$ is such that any two (generalized) points have a maximum in terms of specialization order, then certainly \note{this} is the case.
 
-This property holds for the ``supported lower powerspaces,'' $\PLower^+(A)$, for any space $A$, such as the output space $\PLower^+(\bool)$ of the braking decision of the autonomous car in the introduction. The points of $\PLower^+(A)$ are, informally, nonempty subspaces $A$ which have good computability properties. We will start by describing $\PLower(A)$, where the collection of points is allowed to be empty.
+This property holds for the ``supported lower powerspaces,'' $\PLower^+(B)$, for any space $B$, also known as Hoare powerlocales. The points of $\PLower^+(B)$ are, informally, nonempty subspaces $B$ which have good computability properties. We will start by describing $\PLower(B)$, where the collection of points is allowed to be empty.
 
-For any space $A$, the $\PLower(A)$ is defined such that there is a bijective correspondence between continuous maps $f : B \cto \PLower(A)$ and maps $f_* : \Open{B} \to \Open{A}$ which preserve all joins, but not necessarily meets. There is a map $\lozenge : \Open{A} \to \Open{\PLower(A)}$ (read ``possibly'') such that
+For any space $B$, the $\PLower(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $f_* : \Open{B} \to \Open{A}$ which preserve all joins, but not necessarily meets. There is a map $\lozenge : \Open{B} \to \Open{\PLower(B)}$ (read ``possibly'') such that
 \[
 \lozenge U \le \lozenge \left( \bigvee_{i : I} V_i \right)
 \]
-holds in $\Open{\PLower(A)}$ whenever $U \le \bigvee_{i : I} V_i$ in $\Open{A}$. Intuitively, if $U : \Open{A}$ is interpreted as a property of points of $A$, then $\lozenge U : \Open{\PLower(A)}$ indicates whether $U$ possibly holds anywhere in a given subspace of $A$.
+holds in $\Open{\PLower(B)}$ whenever $U \le \bigvee_{i : I} V_i$ in $\Open{B}$. Intuitively, if $U : \Open{B}$ is interpreted as a property of points of $B$, then $\lozenge U : \Open{\PLower(B)}$ indicates whether $U$ possibly holds anywhere in a given subspace of $B$.
 
-Then $\PLower^+(A)$ is defined such that there is a bijective correspondence between continuous maps $f : B \cto \PLower(A)$ and maps $f_* : \Open{B} \to \Open{A}$ which preserve all joins and the nullary meet ($f_*(\top) = \top$), but not necessarily binary meets. The map of opens $\lozenge : \Open{A} \to \Open{\PLower^+(A)}$ satisfies all of the properties that it does in $\PLower(A)$ as well as satisfying
-$\top \le \lozenge \top$. Accordingly, for every cover $\top \le \bigvee_{i : I} V_i$ in $A$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\PLower^+(A)$. Computationally, we read this fact as saying that for any observation we can make on points of $A$, we can make that same observation on \emph{some} nondeterministically chosen point within a subspace of $A$ that is represented as a point of $\PLower^+(A)$.
+Then $\PLower^+(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $f_* : \Open{B} \to \Open{A}$ which preserve all joins and the nullary meet ($f_*(\top) = \top$), but not necessarily binary meets. The map of opens $\lozenge : \Open{B} \to \Open{\PLower^+(B)}$ satisfies all of the properties that it does in $\PLower(B)$ as well as satisfying
+$\top \le \lozenge \top$. Accordingly, for every cover $\top \le \bigvee_{i : I} V_i$ in $B$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\PLower^+(B)$. Computationally, we read this fact as saying that for any observation we can make on points of $B$, we can make that same observation on \emph{some} nondeterministically chosen point within a subspace of $B$ that is represented as a point of $\PLower^+(B)$.
 
 Vickers \cite{vickersdoublepowerlocale} shows how these two powerspace constructions can be achieved predicatively within \textbf{FSpc}. 
 
@@ -1022,7 +1022,7 @@ These arguments confirm the intuitive explanation about evaluation of overlappin
 
 \subsection{Composition of patterns}
 
-Since open embeddings in \textbf{FSpc} form a Grothendieck pretopology, they are closed under certain operations, which correspond to operations that can be done with overlapping patterns.
+As covering families of open embeddings form a Grothendieck pretopology, homeomorphisms alone are covers, and covers can be composed, which each correspond to properties overlapping patterns.
 
 Any homeomorphism is a cover by itself (``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\negate : \R \hookto \R$, we can define the binary minimum on $\R$ using an existing maximum function,
 \begin{align*}
