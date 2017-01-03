@@ -391,6 +391,7 @@
 \newcommand{\sfalse}{\bot}
 \newcommand{\dirsup}[1]{{\bigvee_{#1}}^{\uparrow}}
 \newcommand{\BCover}{\mathsf{BCover}}
+\newcommand{\iimg}[1]{{#1}^*}
 
 \newcommand{\note}[1]{\textcolor{red}{[[{#1}]]}}
 \newcommand{\grammar}[1]{\textcolor{red}{\underline{#1}}}
@@ -737,12 +738,12 @@ A \emph{point} $x$ of a space $X$ is a subset $x \models \cdot : \Open{X} \to \T
 The $\Sigma$ notation in the \irule{split} rule denotes a dependent pair. The \irule{split} rule says that points ``split'' covers and gives a mechanism for computing with points. When a point $x$ that lies in $U$ is presented with an open cover $U \le \bigvee_{i : I} V_i$, it uses the \emph{proof} of the covering relationship to compute some open $V_i$ that it also lies in. The index $i$ is a concrete answer that indicates where the point lies. The \irule{meet} rules ensure consistency of the answers that the \irule{split} rule returns.
 
 \begin{definition}
-A \emph{continuous map} $f : X \cto Y$ between spaces is a map $f_* : \Open{Y} \to \Open{X}$ that preserves finitary meets and $\Type$-indexed joins.
+A \emph{continuous map} $f : X \cto Y$ between spaces is a map $\iimg{f} : \Open{Y} \to \Open{X}$ that preserves finitary meets and $\Type$-indexed joins.
 \end{definition}
 
-Here, $f_*$ is known as the inverse image map. A continuous map $f : X \to Y$ transforms covers on $Y$ into covers on $X$. Spaces and continuous maps form a category \textbf{Spc}. The terminal object is the one-point space $\One$, whose open set lattice $\Open{\One}$ is $\Type$ where $U \le V$ is defined as the set of functions from $U$ to $V$. Meets are defined as products, and $\Type$-indexed joins are defined as $\Sigma$-types. Points of a space $X$ can be identified with continuous maps $\One \cto X$, which is frequently convenient.
+Here, $\iimg{f}$ is known as the inverse image map. A continuous map $f : X \to Y$ transforms covers on $Y$ into covers on $X$. Spaces and continuous maps form a category \textbf{Spc}. The terminal object is the one-point space $\One$, whose open set lattice $\Open{\One}$ is $\Type$ where $U \le V$ is defined as the set of functions from $U$ to $V$. Meets are defined as products, and $\Type$-indexed joins are defined as $\Sigma$-types. Points of a space $X$ can be identified with continuous maps $\One \cto X$, which is frequently convenient.
 
-There is a useful partial order that we can put on continuous maps known as \emph{specialization order}, for which we will also use the symbol $\le$. For two maps $f, g : X \cto Y$, $f \le g$ if for every $U : \Open{Y}$, $f_*(U) \le g_*(U)$. Intuitively, if $f \le g$, then an implementation of $g$ could always ``behave'' computationally as an implementation of $f$; $f$ has no more behaviors than $g$ does. Accordingly, specialization order makes good sense of nondeterminism, since any map $f$ can behave just as any map that is at most $f$.
+There is a useful partial order that we can put on continuous maps known as \emph{specialization order}, for which we will also use the symbol $\le$. For two maps $f, g : X \cto Y$, $f \le g$ if for every $U : \Open{Y}$, $\iimg{f}(U) \le \iimg{g}(U)$. Intuitively, if $f \le g$, then an implementation of $g$ could always ``behave'' computationally as an implementation of $f$; $f$ has no more behaviors than $g$ does. Accordingly, specialization order makes good sense of nondeterminism, since any map $f$ can behave just as any map that is at most $f$.
 
 Given a space $X$ and an open $U : \Open{X}$, we can form the open subspace $\{ X \suchthat U \}$ of $X$ by making $\Open{\{X \suchthat U \}}$ a quotient of $\Open{X}$, identifying opens $A, B : \Open{X}$ in $\{ X \suchthat U \}$ when $A \wedge U = B \wedge U$. One confirms the quotient is still a space, since the operation $\cdot \wedge U : \Open{X} \to \Open{X}$ preserves binary meets and all joins.
 
@@ -799,11 +800,11 @@ f &: A \cto B
 \end{align*}
 where $i$ ranges over the index set $I$, and $p_i : A_i \hookto A$ is an open embedding, and $e_i : A_i \cto B$ is a general expression, and $x_i : A_i$ is a pattern variable binding.
 
-Such an overlapping pattern match specifies an inverse image map $f_* : \Open{B} \to \Open{A}$ that acts on opens according to
+Such an overlapping pattern match specifies an inverse image map $\iimg{f} : \Open{B} \to \Open{A}$ that acts on opens according to
 \[
-f_*(U) = \bigvee_{i : I} (e_i \circ \tilde{p}_i^{-1})_*(U).
+\iimg{f}(U) = \bigvee_{i : I} \iimg{(e_i \circ \tilde{p}_i^{-1})}(U).
 \]
-As expected, $f_*$'s behavior is the union of the behaviors of all of the branches, which is exactly what the join represents. For $f_*$ to define a continuous map, one must confirm it preserves all joins and finite meets.
+As expected, $\iimg{f}$'s behavior is the union of the behaviors of all of the branches, which is exactly what the join represents. For $\iimg{f}$ to define a continuous map, one must confirm it preserves all joins and finite meets.
 
 For simplicity, we can always transform the pattern match defining $f$ into an equivalent one
 \[
@@ -812,7 +813,7 @@ f(x) = \mathsf{cases}(x)
 [i : I] \quad \oincl{\Img{p_i}}{x_i} \Branch (e_i \circ \tilde{p}_i^{-1})(x_i)
 \end{cases},
 \]
-where all of the patterns are just open subspaces of the input domain, which one can confirm has the same specification $f_*$ as above. Since this transformation is possible, for simplicity, it suffices to consider pattern matches of the form
+where all of the patterns are just open subspaces of the input domain, which one can confirm has the same specification $\iimg{f}$ as above. Since this transformation is possible, for simplicity, it suffices to consider pattern matches of the form
 \[
 f(x) = \mathsf{cases}(x)
 \begin{cases}
@@ -821,7 +822,7 @@ f(x) = \mathsf{cases}(x)
 \]
 where $P_i : \Open{A}$ and $e_i : \{ A \suchthat P_i \} \cto B$, meaning that $f$ transforms opens according to
 \[
-f_*(U) = \bigvee_{i : I} {e_i}_*(U).
+\iimg{f}(U) = \bigvee_{i : I} \iimg{e_i}(U).
 \]
 
 \subsection{Confirming validity of patterns}
@@ -837,43 +838,43 @@ and overlapping patterns have nondeterministic unions, i.e., for each $i, j : I$
 \[
 \isthemaxof{ e_{ij} }{ e_i \circ \oinclf{P_j} }{ e_j \circ \oinclf{P_i} }, \tag{gluing}
 \]
-then $f$, as defined by the inverse image map $f_*$ above, is a continuous map.
+then $f$, as defined by the inverse image map $\iimg{f}$ above, is a continuous map.
 \end{theorem}
 \begin{proof}
-The map $f_*$ must preserve joins, since all the constituent maps ${e_i}_*$ do as well, and since joins preserve those properties. Thus, it remains to confirm that $f_*$ preserves finitary meets.
+The map $\iimg{f}$ must preserve joins, since all the constituent maps $\iimg{e_i}$ do as well, and since joins preserve those properties. Thus, it remains to confirm that $\iimg{f}$ preserves finitary meets.
 Since the cases cover the input space,
 \[
-f_*(\top) = \bigvee_{i : I} {e_i}_*(\top) = \bigvee_{i : I}P_i = \top.
+\iimg{f}(\top) = \bigvee_{i : I} \iimg{e_i}(\top) = \bigvee_{i : I}P_i = \top.
 \]
-To confirm that $f_*$ preserves binary meets, we first note that
+To confirm that $\iimg{f}$ preserves binary meets, we first note that
 \begin{align*}
-f_*(U) \wedge f_*(V) 
-  &= \left(\bigvee_{i : I} {e_i}_*(U) \right) \wedge \left( \bigvee_{j: I} {e_j}_*(V) \right)
-\\ &= \bigvee_{i, j : I} {e_i}_*(U) \wedge {e_j}_*(V).
+\iimg{f}(U) \wedge \iimg{f}(V) 
+  &= \left(\bigvee_{i : I} \iimg{e_i}(U) \right) \wedge \left( \bigvee_{j: I} \iimg{e_j}(V) \right)
+\\ &= \bigvee_{i, j : I} \iimg{e_i}(U) \wedge \iimg{e_j}(V).
 \end{align*}
-We have $f_*(U \wedge V) \le f_*(U) \wedge f_*(V)$ by
+We have $\iimg{f}(U \wedge V) \le \iimg{f}(U) \wedge \iimg{f}(V)$ by
 \begin{align*}
-f_*(U \wedge V)
-  = \bigvee_{i : I} {e_i}_*(U \wedge V)
-  &= \bigvee_{i : I} {e_i}_*(U) \wedge {e_i}_*(V)
-  \\ &\le \bigvee_{i, j : I} {e_i}_*(U) \wedge {e_j}_*(V).
+\iimg{f}(U \wedge V)
+  = \bigvee_{i : I} \iimg{e_i}(U \wedge V)
+  &= \bigvee_{i : I} \iimg{e_i}(U) \wedge \iimg{e_i}(V)
+  \\ &\le \bigvee_{i, j : I} \iimg{e_i}(U) \wedge \iimg{e_j}(V).
 \end{align*}
 To prove the opposite inequality, we we first note the equivalence
 \[
-f_*(U) = \bigvee_{i : I} {e_i}_*(U) = \bigvee_{i, j : I} {e_{ij}}_*(U),
+\iimg{f}(U) = \bigvee_{i : I} \iimg{e_i}(U) = \bigvee_{i, j : I} \iimg{e_{ij}}(U),
 \]
 since $e_{ii} = e_i$ and 
 \[
-{e_{ij}}_*(U) = \left( {e_i}_*(U) \vee {e_j}_*(U) \right) \wedge \left(P_i \wedge P_j \right).
+\iimg{e_{ij}}(U) = \left( \iimg{e_i}(U) \vee \iimg{e_j}(U) \right) \wedge \left(P_i \wedge P_j \right).
 \]
 Then
 \begin{align*}
-f_*(U \wedge V)
-  = \bigvee_{i, j : I} {e_{ij}}_*(U \wedge V)
-  &= \bigvee_{i, j : I} {e_{ij}}_*(U) \wedge {e_{ij}}_*(V)
-  \\ &\ge \bigvee_{i, j : I} {e_i}_*(U) \wedge {e_j}_*(V),
+\iimg{f}(U \wedge V)
+  = \bigvee_{i, j : I} \iimg{e_{ij}}(U \wedge V)
+  &= \bigvee_{i, j : I} \iimg{e_{ij}}(U) \wedge \iimg{e_{ij}}(V)
+  \\ &\ge \bigvee_{i, j : I} \iimg{e_i}(U) \wedge \iimg{e_j}(V),
 \end{align*}
-so in fact $f_*(U \wedge V) = f_*(U) \wedge f_*(V)$, meaning that $f_*$ preserves binary meets.
+so in fact $\iimg{f}(U \wedge V) = \iimg{f}(U) \wedge \iimg{f}(V)$, meaning that $\iimg{f}$ preserves binary meets.
 \end{proof}
 
 Returning to the general case where any open embeddings are allowed as patterns, the conditions generalize accordingly. We require for the pattern
@@ -945,13 +946,13 @@ We can also characterize when the output space $B$ ensures that the \emph{gluing
 
 This property holds for the ``supported lower powerspaces,'' $\PLower^+(B)$, for any space $B$, also known as Hoare powerlocales. The points of $\PLower^+(B)$ are, informally, nonempty subspaces of $B$ that have good computability properties. We will start by describing $\PLower(B)$, where the collection of points is allowed to be empty.
 
-For any space $B$, the $\PLower(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $f_* : \Open{B} \to \Open{A}$ that preserve all joins, but not necessarily meets. There is a map $\lozenge : \Open{B} \to \Open{\PLower(B)}$ (read ``possibly'') such that
+For any space $B$, the $\PLower(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $\iimg{f} : \Open{B} \to \Open{A}$ that preserve all joins, but not necessarily meets. There is a map $\lozenge : \Open{B} \to \Open{\PLower(B)}$ (read ``possibly'') such that
 \[
 \lozenge U \le \lozenge \left( \bigvee_{i : I} V_i \right)
 \]
 holds in $\Open{\PLower(B)}$ whenever $U \le \bigvee_{i : I} V_i$ in $\Open{B}$. Intuitively, if $U : \Open{B}$ is interpreted as a property of points of $B$, then $\lozenge U : \Open{\PLower(B)}$ indicates whether $U$ possibly holds anywhere in a given subspace of $B$.
 
-Then $\PLower^+(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $f_* : \Open{B} \to \Open{A}$ that preserve all joins and the nullary meet ($f_*(\top) = \top$), but not necessarily binary meets. The map of opens $\lozenge : \Open{B} \to \Open{\PLower^+(B)}$ satisfies all of the properties that it does in $\PLower(B)$ as well as satisfying
+Then $\PLower^+(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $\iimg{f} : \Open{B} \to \Open{A}$ that preserve all joins and the nullary meet ($\iimg{f}(\top) = \top$), but not necessarily binary meets. The map of opens $\lozenge : \Open{B} \to \Open{\PLower^+(B)}$ satisfies all of the properties that it does in $\PLower(B)$ as well as satisfying
 $\top \le \lozenge \top$. Accordingly, for every cover $\top \le \bigvee_{i : I} V_i$ in $B$ there is a cover $\top \le \bigvee_{i : I} \lozenge V_i$ in $\PLower^+(B)$. Computationally, we read this fact as saying that for any observation we can make on points of $B$, we can make that same observation on \emph{some} nondeterministically chosen point within a subspace of $B$ that is represented as a point of $\PLower^+(B)$.
 
 Vickers \cite{vickersdoublepowerlocale} shows how these two powerspace constructions can be achieved predicatively within \textbf{FSpc}. 
@@ -959,21 +960,21 @@ Vickers \cite{vickersdoublepowerlocale} shows how these two powerspace construct
 We can define the union of subspaces, $
 \cup : \PLower^+(A) \times \PLower^+(A) \cto \PLower^+(A)$ by the map
 \begin{align*}
-(\cup)_* &: \Open{A} \to \Open{\PLower^+(A) \times \PLower^+(A)}
-\\ (\cup)_*(P) &\triangleq (\lozenge P \times \top) \vee (\top \times \lozenge P),
+\iimg{(\cup)} &: \Open{A} \to \Open{\PLower^+(A) \times \PLower^+(A)}
+\\ \iimg{(\cup)}(P) &\triangleq (\lozenge P \times \top) \vee (\top \times \lozenge P),
 \end{align*}
 where for opens $U$ of $A$ and $V$ of $B$, $U \times V : \Open{A \times B}$ is an open ``rectangle.''
-We must confirm $(\cup)_*$ preserves all joins and $\top$. Clearly $(\cup)_*$ preserves joins since $\lozenge$ does, and
+We must confirm $\iimg{(\cup)}$ preserves all joins and $\top$. Clearly $\iimg{(\cup)}$ preserves joins since $\lozenge$ does, and
 \[
-(\cup)_*(\top) = (\lozenge \top \times \top) \vee (\top \times \lozenge \top) = \top.
+\iimg{(\cup)}(\top) = (\lozenge \top \times \top) \vee (\top \times \lozenge \top) = \top.
 \]
 Computationally, we can read $x \cup y$ as a nondeterministic choice between $x$ and $y$.
 It is straightforward from the definition of $\cup$ that $\isthemaxof{x \cup y}{x}{y}$ in terms of specialization order, meaning that $x \cup y$ may behave either as $x$ or as $y$ (and it is the \emph{least} such point that can do so). Accordingly, when the output space of a pattern match is of the form $\PLower^+(A)$ for some $A$, the gluing condition is always satisfied.
 
 Note that for any space $A$, $\PLower(A)$ has a bottom point $\{ \} : \One \cto \PLower(A)$, defined by
 \begin{align*}
-\{\}_* &: \Open{A} \to \Open{\One}
-\\ \{ \}_*(P) &\triangleq \bot,
+\iimg{\{\}} &: \Open{A} \to \Open{\One}
+\\ \iimg{\{ \}}(P) &\triangleq \bot,
 \end{align*}
 which corresponds to the empty subspace of $A$. Therefore, when the output space is $\PLower(A)$, \emph{both} the covering and gluing conditions are automatically satisfied, so \emph{any} overlapping pattern match that outputs to $\PLower(A)$ is valid.
 
@@ -1012,9 +1013,9 @@ In particular, suppose for each $i : I$, the open
 \]
 is either $\top$ or $\bot$. If $x$ is a global point, meaning $\Gamma \cong \One$, then assuming the law of the excluded middle, \grammar{this} is the case. Let $I_\top$ and $I_\bot$ represent the indices where the opens are $\top$ and $\bot$, respectively, and for $i : I_\top$, let $x_{A_i} : \Gamma \cto \{ A \suchthat \Img{p_i} \}$ be $x$ with a restricted range. Then for any $U : \Open{B}$,
 \begin{align*}
-f_*(U) &= \bigvee_{i : I} (e_i \circ g_i \circ \tilde{q}_i^{-1})_*(U)
-\\ &= \bigvee_{i : I_\top} (e_i \circ g_i \circ \tilde{q}_i^{-1})_*(U)
-\\ &= \bigvee_{i : I_\top} (e_i \circ \tilde{p}_i^{-1} \circ x_{A_i})_*(U)
+\iimg{f}(U) &= \bigvee_{i : I} \iimg{(e_i \circ g_i \circ \tilde{q}_i^{-1})}(U)
+\\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ g_i \circ \tilde{q}_i^{-1})}(U)
+\\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ \tilde{p}_i^{-1} \circ x_{A_i})}(U)
 \end{align*}
 
 These arguments confirm the intuitive explanation about evaluation of overlapping patterns. It is possible to symbolically reduce a pattern match that scrutinizes a point if it is known which branches the scrutinee may fall into: collect the possible branches, apply them to the point, and the behavior will be the nondeterministic union of those results.
@@ -1085,18 +1086,18 @@ $\BCover$ is then defined as the open subspace
 
 Then let $\mathsf{Left}, \mathsf{Right} : \Sigma \hookto \BCover$ be the restrictions of $\mathsf{Left}'$ and $\mathsf{Right}'$ to $\BCover$; they remain open embeddings.
 
-There is a bijective correspondence between continuous maps $f : A \cto \BCover$ and (ordered) pairs of open sets $P, Q : \Open{A}$ such that $\top \le P \vee Q$. Given such an $f$, $P$ and $Q$ are given by $f_*(\Img{\mathsf{Left}})$ and $f_*(\Img{\mathsf{Right}})$, respectively. We confirm that
+There is a bijective correspondence between continuous maps $f : A \cto \BCover$ and (ordered) pairs of open sets $P, Q : \Open{A}$ such that $\top \le P \vee Q$. Given such an $f$, $P$ and $Q$ are given by $\iimg{f}(\Img{\mathsf{Left}})$ and $\iimg{f}(\Img{\mathsf{Right}})$, respectively. We confirm that
 \[
 \top \le P \vee Q
 \]
 by the derivation
 \begin{align*}
-\top &= f_*(\top) 
-  \le f_*(\Img{\mathsf{Left}} \vee \Img{\mathsf{Right}})
- \\ &\le f_*(\Img{\mathsf{Left}}) \vee f_*(\Img{\mathsf{Right}}).
+\top &= \iimg{f}(\top) 
+  \le \iimg{f}(\Img{\mathsf{Left}} \vee \Img{\mathsf{Right}})
+ \\ &\le \iimg{f}(\Img{\mathsf{Left}}) \vee \iimg{f}(\Img{\mathsf{Right}}).
 \end{align*}
 
-Given a binary cover of $A$, i.e., opens $P$ and $Q$ of $A$ such that $\top_A \le P \vee Q$, it is likewise possible to construct a continuous map $f: A \cto \BCover$ such that $f_*(\Img{\mathsf{Left}}) = P$ and $f_*(\Img{\mathsf{Right}}) = Q$.
+Given a binary cover of $A$, i.e., opens $P$ and $Q$ of $A$ such that $\top_A \le P \vee Q$, it is likewise possible to construct a continuous map $f: A \cto \BCover$ such that $\iimg{f}(\Img{\mathsf{Left}}) = P$ and $\iimg{f}(\Img{\mathsf{Right}}) = Q$.
 
 What are the (global) points of $\BCover$? Since there are two global points of the Sierp\'inski space $\Sigma$, $\strue$ and $\sfalse$, there are four points of $\Sigma \times \Sigma$, and three of them lie in the open subspace $\BCover$: $(\strue, \sfalse), (\strue, \strue),$ and $(\sfalse, \strue)$. Let us name these points $\mathsf{L}$, $\mathsf{B}$, and $\mathsf{R}$, respectively. In the scenario where one of the points is $\sfalse$, then the computational behavior of the point is determined: given the nontrivial open cover asking which open holds, there is only one possibility. But for the point $\mathsf{B} = (\strue, \strue)$, there are two possibilities: that is, two implementations of the same point $\mathsf{B}$ can behave differently.
 
@@ -1114,7 +1115,7 @@ The three points of $\BCover$ have the following Hasse diagram for the specializ
 \end{center}
 Note that the points of $\BCover$ always have maxima with respect to specialization order, meaning that it is always possible to nondeterministically join points of $\BCover$ together.
 
-We can arbitrarily think of $\mathsf{Left}$ as ``true'' and $\mathsf{Right}$ as ``false,'' which leads to a notion of order of binary covers in terms of degree of truth, where for $f, g : \Gamma \cto \BCover$, we say $f \leqq g$ if $f_*(\Img{\mathsf{Left}}) \le g_*(\Img{\mathsf{Left}})$ and $g_*(\Img{\mathsf{Right}}) \le f_*(\Img{\mathsf{Right}})$. Then binary covers form a De Morgan algebra with respect to this order; the corresponding conjunction, disjunction, and negation of $\BCover$s operations are continuous maps:
+We can arbitrarily think of $\mathsf{Left}$ as ``true'' and $\mathsf{Right}$ as ``false,'' which leads to a notion of order of binary covers in terms of degree of truth, where for $f, g : \Gamma \cto \BCover$, we say $f \leqq g$ if $\iimg{f}(\Img{\mathsf{Left}}) \le \iimg{g}(\Img{\mathsf{Left}})$ and $\iimg{g}(\Img{\mathsf{Right}}) \le \iimg{f}(\Img{\mathsf{Right}})$. Then binary covers form a De Morgan algebra with respect to this order; the corresponding conjunction, disjunction, and negation of $\BCover$s operations are continuous maps:
 \begin{align*}
 \cdot \wedge \cdot &: \BCover \times \BCover \cto \BCover
 \\ x \wedge y &\triangleq \mathsf{cases}(x, y)
@@ -1237,23 +1238,23 @@ These properties allow us to quantify over compact/overt spaces. Suppose we have
 \forall_A f &: \Gamma \cto \BCover
 \\ \forall_A f(\gamma) &\triangleq \mathsf{cases}(\mathsf{\gamma})
 \begin{cases}
-\oincl{\forall_A f_*(\Img{\mathsf{Left}})}{\wildcard} &\Branch \mathsf{L}
-\\ \oincl{\exists_A f_*(\Img{\mathsf{Right}})}{\wildcard} &\Branch \mathsf{R}
+\oincl{\forall_A \iimg{f}(\Img{\mathsf{Left}})}{\wildcard} &\Branch \mathsf{L}
+\\ \oincl{\exists_A \iimg{f}(\Img{\mathsf{Right}})}{\wildcard} &\Branch \mathsf{R}
 \end{cases}
 \end{align*}
 
 We can confirm this pattern match is covering, i.e.,
 \[
-\top \le_\Gamma \forall_A f_*(\Img{\mathsf{Left}}) \vee \exists_A f_*(\Img{\mathsf{Right}}),
+\top \le_\Gamma \forall_A \iimg{f}(\Img{\mathsf{Left}}) \vee \exists_A \iimg{f}(\Img{\mathsf{Right}}),
 \]
 with the derivation
 \begin{align*}
 \top_\Gamma 
   &\le \forall_A (\top_A) \tag{$\forall_A$ adjointness}
-\\ &\le \forall_A (f_*(\top_\BCover)) \tag{$f_*$ preserves $\top$}
-\\ &\le \forall_A (f_*(\Img{\mathsf{Left}} \vee \Img{\mathsf{Right}}))
-\\ &\le \forall_A(f_*(\Img{\mathsf{Left}}) \vee f_*(\Img{\mathsf{Right}}))  \tag{$f_*$ preserves joins}
-\\ &\le \forall_A f_*(\Img{\mathsf{Left}}) \vee \exists_A f_*(\Img{\mathsf{Right}}) \tag{$A$ is compact/overt}.
+\\ &\le \forall_A (\iimg{f}(\top_\BCover)) \tag{$\iimg{f}$ preserves $\top$}
+\\ &\le \forall_A (\iimg{f}(\Img{\mathsf{Left}} \vee \Img{\mathsf{Right}}))
+\\ &\le \forall_A(\iimg{f}(\Img{\mathsf{Left}}) \vee \iimg{f}(\Img{\mathsf{Right}}))  \tag{$\iimg{f}$ preserves joins}
+\\ &\le \forall_A \iimg{f}(\Img{\mathsf{Left}}) \vee \exists_A \iimg{f}(\Img{\mathsf{Right}}) \tag{$A$ is compact/overt}.
 \end{align*}
 
 We can define $\exists_A f : \Gamma \cto \BCover$ by composing $\forall_A f$ with negation of binary covers.
