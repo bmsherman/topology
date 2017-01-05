@@ -827,7 +827,7 @@ As expected, $\iimg{f}$'s behavior is the union of the behaviors of all of the b
 \\ [j : I] \quad q_j(y_j) \quad &\Branch f_j(y_j)
 \end{cases}
 \]
-can be rewritten as the single-line pattern match
+can be rewritten as the single-line pattern match that uses the sum index set $I + J$
 \[
 \begin{cases}
 [i : I + J] \quad P_i(x_i) \quad &\Branch E_i(x_i)
@@ -1082,7 +1082,7 @@ We confirm this by ``pulling back'' the pattern match defining $\mathsf{or}$ on 
 \\ \wildcard &\Branch \bot
 \end{cases},
 \end{align*}
-where for any space $A$, $\mathsf{abort} : \Zero \hookto A$ is the trivial embedding of the empty space $\Zero$. Observe that patterns that the scrutinee falls into reduce to the embedding $\mathsf{id} : \One \hookto \One$ (the wildcard pattern), and patterns which it misses entirely reduce to $\mathsf{abort}$. We can then collect only the possible branches,
+where for any space $A$, $\mathsf{abort} : \Zero \hookto A$ is the trivial embedding of the empty space $\Zero$. Patterns that the scrutinee falls into reduce to the embedding $\mathsf{id} : \One \hookto \One$ (the wildcard pattern), and patterns which it misses entirely reduce to $\mathsf{abort}$. We can then collect only the possible branches,
 \begin{align*}
 \mathsf{or}(\mathsf{up}(\mathsf{true}), \bot) = \mathsf{cases}(\mathsf{tt})
 \begin{cases}
@@ -1096,19 +1096,19 @@ to conclude that $\mathsf{or}(\mathsf{up}(\mathsf{true}), \bot)$ is the join of 
 
 As covering families of open embeddings form a Grothendieck pretopology, homeomorphisms alone are covers, and covers can be composed, which each correspond to constructions involving overlapping patterns.
 
-Any homeomorphism is a cover by itself (``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\negate : \R \hookto \R$, we can define the binary minimum on $\R$ using an existing maximum function,
+Any homeomorphism is a cover by itself (``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\mathsf{exp} : \R \hookto \{ \R \suchthat \cdot > 0 \}$, we can define multiplication on $\{\R \suchthat \cdot > 0 \}$ using addition on $\R$ with the neat pattern match
 \begin{align*}
-\mathsf{min} &: \R \times \R \cto \R
-\\ \mathsf{min}(p) &\triangleq \mathsf{cases}(p)
-\\ &\begin{cases}
-\negate(x), \negate(y) &\Branch \negate(\mathsf{max}(x, y))
+\mathsf{mult} &: \{\R \suchthat \cdot > 0 \} \times \{\R \suchthat \cdot > 0 \} \cto \{\R \suchthat \cdot > 0 \}
+\\ \mathsf{mult}(p) &\triangleq \mathsf{cases}(p)
+\begin{cases}
+\mathsf{exp}(x), \mathsf{exp}(y) &\Branch \mathsf{exp}(x + y)
 \end{cases}.
 \end{align*}
 
 There is also a notion of composition of covers (``transitivity''), which corresponds to the potential to flatten nested patterns. For instance, the definition
 \begin{align*}
 f &: A_\bot + B_\bot \cto \left(A + B\right)_\bot
-\\ f(x) &\triangleq \mathsf{cases}
+\\ f(x) &\triangleq \mathsf{cases}(x)
 \begin{cases}
 \mathsf{inl}(\ell) &\Branch \mathsf{cases}(\ell)
   \begin{cases}
@@ -1123,7 +1123,7 @@ f &: A_\bot + B_\bot \cto \left(A + B\right)_\bot
 \end{align*}
 can be flattened into
 \begin{align*}
-f(x) &\triangleq \mathsf{cases}
+f(x) &\triangleq \mathsf{cases}(x)
 \begin{cases}
 \mathsf{inl}(\up(\ell)) &\Branch \up(\mathsf{inl}(\ell))
 \\
