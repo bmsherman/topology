@@ -412,6 +412,8 @@
 \newcommand{\ConsiderRemoving}[1]{\textcolor{red}{[Consider removing?: \textcolor{black}{#1}]}}
 \newcommand{\FutureWork}[1]{}
 
+\renewcommand{\grammar}[1]{#1}
+
 %Perhaps this is okay?
 %\allowdisplaybreaks
 
@@ -830,7 +832,28 @@ f &: A \cto B
 [i : I] \quad p_i(x_i) \quad \Branch e_i(x_i)
 \end{cases},
 \end{align*}
-where $i$ ranges over the index set $I : \Type$, each $p_i : A_i \hookto A$ is an open embedding, each $e_i : A_i \cto B$ is a general expression, and each $x_i : A_i$ is a pattern variable binding.
+where $i$ ranges over the index set $I : \Type$, each $p_i : A_i \hookto A$ is an open embedding, each $e_i : A_i \cto B$ is a general expression, and each $x_i : A_i$ is a pattern variable binding.\footnote{
+Note that a pattern match written on several lines such as
+\[
+\begin{cases}
+[i : I] \quad p_i(x_i) \quad &\Branch e_i(x_i)
+\\ [j : I] \quad q_j(y_j) \quad &\Branch h_j(y_j)
+\end{cases}
+\]
+can be rewritten as the single-line pattern match
+\[
+\begin{cases}
+[i : I + J] \quad P_i(x_i) \quad &\Branch E_i(x_i)
+\end{cases}
+\]
+that uses the sum index set $I + J$, where
+\begin{align*}
+P_{\mathsf{inl}(i)} &= p_i
+& E_{\mathsf{inl}(i)} &= e_i
+\\ P_{\mathsf{inr}(j)} &= q_j
+& E_{\mathsf{inr}(j)} &= h_j.
+\end{align*}
+}
 
 Such an overlapping pattern match specifies an inverse image map $\iimg{f} : \Open{B} \to \Open{A}$ that acts on opens according to
 \[
@@ -839,30 +862,6 @@ Such an overlapping pattern match specifies an inverse image map $\iimg{f} : \Op
 In this definition, we implicitly convert opens of $\{ A \suchthat \Img{p_i} \}$ to opens of $A$ by taking their meets with $\Img{p_i}$.
 
 As expected, $\iimg{f}$'s behavior is the union of the behaviors of all of the branches, as the join represents. For $\iimg{f}$ to define a continuous map, one must confirm that it preserves all joins and finite meets.
-
-\ConsiderRemoving{Note that a pattern match written on several lines such as
-\[
-\begin{cases}
-[i : I] \quad p_i(x_i) \quad &\Branch e_i(x_i)
-\\ [j : I] \quad q_j(y_j) \quad &\Branch h_j(y_j)
-\end{cases}
-\]
-can be rewritten as the single-line pattern match that uses the sum index set $I + J$
-\[
-\begin{cases}
-[i : I + J] \quad P_i(x_i) \quad &\Branch E_i(x_i)
-\end{cases}
-\]
-where
-\begin{align*}
-P_{\mathsf{inl}(i)} &= p_i
-& E_{\mathsf{inl}(i)} &= e_i
-\\ P_{\mathsf{inr}(j)} &= q_j
-& E_{\mathsf{inr}(j)} &= h_j.
-\end{align*}
-Additionally,
-}
-
 
 We can always transform the pattern match defining $f$ into an equivalent one
 \[
@@ -887,7 +886,7 @@ where $P_i : \Open{A}$ and $e_i : \{ A \suchthat P_i \} \cto B$, meaning that $f
 
 \subsection{Confirming validity of patterns}
 
-The $\mathsf{case}$ expression above entirely determines the \emph{specification} of the program, assuming it is valid, but we still need to prove two conditions to show that it is valid, which are also then used in the \emph{implementation} of the program. \grammar{That} means that these proofs will affect the \emph{computational} behavior of the program, meaning that different proofs might result in different responses to open covers when points are evaluated. 
+The $\mathsf{case}$ expression above entirely determines the \emph{specification} of the program's behavior as an inverse image map, but we still need to prove two conditions to show that it is valid, which are also then used in the \emph{implementation} of the program. \grammar{That} means that these proofs will affect the \emph{computational} behavior of the program, meaning that different proofs might result in different responses when points are split with open covers. 
 \begin{theorem}
 \label{pattern}
 If the cases cover the input space,
