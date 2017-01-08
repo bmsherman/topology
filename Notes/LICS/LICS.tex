@@ -502,8 +502,8 @@ One solution is just to program with topological spaces themselves, in a semanti
 
 Consider the following computational task. Suppose we have an arbitrary continuous function $f : \R \cto \R$ and want to determine if it has any roots on the interval $[a,b]$, for $a < b$. In general, \grammar{this} is not decidable \cite{lamcra}, but an approximation is possible: fix a tolerance $\varepsilon > 0$. Then either, or both, of the following statements must hold:
 \begin{itemize}
-\item There is some $x \in [a, b]$ such that $|f(x)| < \varepsilon$
-\item For every $x \in [a, b]$, $f(x) \neq 0$
+\item There is some $x \in [a, b]$ such that $|f(x)| < \varepsilon$.
+\item For every $x \in [a, b]$, $f(x) \neq 0$.
 \end{itemize}
 Though each of the above statements is in general undecidable, we can use an overlapping pattern match to define a function that nondeterministically computes that one of the above two statements holds, in the former case \emph{computing} such an $x$ that is ``almost a root.'' The code
 \begin{align*}
@@ -535,7 +535,7 @@ We demonstrate (section \ref{s:examples}), by informal example, the utility of o
 \item ``sheafification'' of constructions (\ref{s:ex:sheaf}).
 \end{itemize}
 
-\item Following a more formal review of constructive topology (\ref{s:topology}), we formally characterize the overlapping pattern match construction (\ref{s:patterns}). Section \ref{s:properties} examines properties of overlapping patterns, including cases when the covering and gluing conditions can be fulfilled automatically. 
+\item Following a more formal review of constructive topology (\ref{s:topology}), we formally characterize the overlapping pattern match construction (\ref{s:patterns}). We describe cases where the covering and gluing conditions can be fulfilled automatically (\ref{s:coverglue}) and discuss some additional properties of overlapping patterns (\ref{s:properties}).
 
 \item We present a case study of programming with constructive topology and with overlapping patterns (\ref{s:bcover}): we generalize the decidable propositions to \emph{binary covers}, pairs of propositions $(P, Q)$ such that either $P$ or $Q$ holds, but $P$ and $Q$ may overlap. Just as the decidable predicates are closed under conjunction, disjunction, negation, and quantification over finite sets, we show that binary covers support these same operations, with finite sets generalized to compact/overt spaces. \grammar{This} yields a calculus for approximate decision procedures over spaces.
 
@@ -1001,12 +1001,12 @@ f &: \Gamma \times A \cto B
 This definition is valid so long as $(p_i)_{i : I}$ covers $A$ and each $e_i$ and $e_j$ have a maximum on their overlap, since if $(p_i)_{i : I}$ covers $A$, then $(\mathsf{id}_\Gamma \otimes p_i)_{i : I}$ covers $\Gamma \times A$.
 
 
-\section{Properties of overlapping patterns}
-\label{s:properties}
+\section{Spaces where covering/gluing always hold}
+\label{s:coverglue}
 
-In general, to prove the validity of an overlapping pattern match, one must prove satisfaction of the covering and gluing conditions. However, in some cases, we can automatically/generically discharge either of these two goals. 
+In general, an overlapping pattern match must be accompanied by formal proofs of the covering and gluing conditions. However, certain output spaces guarantee that either of these conditions must always hold, allowing these goals to be automatically discharged.
 
-\subsection{Covering automatically: catch-all cases}
+\subsection{Automatic covering for spaces with bottom}
 
 When writing a pattern match with an output space $B$ that has a bottom point $\bot_B : B$ (with respect to the specialization order), it is sensible not to require that the cases in a pattern match cover the entire input space, that is, to skip the \emph{covering} condition. We note that for any $\mathsf{case}$ expression
 \[
@@ -1025,7 +1025,7 @@ that is already valid where the output space $B$ has a bottom point, we can add 
 \]
 without changing the meaning. Thus it is a sensible default to apply this transformation to \emph{every} pattern match that outputs to a space with a bottom point, before checking the covering and gluing conditions. Then the catch-all case already suffices to cover the whole space, of course, trivially showing that the covering condition holds for such a transformed pattern match. Since $\bot_B$ has maxima with all points of $B$, the additional gluing conditions induced by adding the catch-all case are satisfied automatically.
 
-\subsection{Gluing automatically: nondeterministic powerspaces}
+\subsection{Automatic gluing for nondeterministic powerspaces}
 
 We can also characterize when the output space $B$ ensures that the \emph{gluing} condition is automatically fulfilled. If $B$ is such that any two (generalized) points have a maximum in terms of specialization order, then certainly \grammar{this} is the case.
 
@@ -1062,6 +1062,9 @@ Note that for any space $A$, $\PLower(A)$ has a bottom point $\{ \} : \One \cto 
 \\ \iimg{\{ \}}(P) &\triangleq \bot,
 \end{align*}
 which corresponds to the empty subspace of $A$. Therefore, when the output space is $\PLower(A)$, \emph{both} the covering and gluing conditions are automatically satisfied, so \emph{any} overlapping pattern match that outputs to $\PLower(A)$ is valid.
+
+\section{Properties of overlapping patterns}
+\label{s:properties}
 
 \subsection{Equational reasoning about evaluation}
 
@@ -1134,7 +1137,7 @@ to conclude that $\mathsf{or}(\mathsf{up}(\mathsf{true}), \bot)$ is the join of 
 
 As covering families of open embeddings form a Grothendieck pretopology, homeomorphisms alone are covers, and covers can be composed, which each correspond to constructions involving overlapping patterns.
 
-Any homeomorphism is a cover by itself (``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\mathsf{exp} : \R \hookto \{ \R \suchthat \cdot > 0 \}$, we can define multiplication on $\{\R \suchthat \cdot > 0 \}$ using addition on $\R$ with the neat pattern match
+Any homeomorphism is a cover by itself (``reflexivity''), corresponding to a pattern that may change the ``view'' of data to an isomorphic space (without breaking it apart). For instance, given the homeomorphism $\mathsf{exp} : \R \hookto \{ \R \suchthat \cdot > 0 \}$, we can define multiplication on $\{\R \suchthat \cdot > 0 \}$ using addition on $\R$ with the pattern match
 \begin{align*}
 \mathsf{mult} &: \{\R \suchthat \cdot > 0 \} \times \{\R \suchthat \cdot > 0 \} \cto \{\R \suchthat \cdot > 0 \}
 \\ \mathsf{mult}(p) &\triangleq \mathsf{case}(p)
@@ -1174,15 +1177,17 @@ Correctness of the above flattening operation relies on the additional property 
 \section{Case study: binary covers}
 \label{s:bcover}
 
-In this section, we develop a theory of \emph{binary covers}, which are pairs of open sets that cover a given space. These binary covers are useful for computing approximate decisions on spaces (where computing exact decisions might not be possible). This development is intended to serve as a case study for programming with spaces and demonstrates the utility of overlapping pattern matches.
+In this section, we develop a theory of \emph{binary covers}, which are pairs of open sets that cover a given space. These binary covers are useful for computing approximate decisions on spaces, where computing exact decisions might not be possible. For instance, $\R$ has no nontrivial decidable predicates since it is connected, but it admits a wealth of binary covers. 
 
-The basic idea is to generalize the notions of exhaustive reasoning from general functional programming, where it is possible to compute whether or not decidable propositions hold. There is a calculus of decidable predicates: they are closed under conjunction, disjunction, and negation, and universal and existential quantification over finite sets yields decidable predicates as well.
+The basic idea is to generalize the notions of exhaustive reasoning from general functional programming, where it is possible to compute whether or not decidable propositions hold. There is a calculus of decidable predicates: they are closed under conjunction, disjunction, and negation, and universal and existential quantification over finite\footnote{
+By ``finite,'' we always mean Kuratowski-finite \cite{johnstonetopos}.}
+sets yields decidable predicates as well.
+We will generalize this calculus to binary covers, with finite sets generalized to \emph{compact/overt} spaces.
 
 We can relax the notion of decidable predicates to binary covers. Whereas a decidable proposition $P$ is one where either $P$ or $\neg P$ holds, a binary cover is a pair of propositions $P$ and $Q$ such that either $P$ or $Q$ holds. In a binary cover, it is possible that $P$ and $Q$ \emph{both} hold, which is of course never the case for $P$ and $\neg P$ in decidable propositions. So every decidable proposition can be interpreted as a binary cover, but not the other way around.
 
-Translating to spatial language, a decidable predicate on a space $A$ is an open $P$ of $A$ that is also closed (i.e., clopen), meaning that there is a disjoint open $\neg P$ such that $\top \le P \vee \neg P$. A binary cover is a pair of opens $P$ and $Q$ that cover the space, i.e., $\top \le P \vee Q$. We will be able to generalize the finite sets, over which quantification of decidable predicates is decidable, to \emph{compact/overt} spaces, where quantification of binary covers over those spaces yields a binary cover.
+Translating to spatial language, a decidable predicate on a space $A$ is an open $P$ of $A$ such that there is a disjoint open $\neg P$ satisfying $\top \le P \vee \neg P$ (equivalently, $P$ is \emph{clopen}). A binary cover is a pair of opens $P$ and $Q$ that cover the space, i.e., $\top \le P \vee Q$. For example, the $\mathsf{positive}_\varepsilon$ program in section \ref{s:ex:approx} covers $\R$ with the pair of opens $\cdot > - \varepsilon$ and $\cdot < \varepsilon$. More generally, any overlapping pattern match with two cases specifies a binary cover of the input space.
 
-For instance, $\R$ has no nontrivial decidable predicates since it is connected, but it admits a wealth of binary covers. We described one such family with the $\mathsf{positive}_\varepsilon$ example from section \ref{s:examples}, where the opens $\cdot > - \varepsilon$ and $\cdot < \varepsilon$ form a binary cover of $\R$.
 
 \subsection{The space of binary covers}
 
@@ -1233,7 +1238,7 @@ We can arbitrarily think of $\mathsf{Left}$ as ``true'' and $\mathsf{Right}$ as 
 \begin{align*} \iimg{f}(\Img{\mathsf{Left}}) &\le \iimg{g}(\Img{\mathsf{Left}})
 \\ \iimg{g}(\Img{\mathsf{Right}}) &\le \iimg{f}(\Img{\mathsf{Right}}).
 \end{align*}
-Then binary covers form a De Morgan algebra with respect to this order; the corresponding conjunction, disjunction, and negation on $\BCover$ are continuous maps:
+Then binary covers form a De Morgan algebra with respect to this partial order. The top and bottom elements are $\mathsf{L}$ and $\mathsf{R}$, respectively. The corresponding conjunction, disjunction, and negation on $\BCover$ are continuous maps:
 \begin{align*}
 \cdot \wedge \cdot &: \BCover \times \BCover \cto \BCover
 \\ x \wedge y &\triangleq \mathsf{case}(x, y)
@@ -1280,7 +1285,7 @@ Then binary covers form a De Morgan algebra with respect to this order; the corr
 \end{cases}.
 \end{align*}
 
-We confirm by inspection that the patterns in the definitions of conjunction and disjunction are indeed covering.
+We confirm by inspection that these three patterns are indeed covering.
 Since the output space is $\BCover$, where any two points have maxima, the gluing condition is trivially satisfied.
 
 One can confirm that the definitions of conjunction, disjunction, and negation indeed compute meets, joins, and De Morgan involution with respect to the $\leqq$ ordering.
@@ -1328,9 +1333,7 @@ The specialization order on $\BCover$ corresponds to subset inclusion on $\PLowe
 
 \subsection{Quantification over compact/overt spaces}
 
-In this section, ``finite'' shall always mean Kuratowski-finite \cite{johnstonetopos}.
-
-When working with sets, if a predicate $P$ on a set $A$ is decidable and if $A$ is finite, then $\forall a : A.\ P(a)$ and $\exists a : A.\ P(a)$ are decidable as well. The analog of the finite sets in \textbf{Spc} are the compact/overt spaces.
+When working with sets, if a predicate $P$ on a set $A$ is decidable and if $A$ is finite, then $\forall a : A.\ P(a)$ and $\exists a : A.\ P(a)$ are decidable as well. The spatial analogue of the finite sets are the compact/overt spaces.
 
 For any space $A$, there is in fact a space $\Viet(A)$, called the \emph{Vietoris powerspace}, whose points are compact/overt subspaces of $A$. Vickers describes the construction in detail \cite{vickersconnected, vickersdoublepowerlocale}, but we summarize the salient characteristics. This space is a subspace of $\PLower(A)$, having in addition to the ``possibility'' modality $\lozenge : \Open{A} \to \Open{\Viet(A)}$ a ``necessity'' modality $\square : \Open{A} \to \Open{\Viet(A)}$ that distributes over meets and directed joins. Furthermore, for any opens $P, Q : \Open{A}$, the following laws hold:
 \begin{align}
@@ -1379,11 +1382,13 @@ but not necessarily intersection. Naturally, a finite set viewed as a discrete s
 
 \subsection{Binary covers on $\R$}
 
+Here, we will describe some compact/overt subspaces and binary covers of $\R$ and use these to solve some approximate decision problems on $\R$ using the calculus of binary covers.
+
 For the real numbers, there is a construction
 \begin{align*}
 \mathsf{HeineBorel} &: \{ (a, b) : \R \times \R \suchthat a < b \} \cto \Viet^+(\R)
 \end{align*}
-that demonstrates for endpoints $a, b$ that the closed interval from $a$ to $b$ is compact/overt and inhabited. Its name indicates that it is a constructive analogue of the Heine-Borel theorem \cite{vickersmetric2}. The notation in the domain is syntactic sugar for $\{ \R \times \R \suchthat \fun{(a,b)}{a < b} \}$, where the lambda notation describes opens via their correspondence with $\Sigma$-valued continuous maps.
+that demonstrates for endpoints $a, b$ that the closed interval from $a$ to $b$ is compact/overt and inhabited (a constructive analogue of the Heine-Borel theorem) \cite{vickersmetric2}. The notation in the domain is syntactic sugar for $\{ \R \times \R \suchthat \fun{(a,b)}{a < b} \}$, where the lambda notation describes opens via their correspondence with $\Sigma$-valued continuous maps.
 
 We can define binary covers that give approximate order comparisons on $\R$ by defining, for each $\varepsilon > 0$,
 \begin{align*}
@@ -1412,7 +1417,7 @@ Perhaps we have two maps $f, g : \R \times \R \cto \R$ and wish to confirm, for 
 approximately decides \grammar{this}, where $[0,1]$ is used as shorthand for $\mathsf{HeineBorel}(0,1)$.
 Like the previous query, this one has only false negatives (and its negation has only false positives). If we observe $\mathsf{Left}$, then it is certainly true, while if we observe $\mathsf{Right}$, then for every $x \in [0,1]$ there is a $y \in [0,1]$ such that either $f(x, y) < \varepsilon$ or $g(x, y) > -\varepsilon$.
 
-The nesting of quantifiers in $\mathsf{apart}_\varepsilon$ make critical use of the quantifier constructions that allow a context $\Gamma$ to be threaded through. For instance, the innermost continuous map of $\mathsf{apart}_\varepsilon$ is a map $\R \times \R \cto \BCover$, where the left $\R$ serves as a context while the right one is quantified over.
+The nesting of quantifiers in $\mathsf{apart}_\varepsilon$ makes critical use of the quantifier constructions that allow a context $\Gamma$ to be threaded through. For instance, the innermost continuous map of $\mathsf{apart}_\varepsilon$ is a map $\R \times \R \cto \BCover$, where the left $\R$ serves as a context while the right one is quantified over.
 
 \subsection{Approximate root-finding}
 \label{s:bcov:root}
@@ -1424,7 +1429,12 @@ Recall the approximate root-finding program from the introduction,
 
 While previous parts of the paper explain much of this code, it remains to prove that the cases cover, and to explain the expressions in the first branch.
 
-To prove covering, we first observe that  $(\fun{x}{|f(x)| < \varepsilon})$ and $(\fun{x}{f(x) \ne 0})$ form a binary cover of $\R$, since $- \varepsilon < \cdot < \varepsilon$ and $\cdot \neq 0$ form a binary cover of $\R$, and we obtain the former from the latter by precomposing with $f$. Given that these form a binary cover, the covering condition holds by the same derivation that showed that the cases were covering in the definition of $\forall_{[\cdot]}f$.
+To prove covering, we first observe that  $(\fun{x}{|f(x)| < \varepsilon})$ and $(\fun{x}{f(x) \ne 0})$ form a binary cover of $\R$, as they are equivalent to the $\BCover$-valued continuous map
+\[
+\fun{x}{[0 < |f(x)|]_\varepsilon}
+\]
+(as in the $\mathsf{no\_roots}_\varepsilon$ example).
+Since these opens form a binary cover, the covering condition holds by the same derivation that showed that the cases were covering in the definition of $\forall_{[\cdot]}f$.
 
 The expressions in the first branch,
 \begin{equation*}
@@ -1455,7 +1465,7 @@ This interpretation is limited to (classically) spatial locales (locales that al
 
 \subsection{Pattern matching}
 
-We are unaware of any other notion of pattern matching for functional programming that permits patterns where determining membership is undecidable (without jeopardizing totality).
+We are unaware of any other notion of pattern matching that permits patterns where determining membership is undecidable (without jeopardizing totality).
 
 Coquand \cite{coquand1992} gives a topologically motivated explanation of pattern matching for dependently typed functional programming, describing patterns as (disjoint) partitions of a space.
 
