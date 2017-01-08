@@ -39,6 +39,7 @@ src/FormTopC/NatInfty.v
 src/FormTopC/Subspace.v
 src/FormTopC/Truncate.v
 src/FormTopC/Pattern.v
+src/FormTopC/Sum.v
 
 src/Algebra/Frame.v
 src/Algebra/FrameC.v
