@@ -291,7 +291,7 @@
 
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 %
-%\usepackage{url}
+\usepackage{url}
 % url.sty was written by Donald Arseneau. It provides better support for
 % handling and breaking URLs. url.sty is already installed on most LaTeX
 % systems. The latest version and documentation can be obtained at:
@@ -319,6 +319,7 @@
 \usepackage{tikz}
 \usepackage{tikz-cd}
 \usepackage{../tex/mathpartir}
+\usepackage{fancyvrb}
 
 \usepackage{amsthm}
 
@@ -502,22 +503,25 @@ Consider the following computational task. Suppose we have an arbitrary continuo
 \item There is some $x \in [a, b]$ such that $|f(x)| < \varepsilon$
 \item For every $x \in [a, b]$, $f(x) \neq 0$
 \end{itemize}
-Though each of the above statements is in general undecidable, we can use an overlapping pattern match to define a function that nondeterministically computes one of the above two statements that holds, in the former case \emph{computing} such an $x$ that is ``almost a root.'' The code
+Though each of the above statements is in general undecidable, we can use an overlapping pattern match to define a function that nondeterministically computes that one of the above two statements holds, in the former case \emph{computing} such an $x$ that is ``almost a root.'' The code
 \begin{align*}
 \RootFindingCode
 \end{align*}
-accomplishes this task. The notations and auxiliary definitions in this program will be explained over the course of this paper, and we will return to this example to give a more thorough analysis in section \ref{s:bcov:root}.
-
-The result space allows nondeterministic computation (indicated by $\PLower^+$) of either an $\mathsf{inr}(x)$ that is ``almost a root'' or a value $\mathsf{inl}(\mathsf{tt})$ indicating that there are no roots on the interval. Some formal proofs must accompany the definition of $\mathsf{root}_f$ to confirm that it is well-defined; these (constructive) proofs contribute to its computational behavior.
+accomplishes this task.
+The result space allows nondeterministic computation (indicated by $\PLower^+$) of either an $\mathsf{inr}(x)$ that is ``almost a root'' or a value $\mathsf{inl}(\mathsf{tt})$ indicating that there are no roots on the interval.
+The notations and auxiliary definitions in this program will be explained over the course of this paper, and we will return to this example to give a more thorough analysis in section \ref{s:bcov:root}.
  
-In general, the syntax of an overlapping pattern match determines a unique behavioral specification, but in order to confirm that a continuous map implements such behavior (and thus, to be able to run it), one must confirm
+Intuitively, overlapping patterns behave much like traditional pattern matches as in functional programming, but an input that matches several patterns may nondeterministically follow any matching branch.
+
+The syntax of an overlapping pattern match determines a unique behavioral specification, but in order to confirm that a continuous map implements such behavior (and thus, to be able to run it), one must confirm
 \begin{enumerate}
 \item \emph{Covering}: together, the cases cover the entire input space.
 \item \emph{Gluing}: nondeterministic unions (maxima with respect to specialization order) exist for each pair of branches on their overlap.
 \end{enumerate}
+Formal (constructive) proofs of these properties contribute to the computational behavior of the pattern match.
+
 In the $\mathsf{root}_f$ example, covering is satisfied essentially because either of the two earlier bulleted statements must hold (section \ref{s:bcov:root} provides further detail), and the gluing condition is automatically satisfied since the output space always admits nondeterministic unions.
 
-Intuitively, overlapping patterns work much like traditional pattern matches as in functional programming, but an input that matches several patterns may nondeterministically follow any matching branch.
 
 \subsection{Contributions}
 \begin{itemize}
@@ -529,7 +533,7 @@ We demonstrate (section \ref{s:examples}), by informal example, the utility of o
 \item ``sheafification'' of constructions (\ref{s:ex:sheaf}).
 \end{itemize}
 
-\item Following a more formal review of constructive topology (\ref{s:topology}), we give a formal characterization of the overlapping pattern match construction (\ref{s:patterns}). Section \ref{s:properties} examines properties of overlapping patterns, including cases when the covering and gluing conditions can be fulfilled automatically. 
+\item Following a more formal review of constructive topology (\ref{s:topology}), we formally characterize the overlapping pattern match construction (\ref{s:patterns}). Section \ref{s:properties} examines properties of overlapping patterns, including cases when the covering and gluing conditions can be fulfilled automatically. 
 
 \item We present a case study of programming with constructive topology and with overlapping patterns (\ref{s:bcover}): we generalize the decidable propositions to \emph{binary covers}, pairs of propositions $(P, Q)$ such that either $P$ or $Q$ holds, but $P$ and $Q$ may overlap. Just as the decidable predicates are closed under conjunction, disjunction, negation, and quantification over finite sets, we show that binary covers support these same operations, with finite sets generalized to compact/overt spaces. \grammar{This} yields a calculus for approximate decision procedures over spaces.
 
@@ -595,7 +599,7 @@ Section \ref{s:bcover} describes binary covers, giving many further examples of 
 \subsection{Manipulating partial data}
 \label{s:ex:partial}
 
-For any space $A$, there is a \emph{lifted space} $A_\bot$, which embeds $A$ the open embedding $\up : A \hookto A_\bot$ into a larger space that has just one more open, a new $\top$. The new $\top$ includes one additional point $\bot : \One \cto A_\bot$, which has nondeterministic unions with any other point of $A_\bot$ \cite{topologyvialogic}.
+For any space $A$, there is a \emph{lifted space} $A_\bot$, which embeds $A$ via the open embedding $\up : A \hookto A_\bot$ into a larger space that has just one more open, a new $\top$. The new $\top$ includes one additional point $\bot : \One \cto A_\bot$ (where $\One$ is the one-point space), which lies in no additional opens, and thus has nondeterministic unions with any other point of $A_\bot$ \cite{topologyvialogic}.
 
 Spaces with bottom points (such as lifted spaces) are useful for representing spaces of ``partial'' results. Computationally, \emph{any} point may ``behave'' as $\bot$, so splitting a point with an open cover may never provide any useful information. To get useful information from a point in a space with bottom, one should \emph{prove} that the point actually lies in some subspace that excludes the bottom point.
 
@@ -647,14 +651,13 @@ which forces its argument to compute the result, but if the input is $\bot$, the
 \mathsf{join} &: \left( A_\bot \right)_\bot \cto A_\bot
 \\ \mathsf{join}(x) &\triangleq \mathsf{case}(x)
 \begin{cases}
-\up(\up(y)) &\Branch \up(y)
+\up(\up(y)) &\Branch \up(y).
 \end{cases}
 \end{align*}
-Again, the gluing condition is automatically satisfied.
 
 \subsubsection{The Sierp\'inski space}
 
-The Sierp\'inski space $\Sigma$ is fundamental in topology \cite{escardo2004}. It is the space of ``truth values,'' and there is an exact correspondence between open sets $U : \Open{A}$ and continuous maps $\chi_U : A \cto \Sigma$. The Sierp\'inski space $\Sigma$ is characterized by homeomorphisms
+The Sierp\'inski space $\Sigma$ is fundamental in topology \cite{escardo2004}. It is the space of ``truth values,'' giving an exact correspondence between open sets $U : \Open{A}$ and continuous maps $\chi_U : A \cto \Sigma$. The Sierp\'inski space $\Sigma$ is characterized by homeomorphisms
 \[
 \Sigma \cong \One_\bot \cong \PLower(\One) ,
 \]
@@ -681,21 +684,21 @@ Logical ``and'' and ``or'' operations on $\Sigma$ can be neatly represented with
 \end{cases}
 \end{align*}
 
-Viewing $\Sigma$ as $\PLower(\One)$, ``or'' corresponds to union of subspaces and generalizes to $\PLower(A)$ for any space $A$. However, the ``and'' operation corresponds to intersection, which can only be generalized to a discrete space $A$ whose underlying set has decidable equality; intersection is not necessarily possible to compute for general $A$. \ConsiderRemoving{If $A$ is discrete (as is $\One$), union and intersection can be phrased as overlapping pattern matches, but there does not appear to be a natural way to express the union operation in the general case.}
+Viewing $\Sigma$ as $\PLower(\One)$, ``or'' corresponds to union of subspaces and generalizes to $\PLower(A)$ for any space $A$. However, the ``and'' operation corresponds to intersection, which can only be generalized to a discrete space $A$ whose underlying set has decidable equality; intersection is not necessarily possible to compute for general $A$.
 
 \subsubsection{Comparison with Haskell pattern matching}
 
 Pattern matching definitions of the form ${A_1}_\bot \times \ldots \times {A_n}_\bot \to B_\bot$ may resemble pattern matches in Haskell. For instance, the $\mathsf{and}$ operation on the Sierp\'inski space corresponds to the Haskell definition
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
 and :: () -> () -> ()
 and () () = ()
-\end{verbatim}
+\end{Verbatim}
 which forces both its arguments whenever the return value is forced. However, the definition of $\mathsf{or}$ has no analogue in Haskell, because the translated prospective Haskell definition
-\begin{verbatim}
+\begin{Verbatim}[samepage=true]
 or :: () -> () -> ()
 or () _ = ()
 or _ () = ()
-\end{verbatim}
+\end{Verbatim}
 has an overlap in the two non-catch-all cases, which is forbidden.
 The $\mathsf{or}$ operation is often known as the ``parallel-or'' operation \cite{escardo2004}. It has this name because the points of $\Sigma$ can be interpreted as representing semidecision procedures; the parallel-or of two semidecision procedures halts if and only if either of the component procedures halts, perhaps by interleaving them in a parallel fashion.
 
@@ -765,19 +768,36 @@ A \emph{continuous map} $f : A \cto B$ between spaces is a map $\iimg{f} : \Open
 
 Here, $\iimg{f}$ is known as the inverse image map. A continuous map $f : A \to B$ transforms covers on $B$ into covers on $A$. Spaces and continuous maps form a category \textbf{Spc}. The terminal object is the one-point space $\One$, whose open set lattice $\Open{\One}$ is $\Type$ where $U \le V$ is defined as the set of functions from $U$ to $V$. Meets are defined as products, and $\Type$-indexed joins are defined as $\Sigma$-types. Points of a space $A$ can be identified with continuous maps $\One \cto A$, which is frequently convenient.
 
-There is a useful partial order that we can put on continuous maps known as \emph{specialization order}, for which we will also use the symbol $\le$. For two maps $f, g : A \cto B$, $f \le g$ if for every $U : \Open{B}$, $\iimg{f}(U) \le \iimg{g}(U)$. Intuitively, if $f \le g$, then an implementation of $g$ could always ``behave'' computationally as an implementation of $f$; $f$ has no more behaviors than $g$ does. Accordingly, specialization order makes good sense of nondeterminism, since any map $f$ can behave just as any map that is smaller than $f$. We say that two maps $f, g : A \cto B$ have a \emph{maximum} if the map
+There is a useful partial order on continuous maps known as \emph{specialization order}, for which we will also use the symbol $\le$. For two maps $f, g : A \cto B$, $f \le g$ if for every $U : \Open{B}$, $\iimg{f}(U) \le \iimg{g}(U)$. Intuitively, if $f \le g$, then an implementation of $g$ could always ``behave'' computationally as an implementation of $f$; $f$ has no more behaviors than $g$ does. Accordingly, specialization order makes good sense of nondeterminism, since any map $f$ can behave just as any map that is smaller than $f$. We say that two maps $f, g : A \cto B$ have a \emph{maximum} if the map
 \begin{align*}
 \iimg{(f \sqcup g)} &: \Open{B} \to \Open{A}
 \\ \iimg{(f \sqcup g)}(U) &\triangleq \iimg{f}(U) \vee \iimg{g}(U)
 \end{align*}
 preserves binary meets, which implies that it defines a continuous map.
 
-Given a space $A$ and an open $U : \Open{A}$, we can form the open subspace $\{ A \suchthat U \}$ of $A$ by making $\Open{\{A \suchthat U \}}$ a quotient of $\Open{A}$, identifying opens $P, Q : \Open{A}$ in $\{ A \suchthat U \}$ when $P \wedge U = Q \wedge U$. One confirms the quotient is still a space, since the operation $\cdot \wedge U : \Open{A} \to \Open{A}$ preserves binary meets and all joins.
+Two spaces $A$ and $B$ are \emph{homeomorphic}, written $A \cong B$, if there are continuous maps $f : A \cto B$ and $g : B \cto A$ such that $g \circ f = \mathsf{id}_A$ as well as $f \circ g = \mathsf{id}_B$.
+
+Given a space $A$ and an open $U : \Open{A}$, we can form the open subspace $\{ A \suchthat U \}$ of $A$ by making $\Open{\{A \suchthat U \}}$ a quotient of $\Open{A}$, identifying opens $P, Q : \Open{A}$ in $\{ A \suchthat U \}$ when $P \wedge U = Q \wedge U$. The quotient still defines a space, since the operation $\cdot \wedge U : \Open{A} \to \Open{A}$ preserves binary meets and all joins.
+
+A map $f : A \cto B$ is an \emph{open embedding} if $A$ is homeomorphic to its image under $f$ in $B$, that is, if there is an open subspace $U : \Open{B}$ and homeomorphism $\tilde{f} : A \cto \{B \suchthat U \}$ such that the following diagram commutes:
+\begin{equation*}
+\begin{tikzcd}
+A \arrow[r, "\tilde{f}", shift left]
+   \arrow[r, <-, shift right, swap, "\tilde{f}^{-1}"]
+   \arrow[dr,swap,"f", shift right, shift right]
+& \{ B \suchthat U \}
+   \arrow[d, "\oinclf{U}"]
+\\
+{} & B
+\end{tikzcd}
+\end{equation*}
+The notation $f : A \hookto B$ indicates that the continuous map $f : A \cto B$ is an open embedding, and the notation $\Img{f}$ indicates the open $U$ of $B$ that $f$ factors through.
 
 Unfortunately, a general construction of product spaces is not possible in \textbf{Spc} (predicatively) \cite{coquand2003}. \grammar{This} motivates the definition of \emph{inductively generated formal spaces} by Coquand et al. \cite{coquand2003}. As a category, the inductively generated formal spaces, \textbf{FSpc}, have products and form a full subcategory of \textbf{Spc}. In particular, \textbf{FSpc} is a cartesian monoidal category, meaning that it admits a restricted $\lambda$-calculus syntax that ``compiles'' to continuous maps \cite{escardo2004}, which this paper uses.
-Vickers demonstrates inductive generation of all spaces used in this paper \cite{vickersmetric, vickersdoublepowerlocale, SublocFT, vickersconnected}.
+Coquand et al. and Vickers demonstrate inductive generation of all spaces used in this paper \cite{coquand2003, vickersmetric, vickersdoublepowerlocale, SublocFT, vickersconnected}.
+These constructions are critical in enabling computation over these spaces.
 
-Since locale theory is generally impredicative, care must be taken with defining the predicative analogue presented here. For instance, in this formalization, the universe of opens of any nontrivial space must be large relative to the universe of sets over which joins are admitted. Palmgren \cite{palmgren2003} offers a more careful treatment of predicativity and universes in formal topology.
+Since locale theory is generally impredicative, care must be taken with defining the predicative analogue presented here. For instance, in this formalization, the universe of the set of opens of any nontrivial space must be large relative to the universe of sets over which joins are admitted. Palmgren \cite{palmgren2003} offers a more careful treatment of predicativity and universes in formal topology.
 
 The use of a dependent pair in the \irule{split} rule agrees with formal topology as formalized in Martin-L\"of type theory but differs from Maietti and Sambin \cite{whypointfree}, who use an existential quantifier that does not guarantee a computational interpretation.
 
@@ -801,21 +821,6 @@ The preorder $S$ represents a base for the opens of the space. The construction 
 \section{Formal definition of overlapping patterns}
 \label{s:patterns}
 
-First, some preliminary notions. For any two spaces $A$ and $B$, let $A \cong B$ indicate that the spaces $A$ and $B$ are homeomorphic, meaning that we have exhibited continuous maps $f : A \cto B$ and $g : B \cto A$ such that $g \circ f = \mathsf{id}_A$ as well as $f \circ g = \mathsf{id}_B$.
-A map $f : A \cto B$ is an \emph{open embedding} if $A$ is homeomorphic to its image under $f$ in $B$. Specifically, $f$ is an open embedding if there is an open subspace $U : \Open{B}$ and homeomorphism $\tilde{f} : A \cto \{B \suchthat U \}$ such that the following diagram commutes:
-\begin{equation*}
-\begin{tikzcd}
-A \arrow[r, "\tilde{f}", shift left]
-   \arrow[r, <-, shift right, swap, "\tilde{f}^{-1}"]
-   \arrow[dr,swap,"f", shift right, shift right]
-& \{ B \suchthat U \}
-   \arrow[d, "\oinclf{U}"]
-\\
-{} & B
-\end{tikzcd}
-\end{equation*}
-The notation $f : A \hookto B$ indicates that the continuous map $f : A \cto B$ is an open embedding, and the notation $\Img{f}$ indicates the open $U$ of $B$ that $f$ factors through.
-
 \subsection{General specification of overlapping patterns}
 The general syntax for an overlapping pattern match on a term $x : A$ to produce a value in $B$ is of the form
 \begin{align*}
@@ -825,13 +830,13 @@ f &: A \cto B
 [i : I] \quad p_i(x_i) \quad \Branch e_i(x_i)
 \end{cases},
 \end{align*}
-where $i$ ranges over the index set $I : \Type$, and $p_i : A_i \hookto A$ is an open embedding, and $e_i : A_i \cto B$ is a general expression, and $x_i : A_i$ is a pattern variable binding.
+where $i$ ranges over the index set $I : \Type$, each $p_i : A_i \hookto A$ is an open embedding, each $e_i : A_i \cto B$ is a general expression, and each $x_i : A_i$ is a pattern variable binding.
 
 Such an overlapping pattern match specifies an inverse image map $\iimg{f} : \Open{B} \to \Open{A}$ that acts on opens according to
 \[
 \iimg{f}(U) = \bigvee_{i : I} \iimg{(e_i \circ \tilde{p}_i^{-1})}(U).
 \]
-\ConsiderRemoving{In this definition, we implicitly convert opens of $\{ A \suchthat \Img{p_i} \}$ to opens of $A$ by taking their meets with $\Img{p_i}$.}
+In this definition, we implicitly convert opens of $\{ A \suchthat \Img{p_i} \}$ to opens of $A$ by taking their meets with $\Img{p_i}$.
 
 As expected, $\iimg{f}$'s behavior is the union of the behaviors of all of the branches, as the join represents. For $\iimg{f}$ to define a continuous map, one must confirm that it preserves all joins and finite meets.
 
@@ -839,7 +844,7 @@ As expected, $\iimg{f}$'s behavior is the union of the behaviors of all of the b
 \[
 \begin{cases}
 [i : I] \quad p_i(x_i) \quad &\Branch e_i(x_i)
-\\ [j : I] \quad q_j(y_j) \quad &\Branch f_j(y_j)
+\\ [j : I] \quad q_j(y_j) \quad &\Branch h_j(y_j)
 \end{cases}
 \]
 can be rewritten as the single-line pattern match that uses the sum index set $I + J$
@@ -853,8 +858,9 @@ where
 P_{\mathsf{inl}(i)} &= p_i
 & E_{\mathsf{inl}(i)} &= e_i
 \\ P_{\mathsf{inr}(j)} &= q_j
-& E_{\mathsf{inr}(j)} &= f_j.
+& E_{\mathsf{inr}(j)} &= h_j.
 \end{align*}
+Additionally,
 }
 
 
@@ -866,16 +872,18 @@ f(x) = \mathsf{case}(x)
 \end{cases},
 \]
 where all of the patterns are just open subspaces of the input domain, which one can confirm has the same specification $\iimg{f}$ as above. Since this transformation is possible, for simplicity, it suffices to consider pattern matches of the form
-\[
+\begin{align}
+\label{eq:pattern}
 f(x) \triangleq \mathsf{case}(x)
 \begin{cases}
 [i : I] \quad \oincl{P_i}{x_i} &\Branch e_i(x_i)
 \end{cases},
-\]
+\end{align}
 where $P_i : \Open{A}$ and $e_i : \{ A \suchthat P_i \} \cto B$, meaning that $f$ transforms opens according to
-\[
+\begin{align}
+\label{eq:iimg}
 \iimg{f}(U) = \bigvee_{i : I} \iimg{e_i}(U).
-\]
+\end{align}
 
 \subsection{Confirming validity of patterns}
 
@@ -890,10 +898,7 @@ and overlapping patterns have nondeterministic unions, i.e., for each $i, j : I$
 \[
 \isthemaxof{ e_{ij} }{ e_i \circ \oinclf{P_j} }{ e_j \circ \oinclf{P_i} }, \tag{gluing}
 \]
-then $f$, as defined by the inverse image map
-\[
-\iimg{f}(U) = \bigvee_{i : I} \iimg{e_i}(U),
-\]
+then $f$ (as defined by equations \ref{eq:pattern}, \ref{eq:iimg})
 is a continuous map.
 \end{theorem}
 \begin{proof}
@@ -1002,7 +1007,7 @@ This definition is valid so long as $(p_i)_{i : I}$ covers $A$ and each $e_i$ an
 
 In general, to prove the validity of an overlapping pattern match, one must prove satisfaction of the covering and gluing conditions. However, in some cases, we can automatically/generically discharge either of these two goals. 
 
-\subsection{Covering: catch-all cases}
+\subsection{Covering automatically: catch-all cases}
 
 When writing a pattern match with an output space $B$ that has a bottom point $\bot_B : B$ (with respect to the specialization order), it is sensible not to require that the cases in a pattern match cover the entire input space, that is, to skip the \emph{covering} condition. We note that for any $\mathsf{case}$ expression
 \[
@@ -1021,14 +1026,11 @@ that is already valid where the output space $B$ has a bottom point, we can add 
 \]
 without changing the meaning. Thus it is a sensible default to apply this transformation to \emph{every} pattern match that outputs to a space with a bottom point, before checking the covering and gluing conditions. Then the catch-all case already suffices to cover the whole space, of course, trivially showing that the covering condition holds for such a transformed pattern match. Since $\bot_B$ has maxima with all points of $B$, the additional gluing conditions induced by adding the catch-all case are satisfied automatically.
 
-\note{More formal description of lifted spaces? It seems unnecessary.}
-\note{Proof of catch-all cases construction?}
-
-\subsection{Gluing: nondeterministic powerspaces}
+\subsection{Gluing automatically: nondeterministic powerspaces}
 
 We can also characterize when the output space $B$ ensures that the \emph{gluing} condition is automatically fulfilled. If $B$ is such that any two (generalized) points have a maximum in terms of specialization order, then certainly \grammar{this} is the case.
 
-This property holds for the ``positive lower powerspaces,'' $\PLower^+(B)$, for any space $B$, also known as Hoare powerlocales. The points of $\PLower^+(B)$ are, informally, nonempty subspaces of $B$ that have good computability properties. We will start by describing $\PLower(B)$, where the collection of points is allowed to be empty.
+This property holds for the \emph{positive lower powerspaces}, $\PLower^+(B)$, for any space $B$, also known as Hoare powerlocales. Each point of $\PLower^+(B)$ corresponds to a nonempty subspace of $B$ that has nice computability properties (precisely, \emph{overtness} \cite{vickersdoublepowerlocale}). We will start by describing $\PLower(B)$, which permits a point that represents the empty subspace. 
 
 For any space $B$, the space $\PLower(B)$ is defined such that there is a bijective correspondence between continuous maps $f : A \cto \PLower(B)$ and maps $\iimg{f} : \Open{B} \to \Open{A}$ that preserve all joins but not necessarily meets. There is a map $\lozenge : \Open{B} \to \Open{\PLower(B)}$ (read ``possibly'') which distributes over joins but not necessarily meets. In particular,
 \[
@@ -1085,6 +1087,7 @@ where each $q_i$ and $x_i$ come from the pullback diagram
 \begin{tikzcd}
 A_i \times_A \Gamma \arrow[r, hook, "q_i"]
    \arrow[d, "x_i"]
+   \arrow[dr, phantom, "\lrcorner", very near start]
 & \Gamma \arrow[d, "x"]
 \\ A_i \arrow[r, hook, "p_i"]
 & A
@@ -1095,7 +1098,7 @@ In particular, suppose for each $i : I$, the open
 \[
 \Img{q_i} : \Open{\Gamma}
 \]
-is either $\top$ or $\bot$. If $x$ is a global point, meaning $\Gamma \cong \One$, then assuming the law of the excluded middle, \grammar{this} is the case. Let $I_\top$ and $I_\bot$ represent the indices where the opens are $\top$ and $\bot$, respectively, and for $i : I_\top$, let $x_{A_i} : \Gamma \cto \{ A \suchthat \Img{p_i} \}$ be $x$ with a restricted range. Then for any $U : \Open{B}$,
+is either $\top$ or $\bot$. If $x$ is a global point, meaning $\Gamma \cong \One$, then classically \grammar{this} is the case. Let $I_\top$ and $I_\bot$ represent the indices where the opens are $\top$ and $\bot$, respectively, and for $i : I_\top$, let $x_{A_i} : \Gamma \cto \{ A \suchthat \Img{p_i} \}$ be $x$ with a restricted range. Then for any $U : \Open{B}$,
 \begin{align*}
 \iimg{f}(U) &= \bigvee_{i : I} \iimg{(e_i \circ x_i \circ \tilde{q}_i^{-1})}(U)
 \\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ x_i \circ \tilde{q}_i^{-1})}(U)
@@ -1167,17 +1170,18 @@ f(x) &\triangleq \mathsf{case}(x)
 \end{cases}.
 \end{align*}
 
+Correctness of the above flattening operation relies on the additional property that flattening commutes with addition of catch-all cases.
 
 \section{Case study: binary covers}
 \label{s:bcover}
 
-In this section, we develop a theory of ``binary covers,'' which are pairs of open sets that cover a given space. These binary covers are useful for computing approximate decisions on spaces (where computing exact decisions might not be possible). This development is intended to serve as a case study for programming with spaces and demonstrates the utility of overlapping pattern matches.
+In this section, we develop a theory of \emph{binary covers}, which are pairs of open sets that cover a given space. These binary covers are useful for computing approximate decisions on spaces (where computing exact decisions might not be possible). This development is intended to serve as a case study for programming with spaces and demonstrates the utility of overlapping pattern matches.
 
 The basic idea is to generalize the notions of exhaustive reasoning from general functional programming, where it is possible to compute whether or not decidable propositions hold. There is a calculus of decidable predicates: they are closed under conjunction, disjunction, and negation, and universal and existential quantification over finite sets yields decidable predicates as well.
 
 We can relax the notion of decidable predicates to binary covers. Whereas a decidable proposition $P$ is one where either $P$ or $\neg P$ holds, a binary cover is a pair of propositions $P$ and $Q$ such that either $P$ or $Q$ holds. In a binary cover, it is possible that $P$ and $Q$ \emph{both} hold, which is of course never the case for $P$ and $\neg P$ in decidable propositions. So every decidable proposition can be interpreted as a binary cover, but not the other way around.
 
-Translating to spatial language, a decidable predicate on a space $A$ is an open $P$ of $A$ that is also closed (i.e., clopen), meaning that there is some disjoint open $\neg P$ such that $\top \le P \vee \neg P$. A binary cover is a pair of opens $P$ and $Q$ that cover the space, i.e., $\top \le P \vee Q$. We will be able to generalize the finite sets, over which quantification of decidable predicates is decidable, to \emph{compact/overt} spaces, where quantification of binary covers over those spaces yields a binary cover.
+Translating to spatial language, a decidable predicate on a space $A$ is an open $P$ of $A$ that is also closed (i.e., clopen), meaning that there is a disjoint open $\neg P$ such that $\top \le P \vee \neg P$. A binary cover is a pair of opens $P$ and $Q$ that cover the space, i.e., $\top \le P \vee Q$. We will be able to generalize the finite sets, over which quantification of decidable predicates is decidable, to \emph{compact/overt} spaces, where quantification of binary covers over those spaces yields a binary cover.
 
 For instance, $\R$ has no nontrivial decidable predicates since it is connected, but it admits a wealth of binary covers. We described one such family with the $\mathsf{positive}_\varepsilon$ example from section \ref{s:examples}, where the opens $\cdot > - \varepsilon$ and $\cdot < \varepsilon$ form a binary cover of $\R$.
 
@@ -1199,14 +1203,14 @@ There is a bijective correspondence between continuous maps $f : A \cto \BCover$
 \]
 by the derivation
 \begin{align*}
-\top &= \iimg{f}(\top) 
+\top &\le \iimg{f}(\top) 
   \le \iimg{f}(\Img{\mathsf{Left}} \vee \Img{\mathsf{Right}})
  \\ &\le \iimg{f}(\Img{\mathsf{Left}}) \vee \iimg{f}(\Img{\mathsf{Right}}).
 \end{align*}
 
-Given a binary cover of $A$, i.e., opens $P$ and $Q$ of $A$ such that $\top_A \le P \vee Q$, it is likewise possible to construct a continuous map $f: A \cto \BCover$ such that $\iimg{f}(\Img{\mathsf{Left}}) = P$ and $\iimg{f}(\Img{\mathsf{Right}}) = Q$.
+Given a binary cover of $A$, i.e., opens $P$ and $Q$ of $A$ such that $\top \le P \vee Q$, it is likewise possible to construct a continuous map $f: A \cto \BCover$ such that $\iimg{f}(\Img{\mathsf{Left}}) = P$ and $\iimg{f}(\Img{\mathsf{Right}}) = Q$.
 
-What are the (global) points of $\BCover$? Since there are two global points of the Sierp\'inski space $\Sigma$, $\strue$ and $\sfalse$, there are four points of $\Sigma \times \Sigma$, and three of them lie in the open subspace $\BCover$: $(\strue, \sfalse), (\strue, \strue),$ and $(\sfalse, \strue)$. Let us name these points $\mathsf{L}$, $\mathsf{B}$, and $\mathsf{R}$, respectively (standing for ``$\mathsf{L}$eft,'' ``$\mathsf{B}$oth,'' and ``$\mathsf{R}$ight''). In the scenario where one of the points is $\sfalse$, then the computational behavior of the point is determined: given the nontrivial open cover 
+The points of $\Sigma$ correspond to types (quotiented by bi-implication), and accordingly the points of $\BCover$ correspond to types $P, Q : \Type$ such that $P + Q$ is inhabited. Classically, there are three of them: $(\strue, \sfalse), (\strue, \strue),$ and $(\sfalse, \strue)$. Let us name these points $\mathsf{L}$, $\mathsf{B}$, and $\mathsf{R}$, respectively (standing for ``$\mathsf{L}$eft,'' ``$\mathsf{B}$oth,'' and ``$\mathsf{R}$ight''). In the scenario where one of the points is $\sfalse$, then the computational behavior of the point is determined: given the nontrivial open cover 
 \[
 \top \le \Img{\mathsf{Left}} \vee \Img{\mathsf{Right}}
 \]
@@ -1226,8 +1230,10 @@ The three points of $\BCover$ have the following Hasse diagram for the specializ
 \end{center}
 Note that the points of $\BCover$ always have maxima with respect to specialization order, meaning that it is always possible to join points of $\BCover$ together nondeterministically.
 
-We can arbitrarily think of $\mathsf{Left}$ as ``true'' and $\mathsf{Right}$ as ``false,'' which leads to a notion of order of binary covers in terms of degree of truth, where for $f, g : \Gamma \cto \BCover$, we say $f \leqq g$ if $\iimg{f}(\Img{\mathsf{Left}}) \le \iimg{g}(\Img{\mathsf{Left}})$ and $\iimg{g}(\Img{\mathsf{Right}}) \le \iimg{f}(\Img{\mathsf{Right}})$.
-\footnote{\note{I don't like the formatting of this definition. It's hard to read.}} 
+We can arbitrarily think of $\mathsf{Left}$ as ``true'' and $\mathsf{Right}$ as ``false,'' which leads to a notion of order of binary covers in terms of degree of truth, where for $f, g : \Gamma \cto \BCover$, we say $f \leqq g$ if both of the following hold:
+\begin{align*} \iimg{f}(\Img{\mathsf{Left}}) &\le \iimg{g}(\Img{\mathsf{Left}})
+\\ \iimg{g}(\Img{\mathsf{Right}}) &\le \iimg{f}(\Img{\mathsf{Right}}).
+\end{align*}
 Then binary covers form a De Morgan algebra with respect to this order; the corresponding conjunction, disjunction, and negation on $\BCover$ are continuous maps:
 \begin{align*}
 \cdot \wedge \cdot &: \BCover \times \BCover \cto \BCover
@@ -1301,7 +1307,7 @@ Finally, note that there is a homeomorphism $\BCover \cong \PLower^+(\bool)$ giv
  \quad &\Branch \quad
  \{ \bfalse \}
   \end{cases}
-\\
+\displaybreak[0] \\
 \mathsf{from} &: \PLower^+(\bool) \cto \BCover
 \\ \mathsf{from}(s) &\triangleq
   \mathsf{case}(s)
@@ -1376,11 +1382,11 @@ but not necessarily intersection. Naturally, a finite set viewed as a discrete s
 
 For the real numbers, there is a construction
 \begin{align*}
-\mathsf{HeineBorel} &: \{ (a, b) : \R \suchthat a < b \} \cto \Viet^+(\R)
+\mathsf{HeineBorel} &: \{ (a, b) : \R \times \R \suchthat a < b \} \cto \Viet^+(\R)
 \end{align*}
-that demonstrates for endpoints $a, b$ that the closed interval from $a$ to $b$ is compact/overt and inhabited. Its name indicates that it is a constructive analogue of the Heine-Borel theorem \cite{vickersmetric2}.
+that demonstrates for endpoints $a, b$ that the closed interval from $a$ to $b$ is compact/overt and inhabited. Its name indicates that it is a constructive analogue of the Heine-Borel theorem \cite{vickersmetric2}. The notation in the domain is syntactic sugar for $\{ \R \times \R \suchthat \fun{(a,b)}{a < b} \}$, where the lambda notation describes opens via their correspondence with $\Sigma$-valued continuous maps.
 
-We can define binary covers that give approximate order comparisons on $\R$ by defining, for each $\varepsilon : \rat^+$,\footnote{The lambda notation describes opens via the bijective correspondence between opens $U : \Open{A}$ and continuous maps $\chi_U : A \cto \Sigma$.}
+We can define binary covers that give approximate order comparisons on $\R$ by defining, for each $\varepsilon : \rat^+$,
 \begin{align*}
 [ \cdot < \cdot ]_\varepsilon &: \R \times \R \cto \BCover
 \\ [x < y]_\varepsilon &\triangleq \mathsf{case}(x, y)
@@ -1425,13 +1431,13 @@ The expressions in the first branch,
 \begin{equation*}
 \begin{tikzcd}
 \{ \Viet^+(\R) \suchthat \lozenge(\fun{x}{|f(x)| < \varepsilon}) \}
- \arrow[d, rightarrowtail, "\mathsf{un}\square"]
+ \arrow[d, tail, "\mathsf{un}\square"]
 \\ 
 \{ \PLower^+(\R) \suchthat \lozenge(\fun{x}{|f(x)| < \varepsilon}) \}
- \arrow[d, "\mathsf{some}"]
+ \arrow[d, two heads, "\mathsf{some}"]
 \\ 
 \PLower^+(\{x : \R \suchthat |f(x)| < \varepsilon \})
-  \arrow[d, rightarrowtail, "\mathsf{map}_{\PLower^+}{[\mathsf{inr}]}"]
+  \arrow[d, tail, "\mathsf{map}_{\PLower^+}{[\mathsf{inr}]}"]
 \\
 \PLower^+(\One + \{x : \R \suchthat |f(x)| < \varepsilon \})
 \end{tikzcd},
@@ -1442,11 +1448,11 @@ shape the useful computational information that is received by falling into the 
 
 \subsection{Alternative theories of constructive topology}
 
-Synthetic topology gives an alternative computable interpretation of topology that differs subtly from formal topology and locale theory \cite{escardo2004, lesnik}. We will describe synthetic topology informally, as it gives an alternative intuition about overlapping patterns. In this understanding, data types from a (functional) programming language serve as spaces, and open sets are semidecidable predicates that take values of some type as arguments; for points in the open set, the semidecider must halt, whereas for points in the closed complement, the semidecider should not halt.
+Synthetic topology gives an alternative computable interpretation of topology that differs subtly from formal topology and locale theory \cite{escardo2004, lesnik}. Synthetic topology gives an alternative intuition about overlapping patterns. In this understanding, data types from a (functional) programming language serve as spaces, and open sets are semidecidable predicates that take values of some type as arguments; for points in the open set, the semidecider must halt, whereas for points in the closed complement, the semidecider should not halt.
 
 In this case, an open cover $U \le \bigvee_{i : I} V_i$ means that whenever $U$ halts, then some semidecider $V_i$ also halts.
 
-This interpretation is limited to (classically) spatial locales (locales that also make sense as classical topological spaces) and covers indexed by recursively enumerable sets. But it gives an alternative computational interpretation of overlapping pattern matching: to run a pattern match, run the semideciders for each case in the pattern match \emph{concurrently}. Since the cases must cover the entire space, the semidecider for one case will eventually halt and at that point proceed into the branch corresponding to that case.
+This interpretation is limited to (classically) spatial locales (locales that also make sense as classical topological spaces) and covers indexed by recursively enumerable sets. But it gives an alternative computational interpretation of overlapping pattern matching: to run a pattern match, run the semideciders for each case in the pattern match \emph{concurrently}. Since the cases must cover the entire space, the semidecider for one case will eventually halt and at that point proceed into the branch corresponding to that case. However, implementing overlapping patterns naively with this computational interpretation does not seem particularly efficient.
 
 \subsection{Pattern matching}
 
@@ -1460,13 +1466,13 @@ Dijkstra \cite{dijkstra} introduces ``guarded commands,'' a language construct f
 
 Some of the modified Boolean spaces give topological interpretations of well-known fuzzy logics: $\bool_\bot$ corresponds to Kleene's three-valued logic \cite{kleenemetamathematics}, $\BCover \cong \PLower^+(\bool)$ to Priest's logic of paradox \cite{priest}, and $\PLower(\bool)$ to Dunn/Belnap's four-valued logic \cite{sep-logic-manyvalued}.
 
-dReal is a tool that allows computation of approximate truth values over the real numbers \cite{dReal}, allowing order comparisons and bounded quantifiers. The calculus of binary covers presented here, when restricted to $\R$, provides similar computational abilities but with a different foundational framework. In a sense, it shows how it is possible to generalize the theory behind dReal to spaces other than $\R$.
+dReal is a tool that allows computation of approximate truth values over the real numbers \cite{dReal}, allowing order comparisons and bounded quantifiers. The calculus of binary covers presented here, when restricted to $\R$, provides similar computational abilities but with a different foundational framework. In a sense, \grammar{it} shows how it is possible to generalize the theory behind dReal to spaces other than $\R$.
 
 \section{Discussion and conclusion}
 
-We defined predicative locales and formal topologies in the Coq proof assistant and implemented the core pattern-matching construction (theorem \ref{pattern}). We also defined a function that, given any point $x$ of a space $A$ and any open cover $\top \le \bigvee_{i : I} U_i$ of $A$, returns an index $i : I$ such that $x \models U_i$. Executing this function allows computation of results obtained by running continuous functions. The source code is available at \note{a black hole}.
+We defined predicative locales and formal topologies in the Coq proof assistant and implemented the core pattern-matching construction (theorem \ref{pattern}). We also defined a function that, given any point $x$ of a space $A$ and any open cover $\top \le \bigvee_{i : I} U_i$ of $A$, returns an index $i : I$ such that $x \models U_i$. Executing this function allows computation of results obtained by running continuous maps. The source code is available at \url{http://github.com/bmsherman/overlapping-patterns/}.
 
-The programs described in this paper conceivably support reasonably efficient implementations, thanks to their use of formal topology and (predicative) locale theory. Formal proofs of the validity of continuous maps defined by their inverse image maps not only confirm correctness but also provide the computational content.
+The programs described in this paper conceivably support reasonably efficient implementations, thanks to their use of formal topology and (predicative) locale theory. Formal proofs of the validity of continuous maps defined by their inverse image maps not only confirm correctness but also provide computational content.
 
 Overlapping pattern matches seem useful for a variety of purposes but in particular highlight the  importance of nondeterminism in constructing programs that manipulate spaces. The approximate root-finding procedure in the introduction and the case study of binary covers demonstrate useful nondeterministic programs that can be constructed with overlapping patterns.
 
