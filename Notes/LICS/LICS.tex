@@ -1385,7 +1385,7 @@ For the real numbers, there is a construction
 \end{align*}
 that demonstrates for endpoints $a, b$ that the closed interval from $a$ to $b$ is compact/overt and inhabited. Its name indicates that it is a constructive analogue of the Heine-Borel theorem \cite{vickersmetric2}. The notation in the domain is syntactic sugar for $\{ \R \times \R \suchthat \fun{(a,b)}{a < b} \}$, where the lambda notation describes opens via their correspondence with $\Sigma$-valued continuous maps.
 
-We can define binary covers that give approximate order comparisons on $\R$ by defining, for each $\varepsilon : \rat^+$,
+We can define binary covers that give approximate order comparisons on $\R$ by defining, for each $\varepsilon > 0$,
 \begin{align*}
 [ \cdot < \cdot ]_\varepsilon &: \R \times \R \cto \BCover
 \\ [x < y]_\varepsilon &\triangleq \mathsf{case}(x, y)
@@ -1397,7 +1397,7 @@ We can define binary covers that give approximate order comparisons on $\R$ by d
 
 We can use \grammar{this} to query whether an arbitrary continuous map $f : \R \cto \R$ has no points that are close to being roots on an arbitrary closed interval, with the binary cover
 \begin{align*}
-\mathsf{no\_roots}_{\varepsilon} &: \{ (a, b) : \R \suchthat a < b\} \cto \BCover
+\mathsf{no\_roots}_{\varepsilon} &: \{ (a, b) : \R \times \R \suchthat a < b\} \cto \BCover
 \\ \mathsf{no\_roots}_\varepsilon(s) &\triangleq
   \forall_{\mathsf{HeineBorel}(s)}(\fun{x}{[ 0 < |f(x)| ]_\varepsilon}).
 \end{align*}
