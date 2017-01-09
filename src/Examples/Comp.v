@@ -80,7 +80,7 @@ Require Import Language.CCCPL.
    So frustrating! *)
 Definition func1_twice : unit ~~> (Y (discrete nat) ==> Y (discrete nat))%obj := 
 compile_phoas (U := PSh IGT) (
-  Build_WfTerm (U := PSh IGT) (fun _ => λ x => !x)%stlc (ltac:(proveWF))).
+  Build_WfTerm (U := PSh IGT) (fun _ => Abs (U := PSh IGT) (fun x => (# func_1_CCC) @ ((# func_1_CCC) @ (! x))))%stlc (ltac:(proveWF))).
 
 Definition discrete_pt_CCC {A} (x : A)
   : CCC.Const (Y (discrete A)).
