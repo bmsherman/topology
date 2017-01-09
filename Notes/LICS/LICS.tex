@@ -291,7 +291,7 @@
 
 % *** PDF, URL AND HYPERLINK PACKAGES ***
 %
-\usepackage{url}
+%\usepackage{url}
 % url.sty was written by Donald Arseneau. It provides better support for
 % handling and breaking URLs. url.sty is already installed on most LaTeX
 % systems. The latest version and documentation can be obtained at:
@@ -320,6 +320,7 @@
 \usepackage{tikz-cd}
 \usepackage{../tex/mathpartir}
 \usepackage{fancyvrb}
+\usepackage{hyperref}
 
 \usepackage{amsthm}
 
@@ -1482,7 +1483,7 @@ dReal is a tool that allows computation of approximate truth values over the rea
 
 \section{Discussion and conclusion}
 
-We defined predicative locales in the Coq proof assistant and implemented the core pattern-matching construction (theorem \ref{pattern}). We also defined a function that, given any point $x$ of a space $A$ and any open cover $\top \le \bigvee_{i : I} U_i$ of $A$, returns an index $i : I$ such that $x \models U_i$. Executing this function allows computation of results obtained by running continuous maps. The source code is available at \url{http://github.com/bmsherman/overlapping-patterns/}.
+We defined predicative locales in the Coq proof assistant and implemented the core pattern-matching construction (theorem \ref{pattern}). We also defined a function that, given any point $x$ of a space $A$ and any open cover $\top \le \bigvee_{i : I} U_i$ of $A$, returns an index $i : I$ such that $x \models U_i$. Executing this function allows computation of results obtained by running continuous maps. The source code is available at \href{http://github.com/bmsherman/overlapping-patterns/}{http://github.com/bmsherman/overlapping-patterns/}.
 
 The programs described in this paper conceivably support reasonably efficient implementations, thanks to their use of formal topology and (predicative) locale theory. Formal proofs of the validity of continuous maps defined by their inverse image maps not only confirm correctness but also provide computational content.
 
