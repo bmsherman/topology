@@ -378,3 +378,19 @@ then certainly $P^{-1}(\mathsf{Left})$ holds everywhere in $f(A)$. Similarly, if
 \exists_C P \models \mathsf{Right},
 \]
 then certainly $P^{-1}(\mathsf{Right})$ holds everywhere in $f(A)$.
+
+\subsection{[[IN PROGRESS]] Shrinking covers on $\R^n$}
+
+Perhaps we want an automatic way of taking function definitions which use overlapping pattern matching, as described in the previous section, and extending each branch to a compact space.
+
+For Euclidean space $\R^n$, each open in the base is an open ball $B_\varepsilon(q)$ for $q : \rat^n$ and $\varepsilon : \rat^+$. The open balls are naturally related to the closed balls $\overline{B}_\varepsilon(q)$, which are compact in $\R^n$. Note that this isn't the case for arbitrary locally compact metric spaces. For instance, the closed ball $\overline{B}_1(1)$ is not compact in $\{ \R \suchthat \cdot \neq 0 \}$, which is a locally compact metric space.
+
+We can automatically shrink covers by induction on the cover relation. Suppose we're considering a space $A$ and considering the compact closed subspace co-classified by the open $V : \Open{A}$. We want to prove that for any cover
+\[
+\top_A \cov U \vee V,
+\]
+where $U$ is finite, there is another cover
+\[
+\top_A \cov U' \vee V
+\]
+such that for each $u' : U'$, there is some $u : U$ such that $u'$ is \emph{strictly} smaller than $u$. We proceed by induction on the size of $U$. If $U$ is empty, this is vacuously true. Now suppose the 
