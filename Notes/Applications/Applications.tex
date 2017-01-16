@@ -20,6 +20,7 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows}
 \usetikzlibrary{shapes, arrows.meta}
+\usepackage{tikz-cd}
 
 \usepackage{../tex/mathpartir}
 \usepackage{url}
@@ -604,7 +605,7 @@ Concretely, let's imagine that the only variable affecting the car's decision sh
 \[
 y + 1< r < y + 2 \quad \wedge \quad r \ne 0,
 \]
-meaning that the car not be exactly at the intersection when the light turns red, and that it must move between 1 and 2 units forward between the yellow and red light. The proposition $r < 0$ indicates choosing to stop, while $r >0$ indicates choosing to go.
+meaning that the car must not be exactly at the intersection when the light turns red, and that it must move between 1 and 2 units forward between the yellow and red light. The proposition $r < 0$ indicates choosing to stop, while $r >0$ indicates choosing to go.
 
 Thus, it's safe to stop as long as $y < -1$ and safe to go as long as $y > -2$. So our decision-making procedure is:
 \begin{align*}
@@ -700,26 +701,72 @@ The following program satisfactorily determines how far to move forward
 \end{align*}
 and is a valid definition as long as $\delta < 0.8$.
 
-[ The following is wrong. I didn't make it the lower powerspace for the distance to move forward. But then the condition is no longer an open subspace, which is annoying.]
-Finally, we may wish to write a program whose type signature captures entirely the requirement that the car's position when the light turns red. The dependent type signature
-\begin{align*}
-\mathsf{stoplight} &: \forall s : \{ s' : \Viet(\R) \suchthat U(s') \},
-  \exists d : \{ d' : \R \suchthat 1 < d' < 2 \},
-  \forall x \in s,  x + d \ne 0
-\end{align*}
-captures all of these aspects (where $U$ ought to be some predicate which makes the above type inhabitable). Note that the first $\forall$ and $\exists$ symbols in the above type are different than the notation used for points of the powerspaces; the usage of the colon rather than $\in$ is meant to signify this difference.
+\subsection{Dependent types}
 
-The meaning of the above type is that one must actually produce the simply typed continuous map
+\emph{Note: this section is newer than the rest, and uses the terminology of binary covers.}
+
+Finally, we may wish to write a program whose type signature captures entirely the requirement that the car's position when the light turns red.
+Let the binary cover $I : \R \to \mathsf{BCover}$ denote our approximation of the location of the the intersection, where either observing $I_*(\mathsf{Left}) : \Open{\R}$ or \emph{refuting} $I_*(\mathsf{Right}) : \Open{\R}$ is sufficient to confirm that we are outside the intersection. For instance if we still consider the intersection to be \emph{just} the point 0, then we could have $I_*(\mathsf{Left}) = \cdot \neq 0$ and $I_*(\mathsf{Right}) = -\varepsilon < \cdot < \varepsilon$ for some positive $\varepsilon : \R$.
+
+The dependent type signature
 \begin{align*}
-\mathsf{stoplight}' &: \{ s' : \Viet(\R) \suchthat U(s') \}
-  \to \{ (s, d) : \{ s' : \Viet(\R) \suchthat U(s') \} \times \{ d' : \R \suchthat 1 < d' < 2 \}
-                   \suchthat \forall x \in s, x + d \ne 0 \}
+\mathsf{stoplight} &: \Pi {s : \{ \Viet(\R) \suchthat U \}},
+  \Sigma d : \PLower(\{ \R \suchthat 1 < \cdot < 2 \}),
+  \forall x \in s,
+  \neg (\exists y \in d, I_*(\mathsf{Right})(x + y)),
 \end{align*}
-with the additional requirement that
+(where $U$ ought to be some predicate which makes the above type inhabitable), expresses the task well. For any inhabited compact/overt set $s$ of real numbers representing possible distances from the intersection, we must choose a nondeterministic distance $d$ to move forward that is between 1 and 2, such that no matter our \emph{actual} distance $x$ from the intersection, we will \emph{never} observe that the nondeterministic decision $y$ that we made caused our final position $x + y$ to lie within some region $I_*(\mathsf{Right})$ which fails to guarantee that we are actually outside of the intersection.
+
+The meaning of the dependent types comes from embedding the category of spaces and continuous maps into the gros topos of sheaves over the site consisting of that category, endowed with the ``open cover topology'' as the coverage.
+
+In this case, it's fairly easy to compile the definitions to understand what is an inhabitant of the above type: an inhabitant of that type is a continuous map
+\begin{align*}
+\mathsf{stoplight}' &: \{ \Viet(\R) \suchthat U \}
+  \to \{ (s, d) : \{ \Viet(\R) \suchthat U \} \times \PLower(\{ \R \suchthat 1 < \cdot < 2 \})
+  \suchthat \forall x \in s,
+    \neg (\exists y \in d, I_*(\mathsf{Right})(x + y)) \}
+\end{align*}
+which satisfies the additional requirement that
 \[
 \mathsf{fst} \circ \mathsf{stoplight}' = \mathsf{id}.
 \]
-This translation is just the categorical interpretation of dependent types as overcategories (also known as slice categories).
+
+This is just one way to phrase the problem. There's one aspect here that's less than satisfying, in that there is no minimal open $I_*(\mathsf{Right})$ to use in this case. An this means, in some sense, that no matter which $I_*(\mathsf{Right})$ is chosen, there would always be a function which actually \emph{is} a solution, in that it always ends up in $I_*(\mathsf{Left})$, but does not satisfy the type of $\mathsf{stoplight}$. 
+
+One could phrase the problem in an alternative manner that avoids this problem. Instead, we ask for a decision function $f :  \{ \Viet(\R) \suchthat U \} \to \PLower(\{ \R \suchthat 1 < \cdot < 2 \}$ such that the outcome \footnote{We're implicitly using the subspace inclusion of $\Viet(\R)$ into $\PLower(\R)$ here.}
+\begin{align*}
+\mathsf{outcome} &: \{ \Viet(\R) \suchthat U \} \to \PLower(\R)
+\\ \mathsf{outcome}(s) &\triangleq 
+  x \leftarrow s \then 
+  y \leftarrow f(s) \then
+  \ret{\PLower}(x + y)
+\end{align*}
+factors into some $\mathsf{outcome'} : \{ \Viet(\R) \suchthat U \} \to \PLower(\{\R \suchthat I_*(\mathsf{Left})\})$ which makes the following diagram commute:
+\begin{equation*}
+\begin{tikzcd}
+\{ \Viet(\R) \suchthat U \} \arrow[r, "\mathsf{outcome'}"]
+   \arrow[dr,swap,"\mathsf{outcome}"]
+& \PLower(\{\R \suchthat I_*(\mathsf{Left})\})
+   \arrow[d, hook, "\mathsf{map}_{\PLower}(\iota_{I_*(\mathsf{Left})})"]
+\\
+{} & \PLower(\R)
+\end{tikzcd}
+\end{equation*}
+
+This is, in some sense, a tighter statement of the problem, but I'm not sure how it could be internalized into a single type in the gros topos. 
+\subsubsection{A more realistic problem statement}
+
+First, let's abstract away some of the detail in the previous statements of the problem. Rather than characterizing space of the car's actual state as $\R$ (for distance from the intersection), we will use an abstract space $\mathsf{State}$. Rather than forcing the decision to be $\bool$, we will call the space $\mathsf{Decision}$. And we will assume there is a function
+\[
+\mathsf{dynamics} : \mathsf{State} \times \mathsf{Decision} \to \R
+\]
+which simulates where a car ends up when the light turns red, starting from a beginning state after making a decision. We might want to allow either non-determinism or randomness in the determination of the car's position once the light turns red, but we will leave things this way for now.
+
+Now, let's say that the car's state involves its position $d : \R$ relative to the intersection, its velocity $v : \R$, and the time $t : \{ \R \suchthat \cdot > 0 \}$ until the light turns red. If the car chooses to continue, we will assume it chooses to keep a constant speed, so its position when the light turns red will be $d + v t$. If the car chooses to brake, we will assume it decelerates with some constant acceleration $a : \R$ (taking $a > 0$), such that its position when the light turns red is
+\[
+\min\left(  d + vt - \frac{1}{2}a t^2, d + \frac{v^2}{2a} \right).
+\]
+
 
 \section{Differential equations and thermostats}
 
