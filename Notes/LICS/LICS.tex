@@ -497,9 +497,9 @@ In functional programming, pattern matching allows definition of a function by p
 
 \section{Introduction}
 
-Today, software routinely manipulates continuous concepts, such as space, time, magnitude, and probability. However, such software usually does so with unsound approximations, such as using floating point rather than real numbers. These approximations can result in errors and also make it very difficult to reason about program behavior.
+Software routinely manipulates continuous concepts, such as space, time, magnitude, and probability. However, such software usually does so with unsound approximations, such as using floating point rather than real numbers. These approximations can result in errors and also make it very difficult to reason about program behavior.
 
-One solution is just to program with topological spaces themselves, in a semantically faithful manner. Committing to programming with spaces in this manner ensures that all total programs are continuous, which offers computational benefits in addition to facilitating reasoning \cite{lamcra, escardoinfinite, escardo2004, simpson1998lazy}. But doing so introduces its own challenges, and the principles of programming in this way have yet to be explored. This article introduces a programming construct that ought to be useful for programming with spaces: \emph{overlapping pattern matches}.
+Instead we propose to program with topological spaces themselves, in a semantically faithful manner. Committing to programming with spaces in this manner ensures that all total programs are continuous, which offers computational benefits in addition to facilitating reasoning \cite{lamcra, escardoinfinite, escardo2004, simpson1998lazy}. But doing so introduces its own challenges, and the principles of programming in this way have yet to be explored. This article introduces a programming construct that ought to be useful for programming with spaces: \emph{overlapping pattern matches}.
 
 Consider the following computational task. Suppose we have an arbitrary continuous function $f : \R \cto \R$ and want to determine if it has any roots on the interval $[a,b]$, for $a < b$. In general, \grammar{this} is not decidable \cite{lamcra}, but an approximation is possible: fix a tolerance $\varepsilon > 0$. Then either, or both, of the following statements must hold:
 \begin{itemize}
