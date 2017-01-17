@@ -395,25 +395,14 @@
 \newcommand{\dirsup}[1]{{\bigvee_{#1}}^{\uparrow}}
 \newcommand{\BCover}{\mathsf{BCover}}
 \newcommand{\iimg}[1]{#1^*}
-
-\newcommand{\RootFindingCode}{
-&\mathsf{root}_f : \{ (a, b) : \R \times \R \suchthat a < b \}
-  \\ &\qquad \cto \PLower^+(\One + \{ x : \R \suchthat |f(x)| < \varepsilon \})
-\\ &\mathsf{root}_f(\ell) \triangleq \mathsf{case}(\mathsf{HeineBorel}(\ell))
-\\ &\begin{cases}
-\oincl{\lozenge (\fun{x}{|f(x)| < \varepsilon})}{s} 
-  &\Branch \map{\PLower^+}{\mathsf{inr}}(\mathsf{some}(\mathsf{un}\square(s)))
-\\ \oincl{\square (\fun{x}{f(x) \neq 0})}{\wildcard}
-  &\Branch \{ \mathsf{inl}(\mathsf{tt}) \}
-\end{cases}
-}
+\newcommand{\pback}[2]{#1^*#2}
 
 \newcommand{\note}[1]{\textcolor{red}{[[{#1}]]}}
 \newcommand{\grammar}[1]{\textcolor{red}{\underline{#1}}}
-\newcommand{\ConsiderRemoving}[1]{\textcolor{red}{[Consider removing?: \textcolor{black}{#1}]}}
-\newcommand{\FutureWork}[1]{}
+\newcommand{\ConsiderRemoving}[1]{\textcolor{blue}{#1}}
+\newcommand{\FutureWork}[1]{\textcolor{brown}{#1}}
 
-\renewcommand{\grammar}[1]{#1}
+%\renewcommand{\grammar}[1]{#1}
 
 %Perhaps this is okay?
 %\allowdisplaybreaks
@@ -508,7 +497,15 @@ Consider the following computational task. Suppose we have an arbitrary continuo
 \end{itemize}
 Though each of the above statements is in general undecidable, we can use an overlapping pattern match to define a function that nondeterministically computes that one of the above two statements holds, in the former case \emph{computing} such an $x$ that is ``almost a root.'' The code
 \begin{align*}
-\RootFindingCode
+&\mathsf{root}_f : \{ (a, b) : \R \times \R \suchthat a < b \}
+  \\ &\qquad \cto \PLower^+(\One + \{ x : \R \suchthat |f(x)| < \varepsilon \})
+\\ &\mathsf{root}_f(\ell) \triangleq \mathsf{case}(\mathsf{HeineBorel}(\ell))
+\\ &\begin{cases}
+\oincl{\lozenge (\fun{x}{|f(x)| < \varepsilon})}{s} 
+  &\Branch \map{\PLower^+}{\mathsf{inr}}(\mathsf{some}(\mathsf{un}\square(s)))
+\\ \oincl{\square (\fun{x}{f(x) \neq 0})}{\wildcard}
+  &\Branch \{ \mathsf{inl}(\mathsf{tt}) \}
+\end{cases}
 \end{align*}
 accomplishes this task.
 The result space allows nondeterministic computation (indicated by $\PLower^+$) of either an $\mathsf{inr}(x)$ that is ``almost a root'' or a value $\mathsf{inl}(\mathsf{tt})$ indicating that there are no roots on the interval.
@@ -638,7 +635,7 @@ Unlike a short-circuiting ``or'' operation in most programming languages, this $
 
 The final case alone is covering, so it remains to check gluing. Though the final case overlaps with every other case, it always has nondeterministic unions with the other cases when they overlap, since it returns $\bot$. The first and second cases do overlap, but they agree exactly, and other case pairs are disjoint from each other. So $\mathsf{or}$ is well-defined.
 
-Adding a catch-all case $(\wildcard \Branch \bot)$ to a pattern match whose output space has a bottom point ensures that the cases are covering, does not affect the gluing requirement, and does not affect the behavior of a pattern match that is already well-defined. Accordingly, it makes sense to keep track of which spaces $B$ have bottom points, and when a $\mathsf{case}$ expression is written whose output space $B$ has a bottom point, the catch-all case can be added automatically (and implicitly). As a result, any pattern match whose output space has a bottom point is automatically covering.
+Adding a catch-all case $(\wildcard \Branch \bot)$ to a pattern match whose output space has a bottom point ensures that the cases are covering, does not affect the gluing requirement, and does not affect the behavior of a pattern match that already satisfies covering. Accordingly, it makes sense to keep track of which spaces $B$ have bottom points, and when a $\mathsf{case}$ expression is written whose output space $B$ has a bottom point, the catch-all case can be added automatically (and implicitly). As a result, any pattern match whose output space has a bottom point is automatically covering.
 
 Other operations on lifted spaces are naturally expressed with overlapping patterns. For instance, any $f : A \cto B$ can be lifted to operate on lifted spaces with the overlapping pattern
 \begin{align*}
@@ -802,7 +799,7 @@ These constructions are critical in enabling computation over these spaces.
 
 Since locale theory is generally impredicative, care must be taken with defining the predicative analogue presented here. For instance, in this formalization, the universe of the set of opens of any nontrivial space must be large relative to the universe of sets over which joins are admitted. Palmgren \cite{palmgren2003} offers a more careful treatment of predicativity and universes in formal topology.
 
-The use of a dependent pair in the \irule{split} rule agrees with formal topology as formalized in Martin-L\"of type theory but differs from Maietti and Sambin \cite{whypointfree}, who use an existential quantifier that does not guarantee a computational interpretation.
+\ConsiderRemoving{The use of a dependent pair in the \irule{split} rule agrees with formal topology as formalized in Martin-L\"of type theory but differs from Maietti and Sambin \cite{whypointfree}, who use an existential quantifier that does not guarantee a computational interpretation.}
 
 \comment{
 \begin{definition}
@@ -834,6 +831,7 @@ f &: A \cto B
 \end{cases},
 \end{align*}
 where $i$ ranges over the index set $I : \Type$, each $p_i : A_i \hookto A$ is an open embedding, each $e_i : A_i \cto B$ is a general expression, and each $x_i : A_i$ is a pattern variable binding.\footnote{
+\ConsiderRemoving{
 Note that a pattern match written on several lines such as
 \[
 \begin{cases}
@@ -854,7 +852,7 @@ P_{\mathsf{inl}(i)} &= p_i
 \\ P_{\mathsf{inr}(j)} &= q_j
 & E_{\mathsf{inr}(j)} &= h_j.
 \end{align*}
-}
+}}
 
 Such an overlapping pattern match specifies an inverse image map $\iimg{f} : \Open{B} \to \Open{A}$ that acts on opens according to
 \[
@@ -885,7 +883,7 @@ where $P_i : \Open{A}$ and $e_i : \{ A \suchthat P_i \} \cto B$, meaning that $f
 \iimg{f}(U) = \bigvee_{i : I} \iimg{e_i}(U).
 \end{align}
 
-\subsection{Confirming validity of patterns}
+\subsection{Confirming that patterns define continuous maps}
 
 The $\mathsf{case}$ expression above entirely determines the \emph{specification} of the program's behavior as an inverse image map, but we still need to prove two conditions to show that it can in fact be \emph{implemented} with a continuous map. \grammar{That} means that these proofs will affect the \emph{computational} behavior of the program, meaning that different proofs might result in different responses when points are split with open covers. 
 \begin{theorem}
@@ -1070,6 +1068,27 @@ which corresponds to the empty subspace of $A$. Therefore, when the output space
 \section{Properties of overlapping patterns}
 \label{s:properties}
 
+\subsection{Pulling back covers}
+\label{s:pback}
+
+Since covering families of open embeddings form a Grothendieck topology, given a cover $(p_i : B_i \hookto B)_{i : I}$ of $B$ and a map $f : A \cto B$, the family
+\[
+\pback{f}{p_i} : \{A \suchthat f^*(\Img{p_i}) \} \hookto A \qquad (i : I)
+\]
+of open embeddings pulled back along $f$ covers $B$, where we have the pullback diagram
+\begin{equation*}
+\begin{tikzcd}
+\{A \suchthat f^*(\Img{p_i}) \} \arrow[r, hook, "\pback{f}{p_i}"]
+   \arrow[d]
+   \arrow[dr, phantom, "\lrcorner", very near start]
+& A \arrow[d, "f"]
+\\ B_i \arrow[r, hook, "p_i"]
+& B
+\end{tikzcd}.
+\end{equation*}
+
+By using pulled-back covers, it is possible to pattern match on an input $x : A$ by doing a case analysis on $f(x) : B$, such that in each branch it is known that $x$ lies in a particular open subspace of $A$ (rather than only knowing that $f(x)$ lies in a particular open subspace of $B$). The introductory example, as explained in section \ref{s:bcov:root}, uses a pulled-back cover in this way.
+
 \subsection{Equational reasoning about evaluation}
 
 Overlapping patterns admit a form of equational reasoning. A function $f : A \cto B$ defined by the pattern match
@@ -1085,13 +1104,13 @@ can be described by
 \[
 (f \circ x)(\gamma) = \mathsf{case}(\gamma)
 \begin{cases}
-[i : I] \quad q_i(\gamma_i) \quad \Branch \quad e_i(x_i(\gamma_i)),
+[i : I] \quad \pback{f}{p_i}(\gamma_i) \quad \Branch \quad e_i(x_i(\gamma_i)),
 \end{cases}
 \]
-where each $q_i$ and $x_i$ come from the pullback diagram
+where each $\pback{f}{p_i}$ and $x_i$ come from the pullback diagram
 \begin{equation*}
 \begin{tikzcd}
-A_i \times_A \Gamma \arrow[r, hook, "q_i"]
+\{\Gamma \suchthat f^*(\Img{p_i}) \} \arrow[r, hook, "\pback{f}{p_i}"]
    \arrow[d, "x_i"]
    \arrow[dr, phantom, "\lrcorner", very near start]
 & \Gamma \arrow[d, "x"]
@@ -1102,12 +1121,12 @@ A_i \times_A \Gamma \arrow[r, hook, "q_i"]
 
 In particular, suppose for each $i : I$, the open
 \[
-\Img{q_i} : \Open{\Gamma}
+f^*(\Img{p_i}) : \Open{\Gamma}
 \]
 is either $\top$ or $\bot$. If $x$ is a global point, meaning $\Gamma \cong \One$, then classically \grammar{this} is the case. Let $I_\top$ and $I_\bot$ represent the indices where the opens are $\top$ and $\bot$, respectively, and for $i : I_\top$, let $x_{A_i} : \Gamma \cto \{ A \suchthat \Img{p_i} \}$ be $x$ with a restricted range. Then for any $U : \Open{B}$,
 \begin{align*}
-\iimg{(f \circ x)}(U) &= \bigvee_{i : I} \iimg{(e_i \circ x_i \circ \tilde{q}_i^{-1})}(U)
-\\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ x_i \circ \tilde{q}_i^{-1})}(U)
+\iimg{(f \circ x)}(U) &= \bigvee_{i : I} \iimg{(e_i \circ x_i)}(U)
+\\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ x_i)}(U)
 \\ &= \bigvee_{i : I_\top} \iimg{(e_i \circ \tilde{p}_i^{-1} \circ x_{A_i})}(U)
 \end{align*}
 
@@ -1289,6 +1308,7 @@ Then binary covers form a De Morgan algebra with respect to this partial order. 
 \end{cases}.
 \end{align*}
 
+\note{Mike thinks that these should be theorems or lemmas. Does that mean he wants more detail?}
 We confirm by inspection that these three patterns are indeed covering.
 Since the output space is $\BCover$, where any two points have maxima, the gluing condition is trivially satisfied.
 
@@ -1404,13 +1424,13 @@ We can define binary covers that give approximate order comparisons on $\R$ by d
 \end{cases}
 \end{align*}
 
-We can use \grammar{this} to approximately query whether an arbitrary continuous map $f : \R \cto \R$ has no roots on an arbitrary closed interval, with the binary cover
+We can use \grammar{this} to approximately query whether an arbitrary continuous map $f : \R \cto \R$ has no roots on a compact/overt subspace of $\R$ (such as a closed interval), with the binary cover
 \begin{align*}
-\mathsf{no\_roots}_{\varepsilon} &: \{ (a, b) : \R \times \R \suchthat a < b\} \cto \BCover
-\\ \mathsf{no\_roots}_\varepsilon(\ell) &\triangleq
-  \forall_{\mathsf{HeineBorel}(\ell)}(\fun{x}{[ 0 < |f(x)| ]_\varepsilon}).
+\mathsf{no\_roots}_{\varepsilon} &: \Viet(\R) \cto \BCover
+\\ \mathsf{no\_roots}_\varepsilon(s) &\triangleq
+  \forall_{s}(\fun{x}{[ 0 < |f(x)| ]_\varepsilon}).
 \end{align*}
-If we observe $\mathsf{Left}$ of the result on input $(a, b)$, then indeed $f$ has no roots on $[a, b]$, while if we observe $\mathsf{Right}$ of the result, then there is some $x \in [a, b]$ such that $|f(x)| < \varepsilon$.
+If we observe $\mathsf{Left}$ of the result on input $s$, then indeed $f$ has no roots on $s$, while if we observe $\mathsf{Right}$ of the result, then there is some $x \in s$ such that $|f(x)| < \varepsilon$.
 
 Perhaps we have two maps $f, g : \R \times \R \cto \R$ and wish to confirm, for some compact/overt space $s : \Viet(\R)$ that there is some $x \in [0,1]$ such that for every $y \in s$, $f(x, y)$ is positive while $g(x,y)$ is negative. Then
 \begin{align*}
@@ -1428,17 +1448,23 @@ The nesting of quantifiers in $\mathsf{apart}_\varepsilon$ makes critical use of
 
 Recall the approximate root-finding program from the introduction,
 \begin{align*}
-\RootFindingCode.
+&\mathsf{root}_f : \{ (a, b) : \R \times \R \suchthat a < b \}
+  \\ &\qquad \cto \PLower^+(\One + \{ x : \R \suchthat |f(x)| < \varepsilon \})
+\\ &\mathsf{root}_f(\ell) \triangleq \mathsf{case}(\mathsf{HeineBorel}(\ell))
+\\ &\begin{cases}
+\pback{\mathsf{no\_roots}_\varepsilon}{\mathsf{Right}}(s)
+  &\Branch \map{\PLower^+}{\mathsf{inr}}(\mathsf{some}(\mathsf{un}\square(s)))
+\\ \pback{\mathsf{no\_roots}_\varepsilon}{\mathsf{Left}}(\wildcard)
+  &\Branch \{ \mathsf{inl}(\mathsf{tt}) \}
+\end{cases},
 \end{align*}
+where here the pattern match is written in a different (but equivalent) manner, using a pulled-back cover as described in section \ref{s:pback}. One can confirm that the patterns here define equivalent subspaces as the ones in the version in the introduction.
+
+\note{Here I'm glossing over the fact that that the opens are equivalent but not definitionally equal, making those open subspaces only homeomorphic, rather than actually identical.}
 
 While previous parts of the paper explain much of this code, it remains to prove that the cases cover, and to explain the expressions in the first branch.
 
-To prove covering, we first observe that  $(\fun{x}{|f(x)| < \varepsilon})$ and $(\fun{x}{f(x) \ne 0})$ form a binary cover of $\R$, as they are equivalent to the $\BCover$-valued continuous map
-\[
-\fun{x}{[0 < |f(x)|]_\varepsilon}
-\]
-(as in the $\mathsf{no\_roots}_\varepsilon$ example).
-Since these opens form a binary cover, the covering condition holds by the same derivation that showed that the cases were covering in the definition of $\forall_{[\cdot]}f$.
+With this formulation, it simple to prove the cases cover $\Viet(\R)$, as they are the pullbacks along $\mathsf{no\_roots}_\varepsilon$ of the open embeddings $\mathsf{Left}$ and $\mathsf{Right}$, which together cover $\BCover$ (see \ref{s:pback}).
 
 The expressions in the first branch,
 \begin{equation*}
@@ -1485,7 +1511,7 @@ dReal is a tool that allows computation of approximate truth values over the rea
 
 We defined predicative locales in the Coq proof assistant and implemented the core pattern-matching construction (theorem \ref{pattern}). We also defined a function that, given any point $x$ of a space $A$ and any open cover $\top \le \bigvee_{i : I} U_i$ of $A$, returns an index $i : I$ such that $x \models U_i$. Executing this function allows computation of results obtained by running continuous maps. The source code is available at \href{http://github.com/bmsherman/overlapping-patterns/}{http://github.com/bmsherman/overlapping-patterns/}.
 
-The programs described in this paper conceivably support reasonably efficient implementations, thanks to their use of formal topology and (predicative) locale theory. Formal proofs of the validity of continuous maps defined by their inverse image maps not only confirm correctness but also provide computational content.
+The programs described in this paper conceivably support reasonably efficient implementations, thanks to their use of formal topology and (predicative) locale theory. Formal proofs that inverse image maps preserve meets and joins not only confirm that they indeed define continuous maps but also provide computational content.
 
 Overlapping pattern matches seem useful for a variety of purposes but in particular highlight the  importance of nondeterminism in constructing programs that manipulate spaces. The approximate root-finding procedure in the introduction and the case study of binary covers demonstrate useful nondeterministic programs that can be constructed with overlapping patterns.
 
