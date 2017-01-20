@@ -5,18 +5,18 @@ Require Import
   CoRN.metric2.Metric
   FormTopC.Metric.
 
-Require Import Types.Setoid.
-
-Definition Setoid_RSetoid (X : Setoid) : RSetoid :=
-  {| st_car := sty X
-   ; st_eq := seq X
-   ; st_isSetoid := seq_Equivalence X |}.
+Definition unit_RSetoid : RSetoid.
+Proof.
+refine (
+  {| st_car := unit
+   ; st_eq := fun _ _ => True |}); firstorder.
+Defined. 
 
 (* One-point metric space *)
 Definition MOne : MetricSpace.
 Proof.
 unshelve econstructor.
-- exact (Setoid_RSetoid unit_Setoid).
+- exact (unit_RSetoid).
 - exact (fun _ _ _ => True).
 - simpl. intros. split; intros; auto.
 - simpl. constructor.

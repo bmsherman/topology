@@ -2,30 +2,32 @@ Require Import Prob.StdLib Coq.Classes.CRelationClasses.
 
 Set Universe Polymorphism.
 
-Definition Subset (A : Type) := A -> Type.
-Definition bin_op (A : Type) := A -> A -> A.
+Definition Subset@{A P} (A : Type@{A}) := A -> Type@{P}.
+Definition bin_op@{A} (A : Type@{A}) := A -> A -> A.
 
 Section Defns.
-Context {A : Type}.
-Universes A P.
+Universes A.
+Context {A : Type@{A}}.
 
-Definition In (U : Subset@{A P} A) (x : A) := U x. 
+Definition In@{P} (U : Subset@{A P} A) (x : A) := U x. 
 
-Definition pointwise_op (f : Type -> Type -> Type) (U V : Subset@{A P} A) : Subset@{A P} A
+Definition pointwise_op@{P Q PQ} (f : Type@{P} -> Type@{Q} -> Type@{PQ}) 
+  (U : Subset@{A P} A) (V : Subset@{A Q} A) : Subset@{A PQ} A
   := fun a : A => f (U a) (V a).
 
-Definition pointwise_rel (f : Type -> Type -> Type) (U V : Subset@{A P} A) : Type
+Definition pointwise_rel@{P Q PQ} (f : Type@{P} -> Type@{Q} -> Type@{PQ}) 
+  (U : Subset@{A P} A) (V : Subset@{A Q} A) : Type@{PQ}
   := forall a : A, f (U a) (V a).
 
-Definition Intersection : bin_op (Subset@{A P} A) := pointwise_op prod.
+Set Printing Universes.
+Definition Intersection@{P Q PQ} : Subset@{A P} A -> Subset@{A Q} A -> Subset@{A PQ} A := pointwise_op prod.
+Definition Union@{P Q PQ} : Subset@{A P} A -> Subset@{A Q} A -> Subset@{A PQ} A := pointwise_op sum.
 
-Definition Union : bin_op (Subset@{A P} A) := pointwise_op sum.
-
-Inductive Inhabited {U : Subset A} :=
+Inductive Inhabited@{P} {U : Subset@{A P} A} :=
   Inhabited_intro : forall a : A, In U a -> Inhabited.
 
-Definition Included : crelation (Subset A) := pointwise_rel arrow.
-Definition Same_set : crelation (Subset A) := pointwise_rel iffT.
+Definition Included@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointwise_rel arrow.
+Definition Same_set@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointwise_rel iffT.
 End Defns.
 
 Arguments Inhabited {A} U : clear implicits.

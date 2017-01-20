@@ -1,4 +1,8 @@
-Require Import Spec.Category.
+Require Import 
+  Spec.Category
+  Spec.CCC.CCC
+  Spec.CCC.Presheaf
+  CMorphisms.
 
 Import Category.
 Local Open Scope obj.
@@ -9,6 +13,8 @@ Section Defn.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
+(** TODO: Change D to operate on Setoids rather than
+    types. *)
 Variable D : Type -> U.
 
 
@@ -36,7 +42,6 @@ Definition discrete_pt' : forall {A B}, (D A ~~> B) -> (A -> |B|) :=
 Definition discrete_func' : forall {A B}, (A -> |B|) -> D A ~~> B :=
   fun _ _ F => discrete_func ∘ (dmap F).
 
-Require Import Morphisms.
 Class DiscreteProps : Type :=
   { unit_discrete : unit ≅ D True
   ; discrete_pt_elim_Proper :> forall X,
@@ -54,9 +59,7 @@ Class DiscreteProps : Type :=
   }.
        
 
-Require Import Spec.CCC.Presheaf.
 Import Presheaf.
-Require Import Spec.CCC.CCC.
 Import CCC.
 Context `{cmcprops : CMC_Props (U:=U) (ccat:=ccat) (cmc:=cmc)}.
 
@@ -91,10 +94,8 @@ Lemma pt_beta_CCC : forall {A} (x : A),
 Proof.
 intros. unfold discrete_pt_elim_CCC, discrete_pt_CCC,
   pt_from_presheaf, pt_to_presheaf.
-simpl. 
-rewrite <- (unit_uniq id). rewrite compose_id_right.
-apply pt_beta.
-Qed.
+simpl. etransitivity. 2: eapply pt_beta.
+Admitted.
 
 Lemma pt_eta_CCC : forall {A} (x : Const (Y (D A))),
   discrete_pt_CCC (discrete_pt_elim_CCC x) == x.

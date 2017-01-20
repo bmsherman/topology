@@ -23,6 +23,8 @@ Record IGT : Type :=
     (** The space must have a positivity predicate. *)
   }.
 
+Set Printing Universes.
+
 Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
 Local Instance local `(X : IGT) : FormTop.localized (S X)
   := localized X.
@@ -121,7 +123,7 @@ typeclasses eauto.
 Qed.
 
 Definition eq_map {A B : IGT} (f g : A ~~> B)
-  : Prop := inhabited (EQ_map (mp f) (mp g)).
+  : Type := EQ_map (mp f) (mp g).
 
 Require Import CRelationClasses.
 Lemma truncate_Equiv A (f : crelation A) :

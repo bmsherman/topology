@@ -1,7 +1,14 @@
 (** Definition of "lifted" spaces, which are spaces with a "bottom"
     (think non-termination) element adjoined. *)
 
-Require Import Spec.Category Spec.Stream Spec.Sum Spec.Pullback Spec.Sup Fix Spec.Sierpinski.
+Require Import 
+  Spec.Category
+  Spec.Stream 
+  Spec.Sum 
+  Spec.Pullback 
+  Spec.Sup 
+  Fix 
+  Spec.Sierpinski.
 
 Import Category.
 Import Stream.
@@ -30,10 +37,10 @@ Class LiftOps : Type :=
   { strict : forall {A}, A ~~> Lift A
     ; bottom : forall {A}, unit ~~> Lift A
     ; lift_rec : forall {A X} (x : unit ~~> X) (f : A ~~> X),
-        (forall {a : unit ~~> A}, sleq(Σ:=Σ) x (f ∘ a)) -> Lift A ~~> X
-    ; gen_recursion : forall {A}, Stream (unit + A) ~~> Lift A
+        (forall {a : unit ~~> A}, sleq(Σ:=Σ) x (f ∘ a)) -> Lift A ~~> X 
+    ; gen_recursion : forall {A}, Stream (unit + A) ~~> Lift A 
     ; bottom_min : forall {A B}, isBot (Σ:=Σ) (bottom (A:=A) ∘ tt(Γ:=B))
-    ; apart : forall {X A} (f : X ~~> unit) (g : X ~~> A), ~ (bottom ∘ f == strict ∘ g)
+    ; apart : forall {X A} (f : X ~~> unit) (g : X ~~> A), (bottom ∘ f == strict ∘ g) -> Logic.False 
   }.
 
 

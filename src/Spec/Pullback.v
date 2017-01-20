@@ -1,6 +1,6 @@
 Require Import Spec.Category Spec.Sum.
 
-Import Morphisms Category Sum.
+Import CMorphisms Category Sum.
 Local Open Scope obj.
 Local Open Scope morph.
 
@@ -15,7 +15,7 @@ Module Pullback.
       supposed to be equivalent to requiring that the morphism i below is unique. 
       It may be stronger, but I don't think so. *)
       (forall {X} (j : X ~~> B) (k : X ~~> C), f ∘ j == h ∘ k ->
-                                      {i : X ~~> A | e ∘ i == j /\ g ∘ i == k}).
+                                      {i : X ~~> A & ((e ∘ i == j) * (g ∘ i == k))%type}).
 
     Definition Pullback_Comm : forall  {A B C D} {e : A ~~> B} {f : B ~~> D} {g : A ~~> C} {h : C ~~> D},
         Pullback e f g h ->
@@ -28,17 +28,17 @@ Module Pullback.
     Definition Pullback_Exists : forall  {A B C D} {e : A ~~> B} {f : B ~~> D} {g : A ~~> C} {h : C ~~> D},
         Pullback e f g h ->
         forall {X : U} (j : X ~~> B) (k : X ~~> C), f ∘ j == h ∘ k -> X ~~> A :=
-      fun _ _ _ _ _ _ _ _ H _ j k K => (proj1_sig ((Datatypes.snd H) _ j k K)).
+      fun _ _ _ _ _ _ _ _ H _ j k K => (projT1 ((Datatypes.snd H) _ j k K)).
     Definition Pullback_Exists_left : forall  {A B C D} {e : A ~~> B} {f : B ~~> D} {g : A ~~> C} {h : C ~~> D},
         forall (H : Pullback e f g h),
         forall {X : U} (j : X ~~> B) (k : X ~~> C) (K : f ∘ j == h ∘ k),
           e ∘ (Pullback_Exists H j k K) == j :=
-      fun _ _ _ _ _ _ _ _  H X j k K => proj1 (proj2_sig (Datatypes.snd H X j k K)).
+      fun _ _ _ _ _ _ _ _  H X j k K => Datatypes.fst (projT2 (Datatypes.snd H X j k K)).
     Definition Pullback_Exists_right : forall  {A B C D} {e : A ~~> B} {f : B ~~> D} {g : A ~~> C} {h : C ~~> D},
         forall (H : Pullback e f g h),
         forall {X : U} (j : X ~~> B) (k : X ~~> C) (K : f ∘ j == h ∘ k),
           g ∘ (Pullback_Exists H j k K) == k :=
-      fun _ _ _ _ _ _ _ _  H X j k K => proj2 (proj2_sig (Datatypes.snd H X j k K)).
+      fun _ _ _ _ _ _ _ _  H X j k K => Datatypes.snd (projT2 (Datatypes.snd H X j k K)).
     Definition Pullback_Corner : forall {A B C D} {e : A ~~> B} {f : B ~~> D} {g : A ~~> C} {h : C ~~> D},
         Pullback e f g h -> U
       := fun A _ _ _ _ _ _ _ _ => A.
@@ -63,9 +63,9 @@ Module Pullback.
            unfold Pullback. repeat (try split; try unshelve eexists).
            - apply pb_Comm.
            - apply pb_Uniq.
-           - apply (pb_Exists j k H).
-           - apply (pb_Exists_left f h j k H).
-           - apply (pb_Exists_right f h j k H).
+           - apply (pb_Exists j k X0).
+           - apply (pb_Exists_left f h j k X0).
+           - apply (pb_Exists_right f h j k X0).
     Qed.
              
     Lemma Pullback_unique : forall {A B C D} (e : A ~~> B) (f : B ~~> D) (g : A ~~> C) (h : C ~~> D),
@@ -102,10 +102,11 @@ Module Pullback.
            split; try split.
            - remove_eq_right.
              apply pb_Comm.
-           - rewrite <- pair_f. apply Mono_Compose.
+           - admit. (* Bug 4806 
+             rewrite <- pair_f. apply Mono_Compose.
              + apply Iso_Mono.
-             + apply pb_Uniq.
-           - intros. exists ((from s) ∘ (pb_Exists j k H)).
+             + apply pb_Uniq. *)
+           - intros. exists ((from s) ∘ (pb_Exists j k X0)). 
              split.
              + rewrite <- !compose_assoc; rewrite (compose_assoc _ (from s)).
                rewrite (to_from s), compose_id_left.
@@ -113,7 +114,7 @@ Module Pullback.
              + rewrite <- !compose_assoc; rewrite (compose_assoc _ (from s)).
                rewrite (to_from s), compose_id_left.
                rewrite pb_Exists_right. reflexivity.
-    Qed.
+    Admitted.
 
     Lemma Pullback_Proper : forall {A B C D}
                               {e0 e1 : A ~~> B} {f0 f1 : B ~~> D} {g0 g1 : A ~~> C} {h0 h1 : C ~~> D},
@@ -125,7 +126,7 @@ Module Pullback.
            - rewrite e, f, g, h. apply (Pullback_Comm H).
            - eapply Mono_Proper. try eapply pair_Proper.
              exact e. exact g. apply (Pullback_Uniq H).
-           - intros. rewrite f, h in H0. exists (Pullback_Exists H j k H0).
+           - intros. rewrite f, h in X0. exists (Pullback_Exists H j k X0).
              split.
              + rewrite e. apply (Pullback_Exists_left H).
              + rewrite g. apply (Pullback_Exists_right H).
@@ -253,15 +254,15 @@ Module Pullback.
              + unfold Mono. intros.
                rewrite <- (compose_id_left g1), <- (compose_id_left g2).
                rewrite <- !diagonal_fst. unfold diagonal.
-               rewrite <- !compose_assoc, -> !H. reflexivity.
-             + intros. specialize (M _ _ _ H).
+               rewrite <- !compose_assoc, -> !X0. reflexivity.
+             + intros. specialize (M _ _ _ X0).
                exists j. split. apply compose_id_left. rewrite M; apply compose_id_left.
            - intros H.
              unfold Mono. intros.
-             pose (g := Pullback_Exists H _ _ H0).
+             pose (g := Pullback_Exists H _ _ X0).
              transitivity g.
-             + symmetry. rewrite <- (compose_id_left g). apply (Pullback_Exists_left H _ _ H0).
-             + rewrite <- (compose_id_left g). apply (Pullback_Exists_right H _ _ H0).
+             + symmetry. rewrite <- (compose_id_left g). apply (Pullback_Exists_left H _ _ X0).
+             + rewrite <- (compose_id_left g). apply (Pullback_Exists_right H _ _ X0).
     Qed.
 
 
@@ -300,7 +301,7 @@ Module Pullback.
              unshelve eapply (Pullback_Exists P).
              + apply j.
              + apply k.
-             + apply H.
+             + apply X0.
            - split.
              + rewrite <- compose_assoc, -> (compose_assoc _ (to s)).
                rewrite (from_to s), compose_id_left.
@@ -333,7 +334,7 @@ Module Pullback.
            - unshelve eapply (Pullback_Exists P).
              + apply ((from s) ∘ j).
              + apply k.
-             + rewrite compose_assoc. apply H.
+             + rewrite compose_assoc. apply X0.
            - split.
              + rewrite <- compose_assoc.
                rewrite (Pullback_Exists_left P).
@@ -358,11 +359,11 @@ Module Pullback.
            - unfold Mono; intros X h0 h1 H.
              rewrite !pair_f in H.
              assert (forall {A B C} (f f' : A ~~> B) (g g' : A ~~> C),
-                        ⟨f, g⟩ == ⟨f', g'⟩ -> f == f' /\ g == g') as lemma.
+                        ⟨f, g⟩ == ⟨f', g'⟩ -> ((f == f') * (g == g'))%type) as lemma.
              { split. etransitivity. symmetry. eapply pair_fst.
-               rewrite H0. rewrite pair_fst. reflexivity.
+               rewrite X0. rewrite pair_fst. reflexivity.
                etransitivity. symmetry. eapply pair_snd.
-               rewrite H0. rewrite pair_snd. reflexivity. }
+               rewrite X0. rewrite pair_snd. reflexivity. }
              apply lemma in H; clear lemma; destruct H as [H0 H1].
              apply (Pullback_Uniq P0).
              rewrite !pair_f; apply proj_eq; rewrite ?pair_fst, ?pair_snd.
@@ -397,11 +398,11 @@ Module Pullback.
            - assumption.
            - unfold Mono; intros X h0 h1 H.
              assert (forall {A B C} (f f' : A ~~> B) (g g' : A ~~> C),
-                        ⟨f, g⟩ == ⟨f', g'⟩ -> f == f' /\ g == g') as lemma.
+                        ⟨f, g⟩ == ⟨f', g'⟩ -> ((f == f') * (g == g'))%type) as lemma.
              { split. etransitivity. symmetry. eapply pair_fst.
-               rewrite H0. rewrite pair_fst. reflexivity.
+               rewrite X0. rewrite pair_fst. reflexivity.
                etransitivity. symmetry. eapply pair_snd.
-               rewrite H0. rewrite pair_snd. reflexivity. }
+               rewrite X0. rewrite pair_snd. reflexivity. }
              rewrite !pair_f in H; apply lemma in H; clear lemma; destruct H as [H0 H1].
              apply (Pullback_Uniq P0).
              rewrite !pair_f; apply proj_eq; rewrite ?pair_fst, ?pair_snd.
@@ -410,7 +411,7 @@ Module Pullback.
            - unshelve eapply (Pullback_Exists P0).
              + exact j.
              + exact (f01 ∘ k).
-             + rewrite <- compose_assoc, -> H. remove_eq_right.
+             + rewrite <- compose_assoc, -> X0. remove_eq_right.
                apply (Pullback_Comm P1).
            - split.
              + rewrite (Pullback_Exists_left P0). reflexivity.
@@ -428,11 +429,13 @@ Module Pullback.
            - symmetry. apply (Pullback_Comm P).
            - assert (⟨g, e⟩ == swap ∘ ⟨e, g⟩) as H.
              { unfold swap. rewrite pair_f, pair_fst, pair_snd. reflexivity. }
+             admit.             
+             (* Bug 4806 
              rewrite H; clear H.
              apply Mono_Compose.
              + apply (Pullback_Uniq P).
              + pose (Iso_Mono (Iso_Prod_Symm(A:=B)(B:=C))) as M.
-               apply M.
+               apply M. *)
            - unshelve eapply (Pullback_Exists P).
              + exact k.
              + exact j.
@@ -440,7 +443,7 @@ Module Pullback.
            - split.
              + apply (Pullback_Exists_right P).
              + apply (Pullback_Exists_left P).
-    Defined.
+    Admitted.
     
     (* Putting this here because when it is implemented, pullbacks will be necessary.  *)
     (* The "obvious" implementation of it is not provable given current axioms;

@@ -1,9 +1,9 @@
-Require Import Coq.Lists.List.
+Require Import Coq.Lists.List
+  CMorphisms
+  Spec.Category
+  Spec.SMonad
+  Language.ContPL.
 Import ListNotations.
-Require Import Morphisms.
-Require Import Spec.Category.
-Require Import Spec.SMonad.
-Require Import Language.ContPL.
 Import Category.
 Import ContPL.
 
@@ -449,7 +449,7 @@ Proof. Abort.
   Global Instance Map_Proper {Γ A B : U} : Proper (eq (A:=Γ*A)(B:=B) ==> eq ==> eq) Map.
   Proof. unfold Proper, respectful.
          intros. unfold Map.
-         rewrite H. rewrite H0.
+         rewrite X, X0.
          reflexivity.
   Qed.
 
@@ -469,7 +469,7 @@ Proof. Abort.
       -> Bind mu f == Bind mu' f'.
   Proof.
     intros. unfold Bind, bind.
-    rewrite <- H, H0. rewrite map_compose.
+    rewrite <- X, X0. rewrite map_compose.
     remove_eq_left.
     rewrite compose_assoc.
     rewrite <- strong_nat.
@@ -513,7 +513,7 @@ Proof. Abort.
          unfold makeFun1E, ap2, extend, Extend_Prod, Extend_Refl.
          assert (forall {P Q : U}, ⟨id ∘ fst, snd⟩ == id (A:=P*Q)).
          { intros. apply proj_eq; (autorewrite with cat_db; reflexivity). }
-         rewrite H, compose_id_right. reflexivity.
+         rewrite X, compose_id_right. reflexivity.
   Qed.
   
   Lemma ap2_ext_eval : forall {Δ A B : U} (f : forall Δ' (ext : Extend Δ Δ'), Δ' ~~> A -> Δ' ~~> B)
@@ -545,7 +545,7 @@ Proof. Abort.
          rewrite (pair_parallel_diagonal fst f0).
          assert (parallel (B:=Γ) (fst (B:=A)) f0 == (id ⊗ f0) ∘ (fst ⊗ id)).
          { apply proj_eq. rewrite compose_assoc. rewrite !parallel_fst. autorewrite with cat_db. reflexivity. rewrite compose_assoc. rewrite !parallel_snd. rewrite <- compose_assoc. rewrite parallel_snd. rewrite compose_id_left; reflexivity. }
-         rewrite H. rewrite !map_compose. remove_eq_left.
+         rewrite X. rewrite !map_compose. remove_eq_left.
          rewrite pair_parallel_id.
          rewrite compose_assoc.
          rewrite strength_compose.
@@ -558,7 +558,7 @@ Proof. Abort.
            autorewrite with cat_db. rewrite <- compose_assoc. autorewrite with cat_db.
            reflexivity. unfold diagonal. rewrite map_id. rewrite compose_assoc.
            autorewrite with cat_db. reflexivity.
-         } rewrite H0. remove_eq_right.
+         } rewrite X0. remove_eq_right.
          rewrite <- compose_assoc. rewrite strong_nat. remove_eq_right.
          rewrite <- !map_compose.
          apply map_proper.
@@ -584,7 +584,7 @@ Proof. Abort.
   Proof. unfold Proper, respectful.
          intros.
          unfold indep. repeat (apply Bind_Proper; try assumption; try reflexivity).
-         unfold Lift. rewrite H0. reflexivity.
+         unfold Lift. rewrite X0. reflexivity.
   Qed.
 
   
@@ -653,7 +653,7 @@ Proof. Abort.
                                        (k : B ~~> B'),
         (map (id ⊗ k)) ∘ (indep f g) == (indep f ((map k) ∘ g)).
     Proof. intros Γ A B B' f g k.
-           pose proof (parallel_indep f g id k). rewrite H.
+           pose proof (parallel_indep f g id k) as H. rewrite H.
            apply indep_Proper; try reflexivity.
            autorewrite with cat_db. reflexivity.
     Qed.
@@ -662,7 +662,7 @@ Proof. Abort.
                                        (h : A ~~> A'),
         (map (h ⊗ id)) ∘ (indep f g) == (indep ((map h) ∘ f) g).
     Proof. intros Γ A B B' f g h.
-           pose proof (parallel_indep f g h id). rewrite H.
+           pose proof (parallel_indep f g h id) as H. rewrite H.
            apply indep_Proper; try reflexivity.
            autorewrite with cat_db. reflexivity.
     Qed.
@@ -710,7 +710,7 @@ Proof. Abort.
            rewrite <- compose_id_left at 1.
            remove_eq_right.
            rewrite <- map_compose, <- map_id. apply map_Proper.
-           pose proof (from_to (Iso_Prod_Assoc (A:=A) (B:=B)(C:=C))). simpl in H.
+           pose proof (from_to (Iso_Prod_Assoc (A:=A) (B:=B)(C:=C))) as H. simpl in H.
            symmetry. apply H.
     Qed.
   

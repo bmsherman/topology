@@ -1,4 +1,7 @@
-Require Import Spec.Category Spec.Discrete.
+Require Import 
+  Spec.Category 
+  Spec.Discrete
+  CMorphisms.
 
 Import Category. Import Discrete.
 Local Open Scope obj.
@@ -44,13 +47,12 @@ Section Defn.
        in   pow_app2' F').
   
   
-  Definition pb_eq {X : Type} {A B : U} : (X -> (A ~~> B)) -> (X -> (A ~~> B)) -> Prop :=
+  Definition pb_eq {X : Type} {A B : U} : (X -> (A ~~> B)) -> (X -> (A ~~> B)) -> Type :=
     fun f g => forall (x : X), (f x) == (g x).
   
   
   Notation "A === B" := (pb_eq A B) (at level 60).
   
-  Require Import Morphisms.
   Class PowProps : Type :=
     {
       pmap_Proper : forall X Y A B, Proper (Logic.eq ==> eq ==> eq) (pmap (X:=X) (Y:=Y) (A:=A) (B:=B))

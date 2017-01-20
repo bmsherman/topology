@@ -6,7 +6,11 @@ Set Asymmetric Patterns.
 Module Presheaf.
 
 
-Require Import Types.Setoid Prob.Spec.Category.
+Require Import 
+  Types.Setoid 
+  Prob.Spec.Category
+  Prob.StdLib
+  CMorphisms.
 Import Category.
 
 Local Open Scope obj.
@@ -14,7 +18,7 @@ Local Open Scope morph.
 
 Section Presheaf.
 
-Universe Univ.
+Universe Univ P UP.
 
 Context {U : Type@{Univ}} {ccat : CCat U} {cmc : CMC U}.
 
@@ -22,13 +26,15 @@ Context {U : Type@{Univ}} {ccat : CCat U} {cmc : CMC U}.
     The setoid should live in 1 larger than the universe of 
     U. *)
 
-Require Import Morphisms.
-
-Record PSh := 
-  { psh_obj :> U -> Setoid@{Univ}
+Record PSh@{} := 
+  { psh_obj :> U -> Setoid@{Univ P}
   ; psh_morph : forall {Γ Δ} (ext : Δ ~~> Γ), psh_obj Γ -> psh_obj Δ
-  ; psh_morph_Proper :
-     forall Γ Δ, Proper (eq ==> seq _ ==> seq _) (@psh_morph Γ Δ)
+  ; psh_morph_proper :
+     forall Γ Δ (x y : Δ ~~> Γ),
+      x == y ->
+      forall x0 y0 : psh_obj Γ,
+      (x0 ==[psh_obj Γ] y0)%setoid ->
+      (psh_morph x x0 ==[psh_obj Δ] psh_morph y y0)%setoid
   ; psh_morph_id : forall A (x : psh_obj A),
     seq (psh_obj A) (psh_morph id x) x
   ; psh_morph_compose : forall A B C (g : C ~~> B) (f : B ~~> A) (x : psh_obj A),
@@ -36,15 +42,32 @@ Record PSh :=
        (psh_morph (f ∘ g) x)
   }.
 
-Record CFunc {A B : PSh} {Γ : U} : Type :=
+Theorem psh_morph_Proper (F : PSh) : forall Γ Δ,
+  Proper (eq ==> seq _ ==> seq _) (@psh_morph F Γ Δ).
+Proof.
+intros. unfold Proper, respectful. apply psh_morph_proper.
+Qed.
+
+Record CFunc {A B : PSh} {Γ : U} : Type@{UP} :=
   { Func_eval :> forall Δ, Δ ~~> Γ -> A Δ -> B Δ
-  ; Func_Proper : forall Δ, Proper (eq ==> seq (A Δ) ==> seq (B Δ)) (Func_eval Δ)
+  ; Func_proper : forall Δ (x y : Δ ~~> Γ),
+      x == y ->
+      forall x0 y0 : A Δ, (x0 ==[A Δ] y0)%setoid 
+       -> (Func_eval Δ x x0 ==[B Δ] Func_eval Δ y y0)%setoid
   ; Func_ok : forall Δ (ext : Δ ~~> Γ) Δ' (ext' : Δ' ~~> Δ) (x x' : A Δ),
      seq (psh_obj A Δ) x x'
    -> seq (psh_obj B Δ')
        (psh_morph B ext' (Func_eval Δ ext x))
        (Func_eval Δ' (ext ∘ ext') (psh_morph A ext' x'))
   }.
+
+Theorem Func_Proper {A B Γ} (F : @CFunc A B Γ) : forall Δ,
+ Proper (eq ==> seq (A Δ) ==> seq (B Δ)) (Func_eval F Δ).
+Proof.
+unfold Proper, respectful. apply Func_proper.
+Qed.
+
+Set Printing Universes.
 
 Record NatTrns (A B : PSh) :=
   { nattrns :> forall Γ : U, A Γ -> B Γ
@@ -59,7 +82,6 @@ Record NatTrns (A B : PSh) :=
 
 Arguments CFunc : clear implicits.
 
-Require Import Morphisms.
 Definition func_Setoid (A B : PSh)
  (Γ : U) : Setoid.
 Proof. refine (
@@ -70,9 +92,9 @@ Proof. refine (
 constructor; unfold Reflexive, Symmetric, Transitive;
   intros.
 - apply x; assumption.
-- symmetry. eapply H; symmetry; eassumption.
-- etransitivity. apply H; eassumption.
-  apply H0; reflexivity.
+- symmetry. eapply X; symmetry; eassumption.
+- etransitivity. apply X; eassumption.
+  apply X0; reflexivity.
 Defined.
 
 Context {cmcprops : CMC_Props U }.
@@ -83,7 +105,7 @@ Proof.
 refine (
   {| Func_eval := fun G ext' x => f _ (ext ∘ ext') x |}).
 - intros. unfold Proper, respectful.
-  intros. apply Func_Proper. rewrite H. reflexivity.
+  intros. apply Func_Proper. rewrite X. reflexivity.
   assumption.
 - intros. rewrite Func_ok.
   apply Func_Proper. symmetry. apply compose_assoc. 
@@ -99,13 +121,13 @@ refine (
 - intros. unfold Proper, respectful.
   simpl. intros.
   rewrite Func_Proper.
-  apply H0. reflexivity. eassumption. rewrite H, H1. reflexivity.
+  apply X0. reflexivity. eassumption. rewrite X, X1. reflexivity.
   reflexivity.
 - simpl. intros. apply Func_Proper.
-  rewrite H.
+  rewrite X.
   apply compose_id_left. assumption.
 - simpl. intros. apply Func_Proper.
-  rewrite H.
+  rewrite X.
   apply compose_assoc. assumption.
 Defined.
 
@@ -116,8 +138,7 @@ refine (
   ;  psh_morph := fun Γ Δ f p => let (x, y) := p in 
       (psh_morph _ f x, psh_morph _ f y)
   |} ).
-- intros. 
-  unfold Proper, respectful. intros.
+- intros Γ Δ x y H x0 y0 H0.
   destruct x0, y0, H0.
   simpl in *. split; apply psh_morph_Proper; assumption.
 - simpl. intros. destruct x. simpl.
@@ -153,7 +174,7 @@ unshelve eapply (
 - simpl. intros. reflexivity.
 Defined.
 
-Definition K (A : Type) : PSh := KStd (Leibniz A).
+Definition K (A : Type) : PSh := KStd (Leib.Leibniz A).
 
 Definition id_PSh {A : PSh} : NatTrns A A.
 Proof.
@@ -216,8 +237,8 @@ Proof.
 apply (Build_NatTrns (prod_PSh A B) A
   (fun Γ p => let (x, _) := p in x)).
 - intros. unfold Proper, respectful.
-  intros. destruct x, y, H. simpl in *. assumption.
-- intros. destruct x, x', H.
+  intros x y H. destruct x, y, H. simpl in *. assumption.
+- intros Γ Δ ext x x' H. destruct x, x', H.
   simpl in *. apply psh_morph_Proper. reflexivity.
   assumption.
 Defined.
@@ -227,8 +248,8 @@ Proof.
 apply (Build_NatTrns (prod_PSh A B) B
   (fun Γ p => let (_, y) := p in y)).
 - intros. unfold Proper, respectful.
-  intros. destruct x, y, H. simpl in *. assumption.
-- intros. destruct x, x', H.
+  intros x y H. destruct x, y, H. simpl in *. assumption.
+- intros Γ Δ ext x x' H. destruct x, x', H.
   simpl in *. apply psh_morph_Proper. reflexivity.
   assumption.
 Defined.
@@ -242,9 +263,9 @@ Instance eq_Equivalence_PSh A B : Equivalence (eq_map A B).
 Proof.
 constructor; unfold eq_map, Reflexive, Symmetric, Transitive; intros.
 - apply nattrns_Proper. assumption.
-- symmetry. apply H. symmetry. assumption.
-- etransitivity. apply H. eassumption.
-  apply H0. reflexivity.
+- symmetry. apply X. symmetry. assumption.
+- etransitivity. apply X. eassumption.
+  apply X0. reflexivity.
 Qed.
 
 Definition eval_PSh_trns {A B : PSh} :
@@ -257,12 +278,12 @@ Defined.
 Definition eval_PSh {A B : PSh} : NatTrns (prod_PSh (func_PSh A B) A) B.
 Proof.
 constructor 1 with eval_PSh_trns.
-- intros. unfold Proper, respectful. simpl. intros.
-  destruct x, y, H. simpl in *. apply H. 
+- intros. unfold Proper, respectful. simpl. intros x y H.
+  destruct x, y, H. simpl in *. apply s1. 
   reflexivity. assumption. 
-- simpl. intros. destruct x, x', H. simpl in *.
+- simpl. intros Γ Δ ext x x' H. destruct x, x', H. simpl in *.
   etransitivity. Focus 2.
-  apply H. reflexivity. apply psh_morph_Proper.
+  apply s1. reflexivity. apply psh_morph_Proper.
   reflexivity. eassumption.
   etransitivity. apply Func_ok. eassumption.
   apply Func_Proper.
@@ -313,7 +334,7 @@ apply (Build_NatTrns X (func_PSh A B) (abstract_PSh_CFunc f)).
 - simpl. unfold abstract_PSh_trns. intros.
   apply nattrns_Proper. simpl. split.
   etransitivity. apply psh_morph_Proper.
-  rewrite H0.  reflexivity. eassumption.
+  rewrite X1.  reflexivity. eassumption.
   symmetry. apply psh_morph_compose. assumption.
 Defined.
 
@@ -323,7 +344,7 @@ Require CMorphisms.
     so be very careful about adding them to the
     typeclass database *)
 Local Instance CCat_PSh : CCat PSh :=
-  {| arrow := NatTrns
+  {| Category.arrow := NatTrns
    ; prod := prod_PSh
    ; eq := eq_map
   |}.
@@ -361,8 +382,8 @@ constructor; simpl; unfold eq_map; simpl; intros.
 - apply nattrns_Proper. assumption.
 - repeat apply nattrns_Proper. assumption.
 - pose proof (nattrns_Proper _ _ h).
-  unfold Proper, respectful in H0.
-  specialize (H0 Γ x x' H). destruct H0.
+  unfold Proper, respectful in X0.
+  specialize (X0 Γ x x' X). destruct X0.
   split; assumption.
 - apply nattrns_Proper. assumption.
 - apply nattrns_Proper. assumption.
@@ -374,10 +395,10 @@ Proof.
 constructor.
 - intros. unfold Proper, respectful.
   simpl. unfold eq_map. simpl. intros.
-  apply H. simpl. split. apply psh_morph_Proper; assumption.
+  apply X. simpl. split. apply psh_morph_Proper; assumption.
   assumption.
 - simpl. unfold eq_map. simpl. intros.
-  destruct x, x', H. unfold abstract_PSh_trns. simpl in *.
+  destruct x, x', X. unfold abstract_PSh_trns. simpl in *.
   apply nattrns_Proper. simpl. split.
   rewrite psh_morph_id. assumption.
   assumption.
@@ -390,7 +411,7 @@ constructor.
   pose proof (nattrns_Proper _ _ f) as H2.
   unfold Proper, respectful in H2. simpl in H2.
   rewrite H2. reflexivity. reflexivity. 
-  rewrite H0, compose_id_right. reflexivity.
+  rewrite X0, compose_id_right. reflexivity.
   reflexivity.
 - intros. simpl. unfold eq_map. simpl. intros.
   unfold abstract_PSh_trns. simpl. apply (nattrns_Proper _ _ e).
@@ -401,13 +422,13 @@ Qed.
 
 Ltac build_CFunc := match goal with
  | [  |- CFunc ?A ?B ?Γ ] => 
-    simple refine (Build_CFunc A B Γ _ _ _)
+    unshelve eapply (Build_CFunc A B Γ)
  end.
 
 Definition toConst {A : PSh} (x : A unit)
   : Const A.
 Proof.
-simpl. simple refine (Build_NatTrns _ _ _ _ _).
+simpl. unshelve eapply Build_NatTrns.
 - intros. eapply psh_morph. 2: eassumption.
   apply tt.
 - unfold Proper, respectful. intros. apply psh_morph_Proper;
@@ -420,12 +441,12 @@ Defined.
 Definition Y_Prod1 {A B : U} : 
   Y A * Y B ~~> Y (A * B).
 Proof.
-simple refine (Build_NatTrns _ _ _ _ _).
+unshelve eapply Build_NatTrns.
 + simpl. intros. destruct X. apply pair; assumption.
 + simpl. unfold Proper, respectful. intros.
-  destruct x, y, H. simpl in *. apply pair_Proper; assumption.
+  destruct x, y, X. simpl in *. apply pair_Proper; assumption.
 + simpl. intros.
-  destruct x, x', H. simpl in *.
+  destruct x, x', X. simpl in *.
   rewrite <- pair_f. apply compose_Proper.
   apply pair_Proper; assumption. reflexivity.
 Defined.
@@ -436,8 +457,8 @@ simple refine (Build_NatTrns _ _ _ _ _).
 + simpl. intros. split. exact (fst ∘ X).
   exact (snd ∘ X).
 + simpl. intros. unfold Proper, respectful.
-  intros. simpl. split; rewrite H; reflexivity.
-+ simpl. intros. split; rewrite H, compose_assoc; reflexivity.
+  intros. simpl. split; rewrite X; reflexivity.
++ simpl. intros. split; rewrite X, compose_assoc; reflexivity.
 Defined.
 
 Lemma Y_Prod_Iso A B : Iso (Y A * Y B) (Y (A * B)).
@@ -449,7 +470,7 @@ refine (
   ; simpl; unfold eq_map; simpl; intros.
 - rewrite <- pair_f. rewrite pair_id. 
   rewrite compose_id_left. assumption.
-- destruct x, x', H. simpl in *. split.
+- destruct x, x', X. simpl in *. split.
   + rewrite pair_fst. assumption.
   + rewrite pair_snd. assumption.
 Qed.
@@ -469,7 +490,7 @@ simpl. intros. build_CFunc.
   apply psh_morph_Proper. apply pair_Proper; assumption.
   reflexivity.
 - simpl. intros. rewrite psh_morph_compose.
-  apply psh_morph_Proper. rewrite <- pair_f. rewrite H.
+  apply psh_morph_Proper. rewrite <- pair_f. rewrite X0.
   reflexivity. reflexivity.
 Defined.
 
@@ -500,7 +521,7 @@ refine (
   |}).
 - intros. unfold Proper, respectful.
   simpl. intros.
-  rewrite H, H0. reflexivity.
+  rewrite X, X0. reflexivity.
 - simpl. intros. unfold parallel.
   rewrite !compose_id_left.
   rewrite <- (compose_id_right fst).
@@ -549,10 +570,10 @@ simple refine (Build_NatTrns _ _ _ _ _).
   apply X. apply fst.  simpl. apply snd.
 - intros. unfold Proper, respectful.
   simpl. intros.
-  apply H; reflexivity.
+  apply X; reflexivity.
 - simpl. intros. 
   pose proof (Func_ok x) as H'. simpl in H'.
-  rewrite H'. rewrite H. apply (Func_Proper x').
+  rewrite H'. rewrite X. apply (Func_Proper x').
   reflexivity. reflexivity.
   apply parallel_fst. 2 :reflexivity.
   rewrite parallel_snd.
@@ -568,13 +589,13 @@ simpl. simple refine (Build_NatTrns _ _ _ _ _).
   + simpl. intros. 
     refine (compose X _). apply pair; assumption.
   + unfold Proper, respectful. simpl. intros.
-    rewrite H, H0; reflexivity.
-  + simpl. intros. rewrite H.
+    rewrite X0, X1; reflexivity.
+  + simpl. intros. rewrite X0.
     rewrite <- pair_f. rewrite compose_assoc.
     reflexivity.
 - unfold Proper, respectful. simpl. intros.
-  rewrite H, H0, H1; reflexivity.
-- simpl. intros. rewrite H, H0, H1.
+  rewrite X, X0, X1; reflexivity.
+- simpl. intros. rewrite X, X0, X1.
   rewrite <- !compose_assoc.
   rewrite parallel_pair. rewrite compose_id_left.
   reflexivity.
@@ -586,7 +607,7 @@ refine (
   {| to := Y_ctxt2
    ; from := Y_ctxt1
   |}); simpl; unfold eq_map; simpl; intros.
-rewrite H. 2:reflexivity.
+rewrite X. 2:reflexivity.
 pose proof (Func_ok x') as Hf. simpl in Hf.
 rewrite Hf. 2: reflexivity.
 apply (Func_Proper x'). rewrite pair_fst. assumption.
@@ -597,25 +618,25 @@ Defined.
 
 Lemma Y_Y_ctxt1 {A : U} : Y A ~~> Y_ctxt unit A.
 Proof.
-simple refine (Build_NatTrns _ _ _ _ _).
+unshelve eapply Build_NatTrns.
 - simpl. intros. refine (_ ∘ fst). assumption.
 - simpl. intros. unfold Proper, respectful.
-  intros. rewrite H; reflexivity.
+  intros. rewrite X; reflexivity.
 - simpl.  intros. 
   rewrite <- !compose_assoc.
-  rewrite parallel_fst. rewrite H.
+  rewrite parallel_fst. rewrite X.
   reflexivity.
 Defined.
 
 Lemma Y_Y_ctxt2 {A : U} : Y_ctxt unit A ~~> Y A.
 Proof.
-simple refine (Build_NatTrns _ _ _ _ _).
+unshelve eapply Build_NatTrns.
 - simpl. intros.
   refine (_ ∘ ⟨ id , tt ⟩). assumption.
 - unfold Proper, respectful. simpl. intros.
-  rewrite H; reflexivity.
+  rewrite X; reflexivity.
 - simpl. intros. 
-  rewrite H. rewrite <- !compose_assoc. 
+  rewrite X. rewrite <- !compose_assoc. 
   rewrite parallel_pair.
   rewrite pair_f. rewrite !compose_id_left, !compose_id_right.
   rewrite unit_uniq. reflexivity.
@@ -646,18 +667,18 @@ refine (
 intros. 
 pose proof (to_from b) as Htf.
 simpl in Htf. unfold eq_map in Htf. simpl in Htf.
-rewrite Htf.  apply H. eassumption. eassumption.
+rewrite Htf.  apply X. eassumption. eassumption.
 apply Func_Proper. rewrite !compose_id_right. reflexivity.
 clear Htf. pose proof (to_from a) as Htf. simpl in Htf. 
-unfold eq_map in H1. simpl in Htf. apply Htf. reflexivity.
+unfold eq_map in X1. simpl in Htf. apply Htf. reflexivity.
 - simpl. unfold eq_map. simpl.
 intros. 
 pose proof (from_to b) as Htf.
 simpl in Htf. unfold eq_map in Htf. simpl in Htf.
-rewrite Htf.  apply H. eassumption. eassumption.
+rewrite Htf.  apply X. eassumption. eassumption.
 apply Func_Proper. rewrite !compose_id_right. reflexivity.
 clear Htf. pose proof (from_to a) as Htf. simpl in Htf. 
-unfold eq_map in H1. simpl in Htf. apply Htf. reflexivity.
+unfold eq_map in X1. simpl in Htf. apply Htf. reflexivity.
 Defined.
 
 Lemma FirstOrder_Iso {args ret A}
@@ -710,6 +731,8 @@ apply (nattrns_Proper _ _ (to (FirstOrder_Iso fo))).
 assumption.
 Qed.
 
+Set Printing Universes.
+
 Lemma Yoneda_extended {arg ret} :
   (Hom_Setoid (unit * arg) ret ≅ Hom_Setoid unit (Y_ctxt arg ret))%setoid.
 Proof.
@@ -718,9 +741,9 @@ simple refine (Setoid.Build_Iso _ _ _ _ _ _ _ _).
 - simpl. intros. apply X. simpl. constructor.
 - unfold Proper, respectful. simpl. intros.
   unfold eq_map. simpl. intros. 
-  rewrite H; reflexivity.
+  rewrite X; reflexivity.
 - unfold Proper, respectful. simpl. unfold eq_map. simpl.
-  intros. apply H. constructor.
+  intros. apply X. constructor.
 - simpl. unfold eq_map. intros.
   simpl. apply (nattrns_ok _ _ a). simpl. constructor.
 - simpl. intros. unfold parallel.

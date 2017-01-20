@@ -1,6 +1,7 @@
 Require Import Spec.Category
   Spec.CCC.Presheaf
-  Spec.CCC.CCC.
+  Spec.CCC.CCC
+  CMorphisms.
 
 Import Category.
 Import CCC.
@@ -34,7 +35,7 @@ Notation "A -[ f ]-> B" := (f%morph : (arrow A%obj B%obj)) (at level 60)
 *)
 Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U} 
   {cmcprops : CMC_Props U}
-  {smd : SMonad U M} : Prop :=
+  {smd : SMonad U M} : Type :=
   { map_proper : forall {A B} (f g : A ~~> B),
       f == g -> map f == map g
     ; map_compose : forall {A B C} (f : A ~~> B) (g : B ~~> C), map (g ∘ f) == (map g) ∘ (map f)
@@ -61,7 +62,6 @@ Class SMonad_Props {U} {M : U -> U} {ccat : CCat U} {cmc : CMC U}
   ; snd_strong : forall {A B}, (map snd) ∘ (strong (A:=A)(B:=B)) == snd (* Maybe provable from other axioms? *)
   }.
 
-Require Import Morphisms.
 Global Instance map_Proper `{SMonad_Props} : forall A B : U,
   Proper (eq (A := A) (B := B) ==> eq) map.
 Proof. 

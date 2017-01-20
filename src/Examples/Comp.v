@@ -52,7 +52,7 @@ Require Import Spec.CCC.Presheaf.
 Import Presheaf.
 Import CCC.
 
-Instance CMC_Props_IGT : CMC_Props IGT := undefined _.
+Instance CMC_Props_IGT : @CMC_Props IGT IGT_Cat IGT_CMC := undefined _.
 
 
 Existing Instances 
@@ -61,8 +61,12 @@ Existing Instances
 
 Hint Constructors FirstOrder Basic : FO_DB.
 
+Set Printing Universes.
+
+Check (Y (cmcprops := CMC_Props_IGT) (discrete nat)).
+
 Lemma func_1_fo : FirstOrder (discrete nat * unit) (discrete nat) 
-  (Y (discrete nat) ==> Y (discrete nat))%obj.
+  (Y (cmcprops := CMC_Props_IGT) (discrete nat) ==> Y (cmcprops := CMC_Props_IGT) (discrete nat))%obj.
 Proof.
 econstructor 2. econstructor.
 econstructor. econstructor.

@@ -166,29 +166,29 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
     (forall Δ (ext : Extend Γ Δ) a, f _ ext a == g _ ext a) 
   -> makeFun1E f == makeFun1E g.
   Proof.
-  intros. unfold makeFun1E. apply H.
+  intros. unfold makeFun1E. apply X.
   Qed.
 
-  Require Import Morphisms.
+  Require Import CMorphisms.
 
   Global Instance ap0_Proper : forall Γ A : U, Proper (eq (B := A) ==> eq (A := Γ)) ap0.
   Proof.
   unfold Proper, respectful.
-  intros. unfold ap0. rewrite H. reflexivity.
+  intros. unfold ap0. rewrite X. reflexivity.
   Qed.
 
   Global Instance ap1_Proper : forall Γ A B : U, 
    Proper (eq (B := A) ==> eq (B := B) ==> eq (A := Γ)) ap1.
   Proof.
   unfold Proper, respectful.
-  intros. unfold ap1. rewrite H, H0. reflexivity.
+  intros. unfold ap1. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance ap2_Proper : forall Γ A B C : U, 
    Proper (eq (B := A) ==> eq (B := B) ==> eq (B := C) ==> eq (A := Γ)) ap2.
   Proof.
   unfold Proper, respectful.
-  intros. unfold ap2. rewrite H, H0, H1. reflexivity.
+  intros. unfold ap2. rewrite X, X0, X1. reflexivity.
   Qed.
 
   Context {M : U -> U} {MC : SMonad U M} {MCProps : SMonad_Props (smd := MC)}.
@@ -197,21 +197,21 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
     Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) bind.
   Proof.
   unfold Proper, respectful; intros.
-  unfold bind. rewrite H, H0. reflexivity.
+  unfold bind. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance Bind_Proper {Γ A B} : 
    Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) Bind.
   Proof.
   unfold Proper, respectful; intros.
-  unfold Bind. rewrite H, H0. reflexivity.
+  unfold Bind. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance Ret_Proper {Γ A} :
    Proper (eq (B := A) ==> eq (A := Γ)) Ret.
   Proof.
   unfold Proper, respectful; intros. unfold Ret. 
-  rewrite H. reflexivity.
+  rewrite X. reflexivity.
   Qed.
 
   Global Instance Lift_Proper : forall {Γ Δ A : U} {ext : Extend Γ Δ}, 
@@ -227,8 +227,8 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
    Bind mu (makeFun1E f) == Bind mu (makeFun1E g).
   Proof.
   intros. unfold Bind. unfold bind.
-  apply lam_extensional in H.
-  rewrite H. reflexivity.
+  apply lam_extensional in X.
+  rewrite X. reflexivity.
   Qed.
 
 End Instances.

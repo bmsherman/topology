@@ -6,7 +6,7 @@ Import Category.
 Local Open Scope obj.
 Local Open Scope morph.
 
-Require Import Morphisms.
+Require Import CMorphisms.
 
 Section Functor. 
 

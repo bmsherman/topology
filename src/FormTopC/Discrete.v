@@ -14,18 +14,21 @@ Local Open Scope FT.
 Module Discrete.
 Section Discrete.
 
-Variable A : Type.
+Universes A P.
+Variable A : Type@{A}.
 
-Definition DiscretePO : FormTop.PreOrder :=
+Definition DiscretePO@{} : FormTop.PreOrder@{A P} :=
   {| PO_car := A
    ; le := Logic.eq
   |}.
 
 Require Import FormTopC.Bundled.
 
-Instance discretePO : PO.t Logic.eq Logic.eq := PO.discrete A.
+Instance discretePO@{} : PreO.t Logic.eq := PreO.discrete@{A P} A.
 
-Definition DiscI : IGT := InfoBase DiscretePO.
+Set Printing Universes.
+Axiom undefined : forall A, A.
+Definition DiscI@{X} : IGT@{A P P} := InfoBase@{A P P X} DiscretePO.
 
 Definition Disc : PreSpace.t :=
   {| PreSpace.S := DiscretePO
@@ -82,6 +85,11 @@ Require Import
 Import Category.
 
 Local Open Scope loc.
+
+Axiom undefined : forall A, A.
+
+
+Set Printing Universes.
 
 Definition discrete (A : Type) : IGT :=
   {| S := Discrete.DiscI A

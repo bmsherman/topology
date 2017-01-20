@@ -1,6 +1,6 @@
 Require Import Spec.Category Spec.Sup Spec.Sierpinski Spec.Sum.
 
-Import Morphisms Category Sup Sierp Sum.
+Import CMorphisms Category Sup Sierp Sum.
 Local Open Scope obj.
 Local Open Scope morph.
       

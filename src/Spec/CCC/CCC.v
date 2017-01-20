@@ -3,7 +3,8 @@
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Require Import Prob.Spec.Category.
+Require Import Prob.Spec.Category
+  CMorphisms.
 Import Category.
 
 Local Open Scope obj.
@@ -14,7 +15,6 @@ Section CCC.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U}.
 
-Require Import Morphisms.
 Class CCCOps : Type :=
   { Func : U -> U -> U
   ; eval : forall {A B}, Func A B * A ~~> B
@@ -23,7 +23,7 @@ Class CCCOps : Type :=
 
 Context {cccops : CCCOps}.
 
-Class CCCProps : Prop :=
+Class CCCProps : Type :=
   { abstract_Proper :> forall Γ A B, Proper (eq ==> eq) (@abstract _ Γ A B)
   ; eval_abstract : forall {Γ A B} (e : Γ * A ~~> B), 
      eval ∘ (abstract e ⊗ id (A := A)) == e
@@ -50,14 +50,13 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U}
 Lemma abstract_eta : forall {Γ A B} (f f' : Γ * A ~~> B),
       abstract f == abstract f' -> f == f'.
 Proof.
-intros. rewrite <- eval_abstract.
+intros Γ A B f f' H. rewrite <- eval_abstract.
 rewrite H. rewrite eval_abstract. reflexivity.
 Qed.
 
 Definition ap {Γ A B: U} (f : Γ ~~> A ==> B) (x : Γ ~~> A)
   : Γ ~~> B := (eval ∘ ⟨ f , x ⟩)%morph.
 
-Require Import Morphisms.
 Global Instance ap_Proper Γ A B : Proper (eq ==> eq ==> eq)
   (@ap Γ A B).
 Proof.
@@ -92,7 +91,6 @@ Defined.
 Definition Const A := unit ~~> A.
 
 Require Import Types.Setoid.
-Require Import Morphisms.
 
 Require Import Spec.Functor.
 Definition multR_F (C : U) : Functor U U.

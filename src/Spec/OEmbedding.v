@@ -1,5 +1,5 @@
 Require Import Spec.Category Spec.Sierpinski Spec.Sum Spec.Sup Spec.Stream Spec.Pullback Spec.Lift.
-Import Morphisms Category Sierp Sum Sup Stream Pullback Lift.
+Import CMorphisms Category Sierp Sum Sup Stream Pullback Lift.
 
 Local Open Scope obj.
 Local Open Scope morph.
@@ -34,7 +34,7 @@ Section OpenEmbeddings.
       dir_img : (A ~~> Σ) -> (B ~~> Σ);
       dir_monotone : forall {V V' : A ~~> Σ}, sub V V' -> sub (dir_img V) (dir_img V');
       adjointness : forall {U : A ~~> Σ} {V : B ~~> Σ},
-          sub (dir_img U) V <-> sub U (inv_img f V)
+          iffT (sub (dir_img U) V) (sub U (inv_img f V))
     }.
 
   (* The usual zigzags give sub (dir_img (inv_img V)) V and sub U (inv_img (dir_img U)). *)
@@ -45,7 +45,7 @@ Section OpenEmbeddings.
          apply sub_eq.
          rewrite adjointness. rewrite <- adjointness. apply sub_reflexive.
          rewrite adjointness. rewrite <- (adjointness(OpenMap:=e)). apply sub_reflexive.
-  Defined.
+  Qed.
 
 
   Class OpenEmbedding {A B : U} (f : A ~~> B) : Type :=
@@ -68,7 +68,7 @@ Section OpenEmbeddings.
                apply sub_reflexive.
              + intros H; clear H.
                apply false_smallest.
-    Defined.
+    Qed.
     
     Lemma zero_open_embedding {A : U} : OpenEmbedding (False_elim (A:=A)).
     Proof. unshelve esplit. apply zero_open.
@@ -77,7 +77,7 @@ Section OpenEmbeddings.
            apply (False_elim_unique _ False_elim).
            apply (False_elim_unique _ False_elim).
            apply sub_reflexive.
-    Defined.
+    Qed.
 
   End Zero.
 
@@ -113,7 +113,7 @@ Section OpenEmbeddings.
            - intros V.
              unfold inv_img, dir_img.
              rewrite copair_inl. apply sub_reflexive.
-    Defined.
+    Qed.
 
     
     Lemma inr_open_embedding : forall {A B : U}, OpenEmbedding (inr (A:=A) (B:=B)).
@@ -145,7 +145,7 @@ Section OpenEmbeddings.
            - intros V.
              unfold inv_img, dir_img.
              rewrite copair_inr. apply sub_reflexive.
-    Defined.
+    Qed.
 
   End Sum_inj.
 
@@ -161,7 +161,7 @@ Section OpenEmbeddings.
            - intros V.
              unfold inv_img, dir_img. rewrite compose_id_right.
              apply sub_reflexive.
-    Defined.
+    Qed.
 
     Lemma compose_open_map : forall {A B C : U} {f : A ~~> B} {g : B ~~> C}, OpenMap f -> OpenMap g ->
                                                                     OpenMap (g ∘ f).
@@ -189,7 +189,7 @@ Section OpenEmbeddings.
              
              eapply sub_transitive. eapply sub_ext.
              apply Eg. apply Ef.
-    Defined.             
+    Qed.             
 
     Lemma OpenMap_Proper : forall {A B} {f f' : A ~~> B}, f == f' -> OpenMap f -> OpenMap f'.
     Proof. intros A B f f' H Of.
@@ -212,7 +212,7 @@ Section OpenEmbeddings.
                * destruct Of. reflexivity.
                * symmetry. apply H.
              + reflexivity.
-    Defined.
+    Qed.
 
     Lemma Iso_OpenEmbedding : forall {A B : U} (s : A ≅ B), OpenEmbedding (to s).
     Proof. intros A B s.
@@ -234,7 +234,7 @@ Section OpenEmbeddings.
              intros V.
              rewrite <- compose_assoc, -> (from_to s), -> compose_id_right.
              apply sub_reflexive.
-    Defined.
+    Qed.
 
     Lemma inv_dir_is_id : forall {A B} {f : A ~~> B} (e : OpenEmbedding f) {V : A ~~> Σ},
         ((dir_img (OpenMap:=open_map) V) ∘ f) == V.
@@ -244,7 +244,7 @@ Section OpenEmbeddings.
            - pose (fun V W => adjointness (OpenMap:=open_map)(U0:=V)(V:=W)) as a.
              unfold inv_img in a. apply a. clear a.
              apply sub_reflexive.
-    Defined.
+    Qed.
              
 
 
@@ -262,7 +262,7 @@ Section OpenEmbeddings.
              rewrite H. apply sub_reflexive.
              Grab Existential Variables.
              esplit. apply Ef. esplit. apply Ef.
-    Defined.
+    Qed.
 
     Lemma coparallel_open_map : forall {A B C D} (f : A ~~> B) (g : C ~~> D),
         OpenMap f -> OpenMap g -> OpenMap (coparallel f g).
@@ -314,7 +314,7 @@ Section OpenEmbeddings.
                remove_eq_right.
                unfold dir_img at 1. unfold coparallel_open_map.
                rewrite copair_inr. reflexivity. reflexivity.
-    Defined.
+    Qed.
 
              
   End Category.
@@ -353,7 +353,7 @@ Section OpenEmbeddings.
                rewrite lift_rec_strict. assumption.
            - intros V. unfold inv_img, dir_img. erewrite lift_rec_strict.
              apply sub_reflexive.
-    Defined.
+    Qed.
     
   End Lift.
 
@@ -393,7 +393,7 @@ Section OpenEmbeddings.
                reflexivity.
              + intros H.
                unfold inv_img in H.
-               assert (cons(A:=Boole) snd fst ∘ ⟨tl, hd⟩ == id).
+               assert (cons(A:=Boole) snd fst ∘ ⟨tl, hd⟩ == id) as H0.
                {
                  apply stream_bisim.
                  intros n. destruct n.
@@ -455,7 +455,7 @@ Section OpenEmbeddings.
                reflexivity.
              + intros H.
                unfold inv_img in H.
-               assert (cons(A:=Boole) snd fst ∘ ⟨tl, hd⟩ == id).
+               assert (cons(A:=Boole) snd fst ∘ ⟨tl, hd⟩ == id) as H0.
                {
                  apply stream_bisim.
                  intros n. destruct n.
@@ -541,9 +541,9 @@ Section OpenEmbeddings.
     (* This is actually a non-example. *)    
     Local Definition fopenemb : OpenEmbedding f.
     Proof. unshelve esplit. apply fopen.
-           assert (~(forall U0, sub (inv_img f (dir_img (OpenMap:=fopen) U0)) U0)).
+           assert ((forall U0, sub (inv_img f (dir_img (OpenMap:=fopen) U0)) U0) -> Logic.False).
            { (* ie we're proving the negation of the current goal *)
-             unfold Logic.not. intros.
+             intros H.
              specialize (H (copair true false)). (* an open not in the image of `inv_img f` *)
              unfold inv_img, f, dir_img in H. simpl in H.
              rewrite copair_inr in H.

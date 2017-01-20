@@ -21,26 +21,30 @@ Module Product.
 Generalizable All Variables.
 Section Product.
 
-Variable X Y : IGT.
+Set Printing Universes.
+Set Printing All.
+Universes AX PX IX AY PY IY A P I.
+Variable X : IGT@{AX PX IX}.
+Variable Y : IGT@{AY PY IY}.
 
-Definition S' : Type := S X * S Y.
+Definition S' : Type@{A} := S X * S Y.
 
 Definition le' := prod_op (le X) (le Y).
 
 Definition Ix := PreISpace.Ix.
 Definition C := PreISpace.C.
 
-Inductive Ix' : S' -> Type := 
+Inductive Ix' : S' -> Type@{I} := 
   | PLeft : forall {s}, Ix X s -> forall t, Ix' (s, t)
   | PRight : forall {t}, Ix Y t -> forall s, Ix' (s, t).
 
-Definition C' (p : S') (i : Ix' p) : Subset S'
+Definition C'@{} (p : S') (i : Ix' p) : Subset@{A P} S'
   := fun open => let (z, w) := open in (match i with
-  | PLeft _ ixs t => C X _ ixs z * (w = t)
-  | PRight _ ixt s => C Y _ ixt w * (z = s)
+  | PLeft _ ixs t => prod@{PX Set} (C X _ ixs z) (w = t)
+  | PRight _ ixt s => prod@{PY Set} (C Y _ ixt w) (z = s)
   end)%type.
 
-Definition ProdPreO : FormTop.PreOrder :=
+Definition ProdPreO@{} : FormTop.PreOrder@{A P} :=
   {| PO_car := S'
    ; FormTop.le := le'
   |}.
@@ -146,11 +150,13 @@ unshelve econstructor.
   + intros. destruct X1. subst. apply X0. assumption.
 Qed.
 
+Axiom undefined : forall A, A.
+
 Definition times : IGT :=
   {| S := Prod
    ; Bundled.PO := PO
    ; localized := loc
-   ; pos := Pos
+   ; pos := undefined _ (*Pos*)
   |}.
 
 (** The other space has to be nonempty *)

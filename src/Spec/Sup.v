@@ -1,5 +1,5 @@
 Require Import Spec.Category Spec.Sierpinski Spec.Sum.
-Import Morphisms Category Sierp Sum.
+Import CMorphisms Category Sierp Sum.
 
 Local Open Scope obj.
 Local Open Scope morph.
@@ -14,22 +14,22 @@ Section Suprema.
 
   Section Specialization.
     
-    Axiom sub : forall {A}, (A ~~> Σ) -> (A ~~> Σ) -> Prop.
+    Axiom sub : forall {A}, (A ~~> Σ) -> (A ~~> Σ) -> Type.
     
     Axiom sub_reflexive : forall {A} (f : A ~~> Σ), sub f f.
     
     Axiom sub_transitive : forall {A} (f g h : A ~~> Σ), sub f g -> sub g h -> sub f h.
     
-    Axiom sub_Proper : forall {A}, Proper (eq ==> eq ==> Logic.iff) (sub (A:=A)).
+    Axiom sub_Proper : forall {A}, Proper (eq ==> eq ==> iffT) (sub (A:=A)).
     
     Axiom sub_ext : forall {A A'} (f : A ~~> A') (u v : A' ~~> Σ), sub u v -> sub (u ∘ f) (v ∘ f).
     (** I.e. taking inverse images of subsets is monotone **)       
     
     
-    Definition sleq : forall {A B}, (A ~~> B) -> (A ~~> B) -> Prop :=
+    Definition sleq : forall {A B}, (A ~~> B) -> (A ~~> B) -> Type :=
       fun A B f g => forall (V : B ~~> Σ), sub (V ∘ f) (V ∘ g).
     
-    Lemma sleq_Proper : forall {A B}, Proper (eq ==> eq ==> Logic.iff) (sleq (A:=A)(B:=B)).
+    Lemma sleq_Proper : forall {A B}, Proper (eq ==> eq ==> iffT) (sleq (A:=A)(B:=B)).
     Proof.
       intros A B.
       unfold Proper, respectful.
@@ -111,14 +111,14 @@ Section Suprema.
     
     Section Bottom.
       
-      Definition isBot {A B : U} : (A ~~> B) -> Prop :=
+      Definition isBot {A B : U} : (A ~~> B) -> Type :=
         fun b => forall (b' : A ~~> B), sleq b b'.
       
       Definition hasBot : U -> U -> Type :=
-        fun A B => sig (@isBot A B).
+        fun A B => sigT (@isBot A B).
 
       Definition bot {A B} (h : hasBot A B) : A ~~> B :=
-        proj1_sig h.
+        projT1 h.
 
       Definition ishas : forall {A B} {x : A ~~> B}, isBot x -> hasBot A B.
       Proof. intros A B x H.
@@ -132,36 +132,36 @@ Section Suprema.
   Section Nat.
 
     Definition nat_family : U -> U -> Type :=
-      fun A B => {f : nat -> A ~~> B | forall n : nat, sleq (f n) (f (S n))}.
+      fun A B => {f : nat -> A ~~> B & forall n : nat, sleq (f n) (f (S n))}.
 
     Axiom sup_nat_family : forall {A B : U} (f1 : nat_family A B), A ~~> B.
 
     Axiom sup_nat_family_prop : forall {A B : U} (f1 : nat_family A B),
-        let f := proj1_sig f1 in
-        forall y : A ~~> B, sleq (sup_nat_family f1) y <-> forall n : nat, sleq (f n) y.
+        let f := projT1 f1 in
+        forall y : A ~~> B, iffT (sleq (sup_nat_family f1) y) (forall n : nat, sleq (f n) y).
 
     Lemma sup_geq_members : forall {A B : U} (f1 : nat_family A B) (g : A ~~> B),
-        (exists n : nat, sleq g (proj1_sig f1 n)) -> sleq g (sup_nat_family f1).
+        ({n : nat & sleq g (projT1 f1 n)}) -> sleq g (sup_nat_family f1).
     Proof. intros A B f1 g N. destruct N.
            pose (sup_nat_family_prop f1) as H0.
            specialize (H0 (sup_nat_family f1)).
-           destruct H0; clear H1.
-           specialize (H0 (sleq_reflexive _)).
+           destruct H0; clear s1.
+           specialize (s0 (sleq_reflexive _)).
            eapply sleq_transitive.
-           apply H. apply H0.
+           apply s. apply s0.
     Qed.
 
         
     Lemma po_yoneda : forall {A B} (x y : A ~~> B),
-        (forall z, sleq x z <-> sleq y z) -> x == y.
-    Proof. intros.
+        (forall z, iffT (sleq x z) (sleq y z)) -> x == y.
+    Proof. intros A B x y H.
            apply sleq_eq.
            apply H. apply sleq_reflexive.
            apply H. apply sleq_reflexive.
     Qed.
 
     Lemma sup_sleq_sup : forall {A B : U} (f1 f2 : nat_family A B),
-        (forall n, exists m, sleq (proj1_sig f1 n) (proj1_sig f2 m)) ->
+        (forall n, {m : nat & sleq (projT1 f1 n) (projT1 f2 m)}) ->
         sleq (sup_nat_family f1) (sup_nat_family f2).
     Proof.
       intros A B f1 f2 h1.
@@ -172,23 +172,23 @@ Section Suprema.
     Qed.
 
     Lemma sup_exacteq_sup : forall {A B : U} (f1 f2 : nat_family A B),
-        (forall n, (proj1_sig f1 n) == (proj1_sig f2 n)) -> (sup_nat_family f1) == (sup_nat_family f2).
+        (forall n, (projT1 f1 n) == (projT1 f2 n)) -> (sup_nat_family f1) == (sup_nat_family f2).
     Proof. intros.
            apply sleq_eq; apply sup_sleq_sup; intros n; exists n;
-             specialize (H n); eapply sleq_Proper; try apply H; try reflexivity; apply sleq_reflexive.
+             specialize (X n); eapply sleq_Proper; try apply X; try reflexivity; apply sleq_reflexive.
     Qed.
     
   End Nat.
 
     Section Cont.
 
-    Definition Cont {A B C D : U} (F : A ~~> B -> C ~~> D) : (Proper (sleq ==> sleq) F) -> Prop.
+    Definition Cont {A B C D : U} (F : A ~~> B -> C ~~> D) : (Proper (sleq ==> sleq) F) -> Type.
     Proof. intros FP.
            refine (
                forall f : nat_family A B, F (sup_nat_family f) == _).
            refine (sup_nat_family _).
-           unfold nat_family. exists (fun n : nat => F ((proj1_sig f) n)).
-           intros n. apply FP. apply (proj2_sig f).
+           unfold nat_family. exists (fun n : nat => F ((projT1 f) n)).
+           intros n. apply FP. apply (projT2 f).
     Defined.
 
     Theorem everything_cont : forall {A B} (F : A ~~> B -> A ~~> B)
@@ -238,11 +238,11 @@ Section Suprema.
              rewrite sum_elim_inl.
              apply po_yoneda. intros z.
              rewrite sup_nat_family_prop. simpl.
-             assert ( (forall n : nat, sleq (sum_elim f (x n) ∘ id ⊗ inl) z) <-> (forall n : nat, sleq f z)).
-             { split. intros. specialize (H n). eapply (sleq_Proper). symmetry.
-               apply (sum_elim_inl (B:=B)). reflexivity. apply H. intros. specialize (H n).
-               eapply (sleq_Proper). apply (sum_elim_inl (B:=B)). reflexivity. apply H. }
-             rewrite H. intuition; auto. apply H1. exact 0. (* kind of disappointed in coq here *)
+             assert (iffT (forall n : nat, sleq (sum_elim f (x n) ∘ id ⊗ inl) z) (sleq f z)).
+             { split. intros. specialize (X 0). eapply (sleq_Proper). symmetry.
+               apply (sum_elim_inl (B:=B)). reflexivity. apply X. intros. specialize (s n).
+               eapply (sleq_Proper). apply (sum_elim_inl (B:=B)). reflexivity. apply X. }
+             rewrite X. reflexivity. (* kind of disappointed in coq here *)
            - rewrite precompose_Cont.
              rewrite sum_elim_inr.
              apply sleq_eq; apply sup_sleq_sup; intros n; exists n; simpl; eapply sleq_Proper.

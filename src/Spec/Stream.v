@@ -1,4 +1,7 @@
-Require Import Spec.Category.
+Require Import 
+  Spec.Category
+  Spec.Sum
+  CMorphisms.
 
 Import Category.
 Local Open Scope obj.
@@ -24,8 +27,7 @@ Fixpoint idx (n : nat) {A} : Stream A ~~> A := match n with
   | S n' => idx n' ∘ tl
   end.
 
-Require Import Morphisms.
-Class StreamProps : Prop :=
+Class StreamProps : Type :=
   { stream_Proper : forall Γ X A, Proper (eq ==> eq ==> eq) (@stream _ Γ X A)
   ; stream_ext1 : forall Γ Δ X A (g : Γ ~~> Δ) (x : Δ ~~> X) (f : X ~~> A * X),
     stream (x ∘ g) f == stream x f ∘ g
@@ -39,7 +41,6 @@ Class StreamProps : Prop :=
      (forall n, idx n ∘ x == idx n ∘ y) -> x == y
   }.
 
-Require Import Spec.Sum.
 Import Sum.
 
 Context {stys : SumTys (U := U)}.

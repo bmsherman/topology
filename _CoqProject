@@ -53,7 +53,7 @@ src/Examples/Comp.v
 
 src/Language/ContPL.v
 src/Language/CCCPL.v
-src/Language/ContPLProps.v
+# src/Language/ContPLProps.v
 src/Language/Reflect.v
 
 src/Numbers/Qnn.v
@@ -74,7 +74,7 @@ src/Spec/Sum.v
 src/Spec/Sup.v
 src/Spec/Lift.v
 src/Spec/Power.v
-src/Spec/Vec.v
+# src/Spec/Vec.v
 src/Spec/OEmbedding.v
 
 src/Spec/CCC/CCC.v

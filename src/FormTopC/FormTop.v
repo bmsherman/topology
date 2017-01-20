@@ -3,7 +3,8 @@ Require Import
   Algebra.FrameC
   Algebra.SetsC
   CMorphisms
-  CRelationClasses.
+  CRelationClasses
+  Prob.StdLib.
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
 
@@ -34,7 +35,9 @@ Record PreOrder :=
 Infix "<=" := (le _) : FT_scope.
 Notation "a <=[ X ] b" := (le X a b) (at level 40, format "a  <=[ X ]  b").
 
-Definition Open (A : PreOrder) := Subset A.
+Set Printing Universes.
+
+Definition Open@{A P U} (A : PreOrder@{A P}) := Subset@{A U} A.
 Delimit Scope FT_scope with FT.
 
 Local Open Scope FT.
@@ -60,13 +63,14 @@ unfold Included, pointwise_rel, arrow; intros a downa.
 destruct downa. econstructor; econstructor; eauto.
 Qed.
 
-Lemma down_downset_eq : forall (A : FormTop.PreOrder) (x y : A),
+Lemma down_downset_eq : forall (A : PreOrder) (x y : A),
    x ↓ y === ⇓ eq x ∩ ⇓ eq y.
 Proof.
 intros. apply Included_Same_set.
 - apply down_downset; reflexivity.
 - unfold Included, pointwise_rel, arrow.
   intros. destruct X. destruct d, d0. unfold In in *.
+  induction i, i0.
   subst. split; assumption.
 Qed.
 
@@ -94,9 +98,9 @@ apply Included_Same_set; apply downset_Proper_impl; try assumption;
 Qed.
 
 Module PreSpace.
-Record t :=
-  { S :> PreOrder
-  ; Cov : S -> Subset S -> Type }.
+Record t@{A P U X} :=
+  { S :> PreOrder@{A P}
+  ; Cov : S -> Open@{A P U} S -> Type@{X} }.
 End PreSpace.
 
 Infix "<|" := (PreSpace.Cov _) (at level 60) : FT_scope.
@@ -110,13 +114,14 @@ Local Open Scope FT.
 Section Defn.
 (** We assume we have some type [S] equipped
     with a partial order. *)
-Context {A : PreSpace.t}.
+Universes A P U X.
+Context {A : PreSpace.t@{A P U X}}.
 
 (** Definition 2.1 of [1].
     Definition of when the [Cov] relation is indeed a formal cover.
     Here, the [Cov] relation means the little triangle that is
     seen in the literature. *)
-Class t : Type :=
+Class t@{} : Type :=
   { refl : forall (a : PreSpace.S A) (U : Open A), In U a -> a <| U
   ; trans : forall {a : PreSpace.S A} {U : Open A}, a <| U 
      -> forall V, U <<| V
@@ -133,9 +138,9 @@ Arguments t : clear implicits.
 (** Definition of a formal cover that also has a positivity predicate. *)
 (** We bundle the positivity predicate, because if there is one,
     it's unique. *)
-Class tPos :=
-  { Pos : Subset A
-  ; mono : forall a U, Pos a -> a <| U -> Inhabited (U ∩ Pos)
+Class tPos@{} :=
+  { Pos : Subset@{A P} A
+  ; mono : forall a U, Pos a -> a <| U -> Inhabited@{A U} (U ∩ Pos)
   ; positive : forall a U, (Pos a -> a <| U) -> a <| U
   }.
 
@@ -231,14 +236,14 @@ Ltac ejoin := repeat match goal with
   end.
 
 Module PreISpace.
-Record t :=
-  { S :> PreOrder
-  ; Ix : S -> Type
+Record t@{A P U I} :=
+  { S :> PreOrder@{A P}
+  ; Ix : S -> Type@{I}
     (** For each observable property, a type of indexes or addresses or names of
         covering axioms for subsets of basic opens which conspire to cover
         the given observable property. This type should be inductively
         generated, or similarly phrased, the axioms should be countable *)
-  ; C : forall (s : S), Ix s -> Subset S 
+  ; C : forall (s : S), Ix s -> Open@{A P U} S 
     (** For each axiom index/name/address, this gives us a subset of basic
         opens whose union covers the given basic open *)
   }.
@@ -249,27 +254,28 @@ Section IGDefn.
 
 Local Open Scope FT.
 
-Context {A : PreISpace.t}.
+Universes A P U I.
+Context {A : PreISpace.t@{A P U I}}.
 (** Inductively generated formal topologies. See section
     3 of [1]. *)
 
 (** Given the axiom set [I] and [C], this generates the
     formal cover corresponding to that axiom set. *)
-Inductive GCov (a : A) (U : Open A) : Type :=
+Inductive GCov@{} (a : A) (U : Open@{A P U} A) : Type :=
   | grefl : U a -> GCov a U
   | gle_left : forall (b : A)
      , a <= b -> GCov b U -> GCov a U
   | ginfinity : forall (i : PreISpace.Ix A a),
      (forall u, PreISpace.C A a i u -> GCov u U) -> GCov a U.
 
-Inductive GCovL (a : A) (U : Open A) : Type :=
+Inductive GCovL@{} (a : A) (U : Open@{A P U} A) : Type :=
   | glrefl : U a -> GCovL a U
   | glle_left : forall (b : A), a <= b -> GCovL b U -> GCovL a U
   | gle_infinity : forall (b : A) (i : PreISpace.Ix _ b)
     , a <= b -> (forall u, { u' : A & (PreISpace.C A b i u' * down A a u' u)%type } -> GCovL u U)
     -> GCovL a U.
 
-Context {PO : PreO.t (le A)}.
+Context {PO : PreO.t@{A P} (le A)}.
 
 Lemma Lmore a U : GCov a U -> GCovL a U.
 Proof.
@@ -282,7 +288,7 @@ intros aU. induction aU.
   assumption.
 Qed.
 
-Lemma gmonotone (a : A) (U V : Open A) :
+Lemma gmonotone (a : A) (U V : Open@{A P U} A) :
   U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros UV aU. induction aU.
@@ -307,10 +313,10 @@ Proof.
 intros UV a. split; apply gmonotone; intros; rewrite UV; reflexivity.
 Qed.
 
-Class gtPos :=
-  { gPos : Subset A
+Class gtPos@{} :=
+  { gPos : Subset@{A P} A
   ; gmono_le : forall a b, a <= b -> gPos a -> gPos b
-  ; gmono_ax : forall a (i : PreISpace.Ix A a), gPos a -> Inhabited (PreISpace.C A a i ∩ gPos)
+  ; gmono_ax : forall a (i : PreISpace.Ix A a), gPos a -> Inhabited@{A P} (PreISpace.C A a i ∩ gPos)
   ; gpositive : forall a U, (gPos a -> GCov a U) -> GCov a U
   }.
 

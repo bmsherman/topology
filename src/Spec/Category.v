@@ -2,14 +2,14 @@ Set Universe Polymorphism.
 
 (** I will try to use the same names for the operations
     that there are in Coq *)
-Require Import RelationClasses Morphisms.
+Require Import CRelationClasses CMorphisms.
 Module Category.
 
 (** A category, with its type of morphisms, and a product operation *)
 Class CCat {U : Type} : Type := 
   { arrow : U -> U -> Type
   ; prod : U -> U -> U
-  ; eq : forall {A B}, arrow A B -> arrow A B -> Prop
+  ; eq : forall {A B}, arrow A B -> arrow A B -> Type
   }.
 
 Arguments CCat : clear implicits.
@@ -136,7 +136,7 @@ Definition add_unit_right {A : U} : A ~~> A * unit
 
 End BasicOps.
 
-Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
+Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Type :=
   { compose_id_left : forall {A B} (f : A ~~> B), id ∘ f == f
   ; compose_id_right : forall {A B} (f : A ~~> B), f ∘ id == f
   ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C) (h : C ~~> D), h ∘ (g ∘ f) == (h ∘ g) ∘ f
@@ -235,7 +235,7 @@ Section BasicProps.
 
   Lemma fst_Epi : forall {A B}, (A ~~> B) -> Epi (fst (A:=A)(B:=B)).
   Proof. intros A B f.
-         assert (fst (A:=A)(B:=B) ∘ (⟨id, f⟩) == id).
+         assert (fst (A:=A)(B:=B) ∘ (⟨id, f⟩) == id) as H.
          { rewrite pair_fst. reflexivity. }
          unfold Epi. intros X g1 g2 K.
          rewrite <- (compose_id_right g1), <- (compose_id_right g2).
@@ -256,15 +256,15 @@ Section BasicProps.
            reflexivity.
   Defined.
 
-  Lemma Mono_Proper : forall {A B}, Proper (eq ==> Logic.iff) (Mono  (A:=A) (B:=B)).
-  Proof. intros. unfold Proper, respectful. intros.
+  Lemma Mono_Proper : forall {A B}, Proper (eq ==> iffT) (Mono  (A:=A) (B:=B)).
+  Proof. intros. unfold Proper, respectful. intros x y H.
          split.
          - intros Mx.
-           unfold Mono; intros.
+           unfold Mono. intros X g1 g2 H0.
            rewrite <- !H in H0.
            apply Mx. assumption.
          - intros My.
-           unfold Mono; intros.
+           unfold Mono. intros X g1 g2 H0.
            rewrite -> !H in H0.
            apply My. assumption.
   Qed.
@@ -434,9 +434,9 @@ Definition Hom_Setoid A B :=
   simple refine (Setoid.Build_Iso _ _ _ _ _ _ _ _); simpl.
   - exact (fun f => to b ∘ f ∘ from a).
   - exact (fun f => from b ∘ f ∘ to a).
-  - unfold Proper, respectful. intros.
+  - unfold Proper, respectful. intros a0 a' H.
     rewrite H; reflexivity.
-  - unfold Proper, respectful. intros.
+  - unfold Proper, respectful. intros b0 b' H.
     rewrite H; reflexivity.
   - simpl. intros. rewrite !compose_assoc.
     rewrite (to_from b). rewrite compose_id_left.

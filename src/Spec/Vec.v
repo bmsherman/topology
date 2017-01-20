@@ -225,7 +225,8 @@ Module Vec.
         intros. (*
         apply proj_eq. *)
         simpl.
-        rewrite !pair_f. rewrite !pair_fst. rewrite <- !compose_assoc, !pair_snd.
+        rewrite !pair_f. rewrite !pair_fst.
+        rewrite <- !compose_assoc, !pair_snd.
         rewrite !pair_fst. reflexivity.
       Qed.            
 
@@ -258,7 +259,7 @@ Module Vec.
                unfold smap. rewrite <- !(compose_assoc _ tl). rewrite stream_tl.
                
                assert (stream (A:=A) (snd ∘ ⟨ fst (B:=A) ∘ hd, tl ⟩ ∘ id) ⟨ fst ∘ hd, tl ⟩ ==
-                       stream id ⟨ fst ∘ hd, tl ⟩ ∘ tl).
+                       stream id ⟨ fst ∘ hd, tl ⟩ ∘ tl) as H.
                { rewrite <- stream_ext1. apply stream_Proper.
                  rewrite pair_snd, compose_id_left, compose_id_right. reflexivity.
                  reflexivity. }
@@ -269,7 +270,7 @@ Module Vec.
                rewrite pair_snd.
                unfold smap. rewrite stream_hd.
                rewrite pair_fst, compose_id_right.
-               assert (hd ∘ unspool (A:=A) == ⟨hd, hd ∘ tl⟩).
+               assert (hd ∘ unspool (A:=A) == ⟨hd, hd ∘ tl⟩) as H.
                { eapply unspool_hd. }
                rewrite <- compose_assoc. rewrite H.
                rewrite pair_snd. reflexivity.
@@ -282,7 +283,7 @@ Module Vec.
                rewrite stream_tl.
                assert
                  (forall x, stream (A:=A) (snd ∘ ⟨ snd (A:=x) ∘ hd, tl ⟩ ∘ id) ⟨ snd ∘ hd, tl ⟩ ==
-                       stream id ⟨ snd ∘ hd, tl ⟩ ∘ tl).
+                       stream id ⟨ snd ∘ hd, tl ⟩ ∘ tl) as H.
                { intros x. rewrite <- stream_ext1. apply stream_Proper.
                  rewrite pair_snd. rewrite compose_id_left, compose_id_right. reflexivity.
                  reflexivity. }

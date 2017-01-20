@@ -1,14 +1,19 @@
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Require Import Morphisms.
+Require Import 
+  CMorphisms
+  Coq.Classes.RelationClasses
+  Coq.Classes.CRelationClasses
+  Prob.StdLib.
 Record Setoid := 
   { sty :> Type
-  ; seq : sty -> sty -> Prop
+  ; seq : forall (A B : sty), Type
   ; seq_Equivalence : Equivalence seq
   }.
 
 Infix "==" := (seq _) (at level 70, no associativity) : Setoid_scope.
+Notation "a ==[ X ] b" := (seq X a b) (at level 70, format "a  ==[ X ]  b") : Setoid_scope.
 Delimit Scope Setoid_scope with setoid.
 Local Open Scope setoid.
 
@@ -17,7 +22,7 @@ Proof.
 apply seq_Equivalence.
 Qed.
 
-Definition unit_Setoid@{i} : Setoid@{i}.
+Definition unit_Setoid@{i P} : Setoid@{i P}.
 Proof.
 refine (
   {| sty := Datatypes.unit
@@ -26,25 +31,25 @@ refine (
 constructor; unfold Reflexive, Symmetric, Transitive; auto.
 Defined.
 
-Definition prod_Setoid (A B : Setoid) : Setoid.
+Definition prod_Setoid@{i P} (A B : Setoid@{i P}) : Setoid@{i P}.
 Proof.
 refine (
   {| sty := (sty A * sty B)%type
-   ; seq := fun f f' => seq A (Datatypes.fst f) (Datatypes.fst f') 
-          /\ seq B (Datatypes.snd f) (Datatypes.snd f')
+   ; seq := fun f f' => (seq A (fst f) (fst f') 
+          * seq B (snd f) (snd f'))%type
   |}).
 constructor; unfold Reflexive, Symmetric, Transitive; 
   intros.
 - split; reflexivity.
-- destruct H; split; symmetry; assumption. 
-- destruct H, H0; split; etransitivity; eassumption.
+- destruct X; split; symmetry; assumption. 
+- destruct X, X0; split; etransitivity; eassumption.
 Defined.
 
-Record Iso {A B : Setoid} : Type :=
+Record Iso@{i P} {A B : Setoid@{i P}} : Type :=
   { to : A -> B
   ; from : B -> A
-  ; to_Proper : Proper (seq _ ==> seq _) to
-  ; from_Proper : Proper (seq _ ==> seq _) from
+  ; to_Proper : forall a a', a == a' -> to a == to a'
+  ; from_Proper : forall b b', b == b' -> from b == from b'
   ; to_from : forall a, to (from a) == a
   ; from_to : forall b, from (to b) == b
   }.
@@ -53,11 +58,11 @@ Arguments Iso : clear implicits.
 
 Infix "≅" := Iso (at level 70, no associativity) : Setoid_scope.
 
-Local Instance to_Proper_I {A B} (i : A ≅ B)
-  : Proper (seq _ ==> seq _) (to i) := to_Proper i.
+Local Instance to_Proper_I@{i P iP} {A B : Setoid@{i P}} (i : A ≅ B)
+  : Proper@{i iP} (seq _ ==> seq _) (to i) := to_Proper i.
 
-Local Instance from_Proper_I {A B} (i : A ≅ B)
-  : Proper (seq _ ==> seq _) (from i) := from_Proper i.
+Local Instance from_Proper_I@{i P iP} {A B : Setoid@{i P}} (i : A ≅ B)
+  : Proper@{i iP} (seq _ ==> seq _) (from i) := from_Proper i.
 
 
 Lemma Iso_Refl A : A ≅ A.
@@ -70,20 +75,23 @@ refine (
  ; intros; (reflexivity || assumption).
 Defined.
 
-Lemma Iso_Sym {A B} (i : A ≅ B) : B ≅ A.
+Lemma Iso_Sym {A B : Setoid} (i : A ≅ B) : B ≅ A.
 Proof.
 refine (
   {| to := from i
    ; from := to i
   |}
-); unfold Proper, respectful; intros.
+); intros. 
+- apply from_Proper. assumption.
+- apply to_Proper. assumption. 
 - apply from_to.
 - apply to_from.
 Defined.
 
+
 Require Coq.Setoids.Setoid.
 
-Lemma Iso_Trans {A B C} (ab : A ≅ B) (bc : B ≅ C)
+Lemma Iso_Trans@{i P} {A B C : Setoid@{i P}} (ab : A ≅ B) (bc : B ≅ C)
   : A ≅ C.
 Proof.
 refine (
@@ -93,11 +101,11 @@ refine (
   unfold Proper, respectful; intros.
 - repeat apply to_Proper. assumption.
 - repeat apply from_Proper. assumption.
-- rewrite (to_from ab). apply (to_from bc).
-- rewrite (from_to bc). apply (from_to ab).
+- etransitivity. apply to_Proper.
+  apply (to_from ab). apply (to_from bc).
+- etransitivity. apply from_Proper. 
+  apply (from_to bc). apply (from_to ab).
 Defined.
-
-Require Import CMorphisms.
 
 Local Instance Iso_Equivalence : Equivalence Iso.
 Proof.
@@ -106,9 +114,23 @@ apply Iso_Refl. apply Iso_Sym. assumption.
 eapply Iso_Trans; eassumption.
 Defined.
 
+Set Printing Universes.
+
+Module Leib.
+
+Inductive eq {A} {x : A} : A -> Type :=
+  | eq_refl : eq x.
+
+Arguments eq {A} x y : clear implicits.
+
 Definition Leibniz (A : Type) : Setoid.
 Proof.
 unshelve eapply (
   {| sty := A
    ; seq := eq |}).
+econstructor; unfold Reflexive, Symmetric, Transitive; intros.
+constructor. induction X. constructor.
+induction X, X0. constructor.
 Defined.
+
+End Leib.

@@ -25,8 +25,9 @@ Infix "||" := (ap2 or) : morph_scope.
 Context `{ΣOps}.
 
 Class ΣProps : Type :=
-  { apart : ~ (true == false)
-  ; not_false_then_true : forall (y : unit ~~> Σ), ~ (y == false) -> y == true            
+  { apart : (true == false) -> False
+  (** Yikes! `not_false_then_true` is NOT constructively ok. *)
+  ; not_false_then_true : forall (y : unit ~~> Σ), (y == false -> False) -> y == true            
   ; and_comm : forall {Γ} (x y : Γ ~~> Σ), (x && y) == (y && x)
   ; or_comm : forall {Γ} (x y : Γ ~~> Σ), (x || y) == (y || x)
   ; and_true : forall {Γ} (x : Γ ~~> Σ), (ap0 true && x) == x

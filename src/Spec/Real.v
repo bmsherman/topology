@@ -11,26 +11,11 @@ Section Defn.
 
 Context {U : Type} {ccat : CCat U} {cmc : CMC U} {Σ:U}{Σos:ΣOps (Σ:=Σ)}.
 
-Section Ring.
-
-Context {R : U}.
-Variable zero one : unit ~~> R.
-Variable plus mult : R * R ~~> R.
-
-Require Import Coq.setoid_ring.Ring_theory.
-
-Definition SemiRing : Prop :=
-  forall Γ, @semi_ring_theory (Γ ~~> R) (ap0 zero) (ap0 one)
-     (ap2 plus) (ap2 mult) eq.
-
-Variable sub : R * R ~~> R.
-Variable opp : R ~~> R.
-
-Definition Ring : Prop :=
-  forall Γ, @ring_theory (Γ ~~> R) (ap0 zero) (ap0 one)
-     (ap2 plus) (ap2 mult) (ap2 sub) (ap1 opp) eq.
-
-End Ring.
+Axiom SemiRing : forall R (zero one : unit ~~> R)
+  (plus mult : R * R ~~> R), Type. 
+Axiom Ring : forall R (zero one : unit ~~> R)
+  (plus mult sub : R * R ~~> R)
+  (opp : R ~~> R), Type. 
 
 Require Import Numbers.Qnn Spec.Discrete Spec.Sierpinski QArith.
 Local Close Scope Q.
@@ -59,8 +44,8 @@ Definition Rsub : R * R ~~> R := Rplus ∘ (id ⊗ Ropp).
 Definition Rzero : unit ~~> R := Q_to_R 0%Q.
 Definition Rone : unit ~~> R := Q_to_R 1%Q.
 
-Class RProps : Prop :=
-  { Rring : Ring Rzero Rone Rplus Rmult Rsub Ropp
+Class RProps : Type :=
+  { Rring : Ring _ Rzero Rone Rplus Rmult Rsub Ropp
   }.
 
 (** Non-located real numbers *)
@@ -83,12 +68,14 @@ Definition RNLsub : RNL * RNL ~~> RNL := RNLplus ∘ (id ⊗ RNLopp).
 Definition RNLzero : unit ~~> RNL := R_to_RNL ∘ Rzero.
 Definition RNLone : unit ~~> RNL := R_to_RNL ∘ Rone.
 
-Class RNLProps : Prop :=
-  { RNLring : Ring RNLzero RNLone RNLplus RNLmult RNLsub RNLopp
+Class RNLProps : Type :=
+  { RNLring : Ring _ RNLzero RNLone RNLplus RNLmult RNLsub RNLopp
   }.
 
 (** Non-negative lower reals *)
 Variable LRnn : U.
+
+Require Import CMorphisms.
 
 Class LRnnOps : Type :=
   { LRnnplus : LRnn * LRnn ~~> LRnn
@@ -98,8 +85,8 @@ Class LRnnOps : Type :=
   ; LRnnmin : LRnn * LRnn ~~> LRnn
   ; LRnnmax : LRnn * LRnn ~~> LRnn
   ; LRnnind : Σ ~~> LRnn
-  ; LRnnlt : forall {Γ}, Γ ~~> LRnn -> Γ ~~> LRnn -> Prop
-  ; LRnnlt_Proper : forall {Γ}, Proper (eq (A:=Γ) ==> eq ==> Logic.iff) LRnnlt
+  ; LRnnlt : forall {Γ}, Γ ~~> LRnn -> Γ ~~> LRnn -> Type
+  ; LRnnlt_Proper : forall {Γ}, Proper (eq (A:=Γ) ==> eq ==> iffT) LRnnlt
   }.
 
 Context `{LRnnOps}.
@@ -107,8 +94,8 @@ Definition LRnnzero : unit ~~> LRnn := Qnn_to_LRnn 0%Qnn.
 Definition LRnnone : unit ~~> LRnn := Qnn_to_LRnn 1%Qnn.
 Definition LRnnonehalf : unit ~~> LRnn := Qnn_to_LRnn Qnnonehalf.
 
-Class LRnnProps : Prop :=
-  { Lrnnsemiring : SemiRing LRnnzero LRnnone LRnnplus LRnnmult
+Class LRnnProps : Type :=
+  { Lrnnsemiring : SemiRing _ LRnnzero LRnnone LRnnplus LRnnmult
   ; LRnnzerobot : forall {Γ}, isBot (Σ:=Σ) (LRnnzero ∘ (tt(Γ:=Γ)))
   }.
 

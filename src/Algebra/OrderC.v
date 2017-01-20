@@ -298,13 +298,19 @@ Module PO.
 Section PO.
 Universes UA UP.
 
-  Class t {A : Type@{UA}} {le eq : crelation@{UA UP} A} : Type@{UP} :=
+  Class t@{} {A : Type@{UA}} {le eq : crelation@{UA UP} A} : Type@{UP} :=
   { PreO :> PreO.t le
-  ; le_proper : Proper (eq ==> eq ==> iffT) le
+  ; le_proper : forall x x' y y', eq x x' -> eq y y' -> iffT (le x y) (le x' y')
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
   }.
 
   Arguments t {A} le eq : clear implicits.
+
+  Instance le_Proper `{t A leA eqA} : Proper (eqA ==> eqA ==> iffT) leA.
+  Proof.
+  unfold Proper, respectful.
+  intros. apply le_proper; assumption.
+  Qed.
 
   Section Morph.
   Context {A : Type@{UA}} {leA eqA : crelation@{UA UP} A} {tA : t leA eqA} 
@@ -391,7 +397,7 @@ Universes UA UP.
 
   Instance le_properI `(tA : t A leA eqA) 
     : Proper (eqA ==> eqA ==> iffT) leA.
-  Proof. intros. apply le_proper. Qed.
+  Proof. intros. apply le_Proper. Qed.
 
   (** Morphisms must respect the equality relations on both their
       source (domain) and target (codomain). *)
@@ -439,7 +445,7 @@ Universes UA UP.
   Proof. 
     constructor; intros. 
     - apply PreO.two. 
-    - solve_proper. 
+    - firstorder; congruence.
     - destruct x, y; auto.
   Qed.
 
@@ -447,7 +453,7 @@ Universes UA UP.
   Proof.
   constructor; intros.
   - apply PreO.Nat.
-  - solve_proper.
+  - firstorder; congruence.
   - apply Le.le_antisym; assumption.
   Qed.
 
@@ -455,7 +461,7 @@ Universes UA UP.
   Proof.
   constructor; intros.
   - apply PreO.discrete.
-  - solve_proper.
+  - firstorder; congruence. 
   - assumption.
   Qed.
 
@@ -482,7 +488,7 @@ Universes UA UP.
     (map_op f leB) (map_op f eqB).
   Proof. constructor; intros.
   - apply (PreO.map f PreO).
-  - unfold map_op; split; simpl in *; intros. 
+  - unfold map_op in *; split; simpl in *; intros. 
     + rewrite <- X, <- X0. eassumption. 
     + eapply le_proper; eassumption.
   - unfold map_op; eapply le_antisym; eauto.
@@ -495,7 +501,7 @@ Universes UA UP.
   Proof. 
   constructor; intros.
   - apply (PreO.pointwise (fun _ => PreO)).  
-  - unfold pointwise_op. split; simpl in *; intros. 
+  - unfold pointwise_op in *. split; simpl in *; intros. 
     rewrite <- X0. rewrite <- X. apply X1.
     rewrite X0. rewrite X. apply X1.
   - unfold pointwise_op. eauto using le_antisym.
@@ -519,7 +525,6 @@ Universes UA UP.
   Qed.
 
   Axiom undefined : forall A, A.
-  Set Printing Universes.
   Local Instance type : t arrow iffT.
   Proof. 
   constructor; intuition. 
@@ -1082,8 +1087,6 @@ Module Lattice.
   Proof. 
     constructor; simpl; intros; constructor; simpl; firstorder.
   Qed.
-
-  Set Printing Universes.
 
   (*ST is the universe that T lies in. *)
   Local Instance type_ops@{ST T P} : Ops@{ST P P} Type@{T} :=

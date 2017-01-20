@@ -1,6 +1,6 @@
 Require Import Spec.Category.
 
-Import Morphisms Category.
+Import CMorphisms Category.
 Local Open Scope obj.
 Local Open Scope morph.
 

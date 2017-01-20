@@ -48,11 +48,11 @@ end.
 
 Definition dcontTG Γ A := dcontT (prodTy Γ) ~~> dcontT A.
 
-Fixpoint Rel {ty : Ty} : dcoqT ty -> unit ~~> dcontT ty -> Prop := match ty with
+Fixpoint Rel {ty : Ty} : dcoqT ty -> unit ~~> dcontT ty -> Type := match ty with
 | TDiscrete A => fun e1 e2 => e2 == discrete_pt e1
 | Tunit => fun _ _ => True
-| Tpair _ _ => fun e1 e2 => Rel (Datatypes.fst e1) (fst ∘ e2)
-    /\ Rel (Datatypes.snd e1) (snd ∘ e2)
+| Tpair _ _ => fun e1 e2 => (Rel (Datatypes.fst e1) (fst ∘ e2)
+    * Rel (Datatypes.snd e1) (snd ∘ e2))%type
 | Tfunc _ _ => fun f1 f2 => forall x1 x2, Rel x1 x2 ->
     Rel (f1 x1) (eval ∘ ⟨ f2 , x2 ⟩) 
 end.
@@ -62,10 +62,10 @@ Lemma Rel_uniq_cont {ty : Ty} : forall (eC : dcoqT ty)
   Rel eC e1 -> Rel eC e2 -> e1 == e2.
 Proof.
 induction ty; simpl; intros.
-- rewrite H, H0. reflexivity. 
+- rewrite X, X0. reflexivity. 
 - rewrite (unit_uniq e1), (unit_uniq e2).
   reflexivity.
-- destruct H, H0. 
+- destruct X, X0. 
   rewrite (pair_uniq e1), (pair_uniq e2).
   apply pair_Proper. eapply IHty1; eassumption.
   eapply IHty2; eassumption.
@@ -73,19 +73,19 @@ induction ty; simpl; intros.
   unfold parallel.
 Abort.
 
-Fixpoint dcoq_eq {A : Ty} : dcoqT A -> dcoqT A -> Prop
-  := match A as A' return dcoqT A' -> dcoqT A' -> Prop with
+Fixpoint dcoq_eq {A : Ty} : dcoqT A -> dcoqT A -> Type
+  := match A as A' return dcoqT A' -> dcoqT A' -> Type with
 | Tunit => fun _ _ => True
 | TDiscrete _ => Logic.eq
-| Tpair a b => fun e1 e2 => dcoq_eq (Datatypes.fst e1) (Datatypes.fst e2)
-    /\ dcoq_eq (Datatypes.snd e1) (Datatypes.snd e2)
+| Tpair a b => fun e1 e2 => (dcoq_eq (Datatypes.fst e1) (Datatypes.fst e2)
+    * dcoq_eq (Datatypes.snd e1) (Datatypes.snd e2))%type
 | Tfunc a b => fun f1 f2 => forall x1 x2 : dcoqT a, dcoq_eq x1 x2 -> dcoq_eq (f1 x1) (f2 x2)
 end.
 
-Definition dcoqG_eq {Γ A} : dcoqTG Γ A -> dcoqTG Γ A -> Prop :=
+Definition dcoqG_eq {Γ A} : dcoqTG Γ A -> dcoqTG Γ A -> Type :=
   fun f1 f2 => forall x1 x2, dcoq_eq x1 x2 -> dcoq_eq (f1 x1) (f2 x2).
 
-Require Import Morphisms.
+Require Import CMorphisms.
 Instance dcoq_eq_Equiv {A} : Equivalence (@dcoq_eq A).
 Proof.
 constructor; unfold Reflexive, Symmetric, Transitive.
@@ -97,28 +97,29 @@ Instance dcoqG_eq_Equiv {Γ A} : Equivalence (@dcoqG_eq Γ A).
 Proof.
 constructor; unfold Reflexive, Symmetric, Transitive, dcoqG_eq; intros.
 - admit.
-- symmetry. apply H. symmetry. assumption.
-- etransitivity. apply H. eassumption. apply H0. reflexivity.
+- symmetry. apply X. symmetry. assumption.
+- etransitivity. apply X. eassumption. apply X0. reflexivity.
 Admitted. 
 
 Lemma Rel_respectful {ty} :
-  Proper (dcoq_eq ==> eq ==> Basics.impl) (@Rel ty).
+  Proper (dcoq_eq ==> eq ==> arrow) (@Rel ty).
 Proof.
-unfold Proper, respectful, Basics.impl.
+unfold Proper, respectful, arrow.
 induction ty; simpl; intros.
-- subst. rewrite <- H1. symmetry. assumption.
+- subst. intros. 
+  rewrite <- X0. symmetry. assumption.
 - auto.
-- destruct H, H1. split.
+- destruct X, X1. split.
   + eapply IHty1. eassumption.
     apply compose_Proper. reflexivity. eassumption. assumption.
   + eapply IHty2. eassumption.
     apply compose_Proper. reflexivity. eassumption. assumption.
-- eapply IHty2. apply H. Focus 2. rewrite <- H0. reflexivity. reflexivity.
-  apply H1. eassumption.
+- eapply IHty2. apply X. Focus 2. rewrite <- X0. reflexivity. reflexivity.
+  apply X1. eassumption.
 Qed.
 
 Instance Rel_respectful' {ty}
-  : Proper (dcoq_eq ==> eq ==> iff) (@Rel ty).
+  : Proper (dcoq_eq ==> eq ==> iffT) (@Rel ty).
 Proof.
 unfold Proper, respectful. intros.
 split; apply Rel_respectful; repeat (assumption || symmetry).
@@ -132,29 +133,29 @@ Definition subst_cont {Γ A B} (e : dcontTG (A :: Γ) B)
   (x : dcontTG Γ A) : dcontTG Γ B
   := e ∘ ⟨ id , x ⟩.
 
-Fixpoint RelG {Γ} {A : Ty} : dcoqTG Γ A -> dcontTG Γ A -> Prop := 
-  match Γ as Γ' return dcoqTG Γ' A -> dcontTG Γ' A -> Prop with
+Fixpoint RelG {Γ} {A : Ty} : dcoqTG Γ A -> dcontTG Γ A -> Type := 
+  match Γ as Γ' return dcoqTG Γ' A -> dcontTG Γ' A -> Type with
 | [] => fun e1 e2 => Rel (e1 Datatypes.tt) e2
 | X :: Xs => fun f1 f2 => forall x1 x2, RelG x1 x2 ->
      RelG (subst_coq f1 x1) (subst_cont f2 x2)
 end.
 
 Lemma RelG_respectful {Γ A}
-  : Proper (dcoqG_eq ==> eq ==> Basics.impl) (@RelG Γ A).
+  : Proper (dcoqG_eq ==> eq ==> arrow) (@RelG Γ A).
 Proof.
 unfold Proper, respectful. 
-induction Γ; unfold dcoqG_eq, Basics.impl; simpl; intros.
-- rewrite <- H, <- H0. eassumption. auto.
-- unfold Basics.impl in IHΓ. eapply IHΓ. 3: apply H1. 3: eassumption. 
+induction Γ; unfold dcoqG_eq, arrow; simpl; intros.
+- rewrite <- X, <- X0. eassumption. auto.
+- unfold arrow in IHΓ. eapply IHΓ. 3: apply X1. 3: eassumption. 
   unfold dcoqG_eq. intros. 
-  apply H. simpl. split. assumption.
+  apply X. simpl. split. assumption.
   assert (dcoqG_eq x1 x1) as H4 by reflexivity.
   apply H4. assumption.
-  unfold subst_cont. rewrite H0. reflexivity.
+  unfold subst_cont. rewrite X0. reflexivity.
 Qed.
 
 Instance RelG_respectful' {Γ A}
-  : Proper (dcoqG_eq ==> eq ==> iff) (@RelG Γ A).
+  : Proper (dcoqG_eq ==> eq ==> iffT) (@RelG Γ A).
 Proof.
 unfold Proper, respectful. intros.
 split; apply RelG_respectful; repeat (assumption || symmetry).
@@ -355,14 +356,14 @@ unshelve econstructor; simpl.
 - unfold dcontTG. simpl.
   apply abstract. apply (fst ∘ snd).
 - induction Γ; simpl; intros.
-  + destruct x1, H. simpl in *. rewrite pair_parallel_snd. 
+  + destruct x1, X. simpl in *. rewrite pair_parallel_snd. 
     rewrite compose_assoc. rewrite eval_abstract.
     rewrite <- compose_assoc. rewrite pair_snd. assumption.
   + eapply RelG_respectful'. 3 :eassumption. reflexivity.
     unfold subst_cont.
     unfold dcontTG in *. 
     pose proof (abstract_ext (B := dcontT A) (fst (B := dcontT B) ∘ snd) ⟨ id, x2 ⟩).
-    rewrite H0. apply abstract_Proper.
+    rewrite X0. apply abstract_Proper.
     rewrite <- compose_assoc. rewrite parallel_snd.
     rewrite compose_id_left. reflexivity.
 Defined.
@@ -403,7 +404,7 @@ intros. induction e.
     admit. admit. admit.
 - induction G; intros.
   + simpl. eapply IHe1. assumption.
-  + repeat intro. pose (MkConst _ _ x1 x2 H) as C.
+  + repeat intro. pose (MkConst _ _ x1 x2 X) as C.
     change x1 with (Ccoq C). change x2 with (Ccont C).
     eapply RelG_respectful'.
     apply substDB_coq. apply substDB_cont.

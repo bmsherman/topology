@@ -23,33 +23,36 @@ Local Open Scope FT.
 Module InfoBase. 
 Section InfoBase.
 
-Variable (S : FormTop.PreOrder).
-Context {PO : PreO.t (le S)}.
+Set Printing Universes.
+Universes A P I.
+Variable (S : FormTop.PreOrder@{A P}).
+
+Context {PO : PreO.t@{A P} (le S)}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
-Inductive Ix {s : S} : Type := .
+Inductive Ix {s : S} : Type@{I} := .
 
 Arguments Ix : clear implicits.
 
-Definition C (s : S) (s' : Ix s) : Subset S := match s' with
+Definition C (s : S) (s' : Ix s) : Subset@{A P} S := match s' with
   end.
 
-Definition IBInd : PreISpace.t :=
+Definition IBInd@{} : PreISpace.t@{A P P I} :=
   {| PreISpace.S := S
    ; PreISpace.Ix := Ix
    ; PreISpace.C := C
   |}.
 
-Definition Cov (s : S) (U : Subset S) : Type :=
+Definition Cov (s : S) (U : Subset S) : Type@{P} :=
   In (⇓ U) s.
 
-Definition IB : PreSpace.t :=
+Definition IB@{} : PreSpace.t@{A P P I} :=
   {| PreSpace.S := S
    ; PreSpace.Cov := Cov |}.
 
 (** This axiom set is localized. *)
-Local Instance loc : FormTop.localized IBInd.
+Local Instance loc@{} : FormTop.localized IBInd.
 Proof.
 unfold FormTop.localized. intros. induction i.
 Qed.
@@ -73,7 +76,7 @@ Local Instance isCovG : FormTop.t IBInd :=
   FormTop.GCov_formtop.
 
 (** Should prove this via homeomorphism with IBInd. *)
-Local Instance isCov : FormTop.t IB.
+Local Instance isCov@{} : FormTop.t IB.
 Proof.
 Admitted.
 
@@ -491,6 +494,8 @@ Definition InfoBase {A : FormTop.PreOrder} {POS : PreO.t (le A)} : IGT :=
   |}.
 
 Arguments InfoBase A {POS}.
+
+Set Printing Universes.
 
 Local Instance One_PreO : PreO.t (le One.One).
 Proof.
