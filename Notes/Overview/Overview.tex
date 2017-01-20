@@ -441,7 +441,7 @@ Let $\bot, \top : \Open{\Sigma}$ with $\bot \le \top$ be the basic opens of $\Si
 
 $\Longleftarrow$: If $P$ is decidable, then if $P$ is true we can use $x \models \bot$ for the \irule{inhabited} rule, and if $P$ is false, then for all rules we will have $x \models \top$.
 
-$\Longrightarrow$: If we have a maximally informative point implementation for the indicator $\chi_P$ by $\irule{inhabited}$ we have either $x \models \top$ or $x \models \bot$. If $x \models \bot$, then $P$ is true and we are done. If $x \models \top$, then we apply the \irule{split-cov} rule with the cover $\top \cov \{ \bot, \top \}$. If the response is $x \models \bot$, then $P$ is true, and otherwise, $P$ must be false, though the formal proof that $P$ is probably not very simple.
+$\Longrightarrow$: If we have a maximally informative point implementation for the indicator $\chi_P$ by $\irule{inhabited}$ we have either $x \models \top$ or $x \models \bot$. If $x \models \bot$, then $P$ is true and we are done. If $x \models \top$, then we apply the \irule{split-cov} rule with the cover $\top \cov \{ \bot, \top \}$. If the response is $x \models \bot$, then $P$ is true, and otherwise, $P$ must be false, though the formal proof that $P$ is false is probably not very simple.
 \end{proof}
 
 There is a related notion that I have thought of outside the context of formal topology. Let $\mathsf{Partial} : \Type \to \Type$ denote the ``non-termination'' monad. 
