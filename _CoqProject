@@ -7,19 +7,8 @@ src/Types/Equiv.v
 src/Types/Setoid.v
 src/Types/List.v
 
-src/FormTop/FormTop.v
-src/FormTop/FormTopM.v
-src/FormTop/FTVal.v
-src/FormTop/Real.v
-src/FormTop/Join.v
-src/FormTop/Product.v
-src/FormTop/InfoBase.v
-src/FormTop/Bundled.v
-src/FormTop/Cont.v
-src/FormTop/Concrete.v
-src/FormTop/Alexandroff.v
+src/Numbers/QFacts.v
 
-src/FormTopC/All.v
 src/FormTopC/Approx.v
 src/FormTopC/Bundled.v
 src/FormTopC/Cantor.v
@@ -41,58 +30,14 @@ src/FormTopC/Truncate.v
 src/FormTopC/Pattern.v
 src/FormTopC/Sum.v
 
-src/Algebra/Frame.v
 src/Algebra/FrameC.v
 src/Algebra/Sublocale.v
-src/Algebra/Sets.v
 src/Algebra/SetsC.v
 src/Algebra/OrderC.v
 
-src/Examples/ContPL.v
-src/Examples/Comp.v
-
 src/Language/ContPL.v
-src/Language/CCCPL.v
 # src/Language/ContPLProps.v
-src/Language/Reflect.v
-
-src/Numbers/Qnn.v
-src/Numbers/LPReal.v
-src/Numbers/QFacts.v
-src/Numbers/LReal.v
-
-src/Spec/Category.v
-src/Spec/Discrete.v
-src/Spec/Functor.v
-src/Spec/Prob.v
-src/Spec/Real.v
-src/Spec/Sierpinski.v
-src/Spec/SMonad.v
-src/Spec/Pullback.v
-src/Spec/Stream.v
-src/Spec/Sum.v
-src/Spec/Sup.v
-src/Spec/Lift.v
-src/Spec/Power.v
-# src/Spec/Vec.v
-src/Spec/OEmbedding.v
-
-src/Spec/CCC/CCC.v
-src/Spec/CCC/Presheaf.v
 
 src/clement/SmallPowers.v
 
-src/alea/BinCoeff.v
-
 src/StdLib.v
-src/Sample.v
-src/FiniteSum.v
-src/Valuation.v
-src/PDF.v
-src/Integration.v
-src/FrameVal.v
-src/Classical.v
-src/Samplers.v
-src/PartialSamplers.v
-src/Fix.v
-src/Sums.v
