@@ -25,7 +25,7 @@ Class SMonad {U : Type} {ccat : CCat U} {cmc : CMC U}
   ; PJoin : forall {A}, unit ~~> Y (M (M A)) ==> Y (M A)
   }.
 
-Arguments SMonad U {_ _ _} M : clear implicits.
+Arguments SMonad U {_ _ _} M.
 
 Notation "A -[ f ]-> B" := (f%morph : (arrow A%obj B%obj)) (at level 60)
   : morph_scope.

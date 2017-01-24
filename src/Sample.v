@@ -642,7 +642,7 @@ Inductive PEval {A} {a : A} : Partial A -> Prop :=
   | PEvalNow : PEval (Now a)
   | PEValLater : forall e', PEval e' -> PEval (Later e').
 
-Arguments PEval {A} a e : clear implicits.
+Arguments PEval {A} a e.
 
 Record SemiDec {P : Type} :=
   { decide : Partial P

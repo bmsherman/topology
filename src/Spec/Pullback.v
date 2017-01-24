@@ -50,7 +50,7 @@ Module Pullback.
     Axiom pb_Uniq : forall {B C D} (f : B ~~> D) (h : C ~~> D), Mono ⟨pb_fst f h, pb_snd f h⟩.
     Axiom pb_Exists : forall {B C D} (f : B ~~> D) (h : C ~~> D),
         forall {X : U} (j : X ~~> B) (k : X ~~> C), f ∘ j == h ∘ k -> X ~~> pb f h.
-    Arguments pb_Exists {B} {C} {D} {f} {h} {X} j k {_}.
+    Arguments pb_Exists {B} {C} {D} {f} {h} {X} j k.
     Axiom pb_Exists_left : forall  {B C D} (f : B ~~> D) (h : C ~~> D),
         forall {X : U} (j : X ~~> B) (k : X ~~> C) (H : f ∘ j == h ∘ k),
         (pb_fst f h) ∘ (pb_Exists j k H) == j.

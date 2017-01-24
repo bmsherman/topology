@@ -765,6 +765,6 @@ Defined.
 
 End Presheaf.
 
-Arguments PSh U {_ _} : clear implicits.
+Arguments PSh U {_ _}.
 
 End Presheaf.

@@ -110,10 +110,10 @@ Qed.
 
 End Defn.
 
-Arguments t {S} le Cov : clear implicits.
-Arguments down {S} le a b c : clear implicits.
-Arguments downset {S} le U _ : clear implicits.
-Arguments stable {S} le Cov : clear implicits.
+Arguments t {S} le Cov.
+Arguments down {S} le a b c.
+Arguments downset {S} le U _.
+Arguments stable {S} le Cov.
 
 Section IGDefn.
 
@@ -260,9 +260,9 @@ Qed.
 
 End IGDefn.
 
-Arguments localized {S} le {I} C : clear implicits.
-Arguments GCov {S} le {I} C _ _ : clear implicits.
-Arguments GCovL {S} le {I} C _ _ : clear implicits.
+Arguments localized {S} le {I} C.
+Arguments GCov {S} le {I} C _ _.
+Arguments GCovL {S} le {I} C _ _.
 
 Section AxiomSetRefine.
 
@@ -622,7 +622,7 @@ Qed.
 
 End Defn.
 
-Arguments Cov {S} CovS V a U : clear implicits.
+Arguments Cov {S} CovS V a U.
 
 Section IGDefn.
 Context {S} {leS : S -> Ensemble S}.

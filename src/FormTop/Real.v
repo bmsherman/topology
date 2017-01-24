@@ -76,7 +76,7 @@ Proof.
 intros. unfold Cov'. split; intros.
 - apply FormTop.ginfinity with None. simpl.
   intros. unfold Cov, InfoBase.Cov in H.
-  specialize (H u H0). destruct H as (t & Ut).
+  specialize (H u H0). destruct H as [t Ut].
   unfold flip in *.
   apply FormTop.gle_left with t. assumption.
   apply FormTop.grefl. assumption.
@@ -88,7 +88,7 @@ intros. unfold Cov'. split; intros.
     * apply (H0 (Qmin a q)). intros. symmetry.
       apply Q.min_r_iff. assumption.
       eapply Qle_lt_trans. apply Q.le_min_l. assumption.
-    * destruct (Qbetween H1) as (mid & mida & midu).
+    * destruct (Qbetween H1) as [mid [mida midu]].
       apply H0 with mid; assumption.
 Qed.
 
@@ -202,7 +202,7 @@ refine ({| lbound := fun q => exists u, q <= u /\ x u |}); intros.
   intros. unfold LowerR.Cov, InfoBase.Cov.
   exists u0. eapply Qle_lt_trans; eassumption. apply Qle_refl.
   pose proof (Cont.pt_cov ptx xu H).
-  simpl in H0. destruct H0 as (q' & xq' & qq'); unfold In in *.
+  simpl in H0. destruct H0 as [q' [xq' qq']]; unfold In in *.
   exists xq'. split. assumption. exists xq'. split. apply Qle_refl.
   assumption.
 - destruct (Cont.pt_here ptx) as (l & xl).

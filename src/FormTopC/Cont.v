@@ -264,7 +264,7 @@ intros. constructor; intros.
   pose proof (local X Fat1 Fat2).
   eapply FormTop.trans.
   eassumption. simpl. intros.
-  destruct X2 as (tt & downtt & Fatt).
+  destruct X2 as [tt [downtt Fatt]].
   apply (FormTop.monotone)
   with (union (union (b ↓ c) G) F). 
   rewrite union_compose; reflexivity.
@@ -373,7 +373,7 @@ Theorem converse : forall F, Cont.t S T F
 Proof.
 intros. 
 constructor; intros.
-- apply Cov_Sat. eauto using (Cont.here X).
+- apply Cov_Sat. apply (Cont.here X).
 - unfold Cont.Sat in *. 
   apply Cov_Sat. FormTop.ejoin. FormTop.etrans.
   destruct X2. destruct d, d0.

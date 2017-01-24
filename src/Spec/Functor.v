@@ -32,7 +32,7 @@ Record NatTrans (F G : Functor) :=
 
 End Functor.
 
-Arguments Functor C D {_ _ _ _} : clear implicits.
+Arguments Functor C D {_ _ _ _}.
 
 Definition id_Functor {C : Type} `{cmcc : CMC C} : Functor C C.
 Proof.

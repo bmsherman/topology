@@ -38,8 +38,8 @@ End CCC.
 
 Infix "==>" := Func (at level 55, right associativity) : obj_scope.
 
-Arguments CCCOps U {_} : clear implicits.
-Arguments CCCProps U {_ _ _} : clear implicits.
+Arguments CCCOps U {_}.
+Arguments CCCProps U {_ _ _}.
 
 Section Defns.
 

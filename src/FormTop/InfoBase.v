@@ -340,7 +340,7 @@ End EvalPt.
 
 End InfoBaseCont.
 
-Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename, clear implicits.
+Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename.
 
 Module One.
 Section One.

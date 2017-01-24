@@ -320,7 +320,7 @@ There's an argument to be made for adding parallel_pair, but I don't think I wan
 
   Arguments Meas_Embed {U} {ccat} {cmc} {cmcprops} {Σ} {Σos} {LRnn} {lrnnops}
             {R} {sts} {sumops} {sumprops} {Stream} {power} {Open} {Meas} {Prob}
-            {SubProb} {discrete} {MeasOps} {A} {B} f {_}.
+            {SubProb} {discrete} {MeasOps} {A} {B} f.
 (*  Arguments embedding_Proper {U} {ccat} {Embedding} {A} {B} {f} {_} {_} {_}.*)
 
              

@@ -6,6 +6,8 @@ Require Import
   FormTopC.FormalSpace
   CMorphisms.
 
+Set Universe Polymorphism.
+
 Local Open Scope Subset.
 Local Open Scope FT.
 
@@ -70,6 +72,8 @@ constructor; unfold eqA; intros.
   apply X. assumption. apply X0. assumption.
 Qed.
 
+Set Printing Universes.
+
 Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
 Proof.
@@ -78,12 +82,12 @@ intros. constructor; unfold Sat, In in *.
   rewrite <- (Intersection_Included_r _ U V); eassumption.
 Qed.
 
-Theorem Sat_Union : forall U V,
+Theorem Sat_Union : forall U V : Subset A,
   Sat U ∪ Sat V ⊆ Sat (U ∪ V).
 Proof.
 intros. unfold Included, pointwise_rel, arrow; intros a H. 
 destruct H; unfold In, Sat in *. 
-rewrite <- Union_Included_l. assumption. 
+rewrite <- (Union_Included_l _ U V). assumption. 
 rewrite <- Union_Included_r. assumption. 
 Qed.
 
@@ -120,7 +124,7 @@ Existing Instances Union_Proper_le_flip Union_Proper_eq.
 Theorem FrameLatt : Lattice.t T LOps.
 Proof.
 constructor; intros.
-- apply FramePO.
+- admit. (*apply FramePO. *)
 - simpl. unfold Proper, respectful, eqA. intros x y H x0 y0 H0.
   split; unfold Included, In, Sat; intros.
   + apply Cov_Sat. rewrite <- Sat_Union.

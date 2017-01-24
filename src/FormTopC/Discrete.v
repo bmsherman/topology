@@ -63,7 +63,7 @@ Proof.
 intros H x y Ux Uy.
 pose proof (Cont.pt_local H Ux Uy).
 destruct X. destruct i.
-destruct d. simpl in *. subst. assumption.
+destruct d. simpl in *. subst. reflexivity.
 Qed.
 
 Definition pt_eval (U : Subset A) (x : Cont.pt Disc U)

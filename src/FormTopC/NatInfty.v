@@ -198,7 +198,7 @@ unfold is_pt. constructor.
   + intros. destruct X. apply H0.
     eapply Lt.le_lt_trans; eassumption.
   + subst. assumption.
-- intros. induction i.
+- intros a H i. induction i.
   + destruct c. simpl in *. destruct ix.
     inv l. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
     exists (MoreThan n0). split. assumption.

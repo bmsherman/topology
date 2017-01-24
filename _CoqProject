@@ -23,7 +23,7 @@ src/FormTopC/All.v
 src/FormTopC/Approx.v
 src/FormTopC/Bundled.v
 src/FormTopC/Cantor.v
-src/FormTopC/Compact.v
+# src/FormTopC/Compact.v
 src/FormTopC/Cont.v
 src/FormTopC/Discrete.v
 src/FormTopC/FormTop.v

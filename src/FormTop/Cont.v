@@ -160,8 +160,8 @@ Definition toCmap : Frame.cmap (FormTop.FOps leS CovS)
 
 End Cont.
 
-Arguments t {S} leS {T} leT CovS CovT F_ : clear implicits.
-Arguments pt {T} leT CovT F : clear implicits.
+Arguments t {S} leS {T} leT CovS CovT F_ .
+Arguments pt {T} leT CovT F .
 
 Require Import Morphisms.
 
@@ -245,7 +245,7 @@ intros. constructor; intros.
   pose proof (local H Fat1 Fat2).
   eapply FormTop.trans.
   eassumption. simpl. intros.
-  destruct H2 as (tt & downtt & Fatt).
+  destruct H2 as [tt [downtt Fatt]].
   apply (FormTop.monotone)
   with (union (union (FormTop.down leU b c) G) F). 
   apply union_compose.
@@ -263,7 +263,7 @@ Qed.
 End Morph.
 End Cont.
 
-Arguments Cont.t {S} leS {T} leT CovS CovT F_ : clear implicits.
+Arguments Cont.t {S} leS {T} leT CovS CovT F_ .
 
 
 Module IGCont.
@@ -338,7 +338,7 @@ End IGCont.
 End IGCont.
 
 Arguments IGCont.t {S} leS CovS
-                   {T} leT {IT} CT F_ : clear implicits.
+                   {T} leT {IT} CT F_ .
 
 
 
@@ -421,9 +421,9 @@ Qed.
 
 End Defn.
 
-Arguments Ix {S} leS IxS {T} F a : clear implicits.
-Arguments Cov {S} leS {IxS} CS {T} F _ _ : clear implicits.
-Arguments C {S} leS {IxS} CS {T} F _ _ _ : clear implicits.
+Arguments Ix {S} leS IxS {T} F a .
+Arguments Cov {S} leS {IxS} CS {T} F _ _ .
+Arguments C {S} leS {IxS} CS {T} F _ _ _ .
 
 Section ExampleDef.
 

@@ -90,7 +90,7 @@ intros. unfold Proper, respectful.
 intros. apply parallel_proper; assumption.
 Qed.
 
-Arguments CMC U {_} : clear implicits.
+Arguments CMC U {_}.
 
 
 Definition Mono {U} `{CMC U} {A B : U} (f : A ~~> B) :=
@@ -106,7 +106,7 @@ Record Iso {U} `{CMC U} {A B : U} : Type :=
   ; from_to : from ∘ to == id
   }.
 
-Arguments Iso {_ _ _} A B : clear implicits.
+Arguments Iso {_ _ _} A B.
 
 Infix "≅" := Iso (at level 70, no associativity) : obj_scope.
 
@@ -146,7 +146,7 @@ Class CMC_Props {U : Type} {ccat : CCat U} {cmc : CMC U} : Prop :=
   ; unit_uniq : forall {A} (h k : A ~~> unit), h == k
   }.
 
-Arguments CMC_Props U {_ _} : clear implicits.
+Arguments CMC_Props U {_ _}.
 
 Ltac remove_eq_left :=
   repeat rewrite <- compose_assoc; repeat (apply compose_Proper; try reflexivity).

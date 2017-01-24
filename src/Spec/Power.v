@@ -113,7 +113,7 @@ Arguments pow_app1' {U} {ccat} {cmc} {power} {_} {A} {X} {B} f x.
 Arguments pow_app2' {U} {ccat} {cmc} {power} {_} {X} {A} {B} f.
 Arguments app12 {U} {ccat} {cmc} {power} {H} {_} {A} {X} {B} f x.
 Arguments app21 {U} {ccat} {cmc} {power} {H} {_} {A} {X} {B} f.
-Arguments pmap_Proper' {U} {ccat} {cmc} {power} {H} {_} {X} {A} {B} {C} {D}  _ _ y0 x0  _ _.
+Arguments pmap_Proper' {U} {ccat} {cmc} {power} {H} {_} {X} {A} {B} {C} {D}  _ _ y1 x1  _ _ : rename.
 Arguments pow_app2'_pre {U} {ccat} {cmc} {power} {H} {_} {X} {A} {A'} {B} {f} {g}.
 
 Arguments dfs_to {U} {ccat} {cmc} {D} {_} {power} {_} {X} {A} f.
