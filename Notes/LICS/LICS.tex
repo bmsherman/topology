@@ -516,7 +516,7 @@ Intuitively, overlapping patterns behave much like traditional pattern matches a
 The syntax of an overlapping pattern match determines a unique behavioral specification, but in order to confirm that a continuous map implements such behavior (and thus, to be able to run it), one must confirm
 \begin{enumerate}
 \item \emph{Covering}: together, the cases cover the entire input space.
-\item \emph{Gluing}: nondeterministic unions (maxima with respect to specialization order) exist for each pair of branches on their overlap.
+\item \emph{Gluing}: \note{People find this confusing} nondeterministic unions (maxima with respect to specialization order) exist for each pair of branches on their overlap.
 \end{enumerate}
 Formal (constructive) proofs of these properties contribute to the computational behavior of the pattern match.
 
@@ -1464,7 +1464,7 @@ where here the pattern match is written in a different (but equivalent) manner, 
 
 While previous parts of the paper explain much of this code, it remains to prove that the cases cover, and to explain the expressions in the first branch.
 
-With this formulation, it simple to prove the cases cover $\Viet(\R)$, as they are the pullbacks along $\mathsf{no\_roots}_\varepsilon$ of the open embeddings $\mathsf{Left}$ and $\mathsf{Right}$, which together cover $\BCover$ (see \ref{s:pback}).
+With this formulation, it simple to prove the cases cover $\Viet(\R)$, as they are the pullbacks along $\mathsf{no\_roots}_\varepsilon$ of the open embeddings $\mathsf{Left}$ and $\mathsf{Right}$, which together cover $\BCover$.
 
 The expressions in the first branch,
 \begin{equation*}
