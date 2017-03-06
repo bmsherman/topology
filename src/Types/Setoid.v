@@ -121,7 +121,7 @@ Module Leib.
 Inductive eq {A} {x : A} : A -> Type :=
   | eq_refl : eq x.
 
-Arguments eq {A} x y : clear implicits.
+Arguments eq {A} x y.
 
 Definition Leibniz (A : Type) : Setoid.
 Proof.

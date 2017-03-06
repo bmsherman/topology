@@ -64,7 +64,7 @@ Module PreO.
     ; le_trans : forall x y z, le x y -> le y z -> le x z
     }.
 
-  Arguments t {A} le : clear implicits.
+  Arguments t {A} le.
 
   Instance PreOrder_I `{tle : t A leA} : PreOrder leA.
   Proof.
@@ -289,7 +289,7 @@ Module PreO.
 
 End PreO.
 
-Arguments PreO.max {A} {le} _ _ _ : clear implicits.
+Arguments PreO.max {A} {le} _ _ _.
 
 (** Partial orders: We take a preorder, but also have an equality relation [eq]
     such that [eq x y] exactly when both [le x y] and [le y x]. *)
@@ -304,7 +304,7 @@ Universes UA UP.
   ; le_antisym : forall x y, le x y -> le y x -> eq x y
   }.
 
-  Arguments t {A} le eq : clear implicits.
+  Arguments t {A} le eq.
 
   Instance le_Proper `{t A leA eqA} : Proper (eqA ==> eqA ==> iffT) leA.
   Proof.
@@ -431,8 +431,8 @@ Universes UA UP.
 
   End PO.
 
-  Arguments t {A} _ _: clear implicits.
-  Arguments morph {A} _ _ {B} _ _ _ : clear implicits.
+  Arguments t {A} _ _.
+  Arguments morph {A} _ _ {B} _ _ _.
 
   Definition one : t (fun (_ : True) _ => True) (fun _ _ => True).
   Proof. 

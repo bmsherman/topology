@@ -30,7 +30,7 @@ Definition Included@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointw
 Definition Same_set@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointwise_rel iffT.
 End Defns.
 
-Arguments Inhabited {A} U : clear implicits.
+Arguments Inhabited {A} U.
 
 
 Infix "⊆" := Included (at level 60) : Subset_scope.

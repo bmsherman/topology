@@ -138,7 +138,7 @@ Definition makeFun1E {Γ arg ret : U}
 
 End ContPL.
 
-Arguments Extend {_ _} _ _: clear implicits.
+Arguments Extend {_ _} _ _.
 
 Notation "'FUN' x .. y => t " :=
         (fun _ => fun x => .. (fun y => t%morph) .. )

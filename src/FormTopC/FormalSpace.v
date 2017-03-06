@@ -5,6 +5,8 @@ Require Import
   FormTopC.Cont
   CMorphisms.
 
+Set Universe Polymorphism.
+
 Record t : Type :=
   { S :> PreSpace.t
   ; PO : PreO.t (le S)

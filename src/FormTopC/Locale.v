@@ -6,6 +6,8 @@ Require Import
   FormTopC.FormalSpace
   CMorphisms.
 
+Set Universe Polymorphism.
+
 Local Open Scope Subset.
 Local Open Scope FT.
 
@@ -70,6 +72,8 @@ constructor; unfold eqA; intros.
   apply X. assumption. apply X0. assumption.
 Qed.
 
+Set Printing Universes.
+
 Theorem Sat_Intersection : forall U V,
   Sat (U ∩ V) ⊆ Sat U ∩ Sat V.
 Proof.
@@ -78,12 +82,12 @@ intros. constructor; unfold Sat, In in *.
   rewrite <- (Intersection_Included_r _ U V); eassumption.
 Qed.
 
-Theorem Sat_Union : forall U V,
+Theorem Sat_Union : forall U V : Subset A,
   Sat U ∪ Sat V ⊆ Sat (U ∪ V).
 Proof.
 intros. unfold Included, pointwise_rel, arrow; intros a H. 
 destruct H; unfold In, Sat in *. 
-rewrite <- Union_Included_l. assumption. 
+rewrite <- (Union_Included_l _ U V). assumption. 
 rewrite <- Union_Included_r. assumption. 
 Qed.
 
@@ -120,14 +124,19 @@ Existing Instances Union_Proper_le_flip Union_Proper_eq.
 Theorem FrameLatt : Lattice.t T LOps.
 Proof.
 constructor; intros.
-- apply FramePO.
+- admit. (*apply FramePO. *)
 - simpl. unfold Proper, respectful, eqA. intros x y H x0 y0 H0.
   split; unfold Included, In, Sat; intros.
   + apply Cov_Sat. rewrite <- Sat_Union.
-    rewrite <- H, <- H0.
+    eapply FormTop.Cov_Proper. reflexivity.
+    eapply Union_Proper_le; apply Same_set_Included; symmetry;
+      eassumption.
     rewrite <- !Sat_mono. assumption.
   + apply Cov_Sat. rewrite <- Sat_Union. 
-    rewrite H, H0. rewrite <- !Sat_mono. assumption. 
+    eapply FormTop.Cov_Proper. reflexivity.
+    eapply Union_Proper_le; apply Same_set_Included;
+      eassumption.
+    rewrite <- !Sat_mono. assumption. 
 - constructor.
   + simpl. unfold leA. apply Sat_mono2. 
     apply Union_Included_l.
@@ -136,21 +145,23 @@ constructor; intros.
   + simpl. unfold leA. intros.
     unfold Sat, Included, pointwise_rel, arrow. 
     intros a H. etrans. rewrite Cov_Sat. destruct H.
-    * rewrite <- X, <- Cov_Sat. apply refl. assumption.
-    * rewrite <- X0, <- Cov_Sat. apply refl. assumption.
+    * apply refl.  apply X. apply refl. assumption. 
+    * apply refl. apply X0. apply refl. assumption.
 - simpl. unfold Proper, respectful, eqA, minA.
   intros x y H x0 y0 H0.
   apply Included_Same_set.
-  + rewrite Sat_Intersection. 
+  + 
     (* universes broke rewriting
+rewrite Sat_Intersection. 
 rewrite <- Sat_downset.
     rewrite H, H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
     destruct H1. unfold Sat, In in *.
     join s s0. assumption.
     *) admit.
-  + rewrite Sat_Intersection. 
+  + 
     (* universes broke rewriting
+    rewrite Sat_Intersection. 
     rewrite <- !Sat_downset.
     rewrite <- H, <- H0. unfold Included, pointwise_rel, arrow; 
     intros a H1.
@@ -165,9 +176,10 @@ rewrite <- Sat_downset.
     etrans. destruct H as (H0 & H1). destruct H1. 
     rewrite l0. apply refl. assumption.
   + unfold Sat, Included, pointwise_rel, arrow; intros a H. 
-    etrans. apply le_right. rewrite Cov_Sat, <- X, <- Cov_Sat.
-    apply refl. assumption.
-    rewrite Cov_Sat, <- X0, <- Cov_Sat. apply refl.  assumption.
+    etrans. apply le_right. apply Cov_Sat.
+    apply refl. apply X. apply refl. assumption.
+    apply Cov_Sat. apply refl. apply X0. apply refl.
+    assumption.
 Admitted.
 
 Theorem Frame : @Frame.t T FOps.
@@ -182,21 +194,20 @@ constructor; intros.
   split; unfold Included, Sat; intros.
   + etrans. destruct X0.
     apply (trans (U := y i)).
-    rewrite Cov_Sat, <- (X i), <- Cov_Sat. 
-    apply refl. assumption. specialize (X i).
+    apply Cov_Sat. apply refl. apply (X i). apply refl. assumption. 
+    specialize (X i).
     intros. apply refl. econstructor. eassumption. 
   + etrans. destruct X0.
     apply (trans (U := x i)).
-    rewrite Cov_Sat, (X i), <- Cov_Sat.
-    apply refl. assumption. intros.
+    apply Cov_Sat. apply refl. apply (X i). apply refl. assumption. 
+    intros.
     apply refl. econstructor; eassumption.
 - simpl. constructor; unfold leA; intros.
   + apply Sat_mono2. unfold Included, pointwise_rel, arrow; intros. 
     econstructor; eassumption. 
   + unfold Included, Sat, pointwise_rel, arrow; intros.
     etrans. destruct X0. 
-    rewrite Cov_Sat, <- (X i), <- Cov_Sat.
-    apply refl. assumption.
+    apply Cov_Sat. apply refl. apply (X i). apply refl. assumption. 
 - simpl. unfold minA, eqA.
   split; apply Sat_mono2.
   + unfold Included, pointwise_rel, arrow. 
@@ -272,7 +283,7 @@ unshelve eapply Frame.morph_easy.
 - eapply Frame.
 - eapply Frame.
 - repeat intro. split; apply monotone; simpl in X;
-       rewrite X; apply PreO.le_refl.
+       apply Same_set_Included; repeat (eassumption || symmetry). 
 - unfold Cont.frame. simpl. unfold eqA, Sat.
   intros. split; unfold Included, In; intros.
   + apply FormTop.refl. unfold In. auto.
@@ -282,7 +293,7 @@ unshelve eapply Frame.morph_easy.
     destruct i0. clear i i0. clear l.
     rewrite l0. apply FormTop.refl.
     repeat (econstructor; try eassumption).
-- intros. unfold Cont.frame. simpl. apply PO.le_antisym;
+- intros. unfold Cont.frame. simpl. apply Included_Same_set;
     unfold leA, Sat, Included, pointwise_rel, arrow; intros.
     * FormTop.trans X. unfold minA in X.
       destruct X. destruct i. destruct d, d0.
