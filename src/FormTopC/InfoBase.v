@@ -38,7 +38,7 @@ Arguments Ix : clear implicits.
 Definition C (s : S) (s' : Ix s) : Subset@{A P} S := match s' with
   end.
 
-Definition IBInd@{} : PreISpace.t@{A P P I} :=
+Definition IBInd@{} : PreISpace.t@{A P I} :=
   {| PreISpace.S := S
    ; PreISpace.Ix := Ix
    ; PreISpace.C := C
@@ -47,7 +47,7 @@ Definition IBInd@{} : PreISpace.t@{A P P I} :=
 Definition Cov (s : S) (U : Subset S) : Type@{P} :=
   In (⇓ U) s.
 
-Definition IB@{} : PreSpace.t@{A P P I} :=
+Definition IB@{} : PreSpace.t@{A P I} :=
   {| PreSpace.S := S
    ; PreSpace.Cov := Cov |}.
 
@@ -62,8 +62,8 @@ Theorem CovEquiv : forall s U,
 Proof.
 intros. simpl. unfold Cov. split; intros.
 - destruct X as [t Ut st].
-  apply FormTop.gle_left with t. assumption.
-  apply FormTop.grefl. assumption. 
+  apply FormTop.glle_left with t. assumption.
+  apply FormTop.glrefl. assumption. 
 - induction X. 
   + exists a. assumption. reflexivity.
   + destruct IHX as [t Ut bt].
@@ -73,7 +73,7 @@ Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
 Local Instance isCovG : FormTop.t IBInd := 
-  FormTop.GCov_formtop.
+  FormTop.GCovL_formtop _.
 
 (** Should prove this via homeomorphism with IBInd. *)
 Local Instance isCov@{} : FormTop.t IB.
@@ -101,7 +101,7 @@ Context {T : FormTop.PreOrder} {POT : PreO.t (le T)}.
 
 Record ptNM {F : Subset T} : Type :=
   { ptNM_local : forall {a b}, F a -> F b -> 
-     Inhabited (F ∩ (a ↓ b))
+     Inhabited (F ∩ (eq a ↓ eq b))
   ; ptNM_le_right : forall a b, a <=[T] b -> F a -> F b
   ; ptNM_here : Inhabited F
   }.
@@ -119,7 +119,7 @@ Record tNM {F_ : Cont.map S (InfoBase.IB T)} :=
   { NMle_left : forall a b c, a <=[S] b -> F_ c b -> F_ c a
   ; NMle_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
   ; NMlocal : forall {a b c}, F_ b a -> F_ c a -> 
-     Inhabited ((fun t => F_ t a) ∩ (b ↓ c))
+     Inhabited ((fun t => F_ t a) ∩ (eq b ↓ eq c))
   ; NMhere : forall s : S, In (union (fun _ => True) F_) s
   }.
 
@@ -372,7 +372,8 @@ constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
   unfold In; simpl; constructor. constructor.
 - apply FormTop.refl. unfold In; simpl. 
-  exists I. unfold FormTop.down, In; auto. constructor.
+  exists I. destruct b, c. unfold FormTop.down, In; auto.
+  split; eexists; unfold In; eauto. auto.
 - apply FormTop.refl. constructor 1 with I.
   induction X. destruct a0. assumption.
   assumption.  destruct i. auto.

@@ -1,10 +1,11 @@
 Require Import 
   Basics
-  CRelationClasses
+  CMorphisms
   FormTopC.FormTop
   Algebra.SetsC
   Algebra.OrderC
-  Algebra.FrameC.
+  Algebra.FrameC
+  Prob.StdLib.
 
 Set Universe Polymorphism.
 Local Open Scope Subset.
@@ -23,7 +24,7 @@ Record t {F_ : map S T} : Type :=
   { here : forall a, a <|[S] (union (fun _ => True) F_)
   ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
   ; local : forall {a b c}, F_ b a -> F_ c a
-    -> a <|[S] union (b ↓ c) F_
+    -> a <|[S] union (eq b ↓ eq c) F_
   ; cov : forall {a b} V, F_ b a -> b <|[T] V
     -> a <|[S] union V F_
   }.
@@ -73,7 +74,7 @@ Qed.
 
 Record pt {F : Subset T} :=
   { pt_here : Inhabited F
-  ; pt_local : forall {b c}, F b -> F c -> Inhabited ((b ↓ c) ∩ F)
+  ; pt_local : forall {b c}, F b -> F c -> Inhabited ((eq b ↓ eq c) ∩ F)
   ; pt_cov : forall {b V}, F b -> b <| V -> Inhabited (F ∩ V)
   }.
 
@@ -177,15 +178,6 @@ Ltac ecov := match goal with
     eapply (cov X _ H)
   end.
 
-Require Import CMorphisms.
-
-(*
-Lemma t_Proper : forall S T (leS : crelation S) (leT : crelation T), Proper
-  ((eq ==> eq ==> iffT) ==> (eq ==> eq ==> iffT) ==> eq ==> iffT) (t leS leT).
-Proof.
-Admitted.
-*)
-
 
 Section Morph.
 
@@ -201,7 +193,9 @@ constructor; intros; unfold id in *.
 - eapply FormTop.refl. exists a; eauto. unfold In. constructor. 
   reflexivity.
 - eapply PreO.le_trans; eassumption.
-- apply FormTop.refl. exists a. split; eassumption.
+- apply FormTop.refl. exists a. 
+  apply down_eq.
+split; eassumption.
   reflexivity.
 - eapply FormTop.le_left; try eassumption.
   clear X. FormTop.trans X0.
@@ -264,14 +258,16 @@ intros. constructor; intros.
   pose proof (local X Fat1 Fat2).
   eapply FormTop.trans.
   eassumption. simpl. intros.
-  destruct X2 as [tt [downtt Fatt]].
+  destruct X2 as [tt downtt].
   apply (FormTop.monotone)
-  with (union (union (b ↓ c) G) F). 
+  with (union (union (eq b ↓ eq c) G) F). 
   rewrite union_compose; reflexivity.
   eapply (cov X). eassumption.
+  apply down_eq in downtt.
+  destruct downtt as [tt1 tt2].
   apply (local X0).
-  eapply (le_left X0). eapply downtt. eassumption.
-  eapply (le_left X0). eapply Fatt. eassumption.
+  eapply (le_left X0). eapply tt1. eassumption.
+  eapply (le_left X0). eapply tt2. eassumption.
 - destruct X1 as [t [Gtb Fat]].
   apply (FormTop.monotone) with (union (union V G) F).
   rewrite union_compose; reflexivity.
@@ -329,11 +325,12 @@ Context {POS : PreO.t (le S)}
 Record t {F_ : Cont.map S T} :=
   { here : forall a, a <|[S] union (fun _ : T => True) F_
   ; local : forall a b c, F_ b a -> F_ c a ->
-       a <|[S] union (b ↓ c) F_
+       a <|[S] union (eq b ↓ eq c) F_
   ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
   ; le_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
-  ; ax_right : forall a b (j : PreISpace.Ix T b), F_ b a -> 
-     a <|[S] union (PreISpace.C T b j) F_
+  ; ax_right : forall a t t' (j : PreISpace.Ix T t'),
+     t <= t' -> F_ t a -> 
+     a <|[S] union (eq t ↓ PreISpace.C T t' j) F_
   }.
 
 Arguments t : clear implicits.
@@ -351,7 +348,8 @@ intros. constructor; intros.
 - generalize dependent a. induction X1; intros.
   + apply FormTop.refl. exists a; assumption.
   + apply IHX1. eapply le_right; eassumption.
-  + pose proof (ax_right X _ _ i X1). clear X1.
+  + pose proof (ax_right X _ _ _ i l X1) as X2.
+    clear X1.
     FormTop.etrans. destruct X2. 
     eapply X0; eassumption.
 Qed.
@@ -384,23 +382,25 @@ constructor; intros.
 - unfold Cont.Sat in *.
   FormTop.etrans.
   assert (b <|[T] eq c).
-  eapply FormTop.gle_left. eassumption.
-  apply FormTop.grefl. reflexivity.
+  eapply FormTop.glle_left. eassumption.
+  apply FormTop.glrefl. reflexivity.
   pose proof (Cont.cov X (a := a) (b := b) (eq c)).
   eapply FormTop.monotone. Focus 2. apply X3.
   assumption. assumption.
   apply union_eq.
-- unfold Cont.Sat in X0. FormTop.etrans.
+- unfold Cont.Sat in X1. FormTop.etrans.
   apply Cov_Sat. Cont.ecov.
-  apply FormTop.ginfinity with j. intros. 
-  apply FormTop.grefl. assumption.
+  apply FormTop.gle_infinity with _ j. assumption.
+  intros. apply FormTop.glrefl. assumption.
 Qed.
 
 Record pt {F : Subset T} := 
   { pt_here : Inhabited F
-  ; pt_local : forall {b c}, F b -> F c -> Inhabited ((b ↓ c) ∩ F)
+  ; pt_local : forall {b c}, F b -> F c -> Inhabited ((eq b ↓ eq c) ∩ F)
   ; pt_le_right : forall {a b}, F a -> a <=[T] b -> F b
-  ; pt_cov : forall {a}, F a -> forall (i : PreISpace.Ix T a), Inhabited (F ∩ PreISpace.C T a i)
+  ; pt_cov : forall t t' (j : PreISpace.Ix T t'),
+     t <= t' -> F t -> 
+     Inhabited (F ∩ (eq t ↓ PreISpace.C T t' j))
   }.
 
 Arguments pt : clear implicits.
@@ -413,7 +413,7 @@ intros H. constructor; intros.
 - induction X0. 
   + exists a; split; assumption.
   + apply IHX0. eapply (pt_le_right H); eassumption.
-  + destruct (pt_cov H X i). destruct i0.
+  + destruct (pt_cov H _ _ i l X). destruct i0.
     eapply X0; eassumption.
 Qed.
 
@@ -423,12 +423,14 @@ intros H. constructor; intros.
 - apply (Cont.pt_here H).
 - apply (Cont.pt_local H); assumption.
 - pose proof (Cont.pt_cov H X (V := eq b)).
-  destruct X1. eapply FormTop.gle_left. eassumption.
-  apply FormTop.grefl. reflexivity.
+  destruct X1. eapply FormTop.glle_left. eassumption.
+  apply FormTop.glrefl. reflexivity.
   destruct i. subst. assumption.
-- apply (Cont.pt_cov H X (V := PreISpace.C T a i)).
-  apply FormTop.ginfinity with i.
-  intros. apply FormTop.grefl. assumption.
+- pose (eq t0 ↓ PreISpace.C T t' j) as V. 
+  pose proof (Cont.pt_cov H X0 (V := V)).
+  eapply X1.
+  apply FormTop.gle_infinity with _ j. eassumption.
+  intros.  apply FormTop.glrefl. assumption.
 Qed.
 
 End IGCont.
@@ -437,148 +439,4 @@ Arguments pt : clear implicits.
 Arguments t : clear implicits.
 
 
-Section Localization.
-Context {S : PreSpace.t}.
-Context {POS : PreO.t (le S)}
-        {FTS : FormTop.t S}.
-
-Context {T : PreISpace.t}.
-Context {POT : PreO.t (le T)}.
-
-Theorem t_loc (F_ : Cont.map S T) : 
-  t S T F_ -> 
-  t S (@Localized T) F_.
-Proof.
-intros. constructor; intros.
-- apply (here X).
-- apply (local X); assumption.
-- eapply (le_left X); eassumption.
-- eapply (le_right X); eassumption.
-- destruct j. simpl.
-  assert (F_ c a). eapply (le_right X); eassumption.
-  pose proof (ax_right X a _ ix X1).
-  eapply (FormTop.trans X2); clear X2; intros.
-  destruct X2. 
-  apply FormTop.refl. econstructor. 2: eassumption.
-  unfold In. exists a1. split.  assumption.
-  split. 
-Abort.
-  
-
-End Localization.
-
 End IGCont.
-
-
-(** This is somewhat wrong.
-    It only produces the image space in the case where
-    the map is an idempotent endomorphism.
-    c.f. my email conversation with Luke
-        August 9, 2016 "Image Spaces"
-*)
-Module ImageSpace.
-Section Defn.
-Context {S : PreISpace.t}.
-Context {POS : PreO.t (le S)}.
-Context {T : PreSpace.t}.
-Context {POT : PreO.t (le T)}.
-Context {FTT : FormTop.t T}.
-Variable (F : Cont.map S T).
-Context {contF : Cont.t S T F}.
-
-(** From Palmgren's
-  [Predicativity problems in point-free topology]
-*)
-Inductive Ix1 {a : S} : Type :=
-  | Orig : PreISpace.Ix S a -> Ix1
-  | Img : forall t, F t a -> Ix1.
-
-Arguments Ix1 : clear implicits.
-
-Definition C1 (a : S) (i : Ix1 a) : Subset S := match i with
-  | Orig i' => PreISpace.C S a i'
-  | Img t Fat => ⇓ F t
-  end.
-
-Definition S1 : PreISpace.t :=
-  {| PreISpace.Ix := Ix1
-   ; PreISpace.C := C1 |}.
-
-Local Instance loc : FormTop.localized (Localized S1)
-  := FormTop.Llocalized S1.
-
-Instance Cov_isCov : FormTop.t (Localized S1).
-Proof.
-apply FormTop.GCov_formtop.
-Qed.
-
-Context {U : PreSpace.t}
-        {POU : PreO.t (le U)}
-        {FTU : FormTop.t U}.
-
-Lemma AxRefine : FormTop.AxiomSetRefine (PreISpace.C S) (PreISpace.C S1).
-Proof.
-unfold FormTop.AxiomSetRefine. intros. 
-exists (Orig i). simpl. reflexivity.
-Qed.
-
-Theorem cont_preserved : forall (G : U -> Subset S),
-  Cont.t S U G ->
-  Cont.t (Localized S1) U G.
-Proof.
-intros. 
-(*
-apply (Cont.refine_Cont (CovS := CovS) (CovT := CovU)).
-- intros. unfold Cov, C. apply FormTop.cov_equiv.
-  eapply FormTop.AxRefineCovL. apply AxRefine.
-  apply X0. 
-- auto.
-- assumption.
-Qed.*)
-Abort.
-
-Theorem cont_preserved_im : forall (G : S -> Subset U)
-  (G_img : forall a b V, G b a -> b <|[Localized S1] V -> b <|[S] V),
-  Cont.t U S G ->
-  Cont.t U (Localized S1) G.
-Proof.
-intros G G_img H. destruct H.
-constructor; intros. 
-- apply here.
-- eauto using le_left.
-- eauto using local.
-- eauto using cov, G_img.
-Qed.
-
-End Defn.
-
-Section ExampleDef.
-
-Context {S : PreISpace.t}
-        {POS : PreO.t (le S)}.
-
-Theorem id_same : FormTop.GCovL S ====
-  PreSpace.Cov (Localized (S1 (Cont.id (S := S)))).
-Proof.
-simpl. etransitivity. 
-2: eapply ((FormTop.cov_equiv (S1 (Cont.id (S := S))))). 
-unfold Cont.id; intros; split; intros.
-- induction X.
-  + apply FormTop.glrefl. assumption.
-  + eapply FormTop.glle_left; eassumption. 
-  + apply (@FormTop.gle_infinity (S1 (Cont.id (S := S))))
-     with b (Orig _ i). 
-    assumption. assumption.
--  induction X.
-  + apply FormTop.glrefl. assumption.
-  + eapply FormTop.glle_left; eassumption.
-  + destruct i; simpl in *.
-    * apply FormTop.gle_infinity with b i; assumption.
-    * eapply X. exists b. unfold FormTop.down.
-      repeat (unfold In || econstructor 
-            || reflexivity || assumption).
-Qed.
-
-End ExampleDef.
-
-End ImageSpace.

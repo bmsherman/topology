@@ -6,10 +6,11 @@ Require Import
   CMorphisms.
 
 Set Universe Polymorphism.
+Set Printing Universes.
 
-Record t : Type :=
-  { S :> PreSpace.t
-  ; PO : PreO.t (le S)
+Record t@{A P X} : Type :=
+  { S :> PreSpace.t@{A P X}
+  ; PO : PreO.t@{A P} (le S)
   ; isFT : FormTop.t S
   ; pos : FormTop.tPos S
   }.
@@ -53,7 +54,7 @@ Local Open Scope Subset.
 
 Definition le_right {a U V} :
   a <|[A] U -> a <|[A] V ->
-  a <|[A] ⇓ U ∩ ⇓ V.
+  a <|[A] U ↓ V.
 Proof.
 auto using FormTop.le_right.
 Qed.

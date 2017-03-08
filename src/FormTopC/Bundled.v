@@ -17,19 +17,13 @@ Record IGT : Type :=
   { S :> PreISpace.t
   ; PO : PreO.t (le S)
     (** the proof that [le] is a preorder *)
-  ; localized : FormTop.localized S
-    (** The axiom set should be localized, as defined in CSSV2003 *)
   ; pos : FormTop.gtPos S
     (** The space must have a positivity predicate. *)
   }.
 
-Set Printing Universes.
-
 Local Instance IGT_PreO `(X : IGT) : PreO.t (le X) := PO X.
-Local Instance local `(X : IGT) : FormTop.localized (S X)
-  := localized X.
 Local Instance IGTFT `(X : IGT) : FormTop.t (S X) :=
-  FormTop.GCov_formtop.
+  FormTop.GCovL_formtop _.
 Local Instance IGT_Pos `(X : IGT) : FormTop.gtPos (S X)
   := pos X.
 

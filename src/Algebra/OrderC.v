@@ -1,7 +1,13 @@
 Require Import 
   Coq.Classes.CMorphisms
-  Coq.Classes.CRelationClasses.
-Require Import Prob.StdLib.
+  Coq.Classes.CRelationClasses
+  Prob.StdLib
+  Algebra.SetsC.
+
+Require Coq.Setoids.Setoid
+  Coq.Bool.Bool
+  Coq.Arith.Le
+  Coq.Arith.Max.
 
 Set Universe Polymorphism.
 Generalizable All Variables.
@@ -133,8 +139,6 @@ Module PreO.
   intros. destruct X; constructor; auto.
   Qed.
 
-  Require Coq.Setoids.Setoid.
-
   (** [min] is associative, phrased in a relational manner,
       i.e., minima are associative when they exist *)
   Lemma min_assoc : forall a b c, 
@@ -203,8 +207,6 @@ Module PreO.
   Proof. constructor; auto.
   Qed.
 
-  Require Bool.Bool.
-
   (** The preorder on booleans given by False < True *)
   Definition two : t Bool.leb.
   Proof. constructor. 
@@ -212,7 +214,6 @@ Module PreO.
   - destruct x, y, z; auto. simpl in *. congruence.
   Qed.
 
-  Require Coq.Arith.Le.
   Definition Nat : t le.
   Proof. constructor; [ apply Le.le_refl | apply Le.le_trans ].
   Qed.
@@ -283,7 +284,6 @@ Module PreO.
       i.e., subsets on [A] are functions of type [f : A -> Prop],
       form a preorder ordered by subset inclusion. This is actually just
       the preorder on propositions applied pointwise to functions. *)
-  Require Import Algebra.SetsC.
 
   Local Instance subset (A : Type) : @t (Subset A) _ := pointwise (fun _ => type).
 
@@ -641,7 +641,6 @@ Module JoinLat.
      ; max := Peano.max
     |}.
 
-  Require Max.
   Local Instance Nat : t nat Nat_ops.
   Proof. constructor; intros.
   - apply PO.Nat.

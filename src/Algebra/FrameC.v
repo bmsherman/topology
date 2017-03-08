@@ -4,6 +4,8 @@ Require Import
   Coq.Classes.CRelationClasses
   Algebra.OrderC.
 
+Require Algebra.SetsC.
+
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
@@ -119,7 +121,7 @@ Universes UI UA.
     apply sup_ok. intros; contradiction.
   Qed.
 
-  Require Import Algebra.SetsC.
+Import Algebra.SetsC.
 Local Open Scope Subset.
 Lemma le_min (U V : A) : L.le U V <--> L.eq (L.min U V) U.
 Proof.
@@ -375,11 +377,12 @@ Arguments Frame.cmap {A} OA {B} OB.
     or a meet semi-lattice depending on your attitude) defined
     solely in terms of its min or max operation.
 *)
+
+Require Import SetoidClass Coq.Classes.Morphisms.
+
 Module CommIdemSG.
 
 Generalizable All Variables.
-
-Require Import SetoidClass Coq.Classes.Morphisms.
 
 (** [dot] is a binary operation which is commutative, idempotent, and
     associative. It is effectively a max or min. *)
