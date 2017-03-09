@@ -207,24 +207,6 @@ Context {T : PreSpace.t}.
 Context {POT : PreO.t (le T)}
         {FTT : FormTop.t T}.
 
-(*
-Theorem refine_Cont : forall (CovS' : S -> Subset S -> Type)
-  (CovT' : T -> Subset T -> Type)
-  (ref : forall a U, a <|[S] U -> CovS' a U)
-  (ref' : forall b V, CovT' b V -> CovT b V)
-  (F : map S T),
-    Cont.t leS leT CovS CovT F
-  -> Cont.t leS leT CovS' CovT' F.
-Proof.
-intros. constructor; intros.
-- apply ref. apply (here X).
-- eapply (le_left X); eassumption.
-- apply ref. apply (local X); assumption.
-- apply ref. eapply (cov X). eassumption.
-  apply ref'. assumption.
-Qed.
-*)
-
 Context {U : PreSpace.t}.
 Context {POU : PreO.t (le U)}
         {FTU : FormTop.t U}.
@@ -247,7 +229,8 @@ intros. constructor; intros.
   pose proof (here X0 a0).
   pose proof (cov X _ f X1).
   refine (FormTop.monotone _ _ _ _ X2).
-  rewrite union_compose. reflexivity.
+  apply Same_set_Included. symmetry.
+  apply union_compose.
 - unfold compose in *.
   intros. 
   destruct X2 as [t1 [Fat1 Gt1b]]. 
@@ -261,7 +244,8 @@ intros. constructor; intros.
   destruct X2 as [tt downtt].
   apply (FormTop.monotone)
   with (union (union (eq b ↓ eq c) G) F). 
-  rewrite union_compose; reflexivity.
+  apply Same_set_Included. symmetry.
+  apply union_compose.
   eapply (cov X). eassumption.
   apply down_eq in downtt.
   destruct downtt as [tt1 tt2].
@@ -270,7 +254,7 @@ intros. constructor; intros.
   eapply (le_left X0). eapply tt2. eassumption.
 - destruct X1 as [t [Gtb Fat]].
   apply (FormTop.monotone) with (union (union V G) F).
-  rewrite union_compose; reflexivity.
+  apply Same_set_Included. symmetry. apply union_compose.
   apply (cov X _ Fat).
   apply (cov X0 _ Gtb). assumption.
 Qed.

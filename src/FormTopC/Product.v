@@ -4,13 +4,17 @@ Require Import
   Algebra.OrderC
   Algebra.SetsC 
   FormTopC.Cont
-  FormTopC.Bundled.
+  FormTopC.FormalSpace.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Existing Instances FormTop.GCov_formtop 
-  Bundled.IGT_PreO Bundled.IGTFT Bundled.IGT_Pos.
+Existing Instances 
+  FormTop.GCov_formtop 
+  FormalSpace.IGT_PreO 
+  FormalSpace.IGTFT
+  FormalSpace.IGT_Pos.
+
 Local Open Scope FT.
 
 
@@ -21,20 +25,19 @@ Module Product.
 Generalizable All Variables.
 Section Product.
 
-Set Printing Universes.
-Set Printing All.
-Universes AX PX IX AY PY IY A P I.
-Variable X : IGT@{AX PX IX}.
-Variable Y : IGT@{AY PY IY}.
+Universes AX PX IX AY PY IY APIX APIY APIX' APIY' A P I.
+Variable X : IGt@{AX PX IX APIX}.
+Variable Y : IGt@{AY PY IY APIY}.
 
-Definition S' : Type@{A} := S X * S Y.
+Definition S'@{} : Type@{A} := S (fromIGt@{AX PX IX APIX APIX'} X) * 
+  S (fromIGt@{AY PY IY APIY APIY'} Y).
 
 Definition le' := prod_op (le X) (le Y).
 
 Definition Ix := PreISpace.Ix.
 Definition C := PreISpace.C.
 
-Inductive Ix' : S' -> Type@{I} := 
+Inductive Ix'@{} : S' -> Type@{I} := 
   | PLeft : forall {s}, Ix X s -> forall t, Ix' (s, t)
   | PRight : forall {t}, Ix Y t -> forall s, Ix' (s, t).
 
@@ -102,7 +105,7 @@ intros H H0. induction H.
     subst. apply X0. assumption.
 - apply FormTop.gle_left with (b0, b). split; simpl.
   assumption. reflexivity.
-  apply IHGCov.
+  apply IHGCov.y
 - apply (FormTop.ginfinity) with (PLeft i b).
   intros. simpl in X1. destruct u. destruct X1. 
   subst. apply X0. assumption.

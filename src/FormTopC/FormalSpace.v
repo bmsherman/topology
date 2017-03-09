@@ -8,8 +8,28 @@ Require Import
 Set Universe Polymorphism.
 Set Printing Universes.
 
-Record t@{A P X} : Type :=
-  { S :> PreSpace.t@{A P X}
+(** Bundle the definitions together *)
+(* Inductively generated formal topology *)
+Record IGt@{A P I API} : Type :=
+  { IGS :> PreISpace.t@{A P I}
+  ; IGPO : PreO.t (le IGS)
+    (** the proof that [le] is a preorder *)
+  ; IGpos : FormTop.gtPos@{A P I API} IGS
+    (** The space must have a positivity predicate. *)
+  }.
+
+Local Instance IGT_PreO@{A P I API} 
+  (X : IGt@{A P I API}) : PreO.t (le X) := IGPO X.
+Local Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
+  FormTop.t (IGS X) :=
+  FormTop.GCovL_formtop@{A P I API API'} _.
+
+Local Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X)
+  := IGpos X.
+
+
+Record t@{A P I} : Type :=
+  { S :> PreSpace.t@{A P I}
   ; PO : PreO.t@{A P} (le S)
   ; isFT : FormTop.t S
   ; pos : FormTop.tPos S
@@ -17,14 +37,15 @@ Record t@{A P X} : Type :=
 
 Local Open Scope FT.
 
+Delimit Scope loc_scope with loc.
+Local Open Scope loc.
 
-Require FormTopC.Bundled.
+Definition fromIGt@{A P I API API'} (A : IGt@{A P I API}) : t@{A P I} :=
+  {| S := IGS A
+   ; isFT := IGTFT@{A P I API API'} A
+   ; pos := FormTop.GCov_Pos@{A P I API} (H := IGpos A) |}.
 
-Existing Instances Bundled.IGT_PreO Bundled.IGTFT.
-
-Definition fromIGT (A : Bundled.IGT) : t :=
-  {| S := Bundled.S A
-   ; pos := FormTop.GCov_Pos (H := Bundled.pos A) |}.
+Coercion fromIGt : IGt >-> t.
 
 Local Instance FT (A : t) : FormTop.t A := isFT A.
 Local Instance PreO (X : t) : PreO.t (le X) := PO X.
@@ -102,3 +123,110 @@ Ltac join H1 H2 := let H := fresh H1 in
 Ltac ejoin := repeat match goal with
   | [ H1 : ?Cov ?A ?a _, H2 : ?Cov ?A ?a _  |- ?Cov ?A ?a _ ] => join H1 H2
   end.
+
+
+
+Record cmap {LA LB : t} : Type :=
+  { mp : Cont.map LA LB
+  ; mp_ok : Cont.t LA LB mp
+  }.
+
+Arguments cmap LA LB : clear implicits.
+
+Infix "~~>" := cmap (at level 75) : loc_scope.
+
+
+
+Definition id {LA : t} : LA ~~> LA := 
+  {| mp := Cont.id
+  ; mp_ok := Cont.t_id |}.
+
+Definition comp {LA LB LD : t} 
+  (f : LB ~~> LD) (g : LA ~~> LB) : LA ~~> LD :=
+  {| mp := compose (mp f) (mp g) 
+  ; mp_ok := Cont.t_compose (mp g) (mp f) (mp_ok g) (mp_ok f)
+  |}.
+
+Infix "∘" := comp (at level 40, left associativity) : loc_scope.
+
+Definition LE_map {A B : t} (f g : Cont.map A B)
+  := Cont.func_LE (S := A) f g.
+
+Definition EQ_map {A B : t} (f g : Cont.map A B)
+  := Cont.func_EQ (S := A) f g.
+
+Lemma LE_map_antisym {A B : t} (f g : Cont.map A B)
+  : LE_map f g -> LE_map g f -> EQ_map f g.
+Proof.
+unfold LE_map, EQ_map. intros.
+apply Cont.func_LE_antisym; assumption.
+Qed.
+
+Lemma EQ_map_LE {A B : t} (f g : Cont.map A B)
+  : EQ_map f g -> LE_map f g.
+Proof.
+unfold EQ_map, LE_map. intros.
+apply Cont.func_EQ_LE. assumption.
+Qed.
+
+Require Import CRelationClasses.
+
+Instance LE_map_PreOrder {A B} : PreOrder (@LE_map A B).
+Proof.
+constructor; unfold Reflexive, Transitive, LE_map;
+  intros.
+- reflexivity.
+- etransitivity; eassumption.
+Qed.
+
+Instance EQ_map_Equivalence {A B} : Equivalence (@EQ_map A B).
+Proof.
+constructor; unfold Reflexive, Transitive, Symmetric, EQ_map;
+  intros.
+- reflexivity.
+- symmetry; assumption.
+- etransitivity; eassumption.
+Qed.
+
+Lemma LE_map_compose {A B C} {f f' : cmap A B}
+  {g g' : cmap B C}
+  : LE_map (mp f) (mp f') -> LE_map (mp g) (mp g')
+  -> LE_map (mp (g ∘ f)) (mp (g' ∘ f')).
+Proof.
+unfold LE_map in *.
+intros. apply Cont.compose_proper_LE;
+  try assumption. apply f'.
+Qed.
+
+Lemma EQ_map_compose {A B C} {f f' : cmap A B}
+  {g g' : cmap B C}
+  : EQ_map (mp f) (mp f') -> EQ_map (mp g) (mp g')
+  -> EQ_map (mp (g ∘ f)) (mp (g' ∘ f')).
+Proof.
+intros. apply Cont.compose_proper.
+apply f. apply f'. assumption. assumption.
+Qed.
+
+Lemma EQ_map_Sat {A B : t} {f g : Cont.map A B}
+  : EQ_map f g 
+  -> EQ_map (Cont.Sat (S := A) f) (Cont.Sat (S := A) g).
+Proof.
+unfold EQ_map. eapply Cont.func_EQ_Sat.
+typeclasses eauto.
+Qed.
+
+Definition eq_map {A B : t} (f g : A ~~> B)
+  : Type := EQ_map (mp f) (mp g).
+
+Require Import CRelationClasses.
+Lemma truncate_Equiv A (f : crelation A) :
+  Equivalence f -> RelationClasses.Equivalence (fun x y => inhabited (f x y)).
+Proof.
+intros H. constructor;
+  unfold RelationClasses.Reflexive,
+         RelationClasses.Symmetric,
+         RelationClasses.Transitive; intros.
+- constructor. reflexivity.
+- destruct H0. constructor. symmetry. assumption.
+- destruct H0, H1. constructor. etransitivity; eassumption.
+Qed.

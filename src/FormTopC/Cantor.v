@@ -3,7 +3,7 @@ Require Import
   Algebra.OrderC
   Algebra.SetsC
   CMorphisms
-  FormTopC.Bundled.
+  FormTopC.FormalSpace.
 
 Local Open Scope Subset.
 
@@ -58,16 +58,18 @@ unfold FormTop.localized.
 intros a c H i. simpl in *. destruct i. exists I.
 intros s H0. destruct H0.
 simpl in H. destruct H. destruct zs.
-- subst.
-  exists (c ++ [b]). split. exists b. reflexivity.
-  unfold FormTop.down. split; simpl.
-  exists (b :: nil). reflexivity.
-  exists nil. repeat rewrite app_nil_r. reflexivity.
-- exists (c ++ a0 :: nil). split. exists a0. reflexivity.
-  unfold FormTop.down. split; simpl.
-  exists [b]. assumption. exists (zs ++ [b]).
+- subst. rewrite !app_nil_r.
+  split. exists c. reflexivity.
+  simpl. econstructor. reflexivity.
+  exists (c ++ [b]). econstructor. reflexivity. 
+  reflexivity.
+- subst. split. eexists. reflexivity.
+  simpl. rewrite <- app_assoc. eexists. 
+  rewrite <- app_assoc. reflexivity.
   rewrite <- app_assoc. simpl.
-  rewrite e. rewrite e0. rewrite <- app_assoc. reflexivity.
+  econstructor. exists a0. reflexivity. 
+  econstructor. rewrite <- app_assoc. simpl.
+  reflexivity.
 Qed.
 
 Hypothesis inhabited : A.
@@ -75,18 +77,19 @@ Hypothesis inhabited : A.
 (* This actually needs 'A' to be inhabited. *)
 Local Instance pos : FormTop.gtPos PreCantor.
 Proof.
-unshelve econstructor.
-- exact (fun _ => True).
-- simpl. auto.
-- simpl. intros. eexists. split. econstructor.
-  reflexivity. auto.
-- simpl. intros. auto.
-Unshelve. auto.
-Defined.
+apply gall_Pos.
+intros. destruct X. subst.
+induction zs.
+- exists (b ++ [inhabited]).
+  split. econstructor. reflexivity.
+  rewrite app_nil_r. econstructor. reflexivity.
+  econstructor. Focus 2. reflexivity.
+  econstructor. reflexivity.
+- econstructor.
+Admitted.
 
-Definition Cantor : IGT :=
-  {| Bundled.S := PreCantor
-  ;  Bundled.localized := loc
+Definition Cantor : IGt :=
+  {| IGS := PreCantor
   |}.
 
 End Cantor.

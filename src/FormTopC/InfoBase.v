@@ -381,55 +381,7 @@ Qed.
 
 End One_intro.
 
-(** Why is this a universe inconsistency???
-Definition FTtoFrame : 
-  Frame.morph (FormTop.FOps MeetLat.le Cov) Frame.prop_ops (fun U => U I).
-Proof.
-simpl. unfold Cov.
-constructor.
-- constructor.
-  + constructor. simpl. unfold FormTop.leA, FormTop.Sat, Cov.
-    unfold PreO.morph. intros. 
-    unfold Included, In in H. auto.
-    simpl_relation. simpl in *. unfold FormTop.eqA, FormTop.Sat in *.
-    unfold Same_set in *. destruct H.
-    unfold Included, In in *. split; auto.
-  + simpl. intros. split. intros. destruct H; tauto.
-    intros. destruct H. left. assumption. right. assumption.
-  + simpl. unfold FormTop.minA. unfold FormTop.downset, flip. intros.
-    split; intros. destruct H. destruct H, H0.
-    destruct x, a0, a1. auto.
-    destruct H. constructor; econstructor; eauto. 
-- simpl. intros. split; intros. destruct H. destruct s. 
-  exists i. assumption. destruct H. econstructor; eauto.
-- simpl. split; intros []; intros. 
-  exists True. constructor. constructor 1 with (fun _ => True). constructor.
-Qed.
-*)
-
 Context {S : PreSpace.t} {POS : PreO.t (le S)}.
-
-(*Existing Instance Cont.t_Proper. *)
-
-Theorem pt_to_map (f : Subset S) :
-  Cont.pt S f -> Cont.t One S (fun t _ => f t).
-Proof.
-intros H. destruct H. destruct pt_here.
-(** Another weird Coq error. *)
-(*
-Fail rewrite <- CovEquiv.
-constructor; intros.
-- apply FormTop.refl. econstructor. constructor.
-  eassumption.
-- assumption.
-- apply FormTop.refl.
-  destruct (pt_local _ _ H0 H1). destruct H2.
-  econstructor. eassumption. assumption.
-- destruct (pt_cov _ _ H0 H1). destruct H2. 
-  econstructor; eassumption.
-Qed.
-*)
-Admitted.
 
 Definition Point (f : Subset S) := Cont.t One S (fun t _ => f t).
 

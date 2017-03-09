@@ -3,70 +3,21 @@ Require Import
   Algebra.SetsC
   Algebra.OrderC
   FormTopC.Locale
-  FormTopC.Bundled
   FormTopC.FormTop
   FormTopC.InfoBase
-  CMorphisms.
+  FormTopC.FormalSpace
+  CMorphisms
+  Prob.StdLib
+  FormTopC.Spaces.One.
 
-Coercion FormalSpace.fromIGT : IGT >-> FormalSpace.t.
+Set Universe Polymorphism.
+
 Local Open Scope FT.
 
 Require Import FormalSpace.
 
-Lemma split_One :
-  forall a U, a <|[One] U -> U I.
-Proof.
-intros. induction X.
-- destruct a. assumption.
-- assumption.
-- destruct i.
-Qed.
 
 Local Open Scope Subset.
-
-Lemma One_Sat_le :
-  forall U V, Sat One U ⊆ Sat One V -> U ⊆ V.
-Proof.
-  intros. apply Included_impl; intros.
-  destruct x. eapply split_One. apply X.
-  eapply FormTop.refl. eassumption.
-Qed.
-
-Lemma One_Sat_eq :
-  forall U V, Sat One U === Sat One V -> U === V.
-Proof.
-intros. apply Same_set_Included in X.
-destruct X.
-apply Included_Same_set; apply One_Sat_le;
-  assumption.
-Qed.
-
-Require Import Algebra.SetsC
-  Prob.StdLib.
-    
-
-Definition One_cont : Frame.morph (FOps One)
-  Frame.type_ops (fun U => U I).
-Proof.
-  unshelve eapply Frame.morph_easy.
-- eapply Frame.
-- eapply Frame.type.
-- unfold Proper, respectful. intros.
-  apply One_Sat_eq in X. simpl. apply Same_set_iff. assumption.
-- simpl. unfold iffT; auto.
-- simpl. split; intros.
-  + destruct X. destruct d, d0. destruct l, l0, a, a0.
-    auto.
-  + destruct X. split; exists I; (assumption || reflexivity).
-- simpl. intros. split; intros.
-  + destruct X. exists i. assumption.
-  + destruct X. exists x. assumption.
-Qed.
-
-Definition One_type_cmap :
-  Frame.cmap Frame.type_ops (FOps One)
-  :=
-  {| Frame.cont := One_cont |}.
 
 Require Import FormTopC.Cont.
 
@@ -77,7 +28,7 @@ Local Open Scope loc.
 
 Section Approx.
 
-Context {A : IGT}.
+Context {A : t}.
 
 Definition framePt (pt : One ~~> A)
   : Frame.point (FOps A) :=
@@ -85,7 +36,7 @@ Definition framePt (pt : One ~~> A)
   One_type_cmap (@toCmap One A _ (mp_ok (LA := One) (LB := A) pt)).
 
 Inductive liesIn {pt : One ~~> A} {U : Subset (S A)}
-  := MkliesIn : forall u : S A, U u -> mp pt u I -> liesIn.
+  := MkliesIn : forall u : S A, U u -> mp pt u tt -> liesIn.
 Arguments liesIn : clear implicits.
 
 Infix "⊧" := liesIn (at level 40).
@@ -93,10 +44,10 @@ Infix "⊧" := liesIn (at level 40).
 Lemma liesIn_finv (pt : One ~~> A)
   U : iffT (pt ⊧ U) (Frame.finv (framePt pt) U).
 Proof.
-split; intros. 
-- destruct X. simpl.
+split; intros H. 
+- destruct H. simpl.
   unfold Cont.Cont.frame. exists u; assumption.
-- destruct X. econstructor; eauto.
+- destruct H. econstructor; eauto.
 Qed.
 
 Definition evalPt (U : Subset (S A))
@@ -106,9 +57,9 @@ Definition evalPt (U : Subset (S A))
   -> L.le U (Frame.sup V)
   -> {i : Ix & pt ⊧ V i }.
 Proof.
-intros. 
-pose proof (Frame.point_cov (framePt pt) (U := U) (V := V)).
-pose proof (liesIn_finv pt U).
+intros X X0. 
+pose proof (Frame.point_cov (framePt pt) (U := U) (V := V)) as X1.
+pose proof (liesIn_finv pt U) as X2.
 destruct X2 as [lf fl].
 specialize (X1 X0 (lf X)).
 destruct X1.
@@ -117,7 +68,7 @@ Qed.
 
 End Approx.
 
-Inductive Approx {A : IGT} {I : Type} :=
+Inductive Approx {A : t} {I : Type} :=
   MkApprox : forall (U : Subset (S A)) (V : I -> Subset (S A))
       , L.le U (Frame.sup V) -> Approx.
 

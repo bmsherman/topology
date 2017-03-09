@@ -141,9 +141,9 @@ Lemma down_Proper {U V U' V' : Subset A} :
 Proof.
 intros HU HV. unfold down.
 apply Intersection_Included.
-- rewrite Intersection_Included_l. 
-  apply downset_Proper_impl; assumption.
-- rewrite Intersection_Included_r.
+- etransitivity. apply Intersection_Included_l. 
+  apply downset_Proper_impl. assumption.
+- etransitivity. apply Intersection_Included_r.
   apply downset_Proper_impl; assumption.
 Qed.
 
@@ -314,7 +314,7 @@ Section IGDefn.
 
 Local Open Scope FT.
 
-Universes A P I.
+Universes A P I API.
 Context {A : PreISpace.t@{A P I}}.
 (** Inductively generated formal topologies. See section
     3 of [1]. *)
@@ -338,7 +338,9 @@ Inductive GCovL@{} (a : A) (U : Open@{A P} A) : Type :=
 
 Context {PO : PreO.t@{A P} (le A)}.
 
-Lemma Lmore a U : GCov a U -> GCovL a U.
+Axiom undefined : forall A, A.
+
+Lemma Lmore_MUniv a U : GCov a U -> GCovL a U.
 Proof.
 intros aU. induction aU.
 - apply glrefl. assumption.
@@ -349,7 +351,10 @@ intros aU. induction aU.
   assumption.
 Qed.
 
-Lemma gmonotone (a : A) (U V : Open@{A P} A) :
+Definition Lmore@{} a U : GCov a U -> GCovL a U
+  := Lmore_MUniv@{API} a U.
+
+Lemma gmonotone_MUniv (a : A) (U V : Open@{A P} A) :
   U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros UV aU. induction aU.
@@ -359,7 +364,11 @@ intros UV aU. induction aU.
 - eapply ginfinity. eauto.
 Qed.
 
-Lemma gmonotoneL a (U V : Open A) :
+Definition gmonotone@{} (a : A) (U V : Open@{A P} A) :
+  U ⊆ V -> GCov a U -> GCov a V
+  := gmonotone_MUniv@{API} a U V.
+
+Lemma gmonotoneL_MUniv a (U V : Open A) :
   U ⊆ V -> GCovL a U -> GCovL a V.
 Proof.
 intros UV aU. induction aU.
@@ -368,11 +377,23 @@ intros UV aU. induction aU.
 - eapply gle_infinity. eassumption. intros. apply X; eassumption.
 Qed.
 
-Lemma gsubset_equiv (U V : Open A) : U === V
+Definition gmonotoneL@{} a (U V : Open A) :
+  U ⊆ V -> GCovL a U -> GCovL a V
+  := gmonotoneL_MUniv@{API} a U V.
+
+Ltac equivalence := repeat (reflexivity || assumption || symmetry).
+
+Lemma gsubset_equiv_MUniv (U V : Open A) : U === V
   -> forall a, GCov a U <--> GCov a V.
 Proof.
-intros UV a. split; apply gmonotone; intros; rewrite UV; reflexivity.
+intros UV a. split; apply gmonotone; intros; 
+  apply (Same_set_Included@{A P API});
+  equivalence.
 Qed.
+
+Definition gsubset_equiv (U V : Open A) : U === V
+  -> forall a, GCov a U <--> GCov a V
+  := gsubset_equiv_MUniv@{API API} U V.
 
 Class gtPos@{} :=
   { gPos : Subset@{A P} A
@@ -382,16 +403,16 @@ Class gtPos@{} :=
   ; gpositive : forall a U, (gPos a -> GCovL a U) -> GCovL a U
   }.
 
-Definition toPreSpace : PreSpace.t :=
+Definition toPreSpace@{} : PreSpace.t@{A P I} :=
   {| PreSpace.S := A
    ; PreSpace.Cov := GCovL |}.
 
-Definition toPreSpaceUL : PreSpace.t :=
+Definition toPreSpaceUL@{} : PreSpace.t@{A P I} :=
   {| PreSpace.S := A
    ; PreSpace.Cov := GCov
   |}.
 
-Lemma GCov_Pos `{gtPos} : tPos toPreSpace.
+Lemma GCov_Pos@{} `{gtPos} : tPos toPreSpace.
 Proof.
 unshelve econstructor.
 - exact gPos.
@@ -403,7 +424,7 @@ unshelve econstructor.
 - intros. apply gpositive. assumption.
 Defined.
 
-Lemma gall_Pos : 
+Lemma gall_Pos@{} : 
   (forall b (i : PreISpace.Ix A b), forall a, a <= b ->
    Inhabited (eq a ↓ PreISpace.C _ b i)) -> gtPos.
 Proof.
@@ -416,16 +437,16 @@ unshelve econstructor.
 - simpl. intros. auto.
 Qed.
 
-Class localized := 
+Class localized@{} := 
   IsLocalized : forall (a c : A),
   a <= c -> forall (i : PreISpace.Ix _ c),
   { j : PreISpace.Ix _ a  & 
   (PreISpace.C _ a j ⊆ eq a ↓ PreISpace.C _ c i)}%type.
 
-Context `{loc : localized}. 
+Context {loc : localized}. 
 
 (** Proposition 3.5 of [1] *)
-Lemma le_infinity (a c : A) : a <= c
+Lemma le_infinity@{} (a c : A) : a <= c
   -> forall (i : PreISpace.Ix _ c) (U : Open A)
   , (forall u, (eq a ↓ PreISpace.C A c i) u -> GCov u U)
   -> GCov a U.
@@ -439,7 +460,7 @@ specialize (s u Caxu).
 eapply H. assumption.
 Qed.
 
-Lemma GCov_stable : stable toPreSpaceUL.
+Lemma GCov_stable@{} : stable toPreSpaceUL.
 Proof.
 unfold localized in loc.
 unfold stable. 
@@ -473,7 +494,7 @@ Qed.
 (** Theorem 3.6 of [1].
     In fact, the formal cover that we defined based on the axiom set 
     indeed satistifes the requirements of being a formal topology. *)
-Instance GCov_formtop : t toPreSpaceUL.
+Instance GCov_formtop@{} : t toPreSpaceUL.
 Proof.
 unfold localized in loc.
 constructor.
@@ -544,8 +565,8 @@ Qed.
 End AxiomSetRefine.
 
 
-Lemma t_Proper {X : PreOrder} (Cov Cov' : X -> Open X -> Type)
-  : Cov ==== Cov' -> t (PreSpace.Build_t X Cov) -> t (PreSpace.Build_t X Cov').
+Lemma t_Proper@{A P I AP API} {X : PreOrder@{A P}} (Cov Cov' : X -> Open@{A P} X -> Type@{I})
+  : RelSame@{A AP I API} Cov Cov' -> t (PreSpace.Build_t X Cov) -> t (PreSpace.Build_t X Cov').
 Proof.
 intros H tC.
 constructor; simpl; intros.
@@ -562,41 +583,47 @@ Qed.
 
 Section Localize.
 
-Variable (A : PreISpace.t).
+Universes A P I API.
+Variable (A : PreISpace.t@{A P I}).
 
-Inductive IxL {a : A} : Type :=
+Inductive IxL@{} {a : A} : Type :=
   | MkIxL : forall c (ix : PreISpace.Ix A c), a <= c -> IxL.
 
 Arguments IxL : clear implicits.
 
-Definition CL (a : A) (i : IxL a) : Subset A :=
+Definition CL@{} (a : A) (i : IxL a) : Subset A :=
   match i with
   | MkIxL c k _ => eq a ↓ PreISpace.C _ c k
   end.
 
-Definition Localized : PreISpace.t :=
+Definition Localized@{} : PreISpace.t@{A P I} :=
   {| PreISpace.S := A
    ; PreISpace.Ix := IxL
    ; PreISpace.C := CL
   |}.
 
-Context {PO : PreO.t (le A)}.
+Context {PO : PreO.t@{A P} (le A)}.
 
 
 
-Local Instance Llocalized : localized Localized.
+Lemma Llocalized_UMore : localized@{A P I API} Localized.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *.
 exists (MkIxL c0 ix (PreO.le_trans _ _ _ X l)).
-rewrite <- down_assoc.
+etransitivity.
+Focus 2.
+eapply Same_set_Included. symmetry. eapply down_assoc.
 simpl. apply down_Proper.
 apply Included_impl. intros. subst.
 split. exists x; reflexivity. exists c. reflexivity.
 assumption. reflexivity.
 Qed.
 
-Theorem cov_equiv : GCovL A ==== GCov Localized.
+Instance Llocalized@{} : localized Localized :=
+  Llocalized_UMore@{API API API}.
+
+Theorem cov_equiv_UMore : GCovL A ==== GCov Localized.
 Proof.
 intros a U. split; intros H.
 - induction H.
@@ -616,6 +643,9 @@ intros a U. split; intros H.
     intros. auto.
 Qed.
 
+Definition cov_equiv : GCovL A ==== GCov Localized
+  := cov_equiv_UMore@{API API API API API}.
+
 
 Local Instance GCov_Proper : Proper (le A --> Included ==> arrow)
   (GCov Localized). 
@@ -624,17 +654,20 @@ unshelve eapply (@Cov_Proper (@toPreSpaceUL Localized)).
 eapply GCov_formtop.
 Qed.
 
-Theorem Localized_formtop : t (@toPreSpaceUL Localized).
+Theorem Localized_formtop@{} : t (@toPreSpaceUL@{A P I API} Localized).
 Proof.
 apply GCov_formtop.
 Qed.
 
-Theorem GCovL_formtop : t (@toPreSpace A).
+Theorem GCovL_formtop_UMore : t (@toPreSpace@{A P I API} A).
 Proof.
-eapply t_Proper.
+eapply t_Proper@{A P I API API}. 2: apply Localized_formtop.
 symmetry. apply cov_equiv.
-apply Localized_formtop.
 Qed.
+
+Definition GCovL_formtop@{API'} : t (@toPreSpace@{A P I API} A)
+  := GCovL_formtop_UMore@{API API' API'}.
+
 
 End Localize.
 

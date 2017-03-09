@@ -2,8 +2,12 @@ Require Import Prob.StdLib Coq.Classes.CRelationClasses.
 
 Set Universe Polymorphism.
 
+Delimit Scope Subset_scope with Subset.
+Local Open Scope Subset.
+
+Infix "<-->" := iffT (at level 75) : Subset_scope.
+
 Definition Subset@{A P} (A : Type@{A}) := A -> Type@{P}.
-Definition bin_op@{A} (A : Type@{A}) := A -> A -> A.
 
 Section Defns.
 Universes A.
@@ -25,10 +29,17 @@ Definition Union@{P Q PQ} : Subset@{A P} A -> Subset@{A Q} A -> Subset@{A PQ} A 
 
 Inductive Inhabited@{P} {U : Subset@{A P} A} :=
   Inhabited_intro : forall a : A, In U a -> Inhabited.
-
-Definition Included@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointwise_rel arrow.
-Definition Same_set@{P} : Subset@{A P} A -> Subset@{A P} A -> Type@{P} := pointwise_rel iffT.
 End Defns.
+
+Axiom undefined : forall A, A.
+
+Definition Included@{A P} {A} : 
+  Subset@{A P} A -> Subset@{A P} A -> Type@{max(A,P)} := 
+  fun U V => forall a : A, U a -> V a.
+
+Definition Same_set@{A P AP} {A} : 
+  Subset@{A P} A -> Subset@{A P} A -> Type@{AP} := 
+  fun U V => forall a : A, U a <--> V a.
 
 Arguments Inhabited {A} U.
 
@@ -38,9 +49,6 @@ Infix "∩" := Intersection (at level 50) : Subset_scope.
 Infix "∪" := Union (at level 55) : Subset_scope.
 Infix "===" := Same_set (at level 70) : Subset_scope.
 
-Delimit Scope Subset_scope with Subset.
-Local Open Scope Subset.
-
 Definition RelIncl@{A B P ABP} 
   {A : Type@{A}} {B : Type@{B}} : 
   (A -> B -> Type@{P}) -> (A -> B -> Type@{P}) -> Type@{ABP} := 
@@ -49,28 +57,27 @@ Definition RelIncl@{A B P ABP}
 Definition RelSame@{A B P ABP} 
   {A : Type@{A}} {B : Type@{B}} : 
   (A -> B -> Type@{P}) -> (A -> B -> Type@{P}) -> Type@{ABP} :=
-  fun F G => forall a : A, Same_set@{B P} (F a) (G a).
+  fun F G => forall a : A, Same_set@{B P ABP} (F a) (G a).
 
 Infix "⊑" := RelIncl (at level 60) : Subset_scope.
 Infix "====" := RelSame (at level 70) : Subset_scope.
-
-Infix "<-->" := iffT (at level 75) : Subset_scope.
 
 Definition compose {S T U} (F : S -> T -> Type)
   (G : T -> U -> Type) (s : S) (u : U) : Type :=
     { t : T & (F s t * G t u)%type }.
 
-Theorem Included_impl@{A P} A (U V : Subset@{A P} A) :
-  (forall x, U x -> V x) <--> U ⊆ V.
+Theorem Included_impl@{A P AP} {A} (U V : Subset@{A P} A) :
+  (forall x : A, U x -> V x) <--> (U ⊆ V : Type@{AP}).
 Proof. firstorder. Qed.
 
-Theorem Same_set_iff@{A P} A (U V : Subset@{A P} A) :
-  (forall x, U x <--> V x) <--> U === V.
+Theorem Same_set_iff@{A P AP} A (U V : Subset@{A P} A) :
+  (forall x, U x <--> V x) <--> (Same_set@{A P AP} U V).
 Proof.
 firstorder.
 Qed.
 
-Inductive union {S T : Type} (U : Subset S) (f : S -> Subset T) (b : T) : Type :=
+Inductive union@{S T PS PT Max} {S T} (U : Subset@{S PS} S) 
+  (f : S -> Subset@{T PT} T) (b : T) : Type@{Max} :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
 Theorem Union_union : forall (A B : Type) (a b : Subset A) (f : A -> Subset B),
@@ -191,7 +198,7 @@ intros. constructor; unfold Reflexive, Transitive, RelIncl; intros.
 - transitivity (y a); auto.
 Qed.
 
-Instance Same_set_Equivalence@{A P} : forall U, Equivalence (@Same_set@{A P} U).
+Instance Same_set_Equivalence@{A P AP} : forall U, Equivalence (@Same_set@{A P AP} U).
 Proof. intros. unfold Same_set. constructor;
   unfold Reflexive, Symmetric, Transitive; firstorder.
 Qed.
@@ -209,19 +216,20 @@ Require Coq.Setoids.Setoid.
 Instance RelIncl_Proper : forall A B, Proper (RelSame ==> RelSame ==> iffT)
   (@RelIncl A B).
 Proof.
-intros. unfold Proper, respectful, RelIncl, RelSame. intros. split; intros.
-- rewrite <- X, <- X0. auto.
-- rewrite X, X0. auto.
+intros. unfold Proper, respectful, RelIncl, RelSame. intros. 
+  split; intros; apply Included_impl; intros.
+- apply X0. apply X1. apply X. assumption. 
+- apply X0. apply X1. apply X. assumption.
 Qed.
 
-Lemma Included_Same_set@{A P} : forall A (U V : Subset@{A P} A),
-  U ⊆ V -> V ⊆ U -> U === V.
+Lemma Included_Same_set@{A P AP} : forall A (U V : Subset@{A P} A),
+  U ⊆ V -> V ⊆ U -> Same_set@{A P AP} U V.
 Proof.
   firstorder.
 Qed.
 
-Lemma Same_set_Included@{A P} {A} (U V : Subset@{A P} A) : 
-  U === V -> ((U ⊆ V) * (V ⊆ U))%type.
+Lemma Same_set_Included@{A P AP} {A} (U V : Subset@{A P} A) : 
+  Same_set@{A P AP} U V -> ((U ⊆ V) * (V ⊆ U))%type.
 Proof.
 intros H. unfold Same_set, pointwise_rel, iffT in H.
 unfold Included, pointwise_rel, arrow.
@@ -285,8 +293,8 @@ Local Instance union_Proper : forall A B,
   Proper (Included ==> RelIncl ==> Included) (@union A B).
 Proof.
 intros. unfold Proper, respectful.
-intros. rewrite union_idx_monotone. 
-apply union_monotone. assumption. assumption.
+intros. etransitivity. apply union_idx_monotone. eassumption. 
+apply union_monotone. assumption.
 Qed.
 
 Local Instance Union_Proper_eq : forall A, 
