@@ -1,4 +1,4 @@
-Require Import 
+ Require Import 
   Algebra.OrderC
   Algebra.FrameC
   Algebra.SetsC
@@ -155,6 +155,30 @@ Qed.
 
 End Down_Props.
 
+Lemma le_down1 {A : PreOrder} {H : PreO.t (le A)} (a b : A)
+  : a <=[A] b <--> (⇓ eq b) a.
+Proof.
+split; intros X.
+- exists b. reflexivity. assumption.
+- destruct X. unfold In in i. subst. assumption.
+Qed.
+
+Lemma union_down {A B : PreOrder}
+  (U : Subset A)
+  (F : A -> B -> Type)
+  : union U (fun a => ⇓ F a) === ⇓ union U F.
+Proof.
+intros b; split.
+- intros H. destruct H. destruct d.
+eexists. 2:eassumption.
+econstructor; eassumption.
+- intros H.  destruct H.  destruct i.
+  eexists. eassumption. eexists; eassumption.
+Qed.
+
+Ltac le_down := rewrite <- !le_down1.
+Ltac le_downH H := rewrite <- !le_down1 in H.
+
 Module PreSpace.
 Record t@{A P X} :=
   { S :> PreOrder@{A P}
@@ -232,6 +256,13 @@ Definition stable :=
 
 Context `{FTS : t}.
 
+Lemma le_right_eq a (U : Open@{A P} A) (H : a <| U)
+  : a <| eq a ↓ U.
+Proof.
+eapply le_right. apply refl. reflexivity.
+assumption.
+Qed.
+
 Lemma monotone (U V : Open A)
   : U ⊆ V -> forall a : A, a <| U -> a <| V.
 Proof.
@@ -295,6 +326,28 @@ Ltac ejoin := repeat match goal with
   | [ H1 : ?Cov _ ?a _, H2 : ?Cov _ ?a _  |- ?Cov _ ?a _ ] => join H1 H2
   end.
 
+Section Props.
+
+Universes A P I.
+Context {A : PreSpace.t@{A P I}} {FTA : t A}.
+
+Lemma cov_downset a (U : Open@{A P} A)
+  : a <| ⇓ U -> a <| U.
+Proof.
+intros H. etrans. destruct H.
+eapply le_left with a0. assumption.
+apply refl. assumption.
+Qed.
+
+Lemma cov_singleton {a b : A}
+  (H : a <=[A] b) : a <|[A] eq b.
+Proof.
+eapply le_left. eassumption.
+apply refl. reflexivity.
+Qed.
+
+End Props.
+
 Module PreISpace.
 Record t@{A P I} :=
   { S :> PreOrder@{A P}
@@ -337,8 +390,6 @@ Inductive GCovL@{} (a : A) (U : Open@{A P} A) : Type :=
     -> GCovL a U.
 
 Context {PO : PreO.t@{A P} (le A)}.
-
-Axiom undefined : forall A, A.
 
 Lemma Lmore_MUniv a U : GCov a U -> GCovL a U.
 Proof.
@@ -643,9 +694,8 @@ intros a U. split; intros H.
     intros. auto.
 Qed.
 
-Definition cov_equiv : GCovL A ==== GCov Localized
+Definition cov_equiv@{} : GCovL A ==== GCov Localized
   := cov_equiv_UMore@{API API API API API}.
-
 
 Local Instance GCov_Proper : Proper (le A --> Included ==> arrow)
   (GCov Localized). 
@@ -665,10 +715,16 @@ eapply t_Proper@{A P I API API}. 2: apply Localized_formtop.
 symmetry. apply cov_equiv.
 Qed.
 
-Definition GCovL_formtop@{API'} : t (@toPreSpace@{A P I API} A)
+Universes API'.
+
+Definition GCovL_formtop: t (@toPreSpace@{A P I API} A)
   := GCovL_formtop_UMore@{API API' API'}.
 
 
 End Localize.
 
-Arguments IxL : clear implicits.
+
+
+Set Printing Universes.
+
+

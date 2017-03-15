@@ -1,6 +1,7 @@
 Require Import FormTopC.FormTop 
   FormTopC.Cont
   FormTopC.InfoBase
+  FormTopC.FormalSpace
   Algebra.SetsC
   Algebra.OrderC
   Coq.Classes.CMorphisms
@@ -9,40 +10,44 @@ Require Import FormTopC.FormTop
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
+Set Printing Universes.
+
 Local Open Scope FT.
 
 Module Discrete.
 Section Discrete.
 
-Universes A P.
+Universes A A'.
 Variable A : Type@{A}.
 
-Definition DiscretePO@{} : FormTop.PreOrder@{A P} :=
+Definition DiscretePO@{} : FormTop.PreOrder@{A A} :=
   {| PO_car := A
    ; le := Logic.eq
   |}.
 
-Require Import FormTopC.Bundled.
-
-Instance discretePO@{} : PreO.t Logic.eq := PreO.discrete@{A P} A.
+Instance discretePO@{} : PreO.t Logic.eq := PreO.discrete@{A A} A.
 
 Set Printing Universes.
-Axiom undefined : forall A, A.
-Definition DiscI@{X} : IGT@{A P P} := InfoBase@{A P P X} DiscretePO.
 
-Definition Disc : PreSpace.t :=
+Definition DiscI@{} : IGt@{A A A A'} := InfoBase.InfoBase@{A A A'} DiscretePO.
+
+Definition Disc@{} : PreSpace.t :=
   {| PreSpace.S := DiscretePO
    ; PreSpace.Cov := fun a U => In U a |}.
 
-Lemma CovG_Cov : forall a U, a <|[DiscI] U -> In U a.
+Local Open Scope Subset.
+
+Lemma CovG_Cov a U : a <|[DiscI] U <--> In U a.
 Proof.
-intros. induction X. 
-- simpl in *. subst. assumption.
-- simpl in *. subst. assumption.
-- induction i.
+split; intros H.
+- induction H. 
+  + simpl in *. subst. assumption.
+  + simpl in *. subst. assumption.
+  + induction i.
+- apply FormTop.refl. assumption.
 Qed.
 
-Instance isCov : FormTop.t Disc.
+Instance isCov@{} : FormTop.t Disc.
 Proof.
 econstructor; try (simpl; eauto).
 - intros. subst. eauto.
@@ -66,7 +71,8 @@ Proof.
 intros H x y Ux Uy.
 pose proof (Cont.pt_local H Ux Uy).
 destruct X. destruct i.
-destruct d. simpl in *. subst. reflexivity.
+apply down_eq in d. destruct d. destruct l, l0.
+reflexivity.
 Qed.
 
 Definition pt_eval (U : Subset A) (x : Cont.pt Disc U)
@@ -78,32 +84,21 @@ End Discrete.
 End Discrete.
 
 Require Import
-  Spec.Category
-  FormTopC.Bundled
   FormTopC.Cont
   FormTopC.Product.
-Import Category.
 
 Local Open Scope loc.
 
-Axiom undefined : forall A, A.
-
-
-Set Printing Universes.
-
-Definition discrete (A : Type) : IGT :=
-  {| S := Discrete.DiscI A
-  ; PO := PreO.discrete A
-  ; pos := InfoBase.Pos (Discrete.DiscretePO A)
-  |}.
+Definition discrete@{A A'} : Type@{A} -> IGt@{A A A A'} := Discrete.DiscI.
 
 Module DiscreteFunc.
 Ltac inv H := inversion H; clear H; subst.
 
 Section Func.
 
-Context {A : Type}.
-Variable B : IGT.
+Universes A A' B P I BPI.
+Context {A : Type@{A}}.
+Variable B : IGt@{A P I BPI}.
 
 Variable (f : A -> Subset (S B)).
 
@@ -129,11 +124,11 @@ Qed.
 End Func.
 
 Section DFunc.
-
-Context {A B : Type}.
+Universes A A' B B'.
+Context {A : Type@{A}} {B : Type@{B}}.
 Definition discrF (f : A -> B) (y : B) (x : A) : Prop := f x = y.
 
-Instance POB : PO.t Logic.eq Logic.eq := PO.discrete B.
+Instance POB@{} : PO.t Logic.eq Logic.eq := PO.discrete B.
 
 (*
 Theorem fCont (f : A -> B) :
@@ -146,14 +141,15 @@ Qed.
 (** Should be able to get this from the above just from
   rewriting, but it's not working... *)
 Theorem fContI (f : A -> B) :
-  Cont.t (discrete A) (discrete B) (discrF f).
+  Cont.t (discrete@{A A'} A) (discrete@{B B'} B) (discrF f).
 Proof.
-constructor; unfold Cov; intros.
-- apply FormTop.grefl. exists (f a); constructor.
-- simpl in X. subst. assumption.
-- inv H. inv H0. apply FormTop.grefl. exists (f a). split; reflexivity.
+constructor; intros.
+- apply FormTop.refl. exists (f a); constructor.
+- unfold discrF in *. simpl in X. subst. reflexivity.
+- inv H. inv H0. apply FormTop.refl. 
+  exists (f a). split; le_down; simpl; reflexivity.
   reflexivity.
-- apply FormTop.grefl. exists b; unfold In; auto. induction X; auto.
+- apply FormTop.refl. exists b; unfold In; auto. induction X; auto.
   simpl in *. subst. apply IHX. assumption. induction i.
 Qed.
 
@@ -171,55 +167,19 @@ constructor.
   + destruct i.
 Qed.
 
+(** This is only true for finitary products! *)
 (** Show that (discrete A * discrete B ≅ discrete (A * B) *)
-
-Require Import FormTopC.Product.
-
-Theorem prod_assoc_cont :
-  Cont.t (discrete A * discrete B) (discrete (A * B)) Logic.eq.
-Proof.
-constructor; intros.
-- apply FormTop.grefl. econstructor. constructor. reflexivity.
-- destruct X. destruct a, b, c. simpl in *. subst. assumption.
-- subst. apply FormTop.grefl. constructor 1 with a.
-  split; reflexivity. reflexivity.
-- subst. unfold Cov in X. apply FormTop.grefl.
-  econstructor. apply Discrete.CovG_Cov. eassumption. reflexivity.
-Qed.
-
-Theorem prod_deassoc_cont : 
-  Cont.t (discrete (A * B)) (discrete A * discrete B) Logic.eq.
-Proof.
-constructor; unfold Cov; intros.
-- econstructor. econstructor. reflexivity. reflexivity.
-- congruence.
-- subst. destruct a. econstructor. econstructor. repeat (split || reflexivity).
-  reflexivity.
-- subst. apply FormTop.grefl. constructor 1 with a; try reflexivity.
-  induction X. assumption. destruct a, b. destruct l.
-  simpl in *. subst. assumption.
-  destruct a.
-  destruct i; subst; apply X; split;
-  repeat match goal with
-  | [ H : PreISpace.Ix _ _ |- _ ] => destruct H; subst
-  | [  |- _ = _ ] => reflexivity
-  | [ i : Product.Ix _ _ |- _] => destruct i
-  end.
-Qed.
 
 
 End DFunc.
 
 End DiscreteFunc.
 
-Definition discrete_f {A B} (f : A -> B) : discrete A ~~> discrete B :=
-  {| mp_ok := DiscreteFunc.fContI f |}.
-
-Definition discrete_prod_assoc {A B : Type} : 
-  discrete A * discrete B ~~> discrete (A * B) :=
-  {| mp_ok := DiscreteFunc.prod_assoc_cont
-  |}.
-
-(** Could have used Sierpinski? *)
-Class Discrete {A : IGT} : Type :=
-  { bequal : A * A ~~> discrete bool }.
+(** For some reason, I get a universe inconsistency if I try to do
+    this in normal definition mode. *)
+Definition discrete_f {A B : Type} (f : A -> B) : discrete A ~~> discrete B.
+Proof.
+unshelve econstructor.
+- exact (DiscreteFunc.discrF f).
+- exact (DiscreteFunc.fContI f).
+Defined.

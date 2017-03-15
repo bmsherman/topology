@@ -2,6 +2,7 @@ Require Import
   Coq.Program.Basics
   FormTopC.FormTop
   FormTopC.Cont
+  FormTopC.FormalSpace
   Algebra.OrderC
   Algebra.SetsC
   CMorphisms
@@ -24,30 +25,30 @@ Module InfoBase.
 Section InfoBase.
 
 Set Printing Universes.
-Universes A P I.
+Universes A P AP.
 Variable (S : FormTop.PreOrder@{A P}).
 
 Context {PO : PreO.t@{A P} (le S)}.
 
 (** The axiom set essentially says that if [s <= t], then
     [s] is covered by the singleton set [{t}]. *)
-Inductive Ix {s : S} : Type@{I} := .
+Inductive Ix@{} {s : S} : Type@{P} := .
 
 Arguments Ix : clear implicits.
 
-Definition C (s : S) (s' : Ix s) : Subset@{A P} S := match s' with
+Definition C@{} (s : S) (s' : Ix s) : Subset@{A P} S := match s' with
   end.
 
-Definition IBInd@{} : PreISpace.t@{A P I} :=
+Definition IBInd@{} : PreISpace.t@{A P P} :=
   {| PreISpace.S := S
    ; PreISpace.Ix := Ix
    ; PreISpace.C := C
   |}.
 
-Definition Cov (s : S) (U : Subset S) : Type@{P} :=
+Definition Cov (s : S) (U : Subset@{A P} S) : Type@{P} :=
   In (⇓ U) s.
 
-Definition IB@{} : PreSpace.t@{A P I} :=
+Definition IB@{} : PreSpace.t@{A P P} :=
   {| PreSpace.S := S
    ; PreSpace.Cov := Cov |}.
 
@@ -57,10 +58,9 @@ Proof.
 unfold FormTop.localized. intros. induction i.
 Qed.
 
-Theorem CovEquiv : forall s U, 
-  (s <|[IB] U) <--> (s <|[IBInd] U).
+Theorem CovEquiv : PreSpace.Cov IB ==== GCovL IBInd.
 Proof.
-intros. simpl. unfold Cov. split; intros.
+intros a U. simpl. unfold Cov. split; intros.
 - destruct X as [t Ut st].
   apply FormTop.glle_left with t. assumption.
   apply FormTop.glrefl. assumption. 
@@ -80,11 +80,14 @@ Local Instance isCov@{} : FormTop.t IB.
 Proof.
 Admitted.
 
-Lemma Pos : FormTop.gtPos IBInd.
+Local Instance Pos : FormTop.gtPos IBInd.
 Proof.
 apply FormTop.gall_Pos.
 intros. destruct i.
 Qed.
+
+Definition InfoBase@{} : IGt@{A P P AP} :=
+  {| IGS := IBInd |}.
 
 End InfoBase.
 End InfoBase.

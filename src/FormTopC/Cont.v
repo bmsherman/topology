@@ -10,39 +10,45 @@ Require Import
 Set Universe Polymorphism.
 Local Open Scope Subset.
 Local Open Scope FT.
+Set Printing Universes.
 
 (** Continuous maps. *)
 Module Cont.
 
-Definition map (S T : PreSpace.t) := T -> Subset S.
+Definition map@{AS PS XS AT PT XT PS'} 
+  (S : PreSpace.t@{AS PS XS})
+  (T : PreSpace.t@{AT PT XT}) : Type@{PS'} 
+  := T -> Subset@{AS PS} S.
 
 Section Cont.
+Universes AS PS XS AT PT XT PS'.
+Context {S : PreSpace.t@{AS PS XS}}
+        {T : PreSpace.t@{AT PT XT}}.
 
-Context {S T : PreSpace.t}.
-
-Record t {F_ : map S T} : Type :=
-  { here : forall a, a <|[S] (union (fun _ => True) F_)
+Record t@{} {F_ : map@{AS PS XS AT PT XT PS'} S T} : Type :=
+  { here : forall a, a <|[S] (union@{AT AS PT PS} (fun _ : T => True) F_) 
   ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
   ; local : forall {a b c}, F_ b a -> F_ c a
-    -> a <|[S] union (eq b ↓ eq c) F_
+    -> a <|[S] union@{AT AS PT PS} (eq b ↓ eq c) F_
   ; cov : forall {a b} V, F_ b a -> b <|[T] V
-    -> a <|[S] union V F_
+    -> a <|[S] union@{AT AS PT PS} V F_ 
   }.
 
 Arguments t F_ : clear implicits.
 
-Definition Sat (F_ : map S T) : map S T := fun t s =>
+Definition Sat@{} (F_ : map@{AS PS XS AT PT XT PS'} S T) 
+  : map@{AS PS XS AT PT XT PS'} S T := fun t s =>
   s <|[S] F_ t.
 
-Definition func_LE (F_ G_ : map S T) : Type :=
-  Sat F_ ⊑ Sat G_.
+Definition func_LE@{} 
+  (F_ G_ : map@{AS PS XS AT PT XT PS'} S T) : Type@{PS'} :=
+  RelIncl@{AT AS PS PS'} (Sat F_) (Sat G_).
 
-Definition func_EQ (F_ G_ : map S T) : Type :=
-  Sat F_ ==== Sat G_.
+Definition func_EQ@{} (F_ G_ : map S T) : Type@{PS'} :=
+  RelSame@{AT AS PS PS'} (Sat F_) (Sat G_).
 
-
-Context {POS : PreO.t (le S)}
-        {POT : PreO.t (le T)}.
+Context {POS : PreO.t@{AS PS} (le S)}
+        {POT : PreO.t@{AT PT} (le T)}.
 
 Global Instance func_LE_PreOrder : CRelationClasses.PreOrder func_LE.
 Proof.
@@ -125,11 +131,11 @@ Qed.
 Section DirectedSup.
 Context {Ix : Type} `{JoinLat.t Ix}.
 Variable (f : Ix -> map S T).
-Variable (fmono : forall i j, JoinLat.le i j -> RelIncl (f i) (f j)).
+Variable (fmono : forall i j, JoinLat.le i j -> f i ⊑ f j).
 Definition func_Dsup : map S T := fun t s =>
   { i : Ix & f i t s }.
 
-Lemma oneIncl i : RelIncl (f i) func_Dsup.
+Lemma oneIncl i : f i ⊑ func_Dsup.
 Proof.
 intros. unfold RelIncl, Included, pointwise_rel, arrow; intros.
 exists i. assumption.
@@ -164,7 +170,6 @@ intros iCont. constructor; intros.
 Qed.
 
 End DirectedSup.
-
 
 End Cont.
 
@@ -337,6 +342,13 @@ intros. constructor; intros.
     FormTop.etrans. destruct X2. 
     eapply X0; eassumption.
 Qed.
+
+(** I should look at Lemma 2.19 of dexplong.pdf *)
+Lemma pos F (H : t F) `{FormTop.tPos S} `{FormTop.gtPos T} : forall (t : T) (s : S),
+  F t s -> Pos s -> gPos t.
+Proof.
+intros.
+Admitted.
 
 Existing Instances union_Proper FormTop.Cov_Proper.
 

@@ -3,14 +3,12 @@ Require Import
   Algebra.SetsC
   Algebra.OrderC
   FormTopC.FormTop
-  FormTopC.Bundled
+  FormTopC.FormalSpace
   FormTopC.Cont.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Existing Instances Bundled.IGT_PreO Bundled.local
-  Bundled.IGT_Pos Bundled.IGTFT.
 Local Open Scope FT.
 Local Open Scope Subset. 
 
@@ -18,11 +16,11 @@ Module Lift.
 
 Section Lift.
 
-Variable (S : IGT).
+Variable (S : IGt).
 
 Section Collapse.
 
-Variable (T : IGT).
+Variable (T : IGt).
 
 Variable f : S -> T.
 Hypothesis fmono : forall x y, x <=[S] y -> f x <=[T] f y.
@@ -32,8 +30,8 @@ Definition lift : Cont.map S T := fun t s => f s <=[T] t.
 
 Lemma le_Cov : forall a b, a <=[T] b -> a <|[T] eq b.
 Proof.
-intros. apply FormTop.gle_left with b. assumption.
-apply FormTop.grefl. reflexivity.
+intros. apply FormTop.le_left with b. assumption.
+apply FormTop.refl. reflexivity.
 Qed.
 
 Lemma downset_idempotent (U : Open T) : 
@@ -48,18 +46,18 @@ Qed.
 Theorem lift_cont : IGCont.t S T lift.
 Proof.
 constructor; intros.
-- apply FormTop.grefl. exists (f a). constructor. unfold lift.
+- apply FormTop.refl. exists (f a). constructor. unfold lift.
   reflexivity.
 - unfold lift in *.
-  apply FormTop.grefl. exists (f a).
-  split; eassumption. reflexivity.
+  apply FormTop.refl. exists (f a).
+  split; le_down; eassumption. reflexivity.
 - unfold lift in *. rewrite <- X0. apply fmono. assumption.
 - unfold lift in *. etransitivity; eassumption.
 - unfold lift in *.
   apply (FormTop.gpositive).
   intros pa. pose proof (fPos _ pa) as pfa.
-  assert (Inhabited (PreISpace.C T b j ∩ FormTop.gPos)).
-  eapply FormTop.gmono_ax. 
+  assert (Inhabited ((eq t ↓ PreISpace.C T t' j) ∩ FormTop.gPos)).
+  eapply FormTop.gmono_ax. assumption.
   eapply FormTop.gmono_le; eassumption.
   admit. (* This is a big hole. *)
 Abort. 
@@ -114,16 +112,18 @@ Definition Lifted : PreISpace.t :=
    ; PreISpace.C := C
   |}.
 
-Local Instance loc : FormTop.localized Lifted.
+Local Instance loc (H : FormTop.localized S) : FormTop.localized Lifted.
 Proof.
 unfold FormTop.localized in *.
 intros. destruct c; try contradiction.
 destruct a; try contradiction.
-destruct (localized S p0 p X i).
-exists x. simpl.  intros. destruct s0; try contradiction. 
-simpl in X0. destruct (s _ X0). clear X0.
-exists (Some x0). destruct p2.  split. simpl. assumption.
-assumption.
+destruct (H p0 p X i).
+exists x. simpl.  intros. simpl in X.
+intros u Pu. destruct u; try contradiction.
+simpl in Pu. destruct (i0 _ Pu). clear i0.
+le_downH d. destruct d0. 
+split. le_down. assumption.
+exists (Some a). unfold In. simpl. assumption. assumption. 
 Qed.
 
 Inductive bottom : Subset (option S) :=
@@ -133,8 +133,9 @@ Theorem Cov_None V : None <|[Lifted] V -> In V None.
 Proof.
 intros cov. remember None as none.
 induction cov; subst; simpl in *; try contradiction; auto.
-destruct b; simpl in *. contradiction.
-apply IHcov. reflexivity.
+- destruct b; simpl in *. contradiction.
+  apply IHcov. reflexivity.
+- induction b; simpl in *; contradiction.
 Qed.
 
 Theorem pt_bottom : Cont.pt Lifted bottom.
@@ -159,25 +160,25 @@ Local Open Scope Subset.
 Lemma inj_lift V x : In (union (lift_subset V) inj) x -> 
   x <|[S] V.
 Proof. intros X. destruct X. unfold In in *.
-destruct a; simpl in *. apply FormTop.gle_left with p. 
-assumption. apply FormTop.grefl. assumption.
+destruct a; simpl in *. apply FormTop.le_left with p. 
+assumption. apply FormTop.refl. assumption.
 contradiction.
 Qed.
 
 Theorem inj_cont : Cont.t S Lifted inj.
 Proof.
 constructor; intros.
-- apply FormTop.grefl. constructor 1 with None.
+- apply FormTop.refl. constructor 1 with None.
   constructor. simpl. constructor.
 - destruct b; simpl in *.
   etransitivity; eassumption. constructor.
-- apply FormTop.grefl. destruct b; simpl in *.
+- apply FormTop.refl. destruct b; simpl in *.
   + constructor 1 with (Some a).
-    split; assumption. simpl. reflexivity.
+    split; le_down; assumption. simpl. reflexivity.
   + destruct c; simpl in *.
-    * constructor 1 with (Some a). split; assumption.
+    * constructor 1 with (Some a). split; le_down; assumption.
       simpl. reflexivity.
-    * constructor 1 with None. split; constructor.
+    * constructor 1 with None. split; le_down; constructor.
       simpl. constructor.
 - destruct b; simpl in *. 
   + remember (Some p) as somes.
@@ -186,19 +187,25 @@ constructor; intros.
     generalize dependent a. 
     induction X0; intros.
     * destruct a; simpl in *.
-      { apply FormTop.gle_left with p0. assumption.
-        apply FormTop.grefl. constructor 1 with (Some p0).
+      { apply FormTop.le_left with p0. assumption.
+        apply FormTop.refl. constructor 1 with (Some p0).
         assumption. simpl. reflexivity. }
-      { apply FormTop.grefl. constructor 1 with None.
+      { apply FormTop.glrefl. constructor 1 with None.
       assumption. simpl. assumption. }
     * apply IHX0. etransitivity; eassumption.
     * destruct a; try contradiction.
       simpl in *. 
-      apply FormTop.gle_left with p0. assumption.
-      apply FormTop.ginfinity with i.
-      intros. apply (X (Some u)). simpl. assumption.
-      reflexivity.
-  + apply FormTop.grefl. constructor 1 with None.
+      apply FormTop.le_left with p0. assumption.
+      destruct b. simpl in l. 
+      simpl in i.
+      apply FormTop.gle_infinity with p1 i. assumption.
+      intros. destruct X0. le_downH d. destruct d0.
+      eapply X. split. le_down. instantiate (1 := Some u). 
+      eassumption. exists (Some a). simpl. unfold In.
+      simpl. assumption. simpl. assumption. reflexivity.
+      induction i. 
+      induction b; simpl in *; contradiction.
+  + apply FormTop.glrefl. constructor 1 with None.
     apply Cov_None. assumption. simpl. constructor.
 Qed.
 

@@ -18,13 +18,13 @@ Record IGt@{A P I API} : Type :=
     (** The space must have a positivity predicate. *)
   }.
 
-Local Instance IGT_PreO@{A P I API} 
+Global Instance IGT_PreO@{A P I API} 
   (X : IGt@{A P I API}) : PreO.t (le X) := IGPO X.
-Local Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
+Global Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
   FormTop.t (IGS X) :=
   FormTop.GCovL_formtop@{A P I API API'} _.
 
-Local Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X)
+Global Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X)
   := IGpos X.
 
 
@@ -230,3 +230,29 @@ intros H. constructor;
 - destruct H0. constructor. symmetry. assumption.
 - destruct H0, H1. constructor. etransitivity; eassumption.
 Qed.
+
+Section IGProps.
+
+Context {A : IGt}.
+
+Lemma igl_ax_cov {a b : A}
+  (H : a <=[A] b) (ix : PreISpace.Ix A b)
+  : a <|[A] eq a ↓ PreISpace.C A b ix.
+Proof.
+apply FormTop.gle_infinity with b ix. 
+assumption.
+intros. eapply (FormTop.refl (A := A)). assumption.
+Qed.
+
+Lemma ig_ax_cov (a : A)
+  (ix : PreISpace.Ix A a) :
+  a <|[A] PreISpace.C A a ix.
+Proof.
+pose proof (@igl_ax_cov a a (PreO.le_refl a) ix) as X.
+apply cov_downset.
+eapply FormTop.gmonotoneL. 
+eapply Intersection_Included_r.
+apply X.
+Qed.
+
+End IGProps.

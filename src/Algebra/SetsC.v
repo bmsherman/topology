@@ -76,8 +76,8 @@ Proof.
 firstorder.
 Qed.
 
-Inductive union@{S T PS PT Max} {S T} (U : Subset@{S PS} S) 
-  (f : S -> Subset@{T PT} T) (b : T) : Type@{Max} :=
+Inductive union@{S T PS PT} {S T} (U : Subset@{S PS} S) 
+  (f : S -> Subset@{T PT} T) (b : T) : Type@{PT} :=
   union_intro : forall a, In U a -> f a b -> In (union U f) b.
 
 Theorem Union_union : forall (A B : Type) (a b : Subset A) (f : A -> Subset B),

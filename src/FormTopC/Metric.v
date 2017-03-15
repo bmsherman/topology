@@ -2,7 +2,7 @@ Require Import
   FormTopC.FormTop
   Algebra.OrderC
   Algebra.SetsC
-  FormTopC.Bundled.
+  FormTopC.FormalSpace.
 
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
