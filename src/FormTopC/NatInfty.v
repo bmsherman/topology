@@ -38,14 +38,11 @@ Arguments Next : clear implicits.
 (** This axiom set is not localized. However,
     doing the localization procedure will
     generate the right thing! *)
-Definition IxUL (a : O) : Set := match a with
-  | MoreThan _ => unit
-  | Exactly _ => Empty_set
-  end. 
+Inductive Ix : O -> Set := 
+  | IxNext : forall n, Ix (MoreThan n).
 
-Definition CUL (a : O) : IxUL a -> Subset O := match a with
-  | MoreThan n => fun _ => Next n
-  | Exactly _ => Empty_set_rect _
+Definition C (a : O) (ix : Ix a) : Subset O := match ix with
+  | IxNext n => Next n
   end.
 
 Definition NatInfPO : FormTop.PreOrder :=
@@ -53,12 +50,10 @@ Definition NatInfPO : FormTop.PreOrder :=
    ; FormTop.le := le
   |}.
 
-Definition NatInfUL : PreISpace.t :=
+Definition NatInf : PreISpace.t :=
   {| PreISpace.S := NatInfPO
-   ; PreISpace.C := CUL
+   ; PreISpace.C := C
   |}.
-
-Definition NatInfPS := Localized NatInfUL.
 
 Definition exactly (n : nat) : Subset O := le (Exactly n).
 
@@ -69,73 +64,82 @@ Inductive infty : Subset O :=
 
 Require Import FormTopC.Cont.
 
-Definition is_pt := IGCont.pt NatInfPS.
+Definition is_pt := IGCont.pt NatInf.
 
 Lemma pt_infty : is_pt infty.
 Proof.
 constructor; intros.
 - exists (MoreThan 0). constructor.
 - destruct H, H0. exists (MoreThan (max n n0)). 
-  econstructor. constructor; constructor.
+  econstructor. split; le_down; constructor.
   apply Max.le_max_l. apply Max.le_max_r.
   constructor.
 - destruct H. inv H0. constructor.
-- destruct i. simpl. destruct H.
-  inv l. 
-  destruct (Compare_dec.le_lt_eq_dec _ _ H0).
+- destruct j as [m]. simpl.
+  simpl in H. destruct H0 as [n].
+  inv H.
+  destruct (Compare_dec.le_lt_eq_dec _ _ H2).
   + exists (MoreThan n). split. constructor.
-    exists (MoreThan (S m)). split.  constructor.
-    split. reflexivity. constructor. assumption.
+    split. le_down. simpl. econstructor. reflexivity.
+    exists (MoreThan (S m)).  constructor.
+    constructor. assumption.
   + subst. exists (MoreThan (S n)). split.  constructor.
-    exists (MoreThan (S n)). split. constructor.
-    split; constructor. apply Le.le_n_Sn. reflexivity.
+    split. le_down. simpl. constructor. apply Le.le_n_Sn.
+    exists (MoreThan (S n)). constructor.
+    simpl. constructor. reflexivity.
 Qed.
 
 Lemma pt_exactly n : is_pt (exactly n).
 Proof.
 constructor; unfold exactly; intros.
 - exists (Exactly n). unfold In. reflexivity.
-- exists (Exactly n). split. split; assumption.
+- exists (Exactly n). split. split; le_down; assumption.
   reflexivity.
 - etransitivity; eassumption.
-- destruct i. destruct c. simpl in *; 
-    try contradiction.
+- destruct j as [m]. simpl.
+  inv H0.
+  + inv H. 
   exists (Exactly n). constructor. reflexivity.
-  destruct (Compare_dec.lt_eq_lt_dec (S n0) n) as [[LT | EQ] | GT].
-  + exists (MoreThan (S n0)). split. constructor.
-      split. assumption. constructor; assumption.
-  + subst. exists (Exactly (S n0)).  split. constructor.
-      split. assumption. reflexivity.
-  + exfalso. eapply Lt.le_not_lt. 2: eassumption. 
-    inv H; inv l.
-    * transitivity (S n1). apply Le.le_n_S. assumption. 
+  destruct (Compare_dec.lt_eq_lt_dec (S m) n) as [[LT | EQ] | GT].
+    * split. le_down. simpl. constructor. assumption. 
+      exists (MoreThan (S m)). constructor. simpl. constructor.
       assumption.
-    * assumption.
-  + simpl in *. contradiction.
-Qed.
+    * subst. split. le_down. simpl. constructor.
+      assumption. exists (Exactly (S m)). constructor.
+      reflexivity.
+    * exfalso. eapply Lt.le_not_lt. 2: eassumption.
+      etransitivity. 2: eapply H2. apply Le.le_n_S. assumption. 
+  + inv H. exists (Exactly n0).
+    split. reflexivity. split. le_down. reflexivity.
+    exists (MoreThan (S m)). constructor.
+    simpl. constructor. admit.
+Admitted.
 
-Lemma Pos : FormTop.gtPos NatInfPS.
+Lemma Pos : FormTop.gtPos NatInf.
 Proof.
 apply FormTop.gall_Pos.
-intros a. destruct a.
+intros b i a. induction a.
 - (** MoreThan n - take the point infty as an example. *)
-  intros i.
-  rewrite <- (Intersection_Included_r _ infty (PreISpace.C NatInfPS (MoreThan n) i)).
-  apply (IGCont.pt_cov pt_infty).
-  constructor.
+  intros H.
+  pose proof (IGCont.pt_cov pt_infty (MoreThan n) b i H).
+  assert (H1 : infty (MoreThan n)) by constructor.
+  specialize (H0 H1).
+  destruct H0. destruct i0. eexists; eassumption.
 - (** Exactly n - take the point (exactly n) as an example. *)
-  intros i.
-  rewrite <- (Intersection_Included_r _ (exactly n) (PreISpace.C NatInfPS (Exactly n) i)).
-  apply (IGCont.pt_cov (pt_exactly n)).
-  constructor. reflexivity.
+  intros H.
+  pose proof (IGCont.pt_cov (pt_exactly n) (Exactly n) b i H).
+  assert (H1 : exactly n (Exactly n)). 
+  unfold exactly. reflexivity.
+  specialize (H0 H1). destruct H0. destruct i0.
+  eexists; eassumption.
 Qed.
 
 Require Import FormTopC.Discrete
-  FormTopC.Bundled.
+  FormTopC.FormalSpace.
 
 (** The (open) embedding of the natural numbers into
     its Alexandroff compactification. *)
-Definition inj : Cont.map (discrete nat) NatInfPS := fun o n =>
+Definition inj : Cont.map (discrete nat) NatInf := fun o n =>
   exactly n o.
 
 (*
@@ -157,71 +161,6 @@ Definition checkf : Subset O := fun o => match o with
   | Exactly n => (forall k, k < n -> f k = false) /\ f n = true
   end.
 
-(* Super duper ugly! *)
-Lemma checkf_cont : is_pt checkf.
-Proof.
-unfold is_pt. constructor.
-- destruct (f 0) eqn: f0.
-  + exists (Exactly 0). unfold In, checkf. split.
-    intros. exfalso. eapply PeanoNat.Nat.nlt_0_r.
-    eassumption. assumption.
-  + exists (MoreThan 0). unfold In, checkf.
-    intros. apply Le.le_n_0_eq in H. subst.
-    assumption.
-- intros b c X X0. destruct b. destruct c.
-  exists (MoreThan (max n n0)). constructor.
-  constructor; constructor. apply Max.le_max_l. apply Max.le_max_r.
-  unfold checkf in *.
-  apply Max.max_case_strong.
-  intros. apply X. assumption. intros.
-  apply X0. assumption.
-  + destruct (Compare_dec.le_lt_dec n0 n).
-    exfalso. unfold checkf in *. destruct X0.
-    specialize (X n0 l). congruence.
-    exists (Exactly n0). constructor.
-    constructor; constructor. assumption. reflexivity.
-    assumption.
-  + destruct c. destruct (Compare_dec.le_lt_dec n n0).
-    exfalso. unfold checkf in *. destruct X.
-    specialize (X0 n l). congruence.
-    exists (Exactly n). split. constructor; constructor.
-    reflexivity. assumption. assumption. unfold checkf in X, X0.
-    destruct (Compare_dec.lt_eq_lt_dec n n0). destruct s. 
-    exfalso. destruct X, X0. specialize (H1 n l). congruence.
-    subst. 
-    exists (Exactly n0). split. 
-    constructor; constructor; reflexivity.
-    assumption. exfalso. destruct X, X0.
-    specialize (H _ l). congruence.
-- intros a b X H. induction H; unfold checkf in *.
-  + intros. apply X. eapply Le.le_trans; eassumption.
-  + intros. destruct X. apply H0.
-    eapply Lt.le_lt_trans; eassumption.
-  + subst. assumption.
-- intros a H i. induction i.
-  + destruct c. simpl in *. destruct ix.
-    inv l. destruct (Compare_dec.le_lt_eq_dec _ _ H2).
-    exists (MoreThan n0). split. assumption.
-    exists (MoreThan (Datatypes.S n)). split. constructor.
-    split; constructor. reflexivity. assumption.
-    subst. clear H2.
-    destruct (f (Datatypes.S n0)) eqn:fSn.
-    exists (Exactly (Datatypes.S n0)). split.  unfold checkf. split. 
-    intros. apply H. apply Lt.lt_n_Sm_le; assumption.
-    assumption. exists (Exactly (Datatypes.S n0)). split. constructor.
-    split; constructor. constructor. reflexivity.
-    exists (MoreThan (Datatypes.S n0)). split. unfold checkf. intros.
-    inv H0. assumption. apply H. assumption.
-    exists (MoreThan (Datatypes.S n0)). split. constructor.
-    split; constructor. constructor. reflexivity.
-    reflexivity. exists (Exactly m). split.  assumption.
-    destruct (Compare_dec.le_lt_eq_dec _ _ H2).
-    exists (MoreThan (Datatypes.S n)). split. constructor.
-    split; constructor. reflexivity. assumption.
-    subst. exists (Exactly (Datatypes.S n)). split.  constructor.
-    split; constructor; reflexivity.
-    induction ix.
-Qed.
 
 End Checker.
 
@@ -240,10 +179,11 @@ induction a.
 Focus 2. apply Now. apply tt.
 generalize dependent n. cofix.
 intros.
-pose proof (IGCont.pt_cov ptx i 
-  (FormTop.MkIxL NatInfUL (MoreThan n) tt  (PreO.le_refl (MoreThan n)))) as X.
-simpl in X. destruct X. destruct i0. destruct s.
-destruct p. destruct d. induction n0.
+pose proof (IGCont.pt_cov ptx 
+  (MoreThan n) (MoreThan n) (IxNext n) 
+  (PreO.le_refl (MoreThan n)) i) as X.
+simpl in X. destruct X. destruct i0. destruct d. 
+le_downH d. destruct d0. destruct i0.
 - induction a.
   + apply Later. apply (pt_to_Partial _ x0).
   + apply (Now tt).

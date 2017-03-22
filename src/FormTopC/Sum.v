@@ -4,27 +4,29 @@ Require Import
   Algebra.OrderC
   Algebra.SetsC 
   FormTopC.Cont
-  FormTopC.Bundled.
+  FormTopC.FormalSpace.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
 
-Class HasBot {A : IGT}
+Local Open Scope FT.
+
+Class HasBot {A : IGt}
   : Type :=
   { bot : S A
   ; bot_le : forall {s : S A}, le A bot s
-  ; bot_cov : forall (U : Subset (S A)), Cov A bot U
+  ; bot_cov : forall (U : Subset (S A)), bot <|[A] U
   }.
 
 Arguments HasBot : clear implicits.
 
-Definition posIGT {A : IGT} (x : S A) := FormTop.gPos (gtPos := pos A) x.
+Definition posIGT {A : IGt} (x : S A) := FormTop.gPos (gtPos := IGpos A) x.
 
-Lemma bot_Pos (A : IGT) `(HasBot A) :
+Lemma bot_Pos (A : IGt) `(HasBot A) :
   posIGT bot -> False.
 Proof. 
 intros contra.
-pose (FormTop.GCov_Pos (H :=pos A)).
+pose (FormTop.GCov_Pos (H :=IGpos A)).
 pose proof (FormTop.mono bot (fun _ => False)).
 cut (Inhabited ((fun _ : S A => False) ∩ FormTop.Pos)%Subset).
 intros. destruct X0. destruct i. auto.
@@ -51,46 +53,55 @@ Pos(inl a)    iff   Pos(a)
 Pos(inr b)    iff   Pos(b)
 
 *)
+
+Require Import FormTopC.Product.
+
 Section Sum.
 
-Context {A B : IGT}.
+Context {Ix : Type}.
+Context {Ix_UIP : EqdepFacts.UIP_ Ix}.
+Context {A : Ix -> IGt}.
+Context {A_UIP : forall ix : Ix, EqdepFacts.UIP_ (A ix)}.
 
-Definition S' := (S A + S B)%type.
+Definition S' := Product.SomeOpen A.
+
+Definition SomeOpen := Product.MkSomeOpen A.
 
 Inductive Ix' : S' -> Type := 
-  | LeftIx : forall {s}, PreISpace.Ix A s -> Ix' (inl s)
-  | RightIx : forall {t}, PreISpace.Ix B t -> Ix' (inr t).
+  | MkIx : forall {ix : Ix} {s : A ix}, PreISpace.Ix (A ix) s -> 
+       Ix' (SomeOpen ix s).
 
 Arguments Ix' : clear implicits.
 
 Inductive C' : forall {p : S'}, Ix' p -> Subset S' :=
-  | CLeft : forall {s} (ix : PreISpace.Ix A s) (s' : S A), 
-      In (PreISpace.C A s ix) s' -> In (C' (LeftIx ix)) (inl s')
-  | CRight : forall {t} (ix : PreISpace.Ix B t) (t' : S B), 
-      In (PreISpace.C B t ix) t' -> In (C' (RightIx ix)) (inr t').
+  | MkC : forall {ix : Ix} {s : A ix} (ax : PreISpace.Ix (A ix) s)
+     (s' : A ix), In (PreISpace.C (A ix) s ax) s'
+                -> In (C' (MkIx ax)) (SomeOpen ix s').
 
 Arguments C' : clear implicits.
 
-Inductive le' : S' -> S' -> Type := 
-  | le'_L : forall (x y : A), x <=[A] y -> le' (inl x) (inl y)
-  | le'_R : forall (x y : B), x <=[B] y -> le' (inr x) (inr y).
-
-Existing Instances Bundled.IGT_Pos Bundled.IGT_PreO
-  Bundled.IGTFT Bundled.local.
+Definition le' : S' -> S' -> Type := Product.SomeOpen_le A.
 
 Ltac inv H := inversion H; clear H; subst.
 
-Local Instance PO : PreO.t le'.
-Proof.
-econstructor; intros.
-- destruct x; econstructor; reflexivity.
-- destruct X; inv X0; econstructor; etransitivity; eassumption.
-Qed.
+Ltac UIP_clean := match goal with
+  | [ H : existT _ _ ?x = existT _ _ ?x |- _ ] => clear H
+  | [ H : existT _ _ ?x = existT _ _ ?y |- _ ] => 
+     apply UIP_inj_dep_pair in H; [| solve[auto] ]; subst
+  end.
+
+Ltac UIP_inv H := inv H; repeat UIP_clean.
 
 Definition SumPreOrder : PreOrder := 
   {| PO_car := S'
    ; le := le'
   |}.
+
+Local Instance PO : PreO.t (le SumPreOrder). 
+Proof.
+unshelve eapply Product.Sum_PO; eassumption.
+Qed.
+
 
 Definition SumPS : PreISpace.t :=
   {| PreISpace.S := SumPreOrder
@@ -98,80 +109,50 @@ Definition SumPS : PreISpace.t :=
    ; PreISpace.C := C'
   |}.
 
-Local Instance loc : FormTop.localized SumPS.
+Local Instance loc 
+  (locA : forall ix, localized (A ix)) : FormTop.localized SumPS.
 Proof.
 unfold FormTop.localized.
 intros a c H1 i. destruct i.
-- inv H1. destruct (localized A x s X i) as (i' & Hi').
-  exists (LeftIx i'). simpl. intros. inv X0.
-  assert (ix = i') by admit.
-  subst. specialize (Hi' s' X1).
-  destruct Hi' as (u & Pu1 & Pu2).
-  exists (inl u). split. econstructor. assumption.
-  destruct Pu2 as (dl & dr). split; econstructor; eassumption.
-- inv H1. destruct (localized B x t X i) as (i' & Hi').
-  exists (RightIx i'). simpl. intros. inv X0.
-  assert (ix = i') by admit.
-  subst. specialize (Hi' t' X1).
-  destruct Hi' as (u & Pu1 & Pu2).
-  exists (inr u). split. econstructor. assumption.
-  destruct Pu2 as (dl & dr). split; econstructor; eassumption.
-Admitted.
-
-Existing Instance FormTop.Llocalized.
-
-Local Instance isCov : FormTop.t SumPS.
-Proof.
-apply FormTop.GCov_formtop.
+UIP_inv H1. 
+destruct (locA ix aix0 s X i) as (i' & Hi').
+exists (MkIx i').
+intros u X0. UIP_inv X0.
+specialize (Hi' s' X1). destruct Hi'. le_downH d.
+split. le_down. 
+simpl. constructor. assumption.
+destruct d0. eexists. econstructor. eassumption.
+econstructor. eassumption.
 Qed.
 
 Inductive PosSum : Subset S' :=
-  | LeftPos : forall {s}, FormTop.gPos s -> PosSum (inl s)
-  | RightPos : forall {t}, FormTop.gPos t -> PosSum (inr t).
+  | MkPos : forall (ix : Ix) {s : A ix}, FormTop.gPos s -> PosSum (SomeOpen ix s).
 
 Local Open Scope Subset.
 
-
-Lemma cov1 : forall p U, GCov A p (fun l : A => U (inl l))
-  ->  GCov SumPS (inl p) U.
+Lemma cov1 : forall ix p U,  p <|[A ix] (fun l : A ix => U (SomeOpen ix l))
+  -> SomeOpen ix p <|[SumPS] U.
 Proof.
-intros. remember (fun l : A => U (inl l)) as V.
+intros. remember (fun l : A ix => U (SomeOpen ix l)) as V.
 induction X; subst.
 - econstructor. eassumption.
-- eapply gle_left. econstructor; eassumption. 
+- eapply glle_left. econstructor; eassumption. 
   apply IHX. reflexivity.
-- apply ginfinity with (LeftIx i).
-  intros. destruct u. apply X. inv X0. 
-  assert (ix = i) by admit. subst. assumption.
-  reflexivity. inv X0.
-Admitted.
+- apply gle_infinity with (SomeOpen ix b) (MkIx i).
+  constructor. assumption.
+  intros u Pu. destruct u. 
+  destruct Pu. le_downH d.
+  UIP_inv d. apply X. 2: reflexivity.
+  split. le_down. assumption.
+  destruct d0. destruct a0.
+  simpl in l0. UIP_inv l0. UIP_inv i0.
+  eexists; eassumption.
+Qed.
 
-Lemma cov1' : forall p U, GCov SumPS (inl p) U 
-  -> GCov A p (fun l : A => U (inl l)).
+Lemma cov1' : forall ix p U, SomeOpen ix p <|[SumPS] U
+  -> p <|[A ix] (fun l : A ix => U (SomeOpen ix l)).
 Proof.
-intros. remember (inl p) as a.
-induction X; subst.
-- econstructor. eassumption.
-Admitted.
-
-Lemma cov2 : forall p U, GCov B p (fun l : B => U (inr l))
-  ->  GCov SumPS (inr p) U.
-Proof.
-intros. remember (fun l : B => U (inr l)) as V.
-induction X; subst.
-- econstructor. eassumption.
-- eapply gle_left. econstructor; eassumption. 
-  apply IHX. reflexivity.
-- apply ginfinity with (RightIx i).
-  intros. destruct u. inv X0. inv X0. apply X. 
-  assert (ix = i) by admit. subst. assumption.
-  reflexivity. 
-Admitted.
-
-Lemma cov2' : forall p U, GCov SumPS (inr p) U 
-  -> GCov B p (fun l : B => U (inr l)).
-Proof.
-intros. remember (inr p) as a.
+intros. remember (SomeOpen ix p) as a.
 induction X; subst.
 - econstructor. eassumption.
 Admitted.
@@ -180,48 +161,52 @@ Local Instance Pos : FormTop.gtPos SumPS.
 Proof.
 unshelve econstructor.
 - exact PosSum.
-- intros. destruct X; inv X0; econstructor; 
-    eapply gmono_le; eassumption.
+- intros. induction X. UIP_inv X0.
+    constructor. eapply gmono_le; eassumption.
 - intros. destruct i.
-  + inv X. destruct (gmono_ax s i X0).
-    destruct i0. econstructor.
-    split; econstructor; eassumption.
-  + inv X. destruct (gmono_ax t i X0).
-    destruct i0. econstructor.
-    split; econstructor; eassumption.
+  + UIP_inv X0. UIP_inv X.
+    destruct (gmono_ax (A := A ix) s i s0 X0 X1).
+    destruct i0. destruct d. le_downH d.
+    exists (SomeOpen ix a). split. split. 
+    le_down. constructor. assumption.
+    destruct d0.
+    eexists. econstructor. eassumption.
+    constructor. assumption.
+    econstructor. assumption.
 - intros. destruct a.
   + apply cov1. apply gpositive.
-    intros. apply cov1'. apply X.  constructor. assumption. 
-  + apply cov2. apply gpositive.
-    intros. apply cov2'. apply X. constructor. assumption.
-Admitted.
+    intros. apply cov1'. apply X. constructor. assumption. 
+Qed.
 
-Existing Instance FormTop.GCov_formtop.
+Definition Sum : IGt :=
+  {| IGS := SumPS
+  ; IGPO := PO |}.
 
-Definition Sum : IGT :=
-  {| S := SumPS
-  ; Bundled.PO := PO |}.
+Inductive Inj (ix : Ix) : Cont.map (A ix) Sum :=
+  | MkInl : forall a b, a <=[A ix] b -> Inj ix (SomeOpen ix b) a.
 
-Inductive Inl : Cont.map A Sum :=
-  | MkInl : forall a b, le A a b -> Inl (inl b) a.
-
-Lemma inl_cont : IGCont.t A Sum Inl.
+Lemma Inj_cont (ix : Ix) : IGCont.t (A ix) Sum (Inj ix).
 Proof.
 unshelve econstructor; intros.
-- apply FormTop.grefl. exists (inl a). unfold In.
+- apply FormTop.refl. exists (SomeOpen ix a). unfold In.
   constructor. constructor. reflexivity.
 - induction X. inv X0.
-  apply FormTop.grefl. exists (inl a).
-  split; constructor; assumption. constructor. reflexivity.
+  apply FormTop.refl. exists (SomeOpen ix a).
+  split; le_down; constructor; assumption. constructor. reflexivity.
 - induction X0. econstructor. etransitivity; eassumption.
-- induction X. inv X0. econstructor. 
+- induction X. UIP_inv X0. econstructor. 
   etransitivity; eassumption.
 - induction j. 
-  + inv X. apply FormTop.le_left with s. 
-    assumption. eapply ginfinity with i.
-    intros. apply grefl. econstructor. econstructor. eassumption.
-    econstructor. reflexivity.
-  + inv X.
+  + UIP_inv X0. UIP_inv X. 
+    apply FormTop.gle_infinity with s i.
+    etransitivity; eassumption.
+    intros. apply FormTop.glrefl.
+    destruct X. le_downH d. destruct d0.
+    exists (SomeOpen ix0 u). split. le_down.
+    constructor. transitivity a; assumption.
+    exists (SomeOpen ix0 a0). constructor. assumption.
+    constructor. assumption.
+    constructor. reflexivity.
 Qed.
 
 End Sum.

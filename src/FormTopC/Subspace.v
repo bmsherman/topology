@@ -53,8 +53,7 @@ econstructor; intros.
 - unfold incl, Sat in *. rewrite X.  assumption.
 - unfold incl, Sat in X, X0.
   FormTop.ejoin. FormTop.etrans. apply FormTop.refl.
-  exists a. rewrite <- down_downset_eq in X1.
-  assumption. apply incl_refl.
+  exists a. assumption. apply incl_refl.
 - unfold incl, Sat in X. FormTop.etrans.
   unfold In in X. subst. apply CovImpl in X0.
   FormTop.etrans. apply FormTop.refl.
@@ -202,10 +201,10 @@ End Defn.
 
 
 (** Closed subspaces are inductively generated. *)
-Require Import FormTopC.Bundled.
+Require Import FormTopC.FormalSpace.
 Section IGDefn.
 
-Context {A : IGT}.
+Context {A : IGt}.
 
 Variable V : Open A. 
 
@@ -221,9 +220,6 @@ Definition SC (a : S A) (i : SIx a) : Open A :=
   | InV _ => fun _ => False
   end.
 
-Existing Instances Bundled.IGT_PreO
-  FormTop.Cov_Proper FormTop.Cov_Proper2 FormTop.Cov_Proper3.
-
 Definition LocalizedPS (X : PreISpace.t) : PreSpace.t :=
   {| PreSpace.S := PreISpace.S X
    ; PreSpace.Cov := FormTop.GCovL X
@@ -234,19 +230,17 @@ Definition A' : PreISpace.t :=
    ; PreISpace.C := SC
   |}.
 
-Theorem same : PreSpace.Cov (LocalizedPS A') ==== PreSpace.Cov (Closed (A := fromIGT A) V).
+Theorem same : PreSpace.Cov (LocalizedPS A') ==== PreSpace.Cov (Closed (A := fromIGt A) V).
 Proof.
 apply RelSame_iffT. intros a U. simpl. unfold CovC. split; intros H.
 - induction H.
-  + apply FormTop.grefl. right. assumption.
-  + simpl in *. apply FormTop.gle_left with b. assumption.
+  + apply FormTop.refl. right. assumption.
+  + apply FormTop.le_left with b. assumption.
     assumption.
   + destruct i.
-    * simpl. destruct (Bundled.localized A a b l i).
-      simpl in *.
-      apply (FormTop.ginfinity a _ x). intros. apply X.
-      simpl. apply s. assumption.
-    * rewrite l. apply FormTop.grefl. left. assumption. 
+    * apply (FormTop.gle_infinity (A := A) a (V ∪ U) b i l).
+      apply X.
+    * rewrite l. apply FormTop.refl. left. assumption. 
 - simpl in H. remember (V ∪ U) as U' in H. 
   induction H; subst.
   + destruct u.
@@ -255,15 +249,12 @@ apply RelSame_iffT. intros a U. simpl. unfold CovC. split; intros H.
     pose proof (FormTop.gle_infinity (A := A') a (fun _ => False) a (InV v)
        aa) as H0.
     apply H0. intros u H1. simpl in *.
-    destruct H1 as (u' & bot & downau). contradiction. 
-    unfold Included, pointwise_rel, arrow; intros; contradiction.
+    destruct H1. destruct d0. destruct i. firstorder.
     * apply FormTop.glrefl. assumption.
-  + simpl in *. apply (FormTop.glle_left (A := A')) with b. assumption. apply IHGCov.
+  + simpl in *. apply (FormTop.glle_left (A := A')) with b. assumption. apply IHGCovL.
     reflexivity.
-  + apply (FormTop.gle_infinity (A := A') a _ a (Orig i)).
-    reflexivity. intros. destruct X0.  simpl in p. 
-    destruct p, d. apply FormTop.glle_left with x. assumption. 
-    apply X. assumption. reflexivity.
+  + apply (FormTop.gle_infinity (A := A') a _ b (Orig i)).
+    assumption. intros. apply X. assumption. reflexivity. 
 Qed.
 
 End IGDefn.

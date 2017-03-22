@@ -8,6 +8,7 @@ src/Types/Setoid.v
 src/Types/List.v
 
 src/Numbers/QFacts.v
+src/Numbers/QPosFacts.v
 
 src/FormTopC/Approx.v
 src/FormTopC/Cantor.v
@@ -30,6 +31,7 @@ src/FormTopC/Pattern.v
 src/FormTopC/Sum.v
 
 src/FormTopC/Spaces/One.v
+src/FormTopC/Spaces/PosUR.v
 
 src/Algebra/FrameC.v
 src/Algebra/Sublocale.v

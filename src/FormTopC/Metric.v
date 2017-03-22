@@ -2,278 +2,49 @@ Require Import
   FormTopC.FormTop
   Algebra.OrderC
   Algebra.SetsC
-  FormTopC.FormalSpace.
+  FormTopC.FormalSpace
+  Numbers.QFacts
+  Numbers.QPosFacts
+  
+  FormTopC.Cont
+  Coq.QArith.Qminmax
+
+  CoRN.metric2.Metric
+  CoRN.model.structures.Qpossec
+  Coq.QArith.QArith_base
+  CoRN.model.structures.QposInf
+  CoRN.metric2.UniformContinuity
+  CMorphisms.
 
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
 
 Local Open Scope FT.
 
-Require Import CoRN.metric2.Metric
-  CoRN.model.structures.Qpossec
-  Coq.QArith.QArith_base
-  CoRN.model.structures.QposInf
-  CMorphisms.
-
-(** Positive upper-real numbers *)
-
-Definition Qpos_two : Qpos := Qpos_one + Qpos_one.
-
-Definition Qpos_one_half : Qpos := Qpos_one / Qpos_two.
-
-Lemma one_half_sum_one : Qpos_one_half + Qpos_one_half == 1.
-Proof.
-reflexivity.
-Qed.
-
-Lemma one_half_sum : forall e,
-  (Qpos_one_half * e)%Qpos + (Qpos_one_half * e)%Qpos == e.
-Proof.
-intros. simpl. rewrite <- Qmult_plus_distr_l.
-rewrite one_half_sum_one. apply Qmult_1_l.
-Qed.
-
-Definition Qpos_smaller (x : Qpos) : { y : Qpos & y < x }.
-Proof.
-exists (Qpos_mult Qpos_one_half x).
-unfold lt.
-simpl. 
-setoid_replace (x : Q) with (Qmult 1%Q (Qmult 1%Q (x : Q))) at 2 by ring.
-rewrite (Qmult_comm 1).
-rewrite <- Qmult_assoc. apply Qmult_lt_compat_r.
-ring_simplify. apply Qpos_prf.
-reflexivity.
-Qed.
-
-Definition Qpos_larger (x : Qpos) : { y : Qpos & x < y }.
-Proof.
-exists (x + x)%Qpos. 
-setoid_replace (x : Q) with (0 + x)%Q at 1 by ring.
-simpl. apply Qplus_lt_l. apply Qpos_prf.
-Qed.
-
-Require Import Numbers.QFacts.
-
-Definition Qpos_between {x y : Qpos} :
-  x < y -> { mid : Qpos & x < mid /\ mid < y }.
-Proof.
-intros H.
-destruct (Qbetween H) as (mid & midl & midh).
-assert (0 < mid) as H'.
-eapply Qlt_trans. apply Qpos_prf. apply midl.
-exists (exist _ mid H'). simpl. split; assumption.
-Qed.
-
-Module PosUR.
-
-(** I get a Coq error with using the typeclasses
-    if I leave le as returning Prop *)
-Definition le (x y : QposInf) : Type := QposInf_le x y.
-
-Definition PosURPO : FormTop.PreOrder :=
-  {| PO_car := QposInf
-   ; FormTop.le := le
-  |}.
-
-Definition lt (x y : QposInf) : Type :=
-  ((x <=[PosURPO] y) * ((y <=[PosURPO] x) -> False))%type.
-
-Local Infix "<" := lt.
-
-Inductive Ix : QposInf -> Type :=
-  | IxFinite : forall x, Ix (Qpos2QposInf x).
-
-Definition C (q : QposInf) (ix : Ix q) : Subset QposInf
-  := match ix with
-  | IxFinite x => fun q' => lt q' x
-  end.
-
-Instance PO : PreO.t le.
-Proof.
-constructor; unfold le; intros.
-- destruct x; simpl. apply Qle_refl. constructor.
-- destruct x, y, z; simpl in *; try (constructor || contradiction).
- eapply Qle_trans; eassumption.
-Qed.
-
-Existing Instance PreO.PreOrder_I.
-
-Lemma lt_le_trans (x y z : QposInf) : x < y -> y <=[PosURPO] z -> x < z.
-Proof.
-unfold lt in *. 
-intros P Q. destruct P as (P1 & P2). split.
-etransitivity; eassumption.
-intros.  apply P2. etransitivity; eassumption.
-Qed.
-
-Lemma lt_le_weak (x y : QposInf) : x < y -> x <=[PosURPO] y.
-Proof.
-intros H. destruct H. assumption.
-Qed. 
-
-Definition PosUR : PreISpace.t :=
-  {| PreISpace.S := PosURPO
-   ; PreISpace.C := C
-  |}.
-
-Definition loc : FormTop.localized PosUR.
-Proof.
-unfold FormTop.localized.
-intros. destruct i; simpl in *.
-destruct a.
-- exists (IxFinite q). intros.
-  simpl in X0.
-  exists s. split. eapply lt_le_trans; eassumption.
-  split. apply lt_le_weak. assumption. 
-  reflexivity.
-- contradiction.
-Qed.
-
-Definition fromQpos (x : Qpos) (y : QposInf) := x < y.
-
-Require Import FormTopC.Cont.
-
-Definition Pt := IGCont.pt PosUR.
-
-Local Open Scope Subset.
-
-Lemma Qpos_lt_equiv (x y : Qpos) :
-  (x < y) <--> (x < y)%Q.
-Proof.
-split; intros.
-- destruct X. simpl in *. apply Qnot_le_lt.
-  unfold not; intros contra. apply f.
-  unfold le. simpl. apply contra.
-- split. apply Qlt_le_weak. assumption.
-  intros. pose proof (Qlt_not_le _ _ H).
-  apply H0. assumption.
-Qed.
-
-Definition Qpos_smaller' (x : Qpos) : { y : Qpos & y < x }.
-Proof.
-destruct (Qpos_smaller x) as [x' prf].
-exists x'. apply Qpos_lt_equiv. apply prf.
-Qed.
-
-Definition QposInf_smaller (x : QposInf) : { y : Qpos & y < x }.
-Proof.
-destruct x.
-- apply Qpos_smaller'.
-- exists Qpos_one. unfold lt. simpl. auto.
-Qed.
-
-Lemma Qpos_plus_lt (x y : Qpos) : x < x + y.
-Proof.
-unfold lt. split.
-- unfold le. simpl.
-  setoid_replace (x : Q) with (x + 0)%Q at 1.
-  apply Qplus_le_compat. apply Qle_refl. apply Qlt_le_weak.
-  apply Qpos_prf. ring.
-- unfold le. simpl. 
-  setoid_replace (x : Q) with (x + 0)%Q at 2 by ring.
-  intros. apply Q.Qplus_le_r in H.
-  eapply Qlt_not_le. 2:eassumption. apply Qpos_prf.
-Qed.
-
-Ltac inv H := inversion H; clear H; subst.
-
-Lemma QposInf_between (x y : QposInf) : x < y ->
-  { z : QposInf & ((x < z) * (z < y))%type }.
-Proof.
-intros H. destruct x, y.
-Admitted.
-
-Definition Qpos_pt (x : Qpos) : Pt (fromQpos x).
-Proof.
-constructor; intros.
-- simpl. exists (x + 1)%Qpos. unfold In, fromQpos.
-  apply Qpos_plus_lt.
-- exists (QposInf_min b c). constructor.
-  constructor. apply QposInf_min_lb_l. apply QposInf_min_lb_r.
-  unfold fromQpos in *.
-  unfold QposInf_min. destruct b.
-  + destruct c.
-    apply QposMinMax.Qpos_min_case; intros; assumption.
-    assumption.
-  + assumption.
-- unfold fromQpos in *. eapply lt_le_trans; eassumption.
-- destruct i.
-  unfold fromQpos in *. unfold C.
-  destruct (QposInf_between x x0 X).
-  destruct p. exists x1. split; assumption.
-Qed.
-
-
-Definition URzero (x : QposInf) : Type := unit.
-
-Definition URzero_pt : Pt URzero.
-Proof.
-constructor; intros.
-- simpl. exists 1%Qpos. constructor.
-- exists (QposInf_min b c). constructor.
-  constructor.  apply QposInf_min_lb_l. apply QposInf_min_lb_r.
-  constructor.
-- constructor.
-- destruct i. 
-  destruct (QposInf_smaller x).
-  simpl. exists x0. split. constructor. assumption.
-Qed.
-
-Inductive URinfty : QposInf -> Type :=
-  MkURinfty : URinfty QposInfinity.
-
-Definition URinfty_pt : Pt URinfty.
-Proof.
-constructor; intros.
-- exists QposInfinity. constructor.
-- exists (QposInf_min b c). constructor.
-  constructor.  apply QposInf_min_lb_l. apply QposInf_min_lb_r.
-  destruct X, X0. simpl. constructor.
-- destruct X. destruct b; simpl in *. contradiction. 
-  econstructor.
-- destruct i. exists QposInfinity. split. constructor.
-  simpl. inversion X. 
-Qed.
-
-Record pt :=
-  { LT :> Subset QposInf
-  ; LT_pt : PosUR.Pt LT
-  }.
-
-Local Open Scope Subset.
-
-Definition pt_le (x y : pt) := forall q, LT x q -> q <|[PosUR] LT y.
-
-Definition pt_eq (x y : pt) := (pt_le x y * pt_le y x)%type.
-Definition zero : pt :=
-  {| LT := URzero ; LT_pt := URzero_pt |}.
-
-End PosUR.
-
-Module Metric.
 Section Metric.
+Universes A P I.
 
 Context {MS : MetricSpace}.
 
-Definition M : Type := msp_is_setoid MS.
+Definition M@{} : Type@{A} := msp_is_setoid MS.
 
-Definition Ball : Type := (M * Qpos)%type.
+Definition Ball : Type@{A} := (M * Qpos)%type.
 
-Definition lt_ball (Bx By : Ball) : Type :=
+Definition lt_ball@{} (Bx By : Ball) : Type@{P} :=
   let (x, delta) := Bx in let (y, eps) := By in
   { d : Qpos | ball d x y /\ (d + delta < eps)%Qpos }.
 
-Definition le_ball (Bx By : Ball) : Type := 
+Definition le_ball@{} (Bx By : Ball) : Type@{P} := 
   let (y, eps) := By in
   forall e : Qpos, lt_ball Bx (y, e + eps)%Qpos.
 
-Instance PreO : PreO.t le_ball.
+Instance PreO : PreO.t@{A P} le_ball.
 Proof.
-constructor; intros.
-- destruct x. unfold le_ball. intros.
+constructor.
+- intros []. unfold le_ball. intros.
   destruct (Qpos_smaller e) as [e' eprf].
   exists e'. split. apply ball_refl. apply Qplus_lt_l. assumption.
-- destruct x, y, z. unfold le_ball in *.
+- intros [] [] [] H H0. unfold le_ball in *.
   intros e.
   specialize (H (Qpos_one_half * e)%Qpos).
   specialize (H0 (Qpos_one_half * e)%Qpos).
@@ -295,16 +66,12 @@ Existing Instance PreO.PreOrder_I.
 Local Instance PreOrder_le_ball : Transitive le_ball := 
   PreOrder_Transitive.
 
-Require Import Coq.QArith.Qminmax.
-
-
 Lemma lt_le_weak : forall a b,
   lt_ball a b -> le_ball a b.
 Proof.
 unfold lt_ball, le_ball.
-intros. destruct a, b.
-destruct H as (d & b & l).
-intros.
+intros [] [] (d & b & l).
+intros e.
 exists d. split. assumption.
 eapply Qlt_le_trans. eassumption.
 setoid_replace (q0 : Q) with (0 + q0)%Q at 1 by ring.
@@ -314,7 +81,7 @@ Qed.
 Lemma lt_le_trans : forall a b c, 
    lt_ball a b -> le_ball b c -> lt_ball a c.
 Proof.
-intros. destruct a, b, c. 
+intros [] [] [] H H0. 
 unfold lt_ball, le_ball in *. 
 destruct H as (d & dmm0 & dqq0).
 destruct (Qpos_lt_plus dqq0) as [e eprf].
@@ -329,10 +96,10 @@ simpl. ring.
 reflexivity.
 Qed.
 
-Lemma le_lt_trans : forall a b c,
+Lemma le_lt_trans a b c :
   le_ball a b -> lt_ball b c -> lt_ball a c.
 Proof.
-intros. destruct a, b, c.
+intros H H0. destruct a, b, c.
 unfold lt_ball, le_ball in *.
 destruct H0 as (d & dmm0 & dqq0).
 destruct (Qpos_lt_plus dqq0) as [e eprf].
@@ -353,7 +120,7 @@ Lemma le_ball_applies {a c} :
   -> forall x, ball (snd a) (fst a) x
   -> ball (snd c) (fst c) x.
 Proof.
-unfold le_ball. intros. destruct a, c.
+unfold le_ball. intros H x H0. destruct a, c.
 simpl in *. apply ball_closed.
 intros. 
 specialize (H d). destruct H as (d' & balld' & qd').
@@ -376,7 +143,7 @@ apply Qplus_lt_r. assumption.
 Qed.
 
 Lemma le_ball_center : forall x (eps eps' : Qpos),
-  eps <= eps' -> le_ball (x, eps) (x, eps').
+  (eps <= eps')%Q -> le_ball (x, eps) (x, eps').
 Proof.
 intros. simpl. intros.
 destruct (Qpos_smaller e) as [e' e'prf].
@@ -384,11 +151,11 @@ exists e'. split. apply ball_refl.
 apply Qplus_lt_le_compat; assumption.
 Qed.
 
-Lemma lt_ball_shrink : forall Bx y eps,
+Lemma lt_ball_shrink Bx y eps :
   lt_ball Bx (y, eps)
   -> {eps' : Qpos & ((eps' < eps) * lt_ball Bx (y, eps'))%type }.
 Proof.
-intros. destruct Bx. destruct H. destruct a.
+intros H. destruct Bx. destruct H. destruct a.
 destruct (@Qpos_between (x + q)%Qpos eps H0).
 destruct a.
 exists x0. split. assumption. simpl.
@@ -403,11 +170,11 @@ rewrite <- (one_half_sum x).
 apply Qplus_lt_r. apply Qpos_prf. 
 Qed. 
 
-Lemma lt_ball_grow : forall x delta By,
+Lemma lt_ball_grow x delta By :
   lt_ball (x, delta) By
   -> { delta' : Qpos & ((delta < delta') * lt_ball (x, delta') By)%type }.
 Proof.
-intros. destruct By. destruct H as (d & balld & dlt).
+intros H. destruct By. destruct H as (d & balld & dlt).
 destruct (Qpos_lt_plus dlt).
 exists (delta + Qpos_one_half * x0)%Qpos. split.
   rewrite <- (Qplus_0_r delta) at 1. simpl. 
@@ -419,7 +186,7 @@ Qed.
    
 
 Lemma Qlt_all_Qle (x y : Q) :
-  (forall (eps : Qpos), x < y + eps) -> x <= y.
+  (forall (eps : Qpos), x < y + eps) -> (x <= y)%Q.
 Proof.
 intros H.
 destruct (Qlt_le_dec y x); try assumption.
@@ -449,7 +216,7 @@ eapply Qadd_lt. eassumption.
 Qed.
 
 Lemma le_ball_radius {Bx By} :
-  le_ball Bx By -> snd Bx <= snd By.
+  le_ball Bx By -> (snd Bx <= snd By)%Q.
 Proof.
 destruct Bx, By. simpl. intros H.
 apply Qlt_all_Qle.
@@ -458,26 +225,24 @@ rewrite Qplus_comm. eapply Qadd_lt.
 eassumption.
 Qed.
 
-Definition IxUL (x : Ball) : Type := 
+Definition IxUL@{} (x : Ball) : Set := 
   option Qpos.
 
-Definition CUL (b : Ball) (i : IxUL b) : Subset Ball := 
+Definition CUL (b : Ball) (i : IxUL b) : Subset@{A P} Ball := 
   match i with
   | None         => fun b' => lt_ball b' b
   | Some epsilon => fun b' => snd b' = epsilon
   end.
 
-Definition MetricPO : FormTop.PreOrder :=
+Definition MetricPO : FormTop.PreOrder@{A P} :=
   {| PO_car := Ball
    ; FormTop.le := le_ball 
   |}.
 
-Definition MetricUL : PreISpace.t :=
+Definition MetricPS@{} : PreISpace.t@{A P I} :=
   {| PreISpace.S := MetricPO
    ; PreISpace.C := CUL
   |}.
-
-Definition MetricPS := Localized MetricUL.
 
 Lemma shrink_ball (b : Ball) :
   { b' : Ball & lt_ball b' b }.
@@ -487,28 +252,34 @@ destruct (Qpos_smaller q) as [q' qq'].
 exists (m, q'). apply lt_ball_center. assumption.
 Qed. 
 
-Local Instance MPos : FormTop.gtPos MetricPS.
+Axiom undefined : forall A, A.
+
+Lemma MPos_MUniv : FormTop.gtPos MetricPS.
 Proof.
 unshelve econstructor.
 - exact (fun _ => True).
 - simpl. auto.
-- simpl. intros. destruct i. simpl. destruct ix.
-  + exists (fst a, QposMinMax.Qpos_min q (snd a)). 
-    split. simpl. exists (fst a, q). split. reflexivity.
-    destruct a; simpl. 
-    split; apply le_ball_center. apply QposMinMax.Qpos_min_lb_r.
-    apply QposMinMax.Qpos_min_lb_l. auto.
-  + destruct (shrink_ball a). exists x. split. 
-    exists x. split. simpl. eapply lt_le_trans; eassumption.
-    split. apply lt_le_weak; eassumption. reflexivity.
-    auto.
+- simpl. intros. destruct i.
+  + exists (fst a, QposMinMax.Qpos_min q (snd a)).
+    split. simpl. split. le_down. destruct a. simpl fst. 
+    apply le_ball_center. apply QposMinMax.Qpos_min_lb_r.
+    exists (fst a, q). reflexivity.
+    apply le_ball_center. apply QposMinMax.Qpos_min_lb_l. auto.
+  + destruct (shrink_ball a). exists x. split.
+    split. le_down. apply lt_le_weak; eassumption.
+    exists x. simpl. eapply lt_le_trans; eassumption.
+    reflexivity. auto.
 - simpl. auto.
 Qed.
 
-Definition Metric : IGT :=
-  {| Bundled.S := MetricPS
-   ; Bundled.localized := FormTop.Llocalized _
-   ; Bundled.pos := MPos
+
+Local Instance MPos@{API'} : FormTop.gtPos MetricPS
+  := MPos_MUniv@{API' API' API' P P P P P API' P P P P P}.
+
+
+Definition Metric@{API'} : IGt@{A P I API'} :=
+  {| IGS := MetricPS
+   ; IGpos := MPos@{API'}
   |}.
 
 End Metric.
@@ -516,14 +287,12 @@ End Metric.
 Arguments Ball MS : clear implicits.
 
 Section Map.
-Require Import FormTopC.Cont CMorphisms.
-Require Import CoRN.metric2.UniformContinuity.
 
 (** In an open ball *)
-Inductive o_ball {X : MetricSpace} {eps : Qpos} {a b : X} : Type :=
+Inductive o_ball {X : MetricSpace} {eps : Qpos} {a b : X} : Set :=
   In_o_ball : forall e : Qpos, e < eps -> ball e a b -> o_ball.
 
-Arguments o_ball {X} eps a b : clear implicits.
+Arguments o_ball {X} eps a b.
 
 Lemma o_ball_ball {X : MetricSpace} eps (a b : X) 
   : o_ball eps a b -> ball eps a b.
@@ -546,7 +315,7 @@ Lemma le_ball_applies_o {X : MetricSpace} {a c : Ball X} :
   -> forall x : X, o_ball (snd a) (fst a) x
   -> o_ball (snd c) (fst c) x.
 Proof.
-intros. 
+intros H x H0. 
 destruct a, c. simpl in *. induction H0.
 destruct (Qpos_lt_plus q1) as (diff & diffeq).
 destruct (H diff) as (d & balld & dlt).
@@ -558,7 +327,6 @@ apply Qplus_lt_r with diff.
 eapply Qlt_compat. 3: apply dlt.
 simpl. ring. reflexivity.
 Qed.
-
 
 Lemma true_union S T (F : S -> Subset T) (t : T) : 
   { x : S & F x t} ->
@@ -619,48 +387,11 @@ Definition Yoneda (x : X) : Subset (Ball X) :=
 
 Existing Instance PreO.
 
-Lemma Yoneda_pt (x : X) : IGCont.pt Metric (Yoneda x).
-Proof.
-constructor; unfold Yoneda; intros.
-- exists (x, Qpos1). unfold In. apply o_ball_refl.
-- destruct b, c.
-  destruct (o_ball_shrink H) as (eps' & eps'small & H').
-  destruct (o_ball_shrink H0) as (eps0' & eps0'small & H0').
-  destruct (Qpos_lt_plus eps'small) as (del & deld).
-  destruct (Qpos_lt_plus eps0'small) as (del0 & del0d).
-  exists (x, QposMinMax.Qpos_min del del0).
-  split. split; simpl; intros.
-  eexists. split. apply o_ball_ball. eassumption.
-  rewrite deld. rewrite Qplus_assoc. 
-  rewrite (Qplus_comm e eps'). rewrite <- Qplus_assoc.
-  rewrite Qplus_lt_r. eapply Qle_lt_trans.
-  apply QposMinMax.Qpos_min_lb_l.
-  rewrite <- (Qplus_0_l del) at 1. apply Qplus_lt_l. apply Qpos_prf.
-  eexists. split. apply o_ball_ball. eassumption.
-  rewrite del0d. rewrite Qplus_assoc.
-  rewrite (Qplus_comm e eps0'). rewrite <- Qplus_assoc.
-  rewrite Qplus_lt_r. eapply Qle_lt_trans.
-  apply QposMinMax.Qpos_min_lb_r.
-  rewrite <- (Qplus_0_l del0) at 1. apply Qplus_lt_l. apply Qpos_prf.
-  apply o_ball_refl.
-- destruct a, b. apply o_ball_sym. apply (le_ball_applies_o H0).
-  simpl. apply o_ball_sym. assumption.
-- destruct a. destruct i; simpl in *. 
-  destruct ix; simpl in *.
-  + exists (x, q0). split. apply o_ball_refl. 
-    exists (x, q0). split. reflexivity.
-    split. admit. reflexivity.
-  + destruct (o_ball_shrink H) as (q' & q'small & H').
-    exists (x, q'). split. apply o_ball_refl.
-    exists (x, q). split. simpl.
-Abort.
-
 Variable f : X -> Y.
 Variable k : Qpos.
 Definition Lipschitz : Prop := forall x x' eps, ball eps x x' -> ball (k * eps) (f x) (f x').
 
 Hypothesis f_lip : Lipschitz.
-
 
 Lemma lt_monotone : forall x x' eps eps',
   lt_ball (x, eps) (x', eps') ->
@@ -681,11 +412,11 @@ ring. unfold not. intros contra.
 eapply Qlt_not_eq. apply Qpos_prf. symmetry. eassumption.
 Qed.
 
-Lemma le_monotone : forall x x' eps eps',
+Lemma le_monotone x x' eps eps' :
   le_ball (x, eps) (x', eps')
   -> le_ball (f x, k * eps)%Qpos (f x', k * eps')%Qpos.
 Proof.
-intros. unfold le_ball. intros.
+intros H. unfold le_ball. intros.
 apply lt_le_trans with (f x', k * (Qpos_inv k * e + eps'))%Qpos.
 apply lt_monotone. apply H. apply le_ball_center.
 apply Qeq_le.
@@ -693,7 +424,8 @@ simpl. rewrite Qmult_plus_distr_r.
 rewrite (Qpos_div e k). reflexivity.
 Qed.
 
-Definition lift : Cont.map (@Metric X) (@Metric Y) := fun By Bx =>
+Definition lift : Cont.map (toPreSpace (IGS (@Metric X)))
+   (toPreSpace (IGS (@Metric Y))) := fun By Bx =>
   let (x, delta) := Bx in lt_ball (f x, k * delta)%Qpos By.
 
 
@@ -710,11 +442,11 @@ apply Qplus_lt_r.
 apply Qpos_one_half_lt.
 Qed.
 
-Lemma lift_f_ap_lt' : forall x (eps eps' : Qpos),
+Lemma lift_f_ap_lt' x (eps eps' : Qpos) :
   k * eps < eps' -> lift (f x, eps') (x, eps).
 Proof.
-intros.
-pose proof (lift_f_ap_lt x eps (Qpos_inv k * eps')%Qpos).
+intros H.
+pose proof (lift_f_ap_lt x eps (Qpos_inv k * eps')%Qpos) as H0.
 simpl in H0.
 assert (eps < / k * eps').
 apply Qmult_lt_compat_l_inv with k. apply Qpos_prf.
@@ -753,34 +485,33 @@ rewrite <- Qmult_assoc.
 rewrite Qpos_div. assumption.
 Qed.
 
-Theorem Cont : IGCont.t Metric Metric lift.
+Arguments M : clear implicits.
+
+Theorem Cont : IGCont.t (toPreSpace (IGS Metric)) (IGS Metric) lift.
 Proof.
-constructor; intros.
-- apply (cov_equiv (@MetricUL X)).
-  apply FormTop.glrefl. apply true_union'.
+constructor.
+- intros a. apply FormTop.glrefl. apply true_union'.
   destruct a. exists (f m, q + k * q)%Qpos. simpl.
   destruct (Qpos_smaller q).
   exists x. split. apply ball_refl.
   apply Qplus_lt_l. assumption.
-- apply (cov_equiv (@MetricUL X)). 
-  unfold lift in H, H0. destruct a.
+- intros a b c H H0. unfold lift in H, H0. destruct a.
   destruct b, c.
-  pose proof (lt_ball_shrink _ _ _ H).
+  pose proof (lt_ball_shrink _ _ _ H) as H1.
   destruct H1. destruct p. clear H.
-  pose proof (lt_ball_shrink _ _ _ H0).
+  pose proof (lt_ball_shrink _ _ _ H0) as H.
   destruct H. destruct p.  clear H0.
   destruct (Qpos_lt_plus q2).
   destruct (Qpos_lt_plus q3).
   destruct (Qpos_smaller (QposMinMax.Qpos_min x1 x2)).
-  apply (fun U => FormTop.gle_infinity (A := MetricUL) (m, q) 
+  apply (fun U => FormTop.gle_infinity (A := MetricPS) (m, q) 
   U (m, q) (Some (Qpos_inv k * x3))%Qpos (PreO.le_refl (m, q))).
-  intros. destruct X0. simpl in p. destruct p. 
-  destruct x4 as [m4 d4]. simpl in *. subst.
-  destruct d.
-  destruct u.
+  intros. destruct X0 as (l1 & P2). le_downH l1. destruct P2.
+  simpl in i. unfold In in i. destruct a as [m4 x4]. simpl snd in *.
+  subst. destruct u as [m2 ?].
   apply FormTop.glrefl.
   exists (f m2, (QposMinMax.Qpos_min x1 x2)).
-  split.
+  split; le_down.
 
   simpl. intros. destruct l as (d & balld & dlt).
   exists (e + k * q + d)%Qpos. split. Focus 2. 
@@ -829,37 +560,37 @@ constructor; intros.
   etransitivity. eassumption.
   rewrite Qmult_comm. unfold Qdiv. reflexivity.
   apply Qpos_prf. assumption.
-- unfold lift in *. destruct a, c.
+- intros a b c H H0. unfold lift in *. destruct a, c.
   eapply le_lt_trans. 2: eassumption.
   eapply le_monotone. assumption.
-- destruct a. unfold lift. unfold lift in H. 
+- intros [] b c H H0. unfold lift. unfold lift in H. 
     eapply lt_le_trans; eassumption.
-- apply (cov_equiv MetricUL). 
-  destruct j; simpl in *.
-  destruct ix.
+- intros a b c ix l H. 
+  destruct ix; simpl in *.
   + simpl. clear c l. destruct (Qpos_smaller (Qpos_inv k * q)%Qpos).
-    apply (FormTop.gle_infinity (A := MetricUL) a _ a (Some x)).
+    apply (FormTop.gle_infinity (A := MetricPS) a _ a (Some x)).
     reflexivity.
-    intros. destruct X0. simpl in p.
-    destruct p. subst. destruct d.
-    pose proof (lift_f_le H l). clear a H l.
-    destruct (Qpos_between q0). destruct a.
-    destruct u. unfold lift in H0.
-    pose proof (lt_ball_grow _ _ _ H0).
-    destruct H2 as (del' & q1del & lt_del').
+    intros. destruct X0 as (l & d0). le_downH l. 
+    destruct u. destruct d0.
+    pose proof (lift_f_le H l) as H0. clear H l.
+    destruct (Qpos_between q0) as (x0 & K). destruct K as (H1 & H2).
+    destruct b. unfold lift in H0.
+    pose proof (lt_ball_grow _ _ _ H0) as H3.
+    destruct H3 as (del' & q1del & lt_del').
     
     apply FormTop.glrefl.
-    exists (f m, QposMinMax.Qpos_min (k * x)%Qpos del'). unfold In.
-    exists (f m, q). split.  reflexivity. destruct b. 
-    split. eapply lt_le_weak. eapply le_lt_trans. 2: eassumption. 
+    exists (f m, QposMinMax.Qpos_min (k * x0)%Qpos del'). unfold In.
+    split. le_down. 
+    eapply lt_le_weak. eapply le_lt_trans. 2: eassumption.
     apply le_ball_center. apply QposMinMax.Qpos_min_lb_r.
+    exists (f m, q). reflexivity.
     apply le_ball_center. etransitivity. 
     apply QposMinMax.Qpos_min_lb_l. apply Qlt_le_weak.
     apply Qpos_inv_lt. assumption.
 
     apply lift_f_ap_lt'.
-    induction (QposMinMax.Qpos_min (k * x) del') using
-       (QposMinMax.Qpos_min_case (k * x) del'). 2: eassumption.
+    induction (QposMinMax.Qpos_min (k * x0) del') using
+       (QposMinMax.Qpos_min_case (k * x0) del'). 2: eassumption.
     apply le_ball_radius in l0. simpl in l0.
     
     apply Qmult_lt_compat_l_inv with (Qpos_inv k).
@@ -871,14 +602,15 @@ constructor; intros.
     simpl. 
     rewrite Qmult_assoc. rewrite (Qmult_comm _ k).
     rewrite <- Qmult_assoc. rewrite Qpos_div.
+    unfold In in i. simpl in i. subst.
     assumption.
   + unfold lift in H. destruct a, b.
     destruct (lt_ball_grow _ _ _ H).
     destruct p. apply FormTop.glrefl.
-    econstructor. unfold In. simpl. 
-    exists (f m, x). split. 
-    eapply lt_le_trans. eassumption. eassumption.
-    split. apply lt_le_weak. eassumption. reflexivity.
+    econstructor. unfold In.
+    split. le_down. apply lt_le_weak. eassumption.
+    exists (f m, x). eapply lt_le_trans. eassumption. eassumption.
+    reflexivity.
     apply lift_f_ap_lt'. assumption.
 Qed.
 
@@ -906,7 +638,8 @@ Qed.
 
 Existing Instances PreO PreO.PreOrder_I.
 
-Definition lift_uc : Cont.map (@Metric X) (@Metric Y) :=
+Definition lift_uc : Cont.map (toPreSpace (IGS (@Metric X))) 
+  (toPreSpace (IGS (@Metric Y))) :=
   fun By Bx => let (x, delta) := Bx in
    { eps' : Qpos & 
      ((delta < mu' eps') * lt_ball (f x, eps') By)%type }.
@@ -915,7 +648,7 @@ Lemma lift_shrink {x y delta eps} :
   lift_uc (y, eps) (x, delta) ->
   { eps' : Qpos & ((eps' < eps) * lift_uc (y, eps') (x, delta))%type }.
 Proof.
-intros. 
+intros H. 
 destruct H as (eps' & mueps' & ltballeps').
 pose proof (lt_ball_shrink _ _ _ ltballeps') as H.
 destruct H as (eps'0 & eps'small & lt_ball_shrunk).
@@ -924,9 +657,9 @@ exists eps'. split. assumption. assumption.
 Qed.
 
 
-Theorem Cont_uc : Cont.t Metric Metric lift_uc.
+Theorem Cont_uc : Cont.t (toPreSpace (IGS (@Metric X))) 
+  (toPreSpace (IGS (@Metric Y))) lift_uc.
 Proof.
 Abort.
 
 End Map.
-End Metric.

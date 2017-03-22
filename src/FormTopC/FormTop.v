@@ -155,7 +155,7 @@ Qed.
 
 End Down_Props.
 
-Lemma le_down1 {A : PreOrder} {H : PreO.t (le A)} (a b : A)
+Lemma le_down1@{A P} {A : PreOrder@{A P}} {H : PreO.t@{A P} (le A)} (a b : A)
   : a <=[A] b <--> (⇓ eq b) a.
 Proof.
 split; intros X.

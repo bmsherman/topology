@@ -37,7 +37,7 @@ Hypothesis f_cont : forall a, Cont.t S T (f a).
 (* Not sure if the following is too strong. *)
 Hypothesis f_intersect : forall (a : S) (b c : T),
  f_pasted b a -> f_pasted c a ->
-  { t : T & (f_pasted t a * (b ↓ c) t)%type }.
+  { t : T & (f_pasted t a * (eq b ↓ eq c) t)%type }.
 
 Existing Instances FormalSpace.FT FormalSpace.PreO
   FormalSpace.Cov_Proper FormalSpace.Cov_Proper2

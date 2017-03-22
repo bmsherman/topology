@@ -10,7 +10,6 @@ Require Import
 Set Universe Polymorphism.
 Local Open Scope Subset.
 Local Open Scope FT.
-Set Printing Universes.
 
 (** Continuous maps. *)
 Module Cont.
@@ -175,6 +174,7 @@ End Cont.
 
 Arguments t : clear implicits.
 Arguments pt : clear implicits.
+
 
 (** I might have broken this tactic. *)
 Ltac ecov := match goal with
@@ -436,3 +436,42 @@ Arguments t : clear implicits.
 
 
 End IGCont.
+
+Module IGLCont.
+Section IGLCont.
+
+Context {S : PreSpace.t}.
+Context {T : PreISpace.t}.
+
+Context {POS : PreO.t (le S)}
+        {POT : PreO.t (le T)}.
+
+Record pt {F : Subset T} := 
+  { pt_here : Inhabited F
+  ; pt_local : forall {b c}, F b -> F c -> Inhabited ((eq b ↓ eq c) ∩ F)
+  ; pt_le_right : forall {a b}, F a -> a <=[T] b -> F b
+  ; pt_cov : forall t (i : PreISpace.Ix T t), F t -> 
+     Inhabited (F ∩ PreISpace.C T t i)
+  }.
+
+Arguments pt : clear implicits.
+
+Lemma localized_pt_impl {F : Subset T}
+  {loc : localized T} (ptF : pt F) : IGCont.pt T F.
+Proof.
+econstructor.
+- apply (pt_here ptF).
+- intros b c. apply (pt_local ptF).
+- intros a b. apply (pt_le_right ptF).
+- intros. 
+  pose proof (loc t t' X j).
+  destruct X1.
+  pose proof (pt_cov ptF t x X0).
+  destruct X1.
+  destruct i0.
+  eexists. split. eassumption.
+  apply i. assumption.
+Qed.
+
+End IGLCont.
+End IGLCont.

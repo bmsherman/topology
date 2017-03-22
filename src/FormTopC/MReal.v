@@ -1,9 +1,17 @@
 Require Import 
   FormTopC.FormTop
+  FormTopC.Cont
   Algebra.OrderC
-  Algebra.SetsC
+  Numbers.QPosFacts
   CoRN.metric2.Metric
-  FormTopC.Metric.
+  FormTopC.Metric
+  QposMinMax
+  QArith.Qminmax
+  COrdAbs
+  Qordfield
+  CoRN.model.metric2.Qmetric
+  CoRN.metric2.ProductMetric
+  Algebra.SetsC.
 
 Definition unit_RSetoid : RSetoid.
 Proof.
@@ -28,9 +36,6 @@ unshelve econstructor.
 Defined.
 
 Import Metric.
-Require Import FormTopC.Cont.
-
-Require Import QposMinMax.
 
 Existing Instances PreO PreO.PreOrder_I.
 
@@ -39,27 +44,28 @@ Proof.
 constructor.
 - exists (tt, Qpos1). unfold In. auto.
 - intros. destruct b, c. destruct m, m0.
-  exists (tt, Qpos_min q q0). split. 
-  split; apply le_ball_center.
+  exists (tt, Qpos_min q q0). split.
+  split; le_down; apply le_ball_center.
   apply Qpos_min_lb_l. apply Qpos_min_lb_r.
   auto.
 - auto.
-- intros. destruct i. 
+- intros a c ix l H. destruct ix. 
   destruct a, c. destruct H. destruct m, m0.
   simpl.
-  destruct ix; simpl.
-  + exists (tt, Qpos_min q q1). split. auto.
-    exists (tt, q1). split. reflexivity.
-    split; apply le_ball_center. apply Qpos_min_lb_l.
-    apply Qpos_min_lb_r.
-  + destruct (Qpos_smaller q).
-    exists (tt, x). split. auto. 
-    exists (tt, x). split. apply lt_ball_center.
+  + exists (tt, Qpos_min q0 q). split. auto.
+    split. le_down. apply le_ball_center. apply Qpos_min_lb_l.
+    exists (tt, q). reflexivity.
+    apply le_ball_center. apply Qpos_min_lb_r.
+  + simpl in *. destruct a, c, H.
+    destruct m, m0.
+    destruct (Qpos_smaller q).
+    exists (tt, x). split. auto.
+    split. le_down.
+    apply le_ball_center. apply Qlt_le_weak. assumption.
+    exists (tt, x). unfold In. apply lt_ball_center.
     apply (@le_ball_radius MOne (tt, q) (tt, q0)) in l. 
     simpl in l.
-    eapply Qlt_le_trans; eassumption.
-    split. apply le_ball_center. apply Qlt_le_weak.
-    assumption. reflexivity.
+    eapply Qlt_le_trans; eassumption. reflexivity.
 Qed.
 
 Section Yoneda.
@@ -89,9 +95,6 @@ End Yoneda.
 
 (** Now let's get to the real numbers. *)
 
-Require Import CoRN.model.metric2.Qmetric
-  CoRN.metric2.ProductMetric.
-
 Let MQ : MetricSpace := Q_as_MetricSpace.
 
 Definition binop (f : MQ -> MQ -> MQ) (p : ProductMS MQ MQ) : MQ :=
@@ -111,9 +114,6 @@ eapply ball_weak_le.
 Focus 2.  eapply Qball_plus; eassumption.
 simpl. apply Qle_eq. ring.
 Qed.
-
-Require Import QArith.Qminmax COrdAbs.
-Require Import Qordfield.
 
 Local Open Scope Q.
 
