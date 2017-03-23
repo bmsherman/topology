@@ -339,3 +339,13 @@ Instance Inhabited_Proper_le {A} : Proper (Included ==> arrow) (@Inhabited A).
 Proof.
 unfold Proper, respectful, arrow. intros. eapply Inhabited_mono; eassumption.
 Qed.
+
+Lemma Intersection_Assoc {A : Type} (P Q R : Subset A)
+  : P ∩ (Q ∩ R) === (P ∩ Q) ∩ R.
+Proof.
+  firstorder.
+Qed.
+
+Lemma Intersection_Comm {A : Type} (P Q : Subset A)
+  : P ∩ Q === Q ∩ P.
+Proof. firstorder. Qed.

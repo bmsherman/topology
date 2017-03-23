@@ -95,7 +95,7 @@ End Yoneda.
 
 (** Now let's get to the real numbers. *)
 
-Let MQ : MetricSpace := Q_as_MetricSpace.
+Definition MQ : MetricSpace := Q_as_MetricSpace.
 
 Definition binop (f : MQ -> MQ -> MQ) (p : ProductMS MQ MQ) : MQ :=
   let (x, y) := p in f x y.

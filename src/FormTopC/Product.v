@@ -421,7 +421,7 @@ Definition univ : Cont.map A Prodt :=
 Existing Instances FormalSpace.isFT.
 
 Lemma univ_le_left (a : A) (b : Prodt) (c : A)
-  : a <=[A] c -> univ b c -> univ b a.
+  : a <=[PreSpace.S A] c -> univ b c -> univ b a.
 Proof.
 unfold univ. intros H H'. unfold Each. intros x mem.
 destruct x as (ix & uix).

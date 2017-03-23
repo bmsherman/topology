@@ -99,7 +99,7 @@ Section InfoBaseCont.
 
 Generalizable All Variables.
 
-Context {S : PreSpace.t} {POS : PreO.t (le S)}.
+Context {S : PreSpace.t} {POS : PreO.t (le (PreSpace.S S))}.
 Context {T : FormTop.PreOrder} {POT : PreO.t (le T)}.
 
 Record ptNM {F : Subset T} : Type :=
@@ -119,7 +119,7 @@ Admitted.
 (** I have no idea whether this is in fact
     a good definition *)
 Record tNM {F_ : Cont.map S (InfoBase.IB T)} :=
-  { NMle_left : forall a b c, a <=[S] b -> F_ c b -> F_ c a
+  { NMle_left : forall a b c, a <=[PreSpace.S S] b -> F_ c b -> F_ c a
   ; NMle_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
   ; NMlocal : forall {a b c}, F_ b a -> F_ c a -> 
      Inhabited ((fun t => F_ t a) ∩ (eq b ↓ eq c))
@@ -384,7 +384,7 @@ Qed.
 
 End One_intro.
 
-Context {S : PreSpace.t} {POS : PreO.t (le S)}.
+Context {S : PreSpace.t} {POS : PreO.t (le (PreSpace.S S))}.
 
 Definition Point (f : Subset S) := Cont.t One S (fun t _ => f t).
 

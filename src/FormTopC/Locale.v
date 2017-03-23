@@ -26,7 +26,7 @@ Section ToFrame.
 Universe Variables A P X P'.
 Variable (A : FormalSpace.t@{A P X}).
 
-Definition T : Type@{P'} := Open@{A P} (S A).
+Definition T : Type@{P'} := Open (S A).
 
 Definition Sat (U : T) : T := fun s => s <|[A] U.
 

@@ -29,7 +29,7 @@ Global Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X
 
 Record t@{A P I} : Type :=
   { S :> PreSpace.t@{A P I}
-  ; PO : PreO.t@{A P} (le S)
+  ; PO : PreO.t@{A P} (le (PreSpace.S S))
   ; isFT : FormTop.t S
   ; pos : FormTop.tPos S
   }.
@@ -47,7 +47,7 @@ Definition fromIGt@{A P I API API'} (A : IGt@{A P I API}) : t@{A P I} :=
 Coercion fromIGt : IGt >-> t.
 
 Local Instance FT (A : t) : FormTop.t A := isFT A.
-Local Instance PreO (X : t) : PreO.t (le X) := PO X.
+Local Instance PreO (X : t) : PreO.t (le (PreSpace.S X)) := PO X.
 
 Section Properness.
 Require Import CMorphisms.
@@ -59,7 +59,7 @@ auto using FormTop.refl.
 Qed.
 
 Definition le_left (a b : S A) (U : Open A)
-  : a <=[A] b -> b <|[A] U -> a <|[A] U.
+  : a <=[PreSpace.S A] b -> b <|[A] U -> a <|[A] U.
 Proof.
 intros; eapply FormTop.le_left; eassumption.
 Qed.
@@ -86,7 +86,7 @@ apply FormTop.monotone.
 Qed.
 
 Instance Cov_Proper :
-  Proper (le A --> Included ==> arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) --> Included ==> arrow) (PreSpace.Cov A).
 Proof.
 apply FormTop.Cov_Proper.
 Qed.
@@ -95,7 +95,7 @@ Qed.
     shouldn't be needed. *)
 
 Instance Cov_Proper3  :
-  Proper (le A ==> Included --> flip arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) ==> Included --> flip arrow) (PreSpace.Cov A).
 Proof.
 apply FormTop.Cov_Proper3.
 Qed.

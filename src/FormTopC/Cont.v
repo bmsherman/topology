@@ -26,7 +26,7 @@ Context {S : PreSpace.t@{AS PS XS}}
 
 Record t@{} {F_ : map@{AS PS XS AT PT XT PS'} S T} : Type :=
   { here : forall a, a <|[S] (union@{AT AS PT PS} (fun _ : T => True) F_) 
-  ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
+  ; le_left : forall a b c, a <=[PreSpace.S S] c -> F_ b c -> F_ b a
   ; local : forall {a b c}, F_ b a -> F_ c a
     -> a <|[S] union@{AT AS PT PS} (eq b ↓ eq c) F_
   ; cov : forall {a b} V, F_ b a -> b <|[T] V
@@ -46,8 +46,8 @@ Definition func_LE@{}
 Definition func_EQ@{} (F_ G_ : map S T) : Type@{PS'} :=
   RelSame@{AT AS PS PS'} (Sat F_) (Sat G_).
 
-Context {POS : PreO.t@{AS PS} (le S)}
-        {POT : PreO.t@{AT PT} (le T)}.
+Context {POS : PreO.t@{AS PS} (le (PreSpace.S S))}
+        {POT : PreO.t@{AT PT} (le (PreSpace.S T))}.
 
 Global Instance func_LE_PreOrder : CRelationClasses.PreOrder func_LE.
 Proof.
@@ -187,7 +187,7 @@ Ltac ecov := match goal with
 Section Morph.
 
 Context {S : PreSpace.t}.
-Context {POS : PreO.t (le S)}
+Context {POS : PreO.t (le (PreSpace.S S))}
         {FTS : FormTop.t S}.
 
 Definition id (x y : S) := (y <= x)%FT.
@@ -209,11 +209,11 @@ split; eassumption.
 Qed.
 
 Context {T : PreSpace.t}.
-Context {POT : PreO.t (le T)}
+Context {POT : PreO.t (le (PreSpace.S T))}
         {FTT : FormTop.t T}.
 
 Context {U : PreSpace.t}.
-Context {POU : PreO.t (le U)}
+Context {POU : PreO.t (le (PreSpace.S U))}
         {FTU : FormTop.t U}.
 
 (*
@@ -308,15 +308,15 @@ Section IGCont.
 Context {S : PreSpace.t}.
 Context {T : PreISpace.t}.
 
-Context {POS : PreO.t (le S)}
-        {POT : PreO.t (le T)}.
+Context {POS : PreO.t (le (PreSpace.S S))}
+        {POT : PreO.t (le (PreSpace.S T))}.
 
 Record t {F_ : Cont.map S T} :=
   { here : forall a, a <|[S] union (fun _ : T => True) F_
   ; local : forall a b c, F_ b a -> F_ c a ->
        a <|[S] union (eq b ↓ eq c) F_
-  ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
-  ; le_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
+  ; le_left : forall a b c, a <=[PreSpace.S S] c -> F_ b c -> F_ b a
+  ; le_right :  forall a b c, F_ b a -> b <=[PreSpace.S T] c -> F_ c a
   ; ax_right : forall a t t' (j : PreISpace.Ix T t'),
      t <= t' -> F_ t a -> 
      a <|[S] union (eq t ↓ PreISpace.C T t' j) F_
@@ -443,8 +443,8 @@ Section IGLCont.
 Context {S : PreSpace.t}.
 Context {T : PreISpace.t}.
 
-Context {POS : PreO.t (le S)}
-        {POT : PreO.t (le T)}.
+Context {POS : PreO.t (le (PreSpace.S S))}
+        {POT : PreO.t (le (PreSpace.S T))}.
 
 Record pt {F : Subset T} := 
   { pt_here : Inhabited F

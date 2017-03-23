@@ -35,27 +35,25 @@ Record PreOrder :=
 Infix "<=" := (le _) : FT_scope.
 Notation "a <=[ X ] b" := (le X a b) (at level 40, format "a  <=[ X ]  b").
 
-Definition Open@{A P} (A : PreOrder@{A P}) := Subset@{A P} A.
 Delimit Scope FT_scope with FT.
 
 Local Open Scope FT.
 
-Set Printing Universes.
-
-Definition downset@{A P} {A : PreOrder@{A P}} (U : Open A) : Open A :=
+Definition downset@{A P} {A : PreOrder@{A P}} (U : Subset@{A P} A) : Subset@{A P} A :=
   union U (fun x y => y <= x).
 
 Notation "⇓ U" := (downset U) (at level 30).
 
-Definition down@{A P} {A : PreOrder@{A P}} (U V : Open A) : Open A :=
+Definition down@{A P} {A : PreOrder@{A P}} (U V : Subset@{A P} A) : Subset@{A P} A :=
   ⇓ U ∩ ⇓ V.
 
 Infix "↓" := (down) (at level 30).
 
 Section Down_Props.
-Context {A : PreOrder}.
+Universes A P.
+Context {A : PreOrder@{A P}}.
 
-Lemma downset_included {PO : PreO.t (le A)} : forall (V : Open A),
+Lemma downset_included@{} {PO : PreO.t@{A P} (le A)} : forall (V : Subset@{A P} A),
    V ⊆ ⇓ V.
 Proof.
 intros. unfold Included, pointwise_rel, arrow; intros.
@@ -78,9 +76,9 @@ apply Included_Same_set; apply downset_Proper_impl; try assumption;
   unfold respectful, arrow; intros; subst.
 Qed.
 
-Context {PO : PreO.t (le A)}.
+Context {PO : PreO.t@{A P} (le A)}.
 
-Lemma down_intersection {U V : Subset A} :
+Lemma down_intersection {U V : Subset@{A P} A} :
   U ∩ V ⊆ U ↓ V.
 Proof.
 apply Included_impl. intros. destruct X.
@@ -88,12 +86,12 @@ unfold down. split; exists x;
   (assumption || reflexivity).
 Qed.
 
-Lemma downset_down_incl {U V : Subset A} :
+Lemma downset_down_incl {U V : Subset@{A P} A} :
   ⇓ (U ↓ V) === ⇓ (U ∩ V).
 Proof.
 Abort.
 
-Lemma downset_down {U V : Subset A} :
+Lemma downset_down {U V : Subset@{A P} A} :
   ⇓ (U ↓ V) === U ↓ V.
 Proof.
 apply Included_Same_set.
@@ -107,7 +105,7 @@ apply Included_Same_set.
 - apply downset_included.
 Qed.
 
-Lemma down_assoc {U V W : Subset A} :
+Lemma down_assoc {U V W : Subset@{A P} A} :
   (U ↓ V) ↓ W === U ↓ (V ↓ W).
 Proof.
 unfold down at 1 3.
@@ -136,7 +134,7 @@ intros. split; intros.
   split; assumption. 
 Qed.
 
-Lemma down_Proper {U V U' V' : Subset A} :
+Lemma down_Proper {U V U' V' : Subset@{A P} A} :
   U ⊆ U' -> V ⊆ V' -> U ↓ V ⊆ U' ↓ V'.
 Proof.
 intros HU HV. unfold down.
@@ -147,7 +145,7 @@ apply Intersection_Included.
   apply downset_Proper_impl; assumption.
 Qed.
 
-Lemma down_comm {U V : Subset A}
+Lemma down_comm {U V : Subset@{A P} A}
   : U ↓ V === V ↓ U.
 Proof.
 unfold down. apply Intersection_comm.
@@ -182,14 +180,16 @@ Ltac le_downH H := rewrite <- !le_down1 in H.
 Module PreSpace.
 Record t@{A P X} :=
   { S :> PreOrder@{A P}
-  ; Cov : S -> Open@{A P} S -> Type@{X} }.
+  ; Cov : S -> Subset@{A P} S -> Type@{X} }.
 End PreSpace.
 
 Infix "<|" := (PreSpace.Cov _) (at level 60) : FT_scope.
 Notation "U <<| V" := (forall a, In U a -> a <| V) (at level 60) : FT_scope.
 Notation "a <|[ X ] U" := (PreSpace.Cov X a U) (at level 63, format "a  <|[ X ]  U") : FT_scope.
 Notation "U <<|[ X ] V" := (forall a, In U a -> a <|[X] V) (at level 60) : FT_scope.
-Coercion PreSpace.S : PreSpace.t >-> PreOrder.
+Definition BOpen (A : PreSpace.t) : Type := PO_car (PreSpace.S A).
+Coercion BOpen : PreSpace.t >-> Sortclass.
+Definition Open@{A P X} (A : PreSpace.t@{A P X}) := Subset@{A P} A.
 
 Local Open Scope FT.
 
@@ -198,8 +198,6 @@ Section Defn.
     with a partial order. *)
 Universes A P X.
 Context {A : PreSpace.t@{A P X}}.
-
-Set Printing Universes.
 
 (** Definition 2.1 of [1].
     Definition of when the [Cov] relation is indeed a formal cover.
@@ -256,7 +254,7 @@ Definition stable :=
 
 Context `{FTS : t}.
 
-Lemma le_right_eq a (U : Open@{A P} A) (H : a <| U)
+Lemma le_right_eq a (U : Open@{A P X} A) (H : a <| U)
   : a <| eq a ↓ U.
 Proof.
 eapply le_right. apply refl. reflexivity.
@@ -277,7 +275,7 @@ intros. split; apply monotone; firstorder.
 Qed.
 
 Instance Cov_Proper  :
-  Proper (le A --> Included ==> arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) --> Included ==> arrow) (PreSpace.Cov A).
 Proof.
 unfold Proper, respectful, arrow. intros.
 unfold flip in *. 
@@ -286,7 +284,7 @@ eapply monotone; eassumption.
 Qed.
 
 Instance Cov_Proper3  :
-  Proper (le A ==> Included --> flip arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) ==> Included --> flip arrow) (PreSpace.Cov A).
 Proof.
 unfold Proper, respectful, arrow, flip. intros.
 eapply le_left; try eassumption.
@@ -331,7 +329,7 @@ Section Props.
 Universes A P I.
 Context {A : PreSpace.t@{A P I}} {FTA : t A}.
 
-Lemma cov_downset a (U : Open@{A P} A)
+Lemma cov_downset@{} a (U : Open A)
   : a <| ⇓ U -> a <| U.
 Proof.
 intros H. etrans. destruct H.
@@ -340,7 +338,7 @@ apply refl. assumption.
 Qed.
 
 Lemma cov_singleton {a b : A}
-  (H : a <=[A] b) : a <|[A] eq b.
+  (H : a <=[PreSpace.S A] b) : a <|[A] eq b.
 Proof.
 eapply le_left. eassumption.
 apply refl. reflexivity.
@@ -356,16 +354,18 @@ Record t@{A P I} :=
         covering axioms for subsets of basic opens which conspire to cover
         the given observable property. This type should be inductively
         generated, or similarly phrased, the axioms should be countable *)
-  ; C : forall (s : S), Ix s -> Open@{A P} S 
+  ; C : forall (s : S), Ix s -> Subset@{A P} S 
     (** For each axiom index/name/address, this gives us a subset of basic
         opens whose union covers the given basic open *)
   }.
 End PreISpace.
-Coercion PreISpace.S : PreISpace.t >-> PreOrder.
 
 Section IGDefn.
 
 Local Open Scope FT.
+
+Coercion PreISpace.S : PreISpace.t >-> PreOrder.
+
 
 Universes A P I API.
 Context {A : PreISpace.t@{A P I}}.
@@ -374,14 +374,14 @@ Context {A : PreISpace.t@{A P I}}.
 
 (** Given the axiom set [I] and [C], this generates the
     formal cover corresponding to that axiom set. *)
-Inductive GCov@{} (a : A) (U : Open@{A P} A) : Type :=
+Inductive GCov@{} (a : A) (U : Subset@{A P} A) : Type :=
   | grefl : U a -> GCov a U
   | gle_left : forall (b : A)
      , a <= b -> GCov b U -> GCov a U
   | ginfinity : forall (i : PreISpace.Ix A a),
      (forall u, PreISpace.C A a i u -> GCov u U) -> GCov a U.
 
-Inductive GCovL@{} (a : A) (U : Open@{A P} A) : Type :=
+Inductive GCovL@{} (a : A) (U : Subset@{A P} A) : Type :=
   | glrefl : U a -> GCovL a U
   | glle_left : forall (b : A), a <= b -> GCovL b U -> GCovL a U
   | gle_infinity : forall (b : A) (i : PreISpace.Ix _ b)
@@ -405,7 +405,7 @@ Qed.
 Definition Lmore@{} a U : GCov a U -> GCovL a U
   := Lmore_MUniv@{API} a U.
 
-Lemma gmonotone_MUniv (a : A) (U V : Open@{A P} A) :
+Lemma gmonotone_MUniv (a : A) (U V : Subset@{A P} A) :
   U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros UV aU. induction aU.
@@ -415,11 +415,11 @@ intros UV aU. induction aU.
 - eapply ginfinity. eauto.
 Qed.
 
-Definition gmonotone@{} (a : A) (U V : Open@{A P} A) :
+Definition gmonotone@{} (a : A) (U V : Subset@{A P} A) :
   U ⊆ V -> GCov a U -> GCov a V
   := gmonotone_MUniv@{API} a U V.
 
-Lemma gmonotoneL_MUniv a (U V : Open A) :
+Lemma gmonotoneL_MUniv a (U V : Subset@{A P} A) :
   U ⊆ V -> GCovL a U -> GCovL a V.
 Proof.
 intros UV aU. induction aU.
@@ -428,13 +428,13 @@ intros UV aU. induction aU.
 - eapply gle_infinity. eassumption. intros. apply X; eassumption.
 Qed.
 
-Definition gmonotoneL@{} a (U V : Open A) :
+Definition gmonotoneL@{} a (U V : Subset@{A P} A) :
   U ⊆ V -> GCovL a U -> GCovL a V
   := gmonotoneL_MUniv@{API} a U V.
 
 Ltac equivalence := repeat (reflexivity || assumption || symmetry).
 
-Lemma gsubset_equiv_MUniv (U V : Open A) : U === V
+Lemma gsubset_equiv_MUniv (U V : Subset@{A P} A) : U === V
   -> forall a, GCov a U <--> GCov a V.
 Proof.
 intros UV a. split; apply gmonotone; intros; 
@@ -442,7 +442,7 @@ intros UV a. split; apply gmonotone; intros;
   equivalence.
 Qed.
 
-Definition gsubset_equiv (U V : Open A) : U === V
+Definition gsubset_equiv (U V : Subset@{A P} A) : U === V
   -> forall a, GCov a U <--> GCov a V
   := gsubset_equiv_MUniv@{API API} U V.
 
@@ -498,7 +498,7 @@ Context {loc : localized}.
 
 (** Proposition 3.5 of [1] *)
 Lemma le_infinity@{} (a c : A) : a <= c
-  -> forall (i : PreISpace.Ix _ c) (U : Open A)
+  -> forall (i : PreISpace.Ix _ c) (U : Subset@{A P} A)
   , (forall u, (eq a ↓ PreISpace.C A c i) u -> GCov u U)
   -> GCov a U.
 Proof.
@@ -574,17 +574,18 @@ Coercion toPreSpace : PreISpace.t >-> PreSpace.t.
 
 Section AxiomSetRefine.
 
-Context {A : PreOrder}.
-Context {PO : PreO.t (le A)}.
+Universes A P.
+Context {A : PreOrder@{A P}}.
+Context {PO : PreO.t@{A P} (le A)}.
 
 Definition AxiomSetRefine {I I' : A -> Type} 
-  (C : forall s, I s -> Open A) (C' : forall s, I' s -> Open A) :=
+  (C : forall s, I s -> Subset@{A P} A) (C' : forall s, I' s -> Subset@{A P} A) :=
   forall s (i : I s), { j : I' s  &  C s i === C' s j }.
 
 Definition SpaceWith I C := PreISpace.Build_t A I C.
 
-Lemma AxRefineCovL {I I'} (C : forall s, I s -> Open A) 
-  (C' : forall s, I' s -> Open A) :
+Lemma AxRefineCovL {I I'} (C : forall s, I s -> Subset@{A P} A) 
+  (C' : forall s, I' s -> Subset@{A P} A) :
   AxiomSetRefine C C' -> forall a U, GCovL (SpaceWith I C)  a U 
                              -> GCovL (SpaceWith I' C') a U.
 Proof.
@@ -600,8 +601,8 @@ induction aU.
   apply l0. exists a1. apply s; assumption. assumption.
 Qed.
 
-Lemma AxRefineCov {I I'} (C : forall s, I s -> Open A) 
-  (C' : forall s, I' s -> Open A) :
+Lemma AxRefineCov {I I'} (C : forall s, I s -> Subset@{A P} A) 
+  (C' : forall s, I' s -> Subset@{A P} A) :
   AxiomSetRefine C C' -> forall a U, GCov (SpaceWith I C) a U -> GCov (SpaceWith I' C') a U.
 Proof.
 intros CC' a U aU. unfold AxiomSetRefine in CC'.
@@ -616,7 +617,7 @@ Qed.
 End AxiomSetRefine.
 
 
-Lemma t_Proper@{A P I AP API} {X : PreOrder@{A P}} (Cov Cov' : X -> Open@{A P} X -> Type@{I})
+Lemma t_Proper@{A P I AP API} {X : PreOrder@{A P}} (Cov Cov' : X -> Subset@{A P} X -> Type@{I})
   : RelSame@{A AP I API} Cov Cov' -> t (PreSpace.Build_t X Cov) -> t (PreSpace.Build_t X Cov').
 Proof.
 intros H tC.
@@ -722,9 +723,4 @@ Definition GCovL_formtop: t (@toPreSpace@{A P I API} A)
 
 
 End Localize.
-
-
-
-Set Printing Universes.
-
 

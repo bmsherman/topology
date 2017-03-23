@@ -23,7 +23,7 @@ Context {A : FormalSpace.t}.
 Variable Cov' : A -> Open A -> Type.
 
 Definition Subspace : PreSpace.t :=
-  {| PreSpace.S := A
+  {| PreSpace.S := PreSpace.S A
    ; PreSpace.Cov := Cov'
   |}.
 
@@ -72,7 +72,7 @@ Definition CovC a U := a <|[A] V ∪ U.
 
 
 Definition Closed : PreSpace.t :=
-  {| PreSpace.S := A
+  {| PreSpace.S := PreSpace.S A
    ; PreSpace.Cov := CovC
   |}.
 
@@ -117,10 +117,10 @@ Qed.
 
 (** Open subspaces. *)
 
-Definition CovO a U := ⇓ eq a ∩ ⇓ V <<|[A] U.
+Definition CovO a U := eq a ↓ V <<|[A] U.
 
 Definition OpenPS : PreSpace.t :=
-  {| PreSpace.S := A
+  {| PreSpace.S := PreSpace.S A
    ; PreSpace.Cov := CovO
   |}.
 
@@ -130,54 +130,37 @@ Theorem tOpen : FormTop.t OpenPS.
 Proof.
 constructor; simpl; unfold CovO; intros.
 - destruct X0. destruct d, d0. unfold In in i.
-   subst. rewrite l.  apply FormTop.refl. assumption.
+   subst. rewrite l. apply FormalSpace.refl. assumption.
 - destruct X1. destruct d, d0. unfold In in i. subst. 
   apply positive. intros. 
-  apply (FormTop.trans (U := ⇓ (⇓ U ∩ ⇓ eq a0) ∩ ⇓ V)). 
+  apply (FormalSpace.trans (U := ⇓ (⇓ U ∩ ⇓ eq a0) ∩ ⇓ V)). 
   Focus 2. intros. destruct X2.
   destruct d, d0. destruct i.  destruct d, d0.
   unfold In in *. subst.
   eapply X0. eassumption.
   split. exists a5. reflexivity. rewrite <- l3. assumption.
   exists a4; assumption. 
-  apply FormTop.le_right. apply FormTop.le_right.
+  apply FormalSpace.le_right. apply FormalSpace.le_right.
   apply X. split. exists a1. reflexivity. assumption.
-  exists a2; assumption. apply FormTop.refl. reflexivity.
-  rewrite l0. apply FormTop.refl. assumption.
+  exists a2; assumption. apply FormalSpace.refl. reflexivity.
+  rewrite l0. apply FormalSpace.refl. assumption.
 - destruct X1. destruct d, d0. unfold In in i.
-   subst. eapply FormTop.trans. 
-  2: eapply X0. eapply FormTop.le_right. 
-  rewrite l, X. apply FormTop.refl. reflexivity. 
-  rewrite l0. apply FormTop.refl. assumption.
+   subst. eapply FormalSpace.trans. 
+  2: eapply X0. eapply FormalSpace.le_right. 
+  rewrite l, X. apply FormalSpace.refl. reflexivity. 
+  rewrite l0. apply FormalSpace.refl. assumption.
 - destruct X1. destruct d, d0. 
   unfold In in i. subst.
-  apply FormTop.le_right. eapply FormTop.trans.
-  2: eapply X. apply FormTop.le_right.
-  rewrite l.  apply FormTop.refl. reflexivity.
-  rewrite l0. apply FormTop.refl. assumption.
-  eapply FormTop.trans. 2: eapply X0.
-  apply FormTop.le_right. rewrite l. apply FormTop.refl.
-  reflexivity. rewrite l0. apply FormTop.refl.
+  apply FormalSpace.le_right. eapply FormalSpace.trans.
+  2: eapply X. apply FormalSpace.le_right.
+  rewrite l.  apply FormalSpace.refl. reflexivity.
+  rewrite l0. apply FormalSpace.refl. assumption.
+  eapply FormalSpace.trans. 2: eapply X0.
+  apply FormalSpace.le_right. rewrite l. apply FormalSpace.refl.
+  reflexivity. rewrite l0. apply FormalSpace.refl.
   assumption.
 Qed.
 
-Lemma Intersection_Assoc {X : Type} (P Q R : Subset A)
-  : P ∩ (Q ∩ R) === (P ∩ Q) ∩ R.
-Proof.
-  firstorder.
-Qed.
-
-Lemma Intersection_Comm {X : Type} (P Q : Subset A)
-  : P ∩ Q === Q ∩ P.
-  Proof. firstorder. Qed.
-
-Require Import CMorphisms.
-
-Instance Inhabited_Proper {X : Type} : 
-  Proper (Included ==> arrow) (@Inhabited X).
-Proof.
- firstorder.
-Qed.
 
 Hypothesis tPosO : FormTop.tPos OpenPS.
 
@@ -201,7 +184,6 @@ End Defn.
 
 
 (** Closed subspaces are inductively generated. *)
-Require Import FormTopC.FormalSpace.
 Section IGDefn.
 
 Context {A : IGt}.

@@ -25,7 +25,7 @@ Qed.
 
 Definition OneI := fun _ : OnePO => Empty_set.
 
-Definition OneC (s : OnePO) (ix : OneI s) : Open OnePO :=
+Definition OneC (s : OnePO) (ix : OneI s) : Subset OnePO :=
   Empty_set_rect _ ix.
 
 Definition OnePS : PreISpace.t :=
