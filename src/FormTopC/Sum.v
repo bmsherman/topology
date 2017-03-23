@@ -153,9 +153,28 @@ Lemma cov1' : forall ix p U, SomeOpen ix p <|[SumPS] U
   -> p <|[A ix] (fun l : A ix => U (SomeOpen ix l)).
 Proof.
 intros. remember (SomeOpen ix p) as a.
-induction X; subst.
+generalize dependent ix.
+induction X; intros; subst.
 - econstructor. eassumption.
-Admitted.
+- UIP_inv l. eapply FormTop.glle_left. 
+  eassumption. apply IHX.
+  reflexivity.
+- UIP_inv l.
+  remember ({| Product.SOIx := ix; Product.SOOpen := bix |}) as u.
+  induction i. 
+  UIP_inv Hequ.
+  eapply FormTop.gle_infinity with bix i.
+  assumption. intros. 
+  eapply X. 2:reflexivity.
+  destruct X1 as (d & d0).
+  split. le_down. constructor. le_downH d.
+  assumption.
+  destruct d0 as [u' Pu' lu'].
+  exists (SomeOpen ix u').
+  unfold In. simpl.
+  econstructor. assumption.
+  econstructor. assumption.
+Qed.
 
 Local Instance Pos : FormTop.gtPos SumPS.
 Proof.

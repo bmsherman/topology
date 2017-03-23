@@ -6,7 +6,6 @@ Require Import
   CMorphisms.
 
 Set Universe Polymorphism.
-Set Printing Universes.
 
 (** Bundle the definitions together *)
 (* Inductively generated formal topology *)
@@ -254,5 +253,6 @@ eapply FormTop.gmonotoneL.
 eapply Intersection_Included_r.
 apply X.
 Qed.
+
 
 End IGProps.

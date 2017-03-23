@@ -1,10 +1,11 @@
 Require Import 
   Algebra.SetsC
   Algebra.OrderC
-  FormTopC.FormTop.
+  FormTopC.FormTop
+  FormTopC.Cont
+  FormTopC.Discrete.
 
 Set Universe Polymorphism.
-Module NatInfty.
 (* The Alexandroff compactification of the natural numbers. *)
 
 Inductive O : Set := 
@@ -62,8 +63,6 @@ Arguments exactly : clear implicits.
 Inductive infty : Subset O :=
   | in_infty : forall n, infty (MoreThan n).
 
-Require Import FormTopC.Cont.
-
 Definition is_pt := IGCont.pt NatInf.
 
 Lemma pt_infty : is_pt infty.
@@ -110,7 +109,8 @@ constructor; unfold exactly; intros.
     * exfalso. eapply Lt.le_not_lt. 2: eassumption.
       etransitivity. 2: eapply H2. apply Le.le_n_S. assumption. 
   + inv H. exists (Exactly n0).
-    split. reflexivity. split. le_down. reflexivity.
+    split. constructor. reflexivity.
+    split. le_down. reflexivity.
     exists (MoreThan (S m)). constructor.
     simpl. constructor. admit.
 Admitted.
@@ -134,11 +134,11 @@ intros b i a. induction a.
   eexists; eassumption.
 Qed.
 
-Require Import FormTopC.Discrete
-  FormTopC.FormalSpace.
-
 (** The (open) embedding of the natural numbers into
     its Alexandroff compactification. *)
+
+Require Import FormTopC.FormalSpace.
+
 Definition inj : Cont.map (discrete nat) NatInf := fun o n =>
   exactly n o.
 
@@ -189,6 +189,3 @@ le_downH d. destruct d0. destruct i0.
   + apply (Now tt).
 - apply Now. apply tt.
 Defined.
-
-End NatInfty.
-

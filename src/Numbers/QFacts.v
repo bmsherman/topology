@@ -87,7 +87,6 @@ split; intros;
   (eapply Qlt_le_trans; [ eassumption | apply Qeq_le; ring ]).
 Qed.
 
-
 Lemma Qplus_open : forall q x y : Q, (q < x + y
   -> exists x' y', x' < x /\ y' < y /\ (q <= x' + y'))%Q.
 Proof.
