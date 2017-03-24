@@ -20,7 +20,7 @@ Record IGt@{A P I API} : Type :=
 Global Instance IGT_PreO@{A P I API} 
   (X : IGt@{A P I API}) : PreO.t (le X) := IGPO X.
 Global Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
-  FormTop.t (IGS X) :=
+  FormTop.t (toPSL (IGS X)) :=
   FormTop.GCovL_formtop@{A P I API API'} _.
 
 Global Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X)
@@ -29,7 +29,7 @@ Global Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X
 
 Record t@{A P I} : Type :=
   { S :> PreSpace.t@{A P I}
-  ; PO : PreO.t@{A P} (le (PreSpace.S S))
+  ; PO : PreO.t@{A P} (le S)
   ; isFT : FormTop.t S
   ; pos : FormTop.tPos S
   }.
@@ -40,7 +40,7 @@ Delimit Scope loc_scope with loc.
 Local Open Scope loc.
 
 Definition fromIGt@{A P I API API'} (A : IGt@{A P I API}) : t@{A P I} :=
-  {| S := IGS A
+  {| S := toPSL (IGS A)
    ; isFT := IGTFT@{A P I API API'} A
    ; pos := FormTop.GCov_Pos@{A P I API} (H := IGpos A) |}.
 

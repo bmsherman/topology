@@ -129,7 +129,7 @@ Qed.
 Inductive bottom : Subset (option S) :=
   | MkBottom : bottom None.
 
-Theorem Cov_None V : None <|[Lifted] V -> In V None.
+Theorem Cov_None V : None <|[toPSL Lifted] V -> In V None.
 Proof.
 intros cov. remember None as none.
 induction cov; subst; simpl in *; try contradiction; auto.
@@ -138,7 +138,7 @@ induction cov; subst; simpl in *; try contradiction; auto.
 - induction b; simpl in *; contradiction.
 Qed.
 
-Theorem pt_bottom : Cont.pt Lifted bottom.
+Theorem pt_bottom : Cont.pt (toPSL Lifted) bottom.
 Proof.
 constructor. 
 - constructor 1 with None. constructor.
@@ -150,7 +150,7 @@ constructor.
   constructor. constructor. apply Cov_None. assumption.
 Qed.
 
-Definition inj : Cont.map S Lifted := fun my x => match my with
+Definition inj : Cont.map S (toPSL Lifted) := fun my x => match my with
   | None => True
   | Some y => x <=[S] y
   end.
@@ -165,7 +165,7 @@ assumption. apply FormTop.refl. assumption.
 contradiction.
 Qed.
 
-Theorem inj_cont : Cont.t S Lifted inj.
+Theorem inj_cont : Cont.t S (toPSL Lifted) inj.
 Proof.
 constructor; intros.
 - apply FormTop.refl. constructor 1 with None.

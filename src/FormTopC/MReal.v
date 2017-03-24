@@ -85,7 +85,7 @@ Qed.
     [x: X] into its metric completion.
 *)
 Definition from_One_cont (x : X) :
-  IGCont.t (toPreSpace Metric) Metric 
+  IGCont.t (toPSL Metric) Metric 
   (lift (fun _ : MOne => x) Qpos1).
 Proof.
 apply Cont. apply from_One_lip.

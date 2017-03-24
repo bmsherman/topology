@@ -46,7 +46,7 @@ Definition A' : PreISpace.t :=
 
 Lemma Cov_Refine : forall a U,
     a <|[A] U
-   -> a <|[A'] U.
+   -> a <|[toPSL A'] U.
 Proof.
 intros. induction X.
 - apply FormTop.glrefl. assumption.

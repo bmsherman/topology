@@ -184,7 +184,7 @@ Record pt :=
   ; LT_pt : Pt LT
   }.
 
-Definition pt_le (x y : pt) := forall q, LT x q -> q <|[toPreSpace PosUR] LT y.
+Definition pt_le (x y : pt) := forall q, LT x q -> q <|[toPSL PosUR] LT y.
 
 Definition pt_eq (x y : pt) := (pt_le x y * pt_le y x)%type.
 Definition zero : pt :=

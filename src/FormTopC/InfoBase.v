@@ -72,7 +72,7 @@ intros a U. simpl. unfold Cov. split; intros.
 Qed.
 
 (** The proof that [Cov] is a valid formal topology. *)
-Local Instance isCovG : FormTop.t IBInd := 
+Local Instance isCovG : FormTop.t (toPSL IBInd) := 
   FormTop.GCovL_formtop _.
 
 (** Should prove this via homeomorphism with IBInd. *)
@@ -365,11 +365,11 @@ Section One_intro.
 
 Context {S : PreSpace.t} {FTS : FormTop.t S}.
 
-Definition One_intro : Cont.map S One :=
+Definition One_intro : Cont.map S (toPSL One) :=
    fun (_ : True) (s : S) => True.
 
 Theorem One_intro_cont : 
-  Cont.t S One One_intro.
+  Cont.t S (toPSL One) One_intro.
 Proof.
 constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
@@ -386,7 +386,7 @@ End One_intro.
 
 Context {S : PreSpace.t} {POS : PreO.t (le (PreSpace.S S))}.
 
-Definition Point (f : Subset S) := Cont.t One S (fun t _ => f t).
+Definition Point (f : Subset S) := Cont.t (toPSL One) S (fun t _ => f t).
 
 End One.
 End One.
@@ -432,4 +432,3 @@ Qed.
 *)
 
 End Sierpinski.
-

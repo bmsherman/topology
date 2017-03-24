@@ -308,15 +308,15 @@ Section IGCont.
 Context {S : PreSpace.t}.
 Context {T : PreISpace.t}.
 
-Context {POS : PreO.t (le (PreSpace.S S))}
-        {POT : PreO.t (le (PreSpace.S T))}.
+Context {POS : PreO.t (le S)}
+        {POT : PreO.t (le T)}.
 
-Record t {F_ : Cont.map S T} :=
+Record t {F_ : Cont.map S (toPSL T)} :=
   { here : forall a, a <|[S] union (fun _ : T => True) F_
   ; local : forall a b c, F_ b a -> F_ c a ->
        a <|[S] union (eq b ↓ eq c) F_
-  ; le_left : forall a b c, a <=[PreSpace.S S] c -> F_ b c -> F_ b a
-  ; le_right :  forall a b c, F_ b a -> b <=[PreSpace.S T] c -> F_ c a
+  ; le_left : forall a b c, a <=[S] c -> F_ b c -> F_ b a
+  ; le_right :  forall a b c, F_ b a -> b <=[T] c -> F_ c a
   ; ax_right : forall a t t' (j : PreISpace.Ix T t'),
      t <= t' -> F_ t a -> 
      a <|[S] union (eq t ↓ PreISpace.C T t' j) F_
@@ -328,7 +328,7 @@ Context {FTS : FormTop.t S}.
 
 (** Lemma 2.28 of "Exponentiation of unary topologies over 
     inductively generated formal topologies" *)
-Theorem cont : forall F, t F -> Cont.t S T F.
+Theorem cont : forall F, t F -> Cont.t S (toPSL T) F.
 Proof.
 intros. constructor; intros.
 - apply (here X).
@@ -352,18 +352,18 @@ Admitted.
 
 Existing Instances union_Proper FormTop.Cov_Proper.
 
-Lemma Cov_Sat : forall a U (F : Cont.map S T), 
+Lemma Cov_Sat : forall a U (F : Cont.map S (toPSL T)), 
   a <|[S] union U F ->
-  a <|[S] union U (@Cont.Sat S T F).
+  a <|[S] union U (@Cont.Sat S (toPSL T) F).
 Proof.
 intros. 
 eapply (FormTop.Cov_Proper _ _). reflexivity. 
   eapply union_monotone.
-  eapply (@Cont.Sat_mono2 S T). eassumption. assumption.
+  eapply (@Cont.Sat_mono2 S (toPSL T)). eassumption. assumption.
 Qed.
 
-Theorem converse : forall F, Cont.t S T F 
-  -> t (@Cont.Sat S T F).
+Theorem converse : forall F, Cont.t S (toPSL T) F 
+  -> t (@Cont.Sat S (toPSL T) F).
 Proof.
 intros. 
 constructor; intros.
@@ -377,7 +377,7 @@ constructor; intros.
   eapply FormTop.le_left; eassumption.
 - unfold Cont.Sat in *.
   FormTop.etrans.
-  assert (b <|[T] eq c).
+  assert (b <|[toPSL T] eq c).
   eapply FormTop.glle_left. eassumption.
   apply FormTop.glrefl. reflexivity.
   pose proof (Cont.cov X (a := a) (b := b) (eq c)).
@@ -401,7 +401,7 @@ Record pt {F : Subset T} :=
 
 Arguments pt : clear implicits.
 
-Lemma pt_cont F : pt F -> Cont.pt T F.
+Lemma pt_cont F : pt F -> Cont.pt (toPSL T) F.
 Proof.
 intros H. constructor; intros.
 - apply (pt_here H).
@@ -413,7 +413,7 @@ intros H. constructor; intros.
     eapply X0; eassumption.
 Qed.
 
-Lemma pt_cont_converse F : Cont.pt T F -> pt F.
+Lemma pt_cont_converse F : Cont.pt (toPSL T) F -> pt F.
 Proof.
 intros H. constructor; intros.
 - apply (Cont.pt_here H).
@@ -443,8 +443,8 @@ Section IGLCont.
 Context {S : PreSpace.t}.
 Context {T : PreISpace.t}.
 
-Context {POS : PreO.t (le (PreSpace.S S))}
-        {POT : PreO.t (le (PreSpace.S T))}.
+Context {POS : PreO.t (le S)}
+        {POT : PreO.t (le T)}.
 
 Record pt {F : Subset T} := 
   { pt_here : Inhabited F

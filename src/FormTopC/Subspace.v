@@ -223,7 +223,8 @@ apply RelSame_iffT. intros a U. simpl. unfold CovC. split; intros H.
     * apply (FormTop.gle_infinity (A := A) a (V ∪ U) b i l).
       apply X.
     * rewrite l. apply FormTop.refl. left. assumption. 
-- simpl in H. remember (V ∪ U) as U' in H. 
+- simpl in H. simpl in U. 
+  remember ((V : Open (PreISpace.S A)) ∪ (U : Open (PreISpace.S A))) as U' in H. 
   induction H; subst.
   + destruct u.
     * eapply FormTop.gmonotoneL. Focus 2.

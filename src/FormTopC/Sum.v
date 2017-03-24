@@ -131,7 +131,7 @@ Inductive PosSum : Subset S' :=
 Local Open Scope Subset.
 
 Lemma cov1 : forall ix p U,  p <|[A ix] (fun l : A ix => U (SomeOpen ix l))
-  -> SomeOpen ix p <|[SumPS] U.
+  -> SomeOpen ix p <|[toPSL SumPS] U.
 Proof.
 intros. remember (fun l : A ix => U (SomeOpen ix l)) as V.
 induction X; subst.
@@ -149,7 +149,7 @@ induction X; subst.
   eexists; eassumption.
 Qed.
 
-Lemma cov1' : forall ix p U, SomeOpen ix p <|[SumPS] U
+Lemma cov1' : forall ix p U, SomeOpen ix p <|[toPSL SumPS] U
   -> p <|[A ix] (fun l : A ix => U (SomeOpen ix l)).
 Proof.
 intros. remember (SomeOpen ix p) as a.

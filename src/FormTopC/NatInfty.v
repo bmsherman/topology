@@ -139,7 +139,7 @@ Qed.
 
 Require Import FormTopC.FormalSpace.
 
-Definition inj : Cont.map (discrete nat) NatInf := fun o n =>
+Definition inj : Cont.map (discrete nat) (toPSL NatInf) := fun o n =>
   exactly n o.
 
 (*

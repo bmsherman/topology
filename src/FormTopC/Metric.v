@@ -387,8 +387,8 @@ simpl. rewrite Qmult_plus_distr_r.
 rewrite (Qpos_inv_scale_1 k e). reflexivity.
 Qed.
 
-Definition lift : Cont.map (toPreSpace (IGS (@Metric X)))
-   (toPreSpace (IGS (@Metric Y))) := fun By Bx =>
+Definition lift : Cont.map (toPSL (IGS (@Metric X)))
+   (toPSL (IGS (@Metric Y))) := fun By Bx =>
   let (x, delta) := Bx in lt_ball (f x, k * delta)%Qpos By.
 
 
@@ -456,7 +456,7 @@ Lemma lift_ball_le_helper
    (q4 : (x + x1 <= q0)%Q)
    (m2 : M X) (q7 : Qpos)
    (l1 : (m2, q7) <=[PreISpace.S MetricPS] (m, q))
-  : (f m2, x1) <=[PreSpace.S (toPreSpace (IGS Metric))] 
+  : (f m2, x1) <=[PreSpace.S (toPSL (IGS Metric))] 
       (m0, q0).
   Proof.
   simpl. intros. destruct l as (d & balld & dlt).
@@ -485,7 +485,7 @@ Ltac lt_ball_shrink H a b :=
   let H' := fresh in
   destruct (lt_ball_shrink _ _ _ H) as (a & b & H'); clear H; rename H' into H.
 
-Theorem Cont : IGCont.t (toPreSpace (IGS Metric)) (IGS Metric) lift.
+Theorem Cont : IGCont.t (toPSL (IGS Metric)) (IGS Metric) lift.
 Proof.
 constructor; simpl PO_car in *.
 - intros a. apply FormTop.refl. apply true_union'.
@@ -588,8 +588,8 @@ Qed.
 
 Existing Instances PreO PreO.PreOrder_I.
 
-Definition lift_uc : Cont.map (toPreSpace (IGS (@Metric X))) 
-  (toPreSpace (IGS (@Metric Y))) :=
+Definition lift_uc : Cont.map (toPSL (IGS (@Metric X))) 
+  (toPSL (IGS (@Metric Y))) :=
   fun By Bx => let (x, delta) := Bx in
    { eps' : Qpos & 
      ((delta < mu' eps') * lt_ball (f x, eps') By)%type }.
@@ -607,8 +607,8 @@ exists eps'. split. assumption. assumption.
 Qed.
 
 
-Theorem Cont_uc : Cont.t (toPreSpace (IGS (@Metric X))) 
-  (toPreSpace (IGS (@Metric Y))) lift_uc.
+Theorem Cont_uc : Cont.t (toPSL (IGS (@Metric X))) 
+  (toPSL (IGS (@Metric Y))) lift_uc.
 Proof.
 Abort.
 
