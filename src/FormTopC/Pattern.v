@@ -4,6 +4,7 @@ Require Import
   FormTopC.FormalSpace
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.Subspace.
 
 Set Universe Polymorphism.

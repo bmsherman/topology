@@ -1,10 +1,9 @@
 Require Import 
-  Basics
   CMorphisms
   FormTopC.FormTop
   Algebra.SetsC
   Algebra.OrderC
-  Algebra.FrameC
+  Algebra.PreOrder
   Prob.StdLib.
 
 Set Universe Polymorphism.

@@ -2,6 +2,7 @@ Require Import
   FormTopC.FormTop
   FormTopC.Cont
   Algebra.OrderC
+  Algebra.PreOrder
   Numbers.QPosFacts
   CoRN.metric2.Metric
   FormTopC.Metric

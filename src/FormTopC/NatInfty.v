@@ -1,6 +1,10 @@
 Require Import 
+  Coq.Arith.Compare_dec
+
+  Prob.StdLib
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.FormTop
   FormTopC.Cont
   FormTopC.Discrete.
@@ -16,8 +20,6 @@ Inductive le : O -> O -> Set :=
   | MoreThan_le : forall n m, m <= n -> le (MoreThan n) (MoreThan m)
   | Eventually_le : forall n m, n < m -> le (Exactly m) (MoreThan n)
   | Exactly_le : forall n m, m = n -> le (Exactly m) (Exactly n).
-
-Ltac inv H := inversion H; clear H; subst.
 
 Local Instance le_PreO : PreO.t le.
 Proof.
@@ -46,9 +48,9 @@ Definition C (a : O) (ix : Ix a) : Subset O := match ix with
   | IxNext n => Next n
   end.
 
-Definition NatInfPO : FormTop.PreOrder :=
+Definition NatInfPO : PreOrder :=
   {| PO_car := O
-   ; FormTop.le := le
+   ; PreOrder.le := le
   |}.
 
 Definition NatInf : PreISpace.t :=

@@ -1,9 +1,10 @@
 Require Import
+  CMorphisms
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.FormTop
-  FormTopC.Cont
-  CMorphisms.
+  FormTopC.Cont.
 
 Set Universe Polymorphism.
 

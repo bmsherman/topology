@@ -6,6 +6,7 @@ src/Types/Finite.v
 src/Types/Equiv.v
 src/Types/Setoid.v
 src/Types/List.v
+src/Types/UIP.v
 
 src/Numbers/QFacts.v
 src/Numbers/QPosFacts.v
@@ -37,6 +38,8 @@ src/Algebra/FrameC.v
 src/Algebra/Sublocale.v
 src/Algebra/SetsC.v
 src/Algebra/OrderC.v
+src/Algebra/PreOrder.v
+src/Algebra/FreeLattice.v
 
 # src/Language/ContPL.v
 # src/Language/ContPLProps.v

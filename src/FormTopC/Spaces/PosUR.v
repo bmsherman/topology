@@ -1,10 +1,13 @@
 Require Import
-  Numbers.QPosFacts
   CoRN.model.structures.QposInf
+
+  Prob.StdLib
+  Numbers.QPosFacts
   FormTopC.FormTop
   FormTopC.Cont
   Algebra.SetsC
-  Algebra.OrderC.
+  Algebra.OrderC
+  Algebra.PreOrder.
 
 Set Universe Polymorphism.
 
@@ -14,9 +17,9 @@ Local Open Scope FT.
     if I leave le as returning Prop *)
 Definition le (x y : QposInf) : Type := QposInf_le x y.
 
-Definition PosURPO : FormTop.PreOrder :=
+Definition PosURPO : PreOrder :=
   {| PO_car := QposInf
-   ; FormTop.le := le
+   ; PreOrder.le := le
   |}.
 
 Definition lt (x y : QposInf) : Type :=
@@ -115,8 +118,6 @@ unfold lt. split.
   intros. apply Q.Qplus_le_r in H.
   eapply Qlt_not_le. 2:eassumption. apply Qpos_prf.
 Qed.
-
-Ltac inv H := inversion H; clear H; subst.
 
 Lemma QposInf_between (x y : QposInf) : x < y ->
   { z : QposInf & ((x < z) * (z < y))%type }.

@@ -1,4 +1,9 @@
 Set Universe Polymorphism.
+
+(** Some useful tactics. *)
+
+Ltac inv H := inversion H; clear H; subst.
+
 (** The template-polymorphic 'prod' from the standard
     library just ain't good enough! *)
 Inductive prod {A B : Type} : Type :=

@@ -1,8 +1,9 @@
 Require Import
+  CMorphisms
   FormTopC.FormTop
   Algebra.OrderC
   Algebra.SetsC
-  CMorphisms
+  Algebra.PreOrder
   FormTopC.FormalSpace.
 
 Local Open Scope Subset.
@@ -25,7 +26,7 @@ Inductive LE {xs ys : list A} : Type :=
   | IsLE : forall zs, xs = ys ++ zs -> LE.
 Arguments LE : clear implicits.
 
-Definition CantorPO : FormTop.PreOrder :=
+Definition CantorPO : PreOrder :=
   {| PO_car := list A
   ; le := LE |}.
 

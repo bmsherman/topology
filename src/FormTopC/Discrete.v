@@ -1,10 +1,12 @@
-Require Import FormTopC.FormTop 
+Require Import 
+  Coq.Classes.CMorphisms
+  FormTopC.FormTop 
   FormTopC.Cont
   FormTopC.InfoBase
   FormTopC.FormalSpace
   Algebra.SetsC
   Algebra.OrderC
-  Coq.Classes.CMorphisms
+  Algebra.PreOrder
   Prob.StdLib.
 
 Set Universe Polymorphism.
@@ -20,7 +22,7 @@ Section Discrete.
 Universes A A'.
 Variable A : Type@{A}.
 
-Definition DiscretePO@{} : FormTop.PreOrder@{A A} :=
+Definition DiscretePO@{} : PreOrder@{A A} :=
   {| PO_car := A
    ; le := Logic.eq
   |}.
@@ -92,7 +94,6 @@ Local Open Scope loc.
 Definition discrete@{A A'} : Type@{A} -> IGt@{A A A A'} := Discrete.DiscI.
 
 Module DiscreteFunc.
-Ltac inv H := inversion H; clear H; subst.
 
 Section Func.
 

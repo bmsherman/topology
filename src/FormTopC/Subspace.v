@@ -1,6 +1,7 @@
  Require Import
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.FormTop
   FormTopC.Cont
   FormTopC.Locale

@@ -1,8 +1,10 @@
 Require Import 
-  Prob.StdLib 
+  Prob.StdLib
+  Types.UIP
   FormTopC.FormTop
   Algebra.OrderC
   Algebra.SetsC 
+  Algebra.PreOrder
   FormTopC.Cont
   FormTopC.FormalSpace.
 
@@ -54,18 +56,15 @@ Pos(inr b)    iff   Pos(b)
 
 *)
 
-Require Import FormTopC.Product.
-
 Section Sum.
 
 Context {Ix : Type}.
 Context {Ix_UIP : EqdepFacts.UIP_ Ix}.
 Context {A : Ix -> IGt}.
-Context {A_UIP : forall ix : Ix, EqdepFacts.UIP_ (A ix)}.
 
-Definition S' := Product.SomeOpen A.
+Definition S' := SomeOpen A.
 
-Definition SomeOpen := Product.MkSomeOpen A.
+Definition SomeOpen := MkSomeOpen (X := A).
 
 Inductive Ix' : S' -> Type := 
   | MkIx : forall {ix : Ix} {s : A ix}, PreISpace.Ix (A ix) s -> 
@@ -73,24 +72,16 @@ Inductive Ix' : S' -> Type :=
 
 Arguments Ix' : clear implicits.
 
-Inductive C' : forall {p : S'}, Ix' p -> Subset S' :=
-  | MkC : forall {ix : Ix} {s : A ix} (ax : PreISpace.Ix (A ix) s)
-     (s' : A ix), In (PreISpace.C (A ix) s ax) s'
-                -> In (C' (MkIx ax)) (SomeOpen ix s').
+Inductive InDisjunct {ix : Ix} {U : Open (A ix)} : Subset S' :=
+  | MkInDisjunct : forall s : A ix, In U s -> In InDisjunct (SomeOpen ix s).
 
-Arguments C' : clear implicits.
+Arguments InDisjunct {ix} U.
 
-Definition le' : S' -> S' -> Type := Product.SomeOpen_le A.
-
-Ltac inv H := inversion H; clear H; subst.
-
-Ltac UIP_clean := match goal with
-  | [ H : existT _ _ ?x = existT _ _ ?x |- _ ] => clear H
-  | [ H : existT _ _ ?x = existT _ _ ?y |- _ ] => 
-     apply UIP_inj_dep_pair in H; [| solve[auto] ]; subst
+Definition C' (p : S') (ix : Ix' p) : Subset S' := match ix with
+  | MkIx ix s ax => InDisjunct (PreISpace.C (A ix) s ax)
   end.
 
-Ltac UIP_inv H := inv H; repeat UIP_clean.
+Definition le' : S' -> S' -> Type := SomeOpen_le (X := A).
 
 Definition SumPreOrder : PreOrder := 
   {| PO_car := S'
@@ -99,7 +90,7 @@ Definition SumPreOrder : PreOrder :=
 
 Local Instance PO : PreO.t (le SumPreOrder). 
 Proof.
-unshelve eapply Product.Sum_PO; eassumption.
+unshelve eapply Sum_PO; eassumption.
 Qed.
 
 
@@ -117,8 +108,8 @@ intros a c H1 i. destruct i.
 UIP_inv H1. 
 destruct (locA ix aix0 s X i) as (i' & Hi').
 exists (MkIx i').
-intros u X0. UIP_inv X0.
-specialize (Hi' s' X1). destruct Hi'. le_downH d.
+intros u X0. simpl in X0. UIP_inv X0.
+specialize (Hi' s0 X1). destruct Hi'. le_downH d.
 split. le_down. 
 simpl. constructor. assumption.
 destruct d0. eexists. econstructor. eassumption.
@@ -160,7 +151,7 @@ induction X; intros; subst.
   eassumption. apply IHX.
   reflexivity.
 - UIP_inv l.
-  remember ({| Product.SOIx := ix; Product.SOOpen := bix |}) as u.
+  remember ({| SOIx := ix; SOOpen := bix |}) as u.
   induction i. 
   UIP_inv Hequ.
   eapply FormTop.gle_infinity with bix i.
@@ -202,7 +193,7 @@ Definition Sum : IGt :=
   ; IGPO := PO |}.
 
 Inductive Inj (ix : Ix) : Cont.map (A ix) Sum :=
-  | MkInl : forall a b, a <=[A ix] b -> Inj ix (SomeOpen ix b) a.
+  | MkInj : forall a b, a <=[A ix] b -> Inj ix (SomeOpen ix b) a.
 
 Lemma Inj_cont (ix : Ix) : IGCont.t (A ix) Sum (Inj ix).
 Proof.
@@ -216,16 +207,16 @@ unshelve econstructor; intros.
 - induction X. UIP_inv X0. econstructor. 
   etransitivity; eassumption.
 - induction j. 
-  + UIP_inv X0. UIP_inv X. 
-    apply FormTop.gle_infinity with s i.
-    etransitivity; eassumption.
-    intros. apply FormTop.glrefl.
-    destruct X. le_downH d. destruct d0.
-    exists (SomeOpen ix0 u). split. le_down.
-    constructor. transitivity a; assumption.
-    exists (SomeOpen ix0 a0). constructor. assumption.
-    constructor. assumption.
-    constructor. reflexivity.
+  UIP_inv X0. UIP_inv X. 
+  apply FormTop.gle_infinity with s i.
+  etransitivity; eassumption.
+  intros. apply FormTop.glrefl.
+  destruct X. le_downH d. destruct d0.
+  exists (SomeOpen ix0 u). split. le_down.
+  constructor. transitivity a; assumption.
+  exists (SomeOpen ix0 a0). constructor. assumption.
+  constructor. assumption.
+  constructor. reflexivity.
 Qed.
 
 End Sum.

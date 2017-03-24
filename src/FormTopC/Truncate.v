@@ -1,12 +1,14 @@
 (** Propositional truncation of spaces. *)
 
 Require Import
+  Coq.Classes.CMorphisms
+
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.FormTop
   FormTopC.FormalSpace
-  FormTopC.Cont
-  Coq.Classes.CMorphisms.
+  FormTopC.Cont.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.
@@ -34,9 +36,9 @@ econstructor.
   apply IPos. eassumption.
 Qed.
 
-Definition A'PO : FormTop.PreOrder :=
+Definition A'PO : PreOrder :=
   {| PO_car := A
-  ;  FormTop.le := le
+  ;  PreOrder.le := le
   |}.
 
 Definition A' : PreISpace.t :=

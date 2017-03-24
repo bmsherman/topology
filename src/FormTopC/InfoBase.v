@@ -1,11 +1,12 @@
 Require Import 
+  CMorphisms
   Coq.Program.Basics
   FormTopC.FormTop
   FormTopC.Cont
   FormTopC.FormalSpace
   Algebra.OrderC
+  Algebra.PreOrder
   Algebra.SetsC
-  CMorphisms
   Prob.StdLib.
 
 Set Universe Polymorphism.
@@ -26,7 +27,7 @@ Section InfoBase.
 
 Set Printing Universes.
 Universes A P AP.
-Variable (S : FormTop.PreOrder@{A P}).
+Variable (S : PreOrder@{A P}).
 
 Context {PO : PreO.t@{A P} (le S)}.
 
@@ -100,7 +101,7 @@ Section InfoBaseCont.
 Generalizable All Variables.
 
 Context {S : PreSpace.t} {POS : PreO.t (le (PreSpace.S S))}.
-Context {T : FormTop.PreOrder} {POT : PreO.t (le T)}.
+Context {T : PreOrder} {POT : PreO.t (le T)}.
 
 Record ptNM {F : Subset T} : Type :=
   { ptNM_local : forall {a b}, F a -> F b -> 
@@ -354,7 +355,7 @@ Arguments InfoBaseCont.t {S} leS {T} {TOps} F : rename, clear implicits.
 Module One.
 Section One.
 
-Definition OnePO : FormTop.PreOrder :=
+Definition OnePO : PreOrder :=
   {| PO_car := True
    ; le := fun _ _ => True
   |}.
@@ -375,8 +376,8 @@ constructor; unfold One_intro; intros; simpl; try auto.
 - apply FormTop.refl. unfold In; simpl. constructor 1 with I.
   unfold In; simpl; constructor. constructor.
 - apply FormTop.refl. unfold In; simpl. 
-  exists I. destruct b, c. unfold FormTop.down, In; auto.
-  split; eexists; unfold In; eauto. auto.
+  exists I. destruct b, c. unfold In. 
+  apply (down_eq (A := toPSL One)). auto. auto. 
 - apply FormTop.refl. constructor 1 with I.
   induction X. destruct a0. assumption.
   assumption.  destruct i. auto.
@@ -393,13 +394,13 @@ End One.
 
 Module Sierpinski.
 
-Definition SierpPO : FormTop.PreOrder :=
+Definition SierpPO : PreOrder :=
   {| PO_car := bool
    ; le := Bool.leb |}.
 
 Definition Sierp := InfoBase.IBInd SierpPO.
 
-Definition ProdPO (A B : FormTop.PreOrder) : FormTop.PreOrder :=
+Definition ProdPO (A B : PreOrder) : PreOrder :=
   {| PO_car := A * B
   ; le := prod_op (le A) (le B) |}.
 

@@ -2,6 +2,7 @@ Require Import
   Coq.Classes.CMorphisms
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.FormTop
   FormTopC.FormalSpace
   FormTopC.Cont.
@@ -37,7 +38,7 @@ Qed.
 Lemma downset_idempotent (U : Open T) : 
  ⇓ (⇓ U) === ⇓ U.
 Proof.
-unfold FormTop.downset. apply Same_set_iff. intros. split; intros.
+unfold downset. apply Same_set_iff. intros. split; intros.
 - destruct X. destruct i. econstructor. eassumption.
   etransitivity; eassumption.
 - exists x. assumption. reflexivity.
@@ -101,9 +102,9 @@ Definition C (ma : option S) : Ix ma -> Subset (option S) :=
   | None => fun contra => False_rect _ contra
   end.
 
-Definition LiftedPO : FormTop.PreOrder :=
+Definition LiftedPO : PreOrder :=
   {| PO_car := option S
-   ; FormTop.le := le
+   ; PreOrder.le := le
   |}.
 
 Definition Lifted : PreISpace.t :=

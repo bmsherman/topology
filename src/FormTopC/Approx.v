@@ -2,6 +2,7 @@ Require Import
   Algebra.FrameC
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   FormTopC.Locale
   FormTopC.FormTop
   FormTopC.InfoBase

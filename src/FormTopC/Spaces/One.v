@@ -1,9 +1,10 @@
 Require Import 
-  Algebra.OrderC
-  Algebra.FrameC
-  Algebra.SetsC
   CMorphisms
   CRelationClasses
+  Algebra.OrderC
+  Algebra.PreOrder
+  Algebra.FrameC
+  Algebra.SetsC
   Prob.StdLib
   FormTopC.FormTop
   FormTopC.Locale

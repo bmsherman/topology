@@ -1,10 +1,11 @@
 Require Import 
+  CMorphisms
   FormTopC.FormTop
   Algebra.SetsC
   Algebra.OrderC
+  Algebra.PreOrder
   Algebra.FrameC
-  FormTopC.FormalSpace
-  CMorphisms.
+  FormTopC.FormalSpace.
 
 Set Universe Polymorphism.
 

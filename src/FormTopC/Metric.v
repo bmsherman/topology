@@ -1,20 +1,22 @@
 Require Import 
-  FormTopC.FormTop
-  Algebra.OrderC
-  Algebra.SetsC
-  FormTopC.FormalSpace
-  Numbers.QFacts
-  Numbers.QPosFacts
-  
-  FormTopC.Cont
-  Coq.QArith.Qminmax
-
   CoRN.metric2.Metric
   CoRN.model.structures.Qpossec
   Coq.QArith.QArith_base
   CoRN.model.structures.QposInf
   CoRN.metric2.UniformContinuity
-  CMorphisms.
+
+  CMorphisms
+
+  FormTopC.FormTop
+  Algebra.OrderC
+  Algebra.PreOrder
+  Algebra.SetsC
+  FormTopC.FormalSpace
+  Numbers.QFacts
+  Numbers.QPosFacts  
+  FormTopC.Cont
+
+  Coq.QArith.Qminmax.
 
 Set Asymmetric Patterns.
 Set Universe Polymorphism.
@@ -202,9 +204,9 @@ Definition CUL (b : Ball) (i : IxUL b) : Subset@{A P} Ball :=
   | Some epsilon => fun b' => snd b' = epsilon
   end.
 
-Definition MetricPO : FormTop.PreOrder@{A P} :=
+Definition MetricPO : PreOrder@{A P} :=
   {| PO_car := Ball
-   ; FormTop.le := le_ball 
+   ; PreOrder.le := le_ball 
   |}.
 
 Definition MetricPS@{} : PreISpace.t@{A P I} :=

@@ -17,8 +17,8 @@ Proof.
 Defined.
 
 Inductive EachI {A} {B : A -> Type} : list A -> Type :=
-  | Each_nil : EachI nil
-  | Each_cons : forall {x : A} {xs : list A}, B x -> EachI xs -> EachI (x :: xs).
+  | EachI_nil : EachI nil
+  | EachI_cons : forall {x : A} {xs : list A}, B x -> EachI xs -> EachI (x :: xs).
 
 Arguments EachI {A} B xs.
 
@@ -215,10 +215,24 @@ Lemma Each_app {T} {B : T -> Type} (xs ys : list T)
 Proof.
 split; intros H.
 - destruct H. intros x mem. apply member_app in mem.
-  destruct mem.
-  + apply e. assumption.
-  + apply e0. assumption.
-- split; intros x mem; apply H; apply member_app.
-  + left. assumption.
-  + right. assumption.
+  destruct mem; auto.
+- split; intros x mem; apply H; apply member_app; auto.
+Qed.
+
+Lemma Each_singleton {T} {B : T -> Type} (x : T)
+  : B x -> Each B [x].
+Proof.
+intros H y mem. inv mem. assumption. inv X.
+Qed.
+
+Lemma Each_nil {T} {B : T -> Type} : Each B [].
+Proof.
+apply Each_member. constructor.
+Qed.
+
+Lemma Each_cons {T} {B : T -> Type} {x : T}
+  {xs : list T} (Bx : B x) (Bxs : Each B xs)
+  : Each B (x :: xs).
+Proof.
+intros y mem. inv mem; auto.
 Qed.
