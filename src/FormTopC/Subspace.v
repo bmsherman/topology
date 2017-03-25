@@ -63,7 +63,6 @@ Qed.
 
 End GenSub.
 
-
 (** Closed subspaces *)
 Section Defn.
 Context {A : FormalSpace.t}.

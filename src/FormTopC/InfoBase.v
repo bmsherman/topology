@@ -400,10 +400,6 @@ Definition SierpPO : PreOrder :=
 
 Definition Sierp := InfoBase.IBInd SierpPO.
 
-Definition ProdPO (A B : PreOrder) : PreOrder :=
-  {| PO_car := A * B
-  ; le := prod_op (le A) (le B) |}.
-
 (*
 Definition sand : Cont.map (InfoBase.IBInd (ProdPO SierpPO SierpPO))
   Sierp :=

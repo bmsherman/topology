@@ -27,6 +27,7 @@ src/FormTopC/Metric.v
 src/FormTopC/MReal.v
 src/FormTopC/NatInfty.v
 src/FormTopC/Subspace.v
+src/FormTopC/IGSubspace.v
 src/FormTopC/Truncate.v
 src/FormTopC/Pattern.v
 src/FormTopC/Sum.v

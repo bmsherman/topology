@@ -561,7 +561,7 @@ Qed.
 
 Universes API'.
 
-Definition GCovL_formtop: t (@toPSL@{A P I} A)
+Global Instance GCovL_formtop: t (@toPSL@{A P I} A)
   := GCovL_formtop_UMore@{API API API'}.
 
 
