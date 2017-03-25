@@ -17,8 +17,7 @@ Set Asymmetric Patterns.
 Existing Instances 
   FormTop.GCov_formtop 
   FormalSpace.IGT_PreO 
-  FormalSpace.IGTFT
-  FormalSpace.IGT_Pos.
+  FormalSpace.IGTFT.
 
 Local Open Scope FT.
 Local Open Scope FreeML.
@@ -90,52 +89,6 @@ specialize (locX aix bix l i).
 destruct locX.
 Admitted.
 
-(** Prove the space has a positivity predicate. *)
-Definition PosProd : Subset Prod :=
-  Each (fun x => FormTop.gPos (SOOpen x)).
-
-Local Open Scope Subset.
-
-(*
-Lemma PosProd_factors (a : Prod) :
-  eq a ∩ PosProd === fun p => forall ix : Ix,
-  (eq (a ix) ∩ FormTop.gPos) (p ix).
-Proof.
-apply Same_set_iff.
-intros. split; intros H.
-- destruct H. subst. intros. split. reflexivity.
-  apply p.
-- split. extensionality ix. destruct (H ix). assumption. 
-  intros ix. apply H.
-Qed.
-*)
-
-Existing Instance GCovL_formtop.
-
-Lemma Pos : FormTop.gtPos Prod.
-Proof.
-unshelve econstructor.
-- exact PosProd.
-- intros a b l. apply (ML.Each_monotone (X := SomeOpen X)).
-  2: assumption.
-  clear a b l.
-  intros x y l H. induction l.
-  eapply FormTop.gmono_le; eassumption.
-- intros b i a X0 X1. destruct i.
-Admitted.
-(*
-  pose proof (FormTop.gmono_ax (gtPos := IGpos (X ix)) (b ix)
-     i (a ix) (X0 ix) (X1 ix)).
-- intros.
-  apply (FormTop.trans (A := Prod) (U := eq a ∩ PosProd)).
-  + eapply gmonotoneL. eapply Same_set_Included. 
-    apply PosProd_factors.
-    eapply factors; apply FormTop.gpositive; 
-    intros; apply FormTop.grefl; split; trivial.
-  + intros. destruct X1. subst. apply X0. assumption.
-Qed.
-*)
-
 (*
 Lemma factors (xs : S')
   (U : forall x, member x xs -> Open (X (SOIx x)))
@@ -166,7 +119,6 @@ Qed.
 Definition Prodt : IGt :=
   {| IGS := Prod
    ; IGPO := ML.PO
-   ; IGpos := Pos
   |}.
 
 Definition proj (ix : Ix) : Cont.map Prodt (X ix) :=
@@ -351,6 +303,56 @@ econstructor; intros.
       assumption. 
     * eapply univ_le_left. 2: eassumption. assumption.
 Qed.
+
+
+(** Prove the space has a positivity predicate. *)
+
+Context {X_Pos : forall ix : Ix, FormTop.gtPos (X ix)}.
+
+Definition PosProd : Subset Prod :=
+  Each (fun x => FormTop.gPos (SOOpen x)).
+
+Local Open Scope Subset.
+
+(*
+Lemma PosProd_factors (a : Prod) :
+  eq a ∩ PosProd === fun p => forall ix : Ix,
+  (eq (a ix) ∩ FormTop.gPos) (p ix).
+Proof.
+apply Same_set_iff.
+intros. split; intros H.
+- destruct H. subst. intros. split. reflexivity.
+  apply p.
+- split. extensionality ix. destruct (H ix). assumption. 
+  intros ix. apply H.
+Qed.
+*)
+
+Existing Instance GCovL_formtop.
+
+Lemma Pos : FormTop.gtPos Prod.
+Proof.
+unshelve econstructor.
+- exact PosProd.
+- intros a b l. apply (ML.Each_monotone (X := SomeOpen X)).
+  2: assumption.
+  clear a b l.
+  intros x y l H. induction l.
+  eapply FormTop.gmono_le; eassumption.
+- intros b i a X0 X1. destruct i.
+Admitted.
+(*
+  pose proof (FormTop.gmono_ax (gtPos := IGpos (X ix)) (b ix)
+     i (a ix) (X0 ix) (X1 ix)).
+- intros.
+  apply (FormTop.trans (A := Prod) (U := eq a ∩ PosProd)).
+  + eapply gmonotoneL. eapply Same_set_Included. 
+    apply PosProd_factors.
+    eapply factors; apply FormTop.gpositive; 
+    intros; apply FormTop.grefl; split; trivial.
+  + intros. destruct X1. subst. apply X0. assumption.
+Qed.
+*)
 
 End Product.
 End Product.

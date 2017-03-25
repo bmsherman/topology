@@ -92,6 +92,15 @@ apply Included_Same_set.
 - apply downset_included.
 Qed.
 
+Lemma downset_idempotent (U : Subset A) : 
+ ⇓ (⇓ U) === ⇓ U.
+Proof.
+unfold downset. apply Same_set_iff. intros. split; intros.
+- destruct X. destruct i. econstructor. eassumption.
+  etransitivity; eassumption.
+- exists x. assumption. reflexivity.
+Qed.
+
 Lemma down_assoc {U V W : Subset A} :
   (U ↓ V) ↓ W === U ↓ (V ↓ W).
 Proof.

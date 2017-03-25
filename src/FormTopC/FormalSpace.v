@@ -14,8 +14,8 @@ Record IGt@{A P I API} : Type :=
   { IGS :> PreISpace.t@{A P I}
   ; IGPO : PreO.t (le IGS)
     (** the proof that [le] is a preorder *)
-  ; IGpos : FormTop.gtPos@{A P I API} IGS
-    (** The space must have a positivity predicate. *)
+ (* ; IGpos : FormTop.gtPos@{A P I API} IGS
+    (** The space must have a positivity predicate. *) *)
   }.
 
 Global Instance IGT_PreO@{A P I API} 
@@ -24,15 +24,11 @@ Global Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) :
   FormTop.t (toPSL (IGS X)) :=
   FormTop.GCovL_formtop@{A P I API API'} _.
 
-Global Instance IGT_Pos@{A P I API} (X : IGt@{A P I API}) : FormTop.gtPos (IGS X)
-  := IGpos X.
-
 
 Record t@{A P I} : Type :=
   { S :> PreSpace.t@{A P I}
   ; PO : PreO.t@{A P} (le S)
   ; isFT : FormTop.t S
-  ; pos : FormTop.tPos S
   }.
 
 Local Open Scope FT.
@@ -42,8 +38,7 @@ Local Open Scope loc.
 
 Definition fromIGt@{A P I API API'} (A : IGt@{A P I API}) : t@{A P I} :=
   {| S := toPSL (IGS A)
-   ; isFT := IGTFT@{A P I API API'} A
-   ; pos := FormTop.GCov_Pos@{A P I API} (H := IGpos A) |}.
+   ; isFT := IGTFT@{A P I API API'} A|}.
 
 Coercion fromIGt : IGt >-> t.
 

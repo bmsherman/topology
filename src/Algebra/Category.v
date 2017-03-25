@@ -25,11 +25,11 @@ Record Category@{Ob Arr P} :=
   ; compose_assoc : forall {A B C D} (f : A ~~> B) (g : B ~~> C) (h : C ~~> D), h ∘ (g ∘ f) == (h ∘ g) ∘ f
   }.
 
-Arguments arrow {c} A B : clear implicits.
-Arguments id {c A} : clear implicits.
-Arguments compose {c A B C} f g : clear implicits.
-Arguments compose_id_left {c A B} f : clear implicits.
-Arguments compose_id_right {c A B} f : clear implicits.
+Arguments arrow {c} A B.
+Arguments id {c A}.
+Arguments compose {c A B C} f g.
+Arguments compose_id_left {c A B} f.
+Arguments compose_id_right {c A B} f.
 
 (** Notation for objects of categories *)
 Delimit Scope obj_scope with obj.
@@ -42,6 +42,8 @@ Local Open Scope morph.
 
 Infix "∘" := (compose) (at level 40, left associativity) : morph_scope.
 
+Notation "g ∘[ X ] f" := (compose (c := X) g f) 
+  (at level 75, format "g  ∘[ X ]  f", only parsing) : morph_scope.
 
 Ltac prove_map_Proper := unfold Proper, respectful; intros;
   repeat match goal with
@@ -93,7 +95,7 @@ Record Iso {A B : U} : Type :=
 
 End Defns.
 
-Arguments Iso {U} A B : clear implicits.
+Arguments Iso {U} A B.
 
 Infix "≅" := Iso (at level 70, no associativity) : obj_scope.
 
@@ -142,22 +144,10 @@ Definition Iso_Sym {A B : U} (i : A ≅ B) : B ≅ A :=
      ; from_to := to_from i
   |}.
 
-Axiom undefined : forall A, A.
-
 Lemma Iso_Trans {A B C : U} (ab : A ≅ B) (bc : B ≅ C) : A ≅ C.
 Proof.
-refine ({| to := to bc ∘ to ab
+unshelve eapply ({| to := to bc ∘ to ab
            ; from := from ab ∘ from bc |}).
-(*
-etransitivity. symmetry. apply compose_assoc.
-etransitivity. apply compose_proper. reflexivity. 
-apply (compose_assoc _ (from bc)). 
-etransitivity. apply compose_proper. reflexivity.
-apply compose_proper. apply to_from. reflexivity.
-etransitivity. apply compose_proper. reflexivity.
-apply compose_id_left. apply to_from.
-*)
-
 - rewrite <- compose_assoc.
   rewrite (compose_assoc _ (from bc)).
   rewrite to_from. rewrite compose_id_left.
@@ -167,11 +157,6 @@ apply compose_id_left. apply to_from.
   rewrite from_to. rewrite compose_id_left.
   apply from_to.
 Defined.
-
-Definition Hom_Setoid (A B : U) :=
-  {| Setoid.sty := A ~~> B
-   ; Setoid.seq := eq
-  |}.
 
 Lemma Hom_Setoid_Iso {A A' B B' : U}
       (a : A ≅ A') (b : B ≅ B')

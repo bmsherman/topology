@@ -242,7 +242,6 @@ Local Instance MPos@{API'} : FormTop.gtPos MetricPS
 
 Definition Metric@{API'} : IGt@{A P I API'} :=
   {| IGS := MetricPS
-   ; IGpos := MPos@{API'}
   |}.
 
 End Metric.

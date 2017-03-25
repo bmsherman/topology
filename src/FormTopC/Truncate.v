@@ -18,6 +18,7 @@ Local Open Scope FT.
 Section Truncate.
 
 Variable A : IGt.
+Context {A_Pos : FormTop.gtPos A}.
 
 Inductive le {s t : A} : Type :=
   | Orig : s <=[A] t -> le

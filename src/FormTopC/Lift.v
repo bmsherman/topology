@@ -19,52 +19,6 @@ Section Lift.
 
 Variable (S : IGt).
 
-Section Collapse.
-
-Variable (T : IGt).
-
-Variable f : S -> T.
-Hypothesis fmono : forall x y, x <=[S] y -> f x <=[T] f y.
-Hypothesis fPos : forall x, FormTop.gPos x -> FormTop.gPos (f x).
-
-Definition lift : Cont.map S T := fun t s => f s <=[T] t.
-
-Lemma le_Cov : forall a b, a <=[T] b -> a <|[T] eq b.
-Proof.
-intros. apply FormTop.le_left with b. assumption.
-apply FormTop.refl. reflexivity.
-Qed.
-
-Lemma downset_idempotent (U : Open T) : 
- ⇓ (⇓ U) === ⇓ U.
-Proof.
-unfold downset. apply Same_set_iff. intros. split; intros.
-- destruct X. destruct i. econstructor. eassumption.
-  etransitivity; eassumption.
-- exists x. assumption. reflexivity.
-Qed.
-
-Theorem lift_cont : IGCont.t S T lift.
-Proof.
-constructor; intros.
-- apply FormTop.refl. exists (f a). constructor. unfold lift.
-  reflexivity.
-- unfold lift in *.
-  apply FormTop.refl. exists (f a).
-  split; le_down; eassumption. reflexivity.
-- unfold lift in *. rewrite <- X0. apply fmono. assumption.
-- unfold lift in *. etransitivity; eassumption.
-- unfold lift in *.
-  apply (FormTop.gpositive).
-  intros pa. pose proof (fPos _ pa) as pfa.
-  assert (Inhabited ((eq t ↓ PreISpace.C T t' j) ∩ FormTop.gPos)).
-  eapply FormTop.gmono_ax. assumption.
-  eapply FormTop.gmono_le; eassumption.
-  admit. (* This is a big hole. *)
-Abort. 
-
-End Collapse.
-
 Definition lift_subset (U : Subset S) : Subset (option S) :=
   fun ms => match ms with
     | Some x => In U x

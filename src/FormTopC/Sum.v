@@ -22,13 +22,14 @@ Class HasBot {A : IGt}
 
 Arguments HasBot : clear implicits.
 
-Definition posIGT {A : IGt} (x : S A) := FormTop.gPos (gtPos := IGpos A) x.
+Definition posIGT {A : IGt} `{APos : FormTop.gtPos A}
+   (x : S A) := FormTop.gPos (gtPos := APos) x.
 
-Lemma bot_Pos (A : IGt) `(HasBot A) :
+Lemma bot_Pos (A : IGt) `{APos : FormTop.gtPos A} `(HasBot A) :
   posIGT bot -> False.
 Proof. 
 intros contra.
-pose (FormTop.GCov_Pos (H :=IGpos A)).
+pose (FormTop.GCov_Pos (H := APos)).
 pose proof (FormTop.mono bot (fun _ => False)).
 cut (Inhabited ((fun _ : S A => False) ∩ FormTop.Pos)%Subset).
 intros. destruct X0. destruct i. auto.
@@ -116,9 +117,6 @@ destruct d0. eexists. econstructor. eassumption.
 econstructor. eassumption.
 Qed.
 
-Inductive PosSum : Subset S' :=
-  | MkPos : forall (ix : Ix) {s : A ix}, FormTop.gPos s -> PosSum (SomeOpen ix s).
-
 Local Open Scope Subset.
 
 Lemma cov1 : forall ix p U,  p <|[A ix] (fun l : A ix => U (SomeOpen ix l))
@@ -167,27 +165,6 @@ induction X; intros; subst.
   econstructor. assumption.
 Qed.
 
-Local Instance Pos : FormTop.gtPos SumPS.
-Proof.
-unshelve econstructor.
-- exact PosSum.
-- intros. induction X. UIP_inv X0.
-    constructor. eapply gmono_le; eassumption.
-- intros. destruct i.
-  + UIP_inv X0. UIP_inv X.
-    destruct (gmono_ax (A := A ix) s i s0 X0 X1).
-    destruct i0. destruct d. le_downH d.
-    exists (SomeOpen ix a). split. split. 
-    le_down. constructor. assumption.
-    destruct d0.
-    eexists. econstructor. eassumption.
-    constructor. assumption.
-    econstructor. assumption.
-- intros. destruct a.
-  + apply cov1. apply gpositive.
-    intros. apply cov1'. apply X. constructor. assumption. 
-Qed.
-
 Definition Sum : IGt :=
   {| IGS := SumPS
   ; IGPO := PO |}.
@@ -217,6 +194,32 @@ unshelve econstructor; intros.
   exists (SomeOpen ix0 a0). constructor. assumption.
   constructor. assumption.
   constructor. reflexivity.
+Qed.
+
+Context {APos : forall ix : Ix, FormTop.gtPos (A ix)}.
+
+Inductive PosSum : Subset S' :=
+  | MkPos : forall (ix : Ix) {s : A ix}, FormTop.gPos s -> PosSum (SomeOpen ix s).
+
+Local Instance Pos : FormTop.gtPos SumPS.
+Proof.
+unshelve econstructor.
+- exact PosSum.
+- intros. induction X. UIP_inv X0.
+    constructor. eapply gmono_le; eassumption.
+- intros. destruct i.
+  + UIP_inv X0. UIP_inv X.
+    destruct (gmono_ax (A := A ix) s i s0 X0 X1).
+    destruct i0. destruct d. le_downH d.
+    exists (SomeOpen ix a). split. split. 
+    le_down. constructor. assumption.
+    destruct d0.
+    eexists. econstructor. eassumption.
+    constructor. assumption.
+    econstructor. assumption.
+- intros. destruct a.
+  + apply cov1. apply gpositive.
+    intros. apply cov1'. apply X. constructor. assumption. 
 Qed.
 
 End Sum.

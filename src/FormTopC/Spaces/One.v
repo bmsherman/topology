@@ -37,7 +37,7 @@ Definition OnePS : PreISpace.t :=
 
 Definition OnePos (_ : unit) : Type := unit.
 
-Lemma OnePos_Pos : FormTop.gtPos OnePS.
+Instance OnePos_Pos : FormTop.gtPos OnePS.
 Proof.
 apply gall_Pos. intros.
 destruct i.
@@ -46,7 +46,6 @@ Qed.
 Definition One : IGt :=
   {| IGS := OnePS
    ; IGPO := OnePO_PO
-   ; IGpos := OnePos_Pos
   |}.
 
 Lemma split_One :

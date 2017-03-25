@@ -87,8 +87,7 @@ Section Pattern.
 
 Variable Ix : Type.
 Variable U : Ix -> Open S.
-Variable UPos : forall i : Ix, FormTop.tPos (OpenPS (U i)).
-Variable f : forall i : Ix, Cont.map (OpenSub (U i) (UPos i)) T.
+Variable f : forall i : Ix, Cont.map (OpenSub (U i)) T.
 Variable f_cont : forall i : Ix, Cont.t _ _ (f i).
 
 Inductive union_f : Cont.map S T :=
@@ -99,9 +98,8 @@ Variable covering : forall a : S, a <|[S] union (fun _ => True) union_f.
 (* This is all not exactly right. Need to make sure I saturate
   before taking intersections, saturate before taking
   inclusions of open maps... *)
-Variable UPos_int : forall i j, FormTop.tPos (OpenPS (U i ∩ U j)).
 Variable glue_maps : forall i j : Ix, 
-  Cont.map (OpenSub (U i ∩ U j) (UPos_int i j)) T.
+  Cont.map (OpenSub (U i ∩ U j)) T.
   
 Hypothesis gluing : forall i j : Ix,
   PreO.max (le := RelIncl) (f i) (f j) (glue_maps i j).

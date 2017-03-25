@@ -98,14 +98,12 @@ constructor; unfold CovC; intros.
     * rewrite l0. apply FormalSpace.refl. assumption.
 Qed.
 
-Hypothesis tPos : FormTop.tPos Closed.
-
 Definition ClosedSub : FormalSpace.t :=
   {| S := Closed
   ; isFT := t |}.
 
 Definition closed_incl : Cont.map ClosedSub A :=
-  incl CovC t tPos.
+  incl CovC t.
 
 Lemma closed_incl_cont : Cont.t ClosedSub A closed_incl.
 Proof.
@@ -124,24 +122,20 @@ Definition OpenPS : PreSpace.t :=
    ; PreSpace.Cov := CovO
   |}.
 
-Existing Instances pos.
-
 Theorem tOpen : FormTop.t OpenPS.
 Proof.
 constructor; simpl; unfold CovO; intros.
 - destruct X0. destruct d, d0. unfold In in i.
    subst. rewrite l. apply FormalSpace.refl. assumption.
-- destruct X1. destruct d, d0. unfold In in i. subst. 
-  apply positive. intros. 
-  apply (FormalSpace.trans (U := ⇓ (⇓ U ∩ ⇓ eq a0) ∩ ⇓ V)). 
-  Focus 2. intros. destruct X2.
-  destruct d, d0. destruct i.  destruct d, d0.
-  unfold In in *. subst.
+- destruct X1. destruct d, d0. unfold In in i. subst.
+  apply (FormalSpace.trans (U := (U ↓ eq a0) ↓ V)). 
+  Focus 2. intros a X2. destruct X2.
+  destruct d, d0. destruct i.  le_downH d0. destruct d.
   eapply X0. eassumption.
   split. exists a5. reflexivity. rewrite <- l3. assumption.
   exists a4; assumption. 
   apply FormalSpace.le_right. apply FormalSpace.le_right.
-  apply X. split. exists a1. reflexivity. assumption.
+  apply X. split. le_down. assumption.
   exists a2; assumption. apply FormalSpace.refl. reflexivity.
   rewrite l0. apply FormalSpace.refl. assumption.
 - destruct X1. destruct d, d0. unfold In in i.
@@ -161,15 +155,12 @@ constructor; simpl; unfold CovO; intros.
   assumption.
 Qed.
 
-
-Hypothesis tPosO : FormTop.tPos OpenPS.
-
 Definition OpenSub : FormalSpace.t :=
   {| S := OpenPS
   ; isFT := tOpen |}.
 
 Definition open_incl : Cont.map OpenSub A :=
-  incl CovO tOpen tPosO.
+  incl CovO tOpen.
 
 Lemma open_incl_cont : Cont.t OpenSub A open_incl.
 Proof.

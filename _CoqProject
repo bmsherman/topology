@@ -35,6 +35,7 @@ src/FormTopC/Sum.v
 src/FormTopC/Spaces/One.v
 src/FormTopC/Spaces/PosUR.v
 
+src/Algebra/Category.v
 src/Algebra/FrameC.v
 src/Algebra/Sublocale.v
 src/Algebra/SetsC.v
