@@ -23,7 +23,6 @@ Definition pointwise_rel@{P Q PQ} (f : Type@{P} -> Type@{Q} -> Type@{PQ})
   (U : Subset@{A P} A) (V : Subset@{A Q} A) : Type@{PQ}
   := forall a : A, f (U a) (V a).
 
-Set Printing Universes.
 Definition Intersection@{P Q PQ} : Subset@{A P} A -> Subset@{A Q} A -> Subset@{A PQ} A := pointwise_op prod.
 Definition Union@{P Q PQ} : Subset@{A P} A -> Subset@{A Q} A -> Subset@{A PQ} A := pointwise_op sum.
 
@@ -349,3 +348,10 @@ Qed.
 Lemma Intersection_Comm {A : Type} (P Q : Subset A)
   : P ∩ Q === Q ∩ P.
 Proof. firstorder. Qed.
+
+Lemma compose_assoc {A B C D} {F : A -> B -> Type} 
+  {G : B -> C -> Type} {H : C -> D -> Type}
+  : compose F (compose G H) ==== compose (compose F G) H.
+Proof.
+firstorder.
+Qed.

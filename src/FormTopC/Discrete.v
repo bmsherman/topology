@@ -1,4 +1,6 @@
 Require Import 
+  Prob.StdLib
+  Types.Setoid
   Coq.Classes.CMorphisms
   FormTopC.FormTop 
   FormTopC.Cont
@@ -6,8 +8,7 @@ Require Import
   FormTopC.FormalSpace
   Algebra.SetsC
   Algebra.OrderC
-  Algebra.PreOrder
-  Prob.StdLib.
+  Algebra.PreOrder.
 
 Set Universe Polymorphism.
 Set Asymmetric Patterns.

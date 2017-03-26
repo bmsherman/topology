@@ -1,4 +1,6 @@
 Require Import
+  Prob.StdLib
+  Algebra.Category
   CMorphisms
   Algebra.SetsC
   Algebra.OrderC
@@ -82,7 +84,7 @@ apply FormTop.monotone.
 Qed.
 
 Instance Cov_Proper :
-  Proper (le (PreSpace.S A) --> Included ==> arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) --> Included ==> Basics.arrow) (PreSpace.Cov A).
 Proof.
 apply FormTop.Cov_Proper.
 Qed.
@@ -91,7 +93,7 @@ Qed.
     shouldn't be needed. *)
 
 Instance Cov_Proper3  :
-  Proper (le (PreSpace.S A) ==> Included --> flip arrow) (PreSpace.Cov A).
+  Proper (le (PreSpace.S A) ==> Included --> flip Basics.arrow) (PreSpace.Cov A).
 Proof.
 apply FormTop.Cov_Proper3.
 Qed.
@@ -119,18 +121,37 @@ Ltac ejoin := repeat match goal with
   | [ H1 : ?Cov ?A ?a _, H2 : ?Cov ?A ?a _  |- ?Cov ?A ?a _ ] => join H1 H2
   end.
 
-
-
-Record cmap {LA LB : t} : Type :=
+Record cmap_car {LA LB : t} : Type :=
   { mp : Cont.map LA LB
   ; mp_ok : Cont.t LA LB mp
   }.
 
-Arguments cmap LA LB : clear implicits.
+Arguments cmap_car LA LB : clear implicits.
+
+Require Import Types.Setoid.
+
+Lemma Equivalence_on {A B} 
+  {R : crelation B}
+  {H : Equivalence R}
+  (f : A -> B)
+  : Equivalence (fun x y => R (f x) (f y)).
+Proof.
+econstructor; unfold Reflexive, Symmetric, Transitive; intros.
+- reflexivity.
+- symmetry; assumption.
+- etransitivity; eassumption.
+Qed.
+
+Definition cmap (LA LB : t) : Setoid.
+Proof.
+unshelve eapply (
+  {| sty := cmap_car LA LB
+   ; seq := fun f g => Cont.func_EQ (mp f) (mp g)
+  |}).
+apply Equivalence_on. 
+Defined.
 
 Infix "~~>" := cmap (at level 75) : loc_scope.
-
-
 
 Definition id {LA : t} : LA ~~> LA := 
   {| mp := Cont.id
@@ -144,23 +165,23 @@ Definition comp {LA LB LD : t}
 
 Infix "∘" := comp (at level 40, left associativity) : loc_scope.
 
-Definition LE_map {A B : t} (f g : Cont.map A B)
-  := Cont.func_LE (S := A) f g.
+Definition LE_map {A B : t} (f g : A ~~> B)
+  := Cont.func_LE (S := A) (mp f) (mp g).
 
-Definition EQ_map {A B : t} (f g : Cont.map A B)
-  := Cont.func_EQ (S := A) f g.
+Require Import Types.Setoid.
+Local Open Scope setoid.
 
-Lemma LE_map_antisym {A B : t} (f g : Cont.map A B)
-  : LE_map f g -> LE_map g f -> EQ_map f g.
+Lemma LE_map_antisym {A B : t} (f g : A ~~> B)
+  : LE_map f g -> LE_map g f -> f == g.
 Proof.
-unfold LE_map, EQ_map. intros.
+unfold LE_map. intros.
 apply Cont.func_LE_antisym; assumption.
 Qed.
 
-Lemma EQ_map_LE {A B : t} (f g : Cont.map A B)
-  : EQ_map f g -> LE_map f g.
+Lemma EQ_map_LE {A B : t} (f g : A ~~> B)
+  : f == g -> LE_map f g.
 Proof.
-unfold EQ_map, LE_map. intros.
+unfold LE_map. intros.
 apply Cont.func_EQ_LE. assumption.
 Qed.
 
@@ -174,44 +195,95 @@ constructor; unfold Reflexive, Transitive, LE_map;
 - etransitivity; eassumption.
 Qed.
 
-Instance EQ_map_Equivalence {A B} : Equivalence (@EQ_map A B).
-Proof.
-constructor; unfold Reflexive, Transitive, Symmetric, EQ_map;
-  intros.
-- reflexivity.
-- symmetry; assumption.
-- etransitivity; eassumption.
-Qed.
-
-Lemma LE_map_compose {A B C} {f f' : cmap A B}
-  {g g' : cmap B C}
-  : LE_map (mp f) (mp f') -> LE_map (mp g) (mp g')
-  -> LE_map (mp (g ∘ f)) (mp (g' ∘ f')).
+Lemma LE_map_compose {A B C} {f f' : A ~~> B}
+  {g g' : B ~~> C}
+  : LE_map f f' -> LE_map g g'
+  -> LE_map (g ∘ f) (g' ∘ f').
 Proof.
 unfold LE_map in *.
 intros. apply Cont.compose_proper_LE;
   try assumption. apply f'.
 Qed.
 
-Lemma EQ_map_compose {A B C} {f f' : cmap A B}
-  {g g' : cmap B C}
-  : EQ_map (mp f) (mp f') -> EQ_map (mp g) (mp g')
-  -> EQ_map (mp (g ∘ f)) (mp (g' ∘ f')).
+Lemma EQ_map_compose {A B C} {f f' : A ~~> B}
+  {g g' : B ~~> C}
+  : f == f' -> g == g'
+  -> g ∘ f == g' ∘ f'.
 Proof.
-intros. apply Cont.compose_proper.
-apply f. apply f'. assumption. assumption.
+intros. apply Cont.compose_proper;
+  (apply mp_ok || assumption).
 Qed.
 
-Lemma EQ_map_Sat {A B : t} {f g : Cont.map A B}
-  : EQ_map f g 
-  -> EQ_map (Cont.Sat (S := A) f) (Cont.Sat (S := A) g).
+Definition map_Sat {A B : t} (f : A ~~> B)
+  : A ~~> B.
 Proof.
-unfold EQ_map. eapply Cont.func_EQ_Sat.
-typeclasses eauto.
+unshelve eapply (
+  {| mp := Cont.Sat (S := A) (mp f) |}).
+apply Cont.t_Sat. apply mp_ok.
+Defined.
+
+Lemma map_Sat_EQ {A B : t} (f : A ~~> B)
+  : f == map_Sat f.
+Proof.
+apply Cont.Sat_idempotent.
 Qed.
 
-Definition eq_map {A B : t} (f g : A ~~> B)
-  : Type := EQ_map (mp f) (mp g).
+Lemma EQ_map_Sat {A B : t} {f g : A ~~> B}
+  : f == g 
+  -> map_Sat f == map_Sat g.
+Proof.
+eapply Cont.func_EQ_Sat.
+Qed.
+
+Local Open Scope Subset.
+
+Lemma Sat_Proper {A B : PreSpace.t}
+ `{FTA : FormTop.t A} {F_ G_ : Cont.map A B}
+  : F_ ==== G_ -> Cont.Sat F_ ==== Cont.Sat G_.
+Proof.
+intros H.
+apply RelIncl_RelSame; apply Cont.Sat_mono;
+  apply RelSame_RelIncl. assumption.
+symmetry. assumption.
+Qed.
+
+Lemma compose_assoc {A B C D} {F : A -> B -> Type} 
+  {G : B -> C -> Type} {H : C -> D -> Type}
+  : compose F (compose G H) ==== compose (compose F G) H.
+Proof.
+firstorder.
+Qed.
+
+Definition t_Cat : Category.
+Proof.
+unshelve eapply (
+  {| Ob := t
+  ; Category.arrow := cmap
+  ; Category.id := @id
+  ; Category.compose := @comp |}); intros.
+- apply EQ_map_compose; assumption.
+- simpl. unfold Cont.id.
+  unfold Cont.func_EQ, Cont.Sat.
+  intros b a. split; intros H.
+  + FormTop.etrans. destruct H as (x & l & m).
+    apply cov_singleton in l.
+    pose proof (Cont.cov (mp_ok f) (eq b) m l).
+    clear m l x.
+    eapply FormTop.monotone. 2: eassumption.
+    apply union_eq.
+  + eapply FormTop.monotone. 2: eassumption.
+    intros x fx.
+    unfold compose. exists b. split. reflexivity.
+    assumption.
+- apply Sat_Proper. simpl. intros b a.
+  split; intros H.
+  + destruct H as (? & ? & ?).
+    unfold Cont.id in *.
+    eapply (Cont.le_left (mp_ok f)); eassumption.
+  + exists a. split. assumption. unfold Cont.id. reflexivity.
+- simpl. unfold Cont.func_EQ.
+  apply Sat_Proper. apply compose_assoc.
+Defined.
 
 Require Import CRelationClasses.
 Lemma truncate_Equiv A (f : crelation A) :

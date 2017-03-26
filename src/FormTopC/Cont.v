@@ -90,8 +90,7 @@ Arguments pt F : clear implicits.
 Definition frame (F_ : map S T) (U : Subset T) : Subset S :=
   union U F_.
 
-Hypothesis FTS : FormTop.t S. 
-Hypothesis FTT : FormTop.t T.
+Context {FTS : FormTop.t S} {FTT : FormTop.t T}.
 
 Lemma Sat_mono2 (F_ : map S T) : F_ ⊑ Sat F_.
 Proof.
@@ -125,6 +124,31 @@ Proof.
 unfold func_EQ. intros.
 rewrite <- !Sat_idempotent. assumption.
 Qed.
+
+Lemma Cov_Sat : forall a U (F_ : map S T), 
+  a <|[S] union U F_ ->
+  a <|[S] union U (Sat F_).
+Proof.
+intros. eapply FormTop.Cov_Proper. reflexivity. 
+eapply union_monotone.
+eapply Sat_mono2. eassumption.
+Qed.
+
+Lemma t_Sat {F_ : map S T} (H : t F_)
+  : t (Sat F_).
+Proof.
+constructor; intros.
+- apply Cov_Sat. apply (here H).
+- unfold Sat in *. eapply FormTop.le_left; eassumption.
+- unfold Sat in X, X0. FormTop.ejoin. FormTop.etrans.
+  apply Cov_Sat. 
+  destruct X1 as [[ub Fub lb] [uc Fuc lc]].
+  apply (local H); (eapply (le_left H); [| eassumption]);
+    assumption.
+- unfold Sat in X. FormTop.etrans.
+  apply Cov_Sat. eapply (cov H); eassumption.
+Qed.
+
 
 Section DirectedSup.
 Context {Ix : Type} `{JoinLat.t Ix}.
@@ -282,7 +306,6 @@ FormTop.trans X1. destruct X1. destruct p.
   specialize (X1 _ _ _ f g). clear f.
   FormTop.etrans. destruct X1. 
   apply FormTop.refl. exists a1. split; assumption.
-  eassumption. eassumption.
 Qed.
 
 Lemma compose_proper : forall (F F' : map S T) (G G' : map T U),
@@ -351,24 +374,14 @@ Admitted.
 
 Existing Instances union_Proper FormTop.Cov_Proper.
 
-Lemma Cov_Sat : forall a U (F : Cont.map S (toPSL T)), 
-  a <|[S] union U F ->
-  a <|[S] union U (@Cont.Sat S (toPSL T) F).
-Proof.
-intros. 
-eapply (FormTop.Cov_Proper _ _). reflexivity. 
-  eapply union_monotone.
-  eapply (@Cont.Sat_mono2 S (toPSL T)). eassumption. assumption.
-Qed.
-
 Theorem converse : forall F, Cont.t S (toPSL T) F 
   -> t (@Cont.Sat S (toPSL T) F).
 Proof.
 intros. 
 constructor; intros.
-- apply Cov_Sat. apply (Cont.here X).
+- apply (Cont.Cov_Sat (T := toPSL T)). apply (Cont.here X).
 - unfold Cont.Sat in *. 
-  apply Cov_Sat. FormTop.ejoin. FormTop.etrans.
+  apply Cont.Cov_Sat. FormTop.ejoin. FormTop.etrans.
   destruct X2. destruct d, d0.
   apply (Cont.local X); eapply (Cont.le_left X). 
   apply l. assumption. apply l0. assumption.
@@ -384,7 +397,7 @@ constructor; intros.
   assumption. assumption.
   apply union_eq.
 - unfold Cont.Sat in X1. FormTop.etrans.
-  apply Cov_Sat. Cont.ecov.
+  apply (Cont.Cov_Sat (T := toPSL T)). Cont.ecov.
   apply FormTop.gle_infinity with _ j. assumption.
   intros. apply FormTop.glrefl. assumption.
 Qed.

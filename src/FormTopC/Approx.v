@@ -9,7 +9,8 @@ Require Import
   FormTopC.FormalSpace
   CMorphisms
   Prob.StdLib
-  FormTopC.Spaces.One.
+  FormTopC.Spaces.One
+  Types.Setoid.
 
 Set Universe Polymorphism.
 
@@ -75,4 +76,4 @@ Inductive Approx {A : t} {I : Type} :=
 
 Arguments Approx : clear implicits.
 
-Infix "⇓" := Approx (at level 40).
+Infix "⤋" := Approx (at level 40).
