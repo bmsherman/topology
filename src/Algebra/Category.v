@@ -160,14 +160,16 @@ Defined.
 
 Lemma Hom_Setoid_Iso {A A' B B' : U}
       (a : A ≅ A') (b : B ≅ B')
-  : ((A ~~> B) ≅ (A' ~~> B'))%setoid.
+  : Setoid.Iso (A ~~> B) (A' ~~> B').
 Proof.
 unshelve econstructor; simpl.
-- exact (fun f => to b ∘ f ∘ from a).
-- exact (fun f => from b ∘ f ∘ to a).
-- unfold Proper, respectful. intros x y H.
-  rewrite H; reflexivity.
-- unfold Proper, respectful. intros x y H.
+- unshelve econstructor. 
+  + exact (fun f => to b ∘ f ∘ from a).
+  + unfold Proper, respectful. intros x y H.
+    rewrite H; reflexivity.
+- unshelve econstructor. 
+  + exact (fun f => from b ∘ f ∘ to a).
+  + unfold Proper, respectful. intros x y H.
   rewrite H; reflexivity.
 - simpl. intros. rewrite !compose_assoc.
   rewrite (to_from b). rewrite compose_id_left.
@@ -180,3 +182,33 @@ unshelve econstructor; simpl.
 Defined.
 
 End Iso_Props.
+
+Record ExistsUnique {A : Setoid} {B : A -> Type} :=
+  { proj1_EU : A
+  ; proj2_EU : B proj1_EU
+  ; unique_EU : forall a : A, B a -> a == proj1_EU
+  }.
+
+Arguments ExistsUnique {A} B.
+
+Section Objects.
+Context {U : Category}.
+
+Record Is_Product {Ix : Type} {F : Ix -> U} {Prod : U} :=
+  { Product_proj : forall ix, Prod ~~> F ix
+  ; Product_least : forall (X : U) (projX : forall ix, X ~~> F ix),
+     ExistsUnique (fun univ : X ~~> Prod =>
+       forall ix, projX ix == Product_proj ix ∘ univ)
+  }.
+
+Arguments Is_Product {Ix} F Prod.
+
+Definition Is_Binary_Product (A B : U) : U -> Type :=
+  Is_Product (fun b : bool => if b then A else B).
+
+Definition Is_Terminal_Object : U -> Type :=
+  Is_Product (Empty_set_rect _).
+
+End Objects.
+
+Arguments Is_Product {U Ix} F Prod.

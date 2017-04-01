@@ -46,22 +46,25 @@ Fixpoint unsplay {A} (xs : list A)
   | x :: xs' => fun f ys => let (y, ys') := ys in unsplay _ (f y) ys'
   end.
   
+Require Import 
+  Types.Setoid
+  Algebra.Category
+  Algebra.Category.Cartesian
+  Algebra.Category.Monad.
 
-Require Import Spec.Category Spec.SMonad.
-Import Category.
 Local Open Scope morph.
 Local Open Scope obj.
 
 Section ContPL.
 
-Context {U : Type} `{CMC_Props U}.
+Context {U : Category} {CU : Cartesian U}.
 
 Fixpoint nprod (xs : list U) : U := match xs with
   | nil => unit
   | x :: xs' => x * nprod xs'
   end.
 
-Definition Map (As : list U) (B : U) : Type := nprod As ~~> B.
+Definition Map (As : list U) (B : U) : Setoid := nprod As ~~> B.
 Local Infix "~>" := Map (at level 80) : obj_scope.
 
 (** Convert a list of maps from Γ to different objects
@@ -74,14 +77,13 @@ Fixpoint parprod {Γ : U} {As : list U}
         ⟨y, parprod ys⟩
   end.
 
-
 Definition splay (Γ : U) (A : list U) (B : U) := hsplay A (fun t => Γ ~~> t) (Γ ~~> B).
 
 Definition prodsplay (Γ : U) (As : list U)
   : splay Γ As (nprod As) := splaymap parprod (Bhlist As (fun t => Γ ~~> t)).
 
 Definition Call {Γ : U} {A : list U} {B : U} (f : A ~> B) : splay Γ A B := 
-  splaymap (compose f) (prodsplay Γ A).
+  splaymap (Category.compose f) (prodsplay Γ A).
 
 Fixpoint instantiateContext (As : list U)
   : hlist As (fun t => nprod As ~~> t) := 
@@ -97,7 +99,7 @@ Definition makeFun (args : list U) {ret : U}
   := unsplay args (f (nprod args)) (instantiateContext args).
 
 Definition makeFun1 {arg ret : U} (f : forall Γ, Γ ~~> arg -> Γ ~~> ret) : arg ~~> ret
-  := f arg id.
+  := f arg Category.id.
 
 Context {M : U -> U} {MC : SMonad U M}.
 
@@ -138,7 +140,7 @@ Definition makeFun1E {Γ arg ret : U}
 
 End ContPL.
 
-Arguments Extend {_ _} _ _.
+Arguments Extend {_} _ _.
 
 Notation "'FUN' x .. y => t " :=
         (fun _ => fun x => .. (fun y => t%morph) .. )
@@ -159,7 +161,8 @@ Section Instances.
 
 (** Instances *)
 
-Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
+Context {U : Category} {CU : Cartesian U}.
+Local Open Scope setoid.
 
   Lemma lam_extensional {Γ A B} 
     (f g : forall Δ (ext : Extend Γ Δ), Δ ~~> A -> Δ ~~> B) : 
@@ -171,21 +174,37 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
 
   Require Import CMorphisms.
 
-  Global Instance ap0_Proper : forall Γ A : U, Proper (eq (B := A) ==> eq (A := Γ)) ap0.
+Definition ap0 {Γ A : U} (f : unit ~~> A)
+  : Γ ~~> A := f ∘ tt.
+
+Definition ap1 {Γ A B : U} (f : A ~~> B) (x : Γ ~~> A)
+  : Γ ~~> B := f ∘ x.
+
+Definition ap2 {Γ A B C : U} 
+  (f : A * B ~~> C) (x : Γ ~~> A) (y : Γ ~~> B) : Γ ~~> C := 
+  f ∘ ⟨x, y⟩.
+
+Definition ap3 {Γ A B C D : U} 
+  (f : A * B * C ~~> D) (x : Γ ~~> A) (y : Γ ~~> B) (z : Γ ~~> C) : Γ ~~> D := 
+  f ∘ ⟨⟨x, y⟩, z⟩.
+
+  Global Instance ap0_Proper : forall Γ A : U,  
+      Proper (seq (unit ~~> A) ==> seq (Γ ~~> A)) ap0.
   Proof.
   unfold Proper, respectful.
   intros. unfold ap0. rewrite X. reflexivity.
   Qed.
 
   Global Instance ap1_Proper : forall Γ A B : U, 
-   Proper (eq (B := A) ==> eq (B := B) ==> eq (A := Γ)) ap1.
+   Proper (seq (A ~~> B) ==> seq (Γ ~~> A) ==> seq (Γ ~~> B)) ap1.
   Proof.
   unfold Proper, respectful.
   intros. unfold ap1. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance ap2_Proper : forall Γ A B C : U, 
-   Proper (eq (B := A) ==> eq (B := B) ==> eq (B := C) ==> eq (A := Γ)) ap2.
+   Proper (seq (A * B ~~> C) ==> seq (Γ ~~> A) ==> 
+           seq (Γ ~~> B) ==> seq (Γ ~~> C)) ap2.
   Proof.
   unfold Proper, respectful.
   intros. unfold ap2. rewrite X, X0, X1. reflexivity.
@@ -194,28 +213,28 @@ Context {U : Type} {ccat : CCat U} {cmc : CMC U} {cmcprops : CMC_Props U}.
   Context {M : U -> U} {MC : SMonad U M} {MCProps : SMonad_Props (smd := MC)}.
 
   Global Instance bind_Proper {Γ A B} : 
-    Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) bind.
+    Proper (seq (_ ~~> M A) ==> seq (_ ~~> M B) ==> seq (Γ ~~> _)) bind.
   Proof.
   unfold Proper, respectful; intros.
   unfold bind. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance Bind_Proper {Γ A B} : 
-   Proper (eq (B := M A) ==> eq (B := M B) ==> eq (A := Γ)) Bind.
+   Proper (seq (_ ~~> M A) ==> seq (_ ~~> M B) ==> seq (Γ ~~> _)) Bind.
   Proof.
   unfold Proper, respectful; intros.
   unfold Bind. rewrite X, X0. reflexivity.
   Qed.
 
   Global Instance Ret_Proper {Γ A} :
-   Proper (eq (B := A) ==> eq (A := Γ)) Ret.
+   Proper (seq (_ ~~> A) ==> seq (Γ ~~> _)) Ret.
   Proof.
   unfold Proper, respectful; intros. unfold Ret. 
   rewrite X. reflexivity.
   Qed.
 
   Global Instance Lift_Proper : forall {Γ Δ A : U} {ext : Extend Γ Δ}, 
-    Proper (eq ==> eq) (Lift (Γ := Γ) (Δ := Δ) (A := A)).
+    Proper (seq _ ==> seq _) (Lift (Γ := Γ) (Δ := Δ) (A := A)).
   Proof.
   intros. unfold Proper, respectful. intros. unfold Lift.
   apply compose_Proper. assumption. reflexivity.

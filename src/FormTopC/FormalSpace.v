@@ -5,6 +5,7 @@ Require Import
   Algebra.SetsC
   Algebra.OrderC
   Algebra.PreOrder
+  Types.Setoid
   FormTopC.FormTop
   FormTopC.Cont.
 
@@ -159,7 +160,7 @@ Definition id {LA : t} : LA ~~> LA :=
 
 Definition comp {LA LB LD : t} 
   (f : LB ~~> LD) (g : LA ~~> LB) : LA ~~> LD :=
-  {| mp := compose (mp f) (mp g) 
+  {| mp := SetsC.compose (mp f) (mp g) 
   ; mp_ok := Cont.t_compose (mp g) (mp f) (mp_ok g) (mp_ok f)
   |}.
 
@@ -168,7 +169,6 @@ Infix "∘" := comp (at level 40, left associativity) : loc_scope.
 Definition LE_map {A B : t} (f g : A ~~> B)
   := Cont.func_LE (S := A) (mp f) (mp g).
 
-Require Import Types.Setoid.
 Local Open Scope setoid.
 
 Lemma LE_map_antisym {A B : t} (f g : A ~~> B)
@@ -245,13 +245,6 @@ intros H.
 apply RelIncl_RelSame; apply Cont.Sat_mono;
   apply RelSame_RelIncl. assumption.
 symmetry. assumption.
-Qed.
-
-Lemma compose_assoc {A B C D} {F : A -> B -> Type} 
-  {G : B -> C -> Type} {H : C -> D -> Type}
-  : compose F (compose G H) ==== compose (compose F G) H.
-Proof.
-firstorder.
 Qed.
 
 Definition t_Cat : Category.

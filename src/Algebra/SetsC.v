@@ -30,8 +30,6 @@ Inductive Inhabited@{P} {U : Subset@{A P} A} :=
   Inhabited_intro : forall a : A, In U a -> Inhabited.
 End Defns.
 
-Axiom undefined : forall A, A.
-
 Definition Included@{A P} {A} : 
   Subset@{A P} A -> Subset@{A P} A -> Type@{max(A,P)} := 
   fun U V => forall a : A, U a -> V a.

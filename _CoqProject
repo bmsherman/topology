@@ -43,7 +43,13 @@ src/Algebra/OrderC.v
 src/Algebra/PreOrder.v
 src/Algebra/FreeLattice.v
 
-# src/Language/ContPL.v
+src/Algebra/Category/Type.v
+src/Algebra/Category/Setoid.v
+src/Algebra/Category/Functor.v
+src/Algebra/Category/Cartesian.v
+src/Algebra/Category/Monad.v
+
+src/Language/ContPL.v
 # src/Language/ContPLProps.v
 
 src/clement/SmallPowers.v
