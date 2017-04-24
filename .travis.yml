@@ -1,0 +1,50 @@
+language: generic
+
+sudo: required
+
+dist: trusty
+
+addons:
+  apt:
+    sources:
+      - avsm
+    packages:
+      - opam
+
+cache:
+  apt: true
+  directories:
+    - $HOME/.opam
+
+env:
+#  - COQ_VERSION="8.6"
+  - COQ_VERSION="8.6.dev"
+  - COQ_VERSION="dev"
+
+#matrix:
+#  fast_finish: true
+#  allow_failures:
+#    - env: COQ_VERSION="8.6.dev"
+#    - env: COQ_VERSION="dev"
+
+before_install:
+  - export NJOBS=2
+  - if ! [ -e .opam ]; then opam init -j ${NJOBS} --compiler=system -n -y; fi
+  - opam switch coq-${COQ_VERSION} || opam switch install coq-${COQ_VERSION} --alias-of=system
+  - opam switch coq-${COQ_VERSION}
+  - eval $(opam config env)
+#  - opam config var root
+#  - opam install -j ${NJOBS} -y camlp5 ocamlfind
+  - opam list
+  - opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev || true
+  - opam repo add coq-core-dev https://coq.inria.fr/opam/core-dev || true
+  - source ./etc/ci/travis_keep_alive.sh
+  - opam install -j ${NJOBS} -y coq.${COQ_VERSION} coq-corn
+
+before_script:
+  - uname -a
+
+script: make TIMED=1 -j2
+
+after_success:
+ - kill $PID_KEEP_ALIVE
