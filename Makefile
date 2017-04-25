@@ -1,4 +1,4 @@
-.PHONY: coq clean
+.PHONY: coq clean corn
 
 COQPATH?="${CURDIR}/dependencies"
 export COQPATH
