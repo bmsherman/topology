@@ -1,5 +1,4 @@
 -R src/ Prob
--R dependencies/CoRN CoRN
 
 src/Types/Iso.v
 src/Types/Finite.v
