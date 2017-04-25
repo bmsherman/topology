@@ -1,4 +1,4 @@
-.PHONY: coq clean
+.PHONY: coq clean corn
 
 coq: Makefile.coq
 	$(MAKE) -f Makefile.coq
