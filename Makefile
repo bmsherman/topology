@@ -1,4 +1,7 @@
-.PHONY: coq clean
+.PHONY: coq clean corn
+
+COQPATH?="${CURDIR}/dependencies"
+export COQPATH
 
 coq: Makefile.coq
 	$(MAKE) -f Makefile.coq
@@ -6,8 +9,8 @@ coq: Makefile.coq
 Makefile.coq: Makefile _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 
-corn: corn/
-	cd corn && $(MAKE)
+corn: dependencies/CoRN
+	$(MAKE) -C dependencies/CoRN
 
 clean:: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
