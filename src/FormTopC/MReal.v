@@ -6,10 +6,10 @@ Require Import
   Numbers.QPosFacts
   CoRN.metric2.Metric
   FormTopC.Metric
-  QposMinMax
+  CoRN.model.totalorder.QposMinMax
   QArith.Qminmax
-  COrdAbs
-  Qordfield
+  CoRN.algebra.COrdAbs
+  CoRN.model.ordfields.Qordfield
   CoRN.model.metric2.Qmetric
   CoRN.metric2.ProductMetric
   Algebra.SetsC.

@@ -166,12 +166,13 @@ intros. unfold Proper, respectful.
 firstorder.
 Qed.
 
-Instance Included_Reflexive@{A P} : forall U, Reflexive (@Included@{A P} U).
+Set Printing Universes.
+Instance Included_Reflexive@{A P AP'} : forall U, Reflexive@{AP' AP'} (@Included@{A P} U).
 Proof.
 intros. unfold Reflexive. firstorder.
 Qed.
 
-Instance Included_Transitive@{A P} : forall U, Transitive (@Included@{A P} U).
+Instance Included_Transitive@{A P AP'} : forall U, Transitive@{AP' AP'} (@Included@{A P} U).
 Proof.
 intros. unfold Transitive. firstorder.
 Qed.
@@ -195,7 +196,8 @@ intros. constructor; unfold Reflexive, Transitive, RelIncl; intros.
 - transitivity (y a); auto.
 Qed.
 
-Instance Same_set_Equivalence@{A P AP} : forall U, Equivalence (@Same_set@{A P AP} U).
+Instance Same_set_Equivalence@{A P AP AP'} : 
+  forall U, Equivalence@{AP' AP} (@Same_set@{A P AP} U).
 Proof. intros. unfold Same_set. constructor;
   unfold Reflexive, Symmetric, Transitive; firstorder.
 Qed.

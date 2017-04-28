@@ -54,7 +54,7 @@ Definition IB@{} : PreSpace.t@{A P P} :=
    ; PreSpace.Cov := Cov |}.
 
 (** This axiom set is localized. *)
-Local Instance loc@{} : FormTop.localized IBInd.
+Local Instance loc@{} : FormTop.localized@{A P P} IBInd.
 Proof.
 unfold FormTop.localized. intros. induction i.
 Qed.

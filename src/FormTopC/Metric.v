@@ -236,9 +236,10 @@ apply gall_Pos. simpl. intros. destruct i.
   reflexivity.
 Qed.
 
-Local Instance MPos@{API'} : FormTop.gtPos MetricPS
-  := MPos_MUniv@{API' API' API' P P P P P API' P P P P P}.
+Set Printing Universes.
 
+Local Instance MPos@{API'} : FormTop.gtPos MetricPS
+  := MPos_MUniv@{API' API' P P P P P API' P P P P P}.
 
 Definition Metric@{API'} : IGt@{A P I API'} :=
   {| IGS := MetricPS

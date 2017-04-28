@@ -241,8 +241,6 @@ Definition toPSUL@{} : PreSpace.t@{A P I} :=
    ; PreSpace.Cov := GCov
   |}.
 
-Universe API.
-
 Context {PO : PreO.t@{A P} (le A)}.
 
 Lemma Lmore_MUniv a U : GCov a U -> GCovL a U.
@@ -256,7 +254,7 @@ intros aU. induction aU.
   assumption.
 Qed.
 
-Definition Lmore@{} a U : GCov a U -> GCovL a U
+Definition Lmore@{API} a U : GCov a U -> GCovL a U
   := Lmore_MUniv@{API} a U.
 
 Lemma gmonotone_MUniv (a : A) (U V : Open@{A P} A) :
@@ -269,7 +267,7 @@ intros UV aU. induction aU.
 - eapply ginfinity. eauto.
 Qed.
 
-Definition gmonotone@{} (a : A) (U V : Open@{A P} A) :
+Definition gmonotone@{API} (a : A) (U V : Open@{A P} A) :
   U ⊆ V -> GCov a U -> GCov a V
   := gmonotone_MUniv@{API} a U V.
 
@@ -282,23 +280,29 @@ intros UV aU. induction aU.
 - eapply gle_infinity. eassumption. intros. apply X; eassumption.
 Qed.
 
-Definition gmonotoneL@{} a (U V : Open A) :
+Definition gmonotoneL@{API} a (U V : Open A) :
   U ⊆ V -> GCovL a U -> GCovL a V
   := gmonotoneL_MUniv@{API} a U V.
 
 Ltac equivalence := repeat (reflexivity || assumption || symmetry).
 
+Class localized@{} := 
+  IsLocalized : forall (a c : A),
+  a <= c -> forall (i : PreISpace.Ix _ c),
+  { j : PreISpace.Ix _ a  & 
+  (PreISpace.C _ a j ⊆ eq a ↓ PreISpace.C _ c i)}%type.
+
 Lemma gsubset_equiv_MUniv (U V : Open A) : U === V
   -> forall a, GCov a U <--> GCov a V.
 Proof.
 intros UV a. split; apply gmonotone; intros; 
-  apply (Same_set_Included@{A P API});
+  apply (Same_set_Included);
   equivalence.
 Qed.
 
-Definition gsubset_equiv (U V : Open A) : U === V
+Definition gsubset_equiv@{API} (U V : Open A) : U === V
   -> forall a, GCov a U <--> GCov a V
-  := gsubset_equiv_MUniv@{API API} U V.
+  := gsubset_equiv_MUniv@{API API API} U V.
 
 Class gtPos@{} :=
   { gPos : Subset@{A P} A
@@ -332,12 +336,6 @@ unshelve econstructor.
   exists x. split. assumption. auto.
 - simpl. intros. auto.
 Qed.
-
-Class localized@{} := 
-  IsLocalized : forall (a c : A),
-  a <= c -> forall (i : PreISpace.Ix _ c),
-  { j : PreISpace.Ix _ a  & 
-  (PreISpace.C _ a j ⊆ eq a ↓ PreISpace.C _ c i)}%type.
 
 Context {loc : localized}. 
 
@@ -501,7 +499,7 @@ Context {PO : PreO.t@{A P} (le A)}.
 
 
 
-Lemma Llocalized_UMore : localized@{A P I API} Localized.
+Lemma Llocalized_UMore : localized@{A P I} Localized.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *.
