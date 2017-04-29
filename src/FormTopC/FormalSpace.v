@@ -54,7 +54,7 @@ Context {A : t}.
 
 Definition refl a U : In U a -> a <|[A] U.
 Proof.
-auto using FormTop.refl.
+intros. apply FormTop.refl. assumption.
 Qed.
 
 Definition le_left (a b : S A) (U : Open A)
@@ -75,7 +75,7 @@ Definition le_right {a U V} :
   a <|[A] U -> a <|[A] V ->
   a <|[A] U ↓ V.
 Proof.
-auto using FormTop.le_right.
+auto using @FormTop.le_right with typeclass_instances.
 Qed.
 
 Definition monotone (U V : Subset (S A))
