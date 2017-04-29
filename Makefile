@@ -5,7 +5,7 @@ COQPATH?="${CURDIR}/dependencies"
 export COQPATH
 
 coq: Makefile.coq
-	COQPATH="$(COQPATH)" $(MAKE) -f Makefile.coq
+	COQPATH=$(COQPATH) $(MAKE) -f Makefile.coq
 
 Makefile.coq: Makefile _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
