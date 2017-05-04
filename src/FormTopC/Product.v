@@ -45,7 +45,9 @@ Definition ProdPO@{} : PreOrder@{A P} :=
 Inductive Ix'@{} : ProdPO -> Type@{I} := 
   | Slice : forall {x : SomeOpen X}, PreISpace.Ix (X (SOIx x)) (SOOpen x) -> 
       forall xs, Ix' (ML.inj x ∧ xs)
-  | DimUnion : forall xs, Ix -> Ix' xs.
+  | DimUnion : forall xs, Ix -> Ix' xs
+  | ProdStable : forall {ix : Ix} (a a' : X ix) xs, 
+    Ix' (MkSomeOpen ix a :: MkSomeOpen ix a' :: xs).
 
 Arguments Ix' : clear implicits.
 
@@ -59,6 +61,7 @@ Definition C'@{} : forall (p : ProdPO), Ix' p -> Subset@{A P} ProdPO :=
   fun p ix' => match ix' with
   | Slice x ax xs => ExtSubset xs (PreISpace.C _ _ ax)
   | DimUnion xs ix => @ExtSubset xs ix (fun _ => True)
+  | ProdStable ix a a' xs => @ExtSubset xs ix (eq a ↓ eq a')
   end.
 
 Definition Prod@{} : PreISpace.t@{A P I} :=
@@ -87,34 +90,8 @@ induction X0. induction S_holds.
 simpl in *.
 specialize (locX aix bix l i).
 destruct locX.
-Admitted.
+Abort.
 
-(*
-Lemma factors (xs : S')
-  (U : forall x, member x xs -> Open (X (SOIx x)))
-  (Cov : forall x (H : member x xs), SOOpen x <|[@toPreSpaceUL (X (SOIx x))] U x H)
-  : xs <|[@toPreSpaceUL Prod] (fun p => forall x (H : member x xs), 
-    Some   p).
-  (Cov : Each (fun x => ) xs
- ( : a <|[@toPreSpaceUL X] U -> b <|[@toPreSpaceUL Y] V -> 
-  (a, b) <|[@toPreSpaceUL Prod] (fun p => let (a', b') := p in U a' * V b')%type.
-Proof.
-intros H H0. induction H.
-- induction H0.
-  + apply FormTop.grefl. split; assumption.
-  + eapply FormTop.gle_left. 2:apply IHGCov.
-    split; simpl. apply PreO.le_refl. assumption.
-  + apply (FormTop.ginfinity) with (PRight i a).
-    intros. simpl in X0. destruct u0. destruct X1. 
-    subst. apply X0. assumption.
-- apply FormTop.gle_left with (b0, b). split; simpl.
-  assumption. reflexivity.
-  apply IHGCov.
-- apply (FormTop.ginfinity) with (PLeft i b).
-  intros. simpl in X1. destruct u. destruct X1. 
-  subst. apply X0. assumption.
-Qed.
-*)
 
 Definition Prodt : IGt :=
   {| IGS := Prod
@@ -140,6 +117,24 @@ eexists. unfold In. auto.
 reflexivity.
 Qed.
 
+  (* Hmm, this looks like I need to add rule 2 
+     from page xv of
+     https://www.cs.bham.ac.uk/~sjv/InfiniteTych.pdf.
+     But since I don't require my axiom sets to be localized,
+     perhaps that rule is actually just admissible?
+
+     NO, in fact it should be enough to use rule 3, which should
+     generalize to any covering a <| U, taking
+     U = eq b ↓ eq c, so
+     a <| eq b ↓ eq c
+  *)
+Lemma prod_stable (ix : Ix) (a a' : X ix) (xs : Prod) :
+  (MkSomeOpen ix a :: MkSomeOpen ix a' :: xs)
+  <|[Prodt] ExtSubset xs (eq a ↓ eq a').
+Proof.
+apply (@ig_ax_cov Prodt _ (@ProdStable ix a a' xs)).
+Qed.
+
 Lemma ext_le_cov (ix : Ix) {aix : X ix} 
   {U : Open (X ix)} (Hc : aix <|[X ix] U) (xs : Prodt)
   : (ML.inj (MkSomeOpen ix aix) ∧ xs) <|[Prodt] ExtSubset xs U.
@@ -157,28 +152,18 @@ induction Hc.
   eapply H; clear H. apply ML.le_cons.
   econstructor. eassumption. reflexivity.
   intros. destruct X1.
-  le_downH d.  destruct d0. induction i0. simpl in l0.
-  (* I think this won't go through without rule 2 from 
-   page xv. *)
-Admitted.
-
-
-  (* Hmm, this looks like I need to add rule 2 
-     from page xv of
-     https://www.cs.bham.ac.uk/~sjv/InfiniteTych.pdf.
-     But since I don't require my axiom sets to be localized,
-     perhaps that rule is actually just admissible?
-
-     NO, in fact it should be enough to use rule 3, which should
-     generalize to any covering a <| U, taking
-     U = eq b ↓ eq c, so
-     a <| eq b ↓ eq c
-  *)
-Lemma prod_stable (ix : Ix) (a a' : X ix) (xs : Prod) :
-  (MkSomeOpen ix a :: MkSomeOpen ix a' :: xs)
-  <|[Prodt] ExtSubset xs (eq a ↓ eq a').
-Proof.
-Admitted.
+  le_downH d.
+  destruct d0. induction i0. simpl in c.
+  apply FormTop.glle_left with
+     (ML.inj (MkSomeOpen ix a) ∧ ML.inj (MkSomeOpen ix u0) ∧ xs).
+  apply ML.le_cons_r.
+  rewrite d. apply ML.bmeet_le_l. apply l0.
+  eapply (@FormTop.trans Prodt). typeclasses eauto. 
+  apply prod_stable. simpl.
+  intros. induction X1. apply X0.
+  destruct c0. le_downH d1.
+  split. assumption. exists u0; assumption. 
+Qed.
 
 Lemma t_proj (ix : Ix) : Cont.t Prodt (X ix) (proj ix).
 Proof.
@@ -233,6 +218,14 @@ Lemma univ_app {a b c}
   : univ (b ∧ c) a.
 Proof.
 apply Each_app; split; assumption.
+Qed.
+
+Lemma univ_le_right {a b c}
+  : a <=[Prodt] b -> univ a c -> univ b c.
+Proof.
+intros. unshelve eapply (ML.Each_monotone _ _ _ _ X0 X1).
+simpl. intros.  destruct X2.
+eapply (IGCont.le_right (f_cont ix)); eassumption.
 Qed.
 
 Lemma univ_cov (a : A)
@@ -302,6 +295,32 @@ econstructor; intros.
       eapply (IGCont.le_left (f_cont i)).  2: eassumption. 
       assumption. 
     * eapply univ_le_left. 2: eassumption. assumption.
+  + simpl. 
+    pose proof (IGCont.local (f_cont ix) a a0 a').
+    pose proof (univ_le_right X0 X1) as X3.
+    assert (univ xs a) as X4.
+    eapply univ_le_right. 2: eapply X3.
+    apply ML.FSubset_le.
+    apply (FSubset_app_r [MkSomeOpen ix a0; MkSomeOpen ix a']).
+    specialize (X2 (X3 _ here) (X3 _ (there here))).
+    pose proof (univ_cov _ _ X1).
+    FormTop.ejoin.
+    eapply FormTop.trans. eassumption. clear X6.
+    intros. apply FormTop.refl.
+    destruct X2. destruct d, d0.
+    destruct i, i0. unfold In in i0. le_downH i0.
+    exists (ML.inj (MkSomeOpen ix a4) ∧ a5).  split. le_down. 
+    rewrite ML.bmeet_le_r.  assumption.
+    eexists.  econstructor. eassumption.
+    apply ML.le_cons. reflexivity. rewrite i0.
+    rewrite X0.
+    apply ML.FSubset_le.
+    apply (FSubset_app_r [MkSomeOpen ix a0; MkSomeOpen ix a']).
+    apply univ_app. 
+    eapply univ_le_left. apply l.
+    apply Each_singleton. simpl. assumption.
+    eapply univ_le_left. apply l0.
+    assumption.
 Qed.
 
 
