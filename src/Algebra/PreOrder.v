@@ -173,6 +173,16 @@ Qed.
 Ltac le_down := rewrite <- !le_down1.
 Ltac le_downH H := rewrite <- !le_down1 in H.
 
+Lemma downset_eq_le {A : PreOrder} 
+  {PO : PreO.t (le A)}
+(a b : A) :
+  a <=[A] b -> 
+  ⇓ eq a ⊆ ⇓ eq b.
+Proof.
+intros Hle x H.
+le_downH H.
+le_down. etransitivity; eassumption.
+Qed.
 
 Definition BProdPO (A B : PreOrder) : PreOrder :=
   {| PO_car := A * B
