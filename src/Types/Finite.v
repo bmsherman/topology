@@ -389,11 +389,7 @@ Theorem eq_dec {A : Type} : T A -> forall a b : A, {a = b} + {a <> b}.
 Proof.
 intros finite.
 induction finite; intros; try (decide equality).
-- destruct a, b. 
-  + destruct t, t0. auto. 
-  + destruct t. right. congruence.
-  + destruct t. right. congruence.
-  + pose proof (IHfinite a a0). destruct H; [left | right]; congruence.
+- destruct t, a0. auto.
 - eapply Iso.eq_dec; eassumption.
 Qed.
 
