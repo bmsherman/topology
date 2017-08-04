@@ -388,7 +388,8 @@ Defined.
 Theorem eq_dec {A : Type} : T A -> forall a b : A, {a = b} + {a <> b}.
 Proof.
 intros finite.
-induction finite; intros; try (decide equality).
+induction finite; intros.
+- contradiction.
 - destruct a, b. 
   + destruct t, t0. auto. 
   + destruct t. right. congruence.
