@@ -239,7 +239,7 @@ Qed.
 Set Printing Universes.
 
 Local Instance MPos@{API'} : FormTop.gtPos MetricPS
-  := MPos_MUniv@{API' API' P P P P P API' P P P P P}.
+  := MPos_MUniv@{API' API' API'}.
 
 Definition Metric@{API'} : IGt@{A P I API'} :=
   {| IGS := MetricPS
