@@ -25,7 +25,7 @@ Global Instance IGT_PreO@{A P I API}
   (X : IGt@{A P I API}) : PreO.t (le X) := IGPO X.
 Global Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
   FormTop.t (toPSL (IGS X)) :=
-  FormTop.GCovL_formtop@{A P I API API'} _.
+  FormTop.GCovL_formtop@{A P I API} _.
 
 
 Record t@{A P I} : Type :=

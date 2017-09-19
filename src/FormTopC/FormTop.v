@@ -557,10 +557,7 @@ eapply t_Proper@{A P I API API}. 2: apply Localized_formtop.
 symmetry. apply cov_equiv.
 Qed.
 
-Universes API'.
-
 Global Instance GCovL_formtop: t (@toPSL@{A P I} A)
-  := GCovL_formtop_UMore@{API API API'}.
-
+  := GCovL_formtop_UMore@{API API}.
 
 End Localize.
