@@ -238,8 +238,10 @@ Qed.
 
 Set Printing Universes.
 
+(* In Coq >= 8.8 more useless universes get pruned. *)
 Local Instance MPos@{API'} : FormTop.gtPos MetricPS
-  := MPos_MUniv@{API' API' API'}.
+  := ltac:(first [exact MPos_MUniv@{API' API' API'}|
+                  exact MPos_MUniv@{API' API' P P P P P API' P P P P P}]).
 
 Definition Metric@{API'} : IGt@{A P I API'} :=
   {| IGS := MetricPS

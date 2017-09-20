@@ -557,7 +557,10 @@ eapply t_Proper@{A P I API API}. 2: apply Localized_formtop.
 symmetry. apply cov_equiv.
 Qed.
 
+Universes API'.
+(* In Coq >= 8.8 more useless universes get pruned. *)
 Global Instance GCovL_formtop: t (@toPSL@{A P I} A)
-  := GCovL_formtop_UMore@{API API}.
+  := ltac:(first [exact GCovL_formtop_UMore@{API API}|
+                  exact GCovL_formtop_UMore@{API API API'}]).
 
 End Localize.
