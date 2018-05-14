@@ -302,7 +302,7 @@ Qed.
 
 Definition gsubset_equiv@{API} (U V : Open A) : U === V
   -> forall a, GCov a U <--> GCov a V
-  := gsubset_equiv_MUniv@{API API API} U V.
+  := gsubset_equiv_MUniv@{API API API API} U V.
 
 Class gtPos@{} :=
   { gPos : Subset@{A P} A
@@ -514,7 +514,7 @@ assumption. reflexivity.
 Qed.
 
 Instance Llocalized@{} : localized Localized :=
-  Llocalized_UMore@{API API API}.
+  Llocalized_UMore@{API API API API}.
 
 Theorem cov_equiv_UMore : GCovL A ==== GCov Localized.
 Proof.
