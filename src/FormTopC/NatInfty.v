@@ -179,7 +179,7 @@ Proof.
 destruct (IGCont.pt_here ptx).
 induction a.
 Focus 2. apply Now. apply tt.
-generalize dependent n. cofix.
+generalize dependent n. cofix pt_to_Partial.
 intros.
 pose proof (IGCont.pt_cov ptx 
   (MoreThan n) (MoreThan n) (IxNext n) 
