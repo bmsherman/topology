@@ -23,9 +23,9 @@ Record IGt@{A P I API} : Type :=
 
 Global Instance IGT_PreO@{A P I API} 
   (X : IGt@{A P I API}) : PreO.t (le X) := IGPO X.
-Global Instance IGTFT@{A P I API API'} (X : IGt@{A P I API}) : 
+Global Instance IGTFT@{A P I API} (X : IGt@{A P I API}) :
   FormTop.t (toPSL (IGS X)) :=
-  FormTop.GCovL_formtop@{A P I API API'} _.
+  FormTop.GCovL_formtop@{A P I API} _.
 
 
 Record t@{A P I} : Type :=
@@ -39,9 +39,9 @@ Local Open Scope FT.
 Delimit Scope loc_scope with loc.
 Local Open Scope loc.
 
-Definition fromIGt@{A P I API API'} (A : IGt@{A P I API}) : t@{A P I} :=
+Definition fromIGt@{A P I API} (A : IGt@{A P I API}) : t@{A P I} :=
   {| S := toPSL (IGS A)
-   ; isFT := IGTFT@{A P I API API'} A|}.
+   ; isFT := IGTFT@{A P I API} A|}.
 
 Coercion fromIGt : IGt >-> t.
 
