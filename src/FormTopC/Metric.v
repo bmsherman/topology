@@ -222,7 +222,7 @@ destruct (Qpos_smaller q) as [q' qq'].
 exists (m, q'). apply lt_ball_center. assumption.
 Qed. 
 
-Lemma MPos_MUniv : FormTop.gtPos MetricPS.
+Lemma MPos@{} : FormTop.gtPos MetricPS.
 Proof.
 apply gall_Pos. simpl. intros. destruct i.
 - simpl. exists (fst a, QposMinMax.Qpos_min q (snd a)).
@@ -235,13 +235,7 @@ apply gall_Pos. simpl. intros. destruct i.
   exists x. simpl. eapply lt_le_trans; eassumption.
   reflexivity.
 Qed.
-
-Set Printing Universes.
-
-(* In Coq >= 8.8 more useless universes get pruned. *)
-Local Instance MPos@{API'} : FormTop.gtPos MetricPS
-  := ltac:(first [exact MPos_MUniv@{API' API' API'}|
-                  exact MPos_MUniv@{API' API' P P P P P API' P P P P P}]).
+Local Existing Instance MPos.
 
 Definition Metric@{API'} : IGt@{A P I API'} :=
   {| IGS := MetricPS
