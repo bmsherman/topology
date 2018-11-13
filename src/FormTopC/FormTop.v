@@ -243,7 +243,7 @@ Definition toPSUL@{} : PreSpace.t@{A P I} :=
 
 Context {PO : PreO.t@{A P} (le A)}.
 
-Lemma Lmore@{} a U : GCov a U -> GCovL a U.
+Lemma Lmore_MUniv a U : GCov a U -> GCovL a U.
 Proof.
 intros aU. induction aU.
 - apply glrefl. assumption.
@@ -254,7 +254,10 @@ intros aU. induction aU.
   assumption.
 Qed.
 
-Lemma gmonotone@{} (a : A) (U V : Open@{A P} A) :
+Definition Lmore@{API} a U : GCov a U -> GCovL a U
+  := Lmore_MUniv@{API} a U.
+
+Lemma gmonotone_MUniv (a : A) (U V : Open@{A P} A) :
   U ⊆ V -> GCov a U -> GCov a V.
 Proof.
 intros UV aU. induction aU.
@@ -264,7 +267,11 @@ intros UV aU. induction aU.
 - eapply ginfinity. eauto.
 Qed.
 
-Lemma gmonotoneL@{} a (U V : Open A) :
+Definition gmonotone@{API} (a : A) (U V : Open@{A P} A) :
+  U ⊆ V -> GCov a U -> GCov a V
+  := gmonotone_MUniv@{API} a U V.
+
+Lemma gmonotoneL_MUniv a (U V : Open A) :
   U ⊆ V -> GCovL a U -> GCovL a V.
 Proof.
 intros UV aU. induction aU.
@@ -272,6 +279,10 @@ intros UV aU. induction aU.
 - eapply glle_left. eassumption. apply IHaU. assumption.
 - eapply gle_infinity. eassumption. intros. apply X; eassumption.
 Qed.
+
+Definition gmonotoneL@{API} a (U V : Open A) :
+  U ⊆ V -> GCovL a U -> GCovL a V
+  := gmonotoneL_MUniv@{API} a U V.
 
 Ltac equivalence := repeat (reflexivity || assumption || symmetry).
 
@@ -291,7 +302,7 @@ Qed.
 
 Definition gsubset_equiv@{API} (U V : Open A) : U === V
   -> forall a, GCov a U <--> GCov a V
-  := gsubset_equiv_MUniv@{API API} U V.
+  := gsubset_equiv_MUniv@{API API API} U V.
 
 Class gtPos@{} :=
   { gPos : Subset@{A P} A
@@ -488,7 +499,7 @@ Context {PO : PreO.t@{A P} (le A)}.
 
 
 
-Lemma Llocalized@{} : localized@{A P I} Localized.
+Lemma Llocalized_UMore : localized@{A P I} Localized.
 Proof.
 unfold localized.
 intros. destruct i. simpl in *.
@@ -501,7 +512,9 @@ apply Included_impl. intros. subst.
 split. exists x; reflexivity. exists c. reflexivity.
 assumption. reflexivity.
 Qed.
-Existing Instance Llocalized.
+
+Instance Llocalized@{} : localized Localized :=
+  Llocalized_UMore@{API API API}.
 
 Theorem cov_equiv_UMore : GCovL A ==== GCov Localized.
 Proof.
@@ -538,12 +551,16 @@ Proof.
 apply GCov_formtop.
 Qed.
 
-Theorem GCovL_formtop@{} : t (toPSL@{A P I} A).
+Theorem GCovL_formtop_UMore : t (toPSL@{A P I} A).
 Proof.
 eapply t_Proper@{A P I API API}. 2: apply Localized_formtop.
 symmetry. apply cov_equiv.
 Qed.
 
-Global Existing Instance GCovL_formtop.
+Universes API'.
+(* In Coq >= 8.8 more useless universes get pruned. *)
+Global Instance GCovL_formtop: t (@toPSL@{A P I} A)
+  := ltac:(first [exact GCovL_formtop_UMore@{API API}|
+                  exact GCovL_formtop_UMore@{API API API'}]).
 
 End Localize.
